@@ -1,0 +1,518 @@
+{% extends 'core/base_modulo.html' %}
+
+{% block title %}Miembros · Panel{% endblock %}
+
+{% block breadcrumb %}
+Miembros / Panel
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h1 class="page-title">Panel de miembros</h1>
+        <p class="page-subtitle">
+            Resumen de la membresía oficial (mayores de 12 años) y distribución general de la iglesia Torre Fuerte.
+        </p>
+    </div>
+
+    <div class="page-header-actions">
+        <a href="{% url 'miembros_app:lista' %}" class="btn-secondary">
+            <span class="material-icons">group</span>
+            Ver lista
+        </a>
+        <a href="{% url 'miembros_app:crear' %}" class="btn-primary">
+            <span class="material-icons">person_add</span>
+            Nuevo miembro
+        </a>
+    </div>
+</section>
+
+<section class="dashboard-section">
+
+    <!-- TARJETAS PRINCIPALES -->
+    <div class="dashboard-cards">
+        <div class="dash-card dash-card--activo">
+            <div class="dash-card-label">Miembros activos</div>
+            <div class="dash-card-value">{{ activos }}</div>
+            <div class="dash-card-sub">
+                {{ pct_activos }}% del total oficial
+                {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
+            </div>
+        </div>
+
+        <div class="dash-card dash-card--pasivo">
+            <div class="dash-card-label">Miembros pasivos</div>
+            <div class="dash-card-value">{{ pasivos }}</div>
+            <div class="dash-card-sub">
+                {{ pct_pasivos }}% del total oficial
+                {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
+            </div>
+        </div>
+
+        <div class="dash-card dash-card--descarriado">
+            <div class="dash-card-label">Miembros descarriados</div>
+            <div class="dash-card-value">{{ descarriados }}</div>
+            <div class="dash-card-sub">
+                {{ pct_descarriados }}% del total oficial
+                {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
+            </div>
+        </div>
+
+        <div class="dash-card dash-card--observacion">
+            <div class="dash-card-label">En observación</div>
+            <div class="dash-card-value">{{ observacion }}</div>
+            <div class="dash-card-sub">
+                {{ pct_observacion }}% del total oficial
+                {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- DISTRIBUCIÓN + CUMPLEAÑOS -->
+    <div class="dashboard-grid">
+        <!-- Distribución por etapa de vida -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <h2>Distribución por Edad</h2>
+                <p>Resumen por grupo de edad (niños, adolescentes, jóvenes, adultos…).</p>
+            </div>
+
+            {% if distribucion_etapa_vida and total_miembros %}
+                <div class="etapas-list">
+                    {% for e in distribucion_etapa_vida %}
+                        <div class="etapa-row">
+                            <div class="etapa-label">{{ e.nombre }}</div>
+                            <div class="etapa-bar-wrapper">
+                                <div class="etapa-bar"
+                                     style="width: {% widthratio e.cantidad total_miembros 100 %}%;">
+                                </div>
+                            </div>
+                            <div class="etapa-count">{{ e.cantidad }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="dash-empty">Aún no hay datos suficientes para mostrar esta distribución.</p>
+            {% endif %}
+        </div>
+
+        <!-- Próximos cumpleaños -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <h2>Próximos cumpleaños</h2>
+                <p>En los próximos 30 días.</p>
+            </div>
+
+            {% if proximos_cumpleanos %}
+                <ul class="birthday-list">
+                    {% for c in proximos_cumpleanos %}
+                        <li>
+                            <div class="birthday-date">
+                                {{ c.fecha|date:"d/m" }}
+                            </div>
+                            <div class="birthday-info">
+                                <div class="birthday-name">{{ c.nombre }}</div>
+                                {% if c.edad %}
+                                    <div class="birthday-sub">Cumple {{ c.edad }} años</div>
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="dash-empty">No hay cumpleaños registrados en los próximos 30 días.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- MIEMBROS RECIENTES + ACCIONES RÁPIDAS -->
+    <div class="dashboard-grid">
+        <!-- Miembros recientes -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <h2>Miembros añadidos recientemente</h2>
+                <p>Últimos registros de la base de datos.</p>
+            </div>
+
+            {% if miembros_recientes %}
+                <ul class="recent-list">
+                    {% for m in miembros_recientes %}
+                        <li>
+                            <div class="recent-main">
+                                <div class="recent-avatar">
+                                    {% if m.foto %}
+                                        <img src="{{ m.foto.url }}" alt="{{ m.nombres }} {{ m.apellidos }}">
+                                    {% else %}
+                                        <span>{{ m.nombres|default:""|first }}{{ m.apellidos|default:""|first }}</span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="recent-name">
+                                        <a href="{% url 'miembros_app:detalle' m.pk %}">
+                                            {{ m.nombres }} {{ m.apellidos }}
+                                        </a>
+                                    </div>
+                                    <div class="recent-sub">
+                                        {% if m.fecha_ingreso_iglesia %}
+                                            Ingreso: {{ m.fecha_ingreso_iglesia|date:"d/m/Y" }}
+                                        {% else %}
+                                            Registrado recientemente
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="recent-tag">
+                                {% if m.estado_miembro %}
+                                    {{ m.get_estado_miembro_display }}
+                                {% else %}
+                                    Sin estado
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="dash-empty">Aún no hay miembros registrados.</p>
+            {% endif %}
+        </div>
+
+        <!-- Acciones rápidas -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <h2>Acciones rápidas</h2>
+                <p>Atajos frecuentes para el trabajo diario.</p>
+            </div>
+
+            <div class="quick-actions">
+                <a href="{% url 'miembros_app:lista' %}" class="quick-action">
+                    <span class="material-icons">table_rows</span>
+                    <div>
+                        <div class="qa-title">Ver lista completa</div>
+                        <div class="qa-sub">Gestionar todos los registros de miembros.</div>
+                    </div>
+                </a>
+
+                <a href="{% url 'miembros_app:crear' %}" class="quick-action">
+                    <span class="material-icons">person_add</span>
+                    <div>
+                        <div class="qa-title">Agregar nuevo miembro</div>
+                        <div class="qa-sub">Registrar una persona en la base de datos.</div>
+                    </div>
+                </a>
+
+                <a href="{% url 'miembros_app:lista' %}?estado=observacion" class="quick-action">
+                    <span class="material-icons">visibility</span>
+                    <div>
+                        <div class="qa-title">Miembros en observación</div>
+                        <div class="qa-sub">Revisar a quienes necesitan seguimiento.</div>
+                    </div>
+                </a>
+
+                <a href="{% url 'miembros_app:lista' %}?estado=descarriado" class="quick-action">
+                    <span class="material-icons">heart_broken</span>
+                    <div>
+                        <div class="qa-title">Miembros descarriados</div>
+                        <div class="qa-sub">Orar, visitar y restaurar.</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</section>
+
+<style>
+    .dashboard-section {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .dashboard-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px;
+    }
+
+    .dash-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 8px 20px rgba(15,23,42,0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .dash-card-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #6b7280;
+    }
+
+    .dash-card-value {
+        font-size: 26px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .dash-card-sub {
+        font-size: 12px;
+        color: #4b5563;
+    }
+
+    /* Colores suaves por estado */
+    .dash-card--activo {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+    }
+
+    .dash-card--pasivo {
+        border-color: #fef3c7;
+        background: #fffbeb;
+    }
+
+    .dash-card--descarriado {
+        border-color: #fee2e2;
+        background: #fef2f2;
+    }
+
+    .dash-card--observacion {
+        border-color: #e0e7ff;
+        background: #eef2ff;
+    }
+
+    /* Grids inferiores */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 2fr);
+        gap: 12px;
+    }
+
+    @media (max-width: 900px) {
+        .dashboard-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    .dash-panel {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 14px 16px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 10px 24px rgba(15,23,42,0.05);
+    }
+
+    .dash-panel-header h2 {
+        margin: 0;
+        font-size: 15px;
+        color: #111827;
+    }
+
+    .dash-panel-header p {
+        margin: 2px 0 10px;
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .dash-empty {
+        font-size: 12px;
+        color: #9ca3af;
+    }
+
+    /* Distribución por etapa de vida */
+    .etapas-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 4px;
+    }
+
+    .etapa-row {
+        display: grid;
+        grid-template-columns: 1.4fr 3fr auto;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+    }
+
+    .etapa-label {
+        color: #374151;
+    }
+
+    .etapa-bar-wrapper {
+        background: #f3f4f6;
+        border-radius: 999px;
+        overflow: hidden;
+        height: 8px;
+    }
+
+    .etapa-bar {
+        height: 100%;
+        background: #4f46e5;
+    }
+
+    .etapa-count {
+        font-weight: 600;
+        color: #111827;
+        text-align: right;
+        font-size: 12px;
+    }
+
+    /* Cumpleaños */
+    .birthday-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 12px;
+    }
+
+    .birthday-list li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: #f9fafb;
+    }
+
+    .birthday-date {
+        font-weight: 600;
+        color: #1d4ed8;
+        min-width: 48px;
+    }
+
+    .birthday-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .birthday-sub {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    /* Miembros recientes */
+    .recent-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 12px;
+    }
+
+    .recent-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: #f9fafb;
+    }
+
+    .recent-main {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .recent-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: #374151;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .recent-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .recent-name a {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+        text-decoration: none;
+    }
+
+    .recent-name a:hover {
+        text-decoration: underline;
+    }
+
+    .recent-sub {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    .recent-tag {
+        font-size: 11px;
+        color: #374151;
+    }
+
+    /* Acciones rápidas */
+    .quick-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .quick-action {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 8px;
+        border-radius: 10px;
+        background: #f9fafb;
+        text-decoration: none;
+        color: inherit;
+        border: 1px solid transparent;
+        font-size: 12px;
+    }
+
+    .quick-action:hover {
+        border-color: #d1d5db;
+        background: #f3f4f6;
+    }
+
+    .quick-action .material-icons {
+        font-size: 18px;
+        color: #4f46e5;
+        margin-top: 2px;
+    }
+
+    .qa-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .qa-sub {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    @media (max-width: 768px) {
+        .dash-card-value {
+            font-size: 22px;
+        }
+    }
+</style>
+
+{% endblock %}

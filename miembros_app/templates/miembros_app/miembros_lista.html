@@ -1,0 +1,245 @@
+{% extends 'core/base_modulo.html' %}
+
+{% block title %}Lista de Miembros{% endblock %}
+
+{% block breadcrumb %}
+Miembros / Lista
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h1 class="page-title">Miembros registrados</h1>
+        <p class="page-subtitle">
+            Listado de miembros de la iglesia Torre Fuerte. Por defecto se muestran solo los activos.
+        </p>
+    </div>
+
+    <div class="page-header-actions">
+        <a href="{% url 'miembros_app:crear' %}" class="btn-primary">
+            <span class="material-icons">add</span>
+            <span>Nuevo miembro</span>
+        </a>
+    </div>
+</section>
+
+<section class="page-section">
+
+    <!-- Barra de búsqueda y resumen -->
+    <div class="form-grid" style="margin-bottom: 16px; align-items: center;">
+        <div class="form-field form-field-full">
+            <form method="get" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input
+                    type="text"
+                    name="q"
+                    placeholder="Buscar por nombre, apellido, teléfono o correo…"
+                    value="{{ query }}"
+                    style="flex:1; min-width:230px;"
+                >
+                <button type="submit" class="btn-secondary">
+                    <span class="material-icons" style="font-size:16px;">search</span>
+                    Buscar
+                </button>
+
+                <!-- Checkbox Mostrar todos -->
+                <label
+                    style="
+                        width:100%;
+                        margin-top:4px;
+                        font-size:12px;
+                        color:#4b5563;
+                        display:flex;
+                        align-items:center;
+                        gap:6px;
+                    "
+                >
+                    <input
+                        type="checkbox"
+                        name="mostrar_todos"
+                        value="1"
+                        {% if mostrar_todos %}checked{% endif %}
+                    >
+                    Mostrar todos (incluye inactivos)
+                </label>
+            </form>
+        </div>
+
+        <div class="form-field form-field-full" style="margin-top: -4px; font-size:12px; color:#6b7280;">
+            {% if miembros %}
+                {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }} encontrados
+            {% else %}
+                No se encontraron miembros con el criterio indicado.
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Miembro</th>
+                    <th>Contacto</th>
+                    <th>Estado</th>
+                    <th>Bautismo</th>
+                    <th>Ingreso</th>
+                    <th class="col-center">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% if miembros %}
+                {% for m in miembros %}
+                <tr>
+                    <!-- Columna Miembro -->
+                    <td>
+                        <div class="member-main">
+                            <div class="member-avatar">
+                                {% if m.foto %}
+                                    <img src="{{ m.foto.url }}" alt="{{ m.nombres }} {{ m.apellidos }}">
+                                {% else %}
+                                    <span>
+                                        {{ m.nombres|default:""|first }}{{ m.apellidos|default:""|first }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div class="member-name">
+                                    <a href="{% url 'miembros_app:detalle' m.pk %}">
+                                        {{ m.nombres }} {{ m.apellidos }}
+                                    </a>
+                                </div>
+
+                                <div class="member-subtext">
+                                    {{ m.profesion|default:"Sin profesión registrada" }}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Columna Contacto -->
+                    <td>
+                        {% if m.telefono %}
+                            <div class="member-contact-line">
+                                {{ m.telefono }}
+                            </div>
+                        {% endif %}
+                        {% if m.email %}
+                            <div class="member-contact-line">
+                                {{ m.email }}
+                            </div>
+                        {% endif %}
+                        {% if not m.telefono and not m.email %}
+                            <span class="member-subtext">Sin datos de contacto</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Columna Estado / Etapa de vida -->
+                    <td>
+                        {% if m.estado_miembro %}
+                            <div class="member-subtext" style="font-weight:600; color:#111827;">
+                                {{ m.get_estado_miembro_display }}
+                            </div>
+                        {% else %}
+                            <div class="member-subtext">Sin estado</div>
+                        {% endif %}
+
+                        {% if m.categoria_edad %}
+                            <div class="member-subtext">
+                                {{ m.get_categoria_edad_display }}
+                            </div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Columna Bautismo -->
+                    <td class="col-center">
+                        {% if m.bautizado_confirmado %}
+                            <span class="pill pill-success">Sí</span>
+                            {% if m.fecha_bautismo %}
+                                <div class="member-subtext">
+                                    {{ m.fecha_bautismo|date:"d/m/Y" }}
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <span class="pill pill-muted">No</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Columna Ingreso -->
+                    <td>
+                        {% if m.fecha_ingreso_iglesia %}
+                            {{ m.fecha_ingreso_iglesia|date:"d/m/Y" }}
+                        {% else %}
+                            <span class="member-subtext">Sin fecha</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Columna Acciones -->
+                    <td class="col-center">
+                        <a href="{% url 'miembros_app:editar' m.pk %}"
+                           class="btn-secondary"
+                           style="padding:4px 10px; font-size:12px;">
+                            <span class="material-icons" style="font-size:16px;">edit</span>
+                            Editar
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="table-empty">
+                        No se encontraron miembros.
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</section>
+
+<style>
+    .member-main {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .member-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        color: #374151;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .member-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .member-name {
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .member-subtext {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    .member-contact-line {
+        font-size: 12px;
+        margin-bottom: 2px;
+    }
+</style>
+
+{% endblock %}

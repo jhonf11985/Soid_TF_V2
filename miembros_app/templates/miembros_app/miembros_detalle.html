@@ -1,0 +1,545 @@
+{% extends 'core/base_modulo.html' %}
+
+{% block title %}Perfil del miembro{% endblock %}
+
+{% block breadcrumb %}
+Miembros / Perfil
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h1 class="page-title">
+            {{ miembro.nombres }} {{ miembro.apellidos }}
+        </h1>
+        <p class="page-subtitle">
+            Perfil detallado del miembro de la iglesia Torre Fuerte.
+        </p>
+    </div>
+
+    <div class="page-header-actions">
+        <a href="{% url 'miembros_app:lista' %}" class="btn-secondary">
+            <span class="material-icons">arrow_back</span>
+            Volver a la lista
+        </a>
+        <a href="{% url 'miembros_app:editar' miembro.pk %}" class="btn-primary">
+            <span class="material-icons">edit</span>
+            Editar
+        </a>
+    </div>
+</section>
+
+<section class="member-profile">
+
+    <!-- Panel principal -->
+    <div class="member-profile-main">
+        <div class="member-profile-header">
+            <div class="member-profile-photo">
+                {% if miembro.foto %}
+                    <img src="{{ miembro.foto.url }}" alt="{{ miembro.nombres }} {{ miembro.apellidos }}">
+                {% else %}
+                    <span class="material-icons">person</span>
+                {% endif %}
+            </div>
+            <div class="member-profile-info">
+                <h2>{{ miembro.nombres }} {{ miembro.apellidos }}</h2>
+
+                <div class="member-profile-tags">
+                    {# Estado del miembro (Activo, Pasivo, Descarriado, En observación) con colores #}
+                    {% if miembro.estado_miembro %}
+                        {% if miembro.estado_miembro == "activo" %}
+                            <span class="badge badge-green">
+                                Estado: {{ miembro.get_estado_miembro_display }}
+                            </span>
+                        {% elif miembro.estado_miembro == "pasivo" %}
+                            <span class="badge badge-yellow">
+                                Estado: {{ miembro.get_estado_miembro_display }}
+                            </span>
+                        {% elif miembro.estado_miembro == "observacion" %}
+                            <span class="badge badge-blue">
+                                Estado: {{ miembro.get_estado_miembro_display }}
+                            </span>
+                        {% elif miembro.estado_miembro == "descarriado" %}
+                            <span class="badge badge-red">
+                                Estado: {{ miembro.get_estado_miembro_display }}
+                            </span>
+                        {% else %}
+                            <span class="badge badge-neutral">
+                                {{ miembro.get_estado_miembro_display }}
+                            </span>
+                        {% endif %}
+                    {% endif %}
+
+                    {# Edad calculada #}
+                    {% if miembro.edad %}
+                        <span class="badge badge-blue">
+                            {{ miembro.edad }} años
+                        </span>
+                    {% endif %}
+
+                    {# Categoría de edad (Infante, Niño, Adolescente, etc.) #}
+                    {% if miembro.categoria_edad %}
+                        <span class="badge badge-neutral">
+                            {{ miembro.get_categoria_edad_display }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <div class="member-profile-subinfo">
+                    <div>
+                        <strong>Fecha de nacimiento</strong>
+                        <span>
+                            {% if miembro.fecha_nacimiento %}
+                                {{ miembro.fecha_nacimiento|date:"d/m/Y" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div>
+                        <strong>Género</strong>
+                        <span>{{ miembro.genero|default:"—" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bloques de información -->
+        <div class="member-profile-sections">
+
+            <!-- Contacto -->
+            <div class="profile-card">
+                <h3>Contacto</h3>
+                <div class="profile-grid">
+                    <div>
+                        <strong>Teléfono principal</strong>
+                        <p>{{ miembro.telefono|default:"—" }}</p>
+                    </div>
+                    <div>
+                        <strong>Teléfono secundario</strong>
+                        <p>{{ miembro.telefono_secundario|default:"—" }}</p>
+                    </div>
+                    <div>
+                        <strong>WhatsApp</strong>
+                        <p>{{ miembro.whatsapp|default:"—" }}</p>
+                    </div>
+                    <div>
+                        <strong>Correo electrónico</strong>
+                        <p>{{ miembro.email|default:"—" }}</p>
+                    </div>
+                    <div class="profile-grid-full">
+                        <strong>Dirección</strong>
+                        <p>
+                            {% if miembro.direccion %}
+                                {{ miembro.direccion }}
+                                {% if miembro.sector %} · {{ miembro.sector }}{% endif %}
+                                {% if miembro.ciudad %} · {{ miembro.ciudad }}{% endif %}
+                                {% if miembro.provincia %} · {{ miembro.provincia }}{% endif %}
+                                {% if miembro.codigo_postal %} · {{ miembro.codigo_postal }}{% endif %}
+                            {% else %}
+                                — 
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emergencia y salud -->
+            <div class="profile-card">
+                <h3>Emergencia y salud</h3>
+                <div class="profile-grid">
+                    <div>
+                        <strong>Contacto de emergencia</strong>
+                        <p>{{ miembro.contacto_emergencia_nombre|default:"—" }}</p>
+                    </div>
+                    <div>
+                        <strong>Teléfono de emergencia</strong>
+                        <p>{{ miembro.contacto_emergencia_telefono|default:"—" }}</p>
+                    </div>
+                    <div>
+                        <strong>Relación</strong>
+                        <p>{{ miembro.contacto_emergencia_relacion|default:"—" }}</p>
+                    </div>
+                    <div>
+                        <strong>Tipo de sangre</strong>
+                        <p>{{ miembro.tipo_sangre|default:"—" }}</p>
+                    </div>
+
+                    <div class="profile-grid-full">
+                        <strong>Alergias</strong>
+                        <p>{{ miembro.alergias|default:"—" }}</p>
+                    </div>
+                    <div class="profile-grid-full">
+                        <strong>Condiciones médicas</strong>
+                        <p>{{ miembro.condiciones_medicas|default:"—" }}</p>
+                    </div>
+                    <div class="profile-grid-full">
+                        <strong>Medicamentos</strong>
+                        <p>{{ miembro.medicamentos|default:"—" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trabajo -->
+            <div class="profile-card">
+                <h3>Trabajo</h3>
+                <div class="profile-grid">
+                    <div>
+                        <strong>Empleador</strong>
+                        <p>{{ miembro.empleador|default:"—" }}</p>
+                    </div>
+                    <div>
+                        <strong>Puesto</strong>
+                        <p>{{ miembro.puesto|default:"—" }}</p>
+                    </div>
+                    <div>
+                        <strong>Teléfono del trabajo</strong>
+                        <p>{{ miembro.telefono_trabajo|default:"—" }}</p>
+                    </div>
+                    <div class="profile-grid-full">
+                        <strong>Dirección del trabajo</strong>
+                        <p>{{ miembro.direccion_trabajo|default:"—" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Membresía -->
+            <div class="profile-card membership-card">
+                <h3>Membresía e información espiritual</h3>
+                <div class="profile-grid">
+
+                    <div>
+                        <strong>Estado del miembro</strong>
+                        <p>{% if miembro.estado_miembro %}{{ miembro.get_estado_miembro_display }}{% else %}—{% endif %}</p>
+                    </div>
+
+                    <div>
+                        <strong>Categoría</strong>
+                        <p>{{ miembro.categoria_miembro|default:"—" }}</p>
+                    </div>
+
+                    <div>
+                        <strong>Fecha de ingreso</strong>
+                        <p>{% if miembro.fecha_ingreso_iglesia %}{{ miembro.fecha_ingreso_iglesia|date:"d/m/Y" }}{% else %}—{% endif %}</p>
+                    </div>
+
+                    <div>
+                        <strong>Iglesia anterior</strong>
+                        <p>{{ miembro.iglesia_anterior|default:"—" }}</p>
+                    </div>
+
+                    <div>
+                        <strong>Fecha de conversión</strong>
+                        <p>{% if miembro.fecha_conversion %}{{ miembro.fecha_conversion|date:"d/m/Y" }}{% else %}—{% endif %}</p>
+                    </div>
+
+                    <div>
+                        <strong>Fecha de bautismo</strong>
+                        <p>{% if miembro.fecha_bautismo %}{{ miembro.fecha_bautismo|date:"d/m/Y" }}{% else %}—{% endif %}</p>
+                    </div>
+
+                    <div>
+                        <strong>Bautizado confirmado</strong>
+                        <p>
+                            {% if miembro.bautizado_confirmado %}
+                                <span class="pill pill-success">Sí</span>
+                            {% else %}
+                                <span class="pill pill-muted">No</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div>
+                        <strong>Mentor</strong>
+                        <p>{{ miembro.mentor|default:"—" }}</p>
+                    </div>
+
+                    <div>
+                        <strong>Líder de célula</strong>
+                        <p>{{ miembro.lider_celula|default:"—" }}</p>
+                    </div>
+                </div>
+            </div>
+
+           <!-- Familia -->
+<div class="profile-card">
+    <h3>Familia</h3>
+
+    {% if relaciones_familia %}
+        <div class="profile-grid-full">
+            <table class="family-table">
+                <thead>
+                    <tr>
+                        <th>Miembro principal</th>
+                        <th>Familiar</th>
+                        <th>Relación</th>
+                        <th>Vive en casa</th>
+                        <th>Responsable</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rel in relaciones_familia %}
+                        <tr>
+                            <td>{{ rel.miembro.nombres }} {{ rel.miembro.apellidos }}</td>
+                            <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
+                            <td>{{ rel.get_tipo_relacion_display }}</td>
+                            <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
+                            <td>{% if rel.es_responsable %}Sí{% else %}No{% endif %}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align:center; color:#6b7280;">
+                                No hay familiares registrados para este miembro.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p style="color:#6b7280; font-size:13px;">
+            No hay familiares registrados para este miembro.
+        </p>
+    {% endif %}
+</div>
+
+
+
+            <!-- Intereses -->
+            <div class="profile-card">
+                <h3>Intereses y habilidades</h3>
+                <div class="profile-grid">
+                    <div class="profile-grid-full">
+                        <strong>Intereses</strong>
+                        <p>{{ miembro.intereses|default:"—" }}</p>
+                    </div>
+                    <div class="profile-grid-full">
+                        <strong>Otros intereses</strong>
+                        <p>{{ miembro.otros_intereses|default:"—" }}</p>
+                    </div>
+                    <div class="profile-grid-full">
+                        <strong>Habilidades</strong>
+                        <p>{{ miembro.habilidades|default:"—" }}</p>
+                    </div>
+                    <div class="profile-grid-full">
+                        <strong>Otras habilidades</strong>
+                        <p>{{ miembro.otras_habilidades|default:"—" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notas -->
+            <div class="profile-card">
+                <h3>Notas pastorales</h3>
+                <p>
+                    {{ miembro.notas|default:"Sin notas registradas." }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+</section>
+
+<style>
+    .member-profile {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .member-profile-main {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 18px 18px 20px;
+        box-shadow: 0 10px 25px rgba(15,23,42,0.08);
+        border: 1px solid #e5e7eb;
+    }
+
+    .member-profile-header {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+
+    .member-profile-photo {
+        width: 80px;
+        height: 80px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .member-profile-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .member-profile-photo .material-icons {
+        font-size: 40px;
+        color: #6b7280;
+    }
+
+    .member-profile-info h2 {
+        margin: 0 0 4px;
+        font-size: 20px;
+        color: #111827;
+    }
+
+    .member-profile-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+
+    .member-profile-subinfo {
+        font-size: 13px;
+        color: #374151;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 4px 12px;
+    }
+
+    .member-profile-subinfo strong {
+        display: block;
+        font-size: 12px;
+        color: #4b5563;
+    }
+
+    .member-profile-subinfo span {
+        font-size: 13px;
+        color: #111827;
+    }
+
+    .member-profile-sections {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+    }
+
+    .profile-card {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        font-size: 13px;
+    }
+
+    .profile-card h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: #111827;
+    }
+
+    .profile-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 6px 12px;
+    }
+
+    .profile-grid-full {
+        grid-column: 1 / -1;
+    }
+
+    .profile-card strong {
+        display: block;
+        font-size: 12px;
+        color: #4b5563;
+    }
+
+    .profile-card p {
+        margin: 2px 0 0;
+        font-size: 13px;
+        color: #111827;
+        white-space: pre-line;
+    }
+
+    /* Badges */
+    .badge {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 14px;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1;
+    }
+
+    .badge-blue {
+        background-color: #dbeafe;
+        color: #1e3a8a;
+    }
+
+    .badge-green {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-yellow {
+        background-color: #fef9c3;
+        color: #854d0e;
+    }
+
+    .badge-red {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-neutral {
+        background-color: #f3f4f6;
+        color: #374151;
+    }
+
+    @media (max-width: 768px) {
+        .member-profile-main {
+            padding: 14px;
+        }
+        .member-profile-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .member-profile-info h2 {
+            font-size: 18px;
+        }
+    }
+
+    .family-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 6px;
+        font-size: 13px;
+    }
+
+    .family-table th {
+        background: #eef2ff;
+        color: #1e3a8a;
+        text-align: left;
+        padding: 6px;
+        border-bottom: 1px solid #d1d5db;
+    }
+
+    .family-table td {
+        padding: 6px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .family-table tr:hover {
+        background: #f9fafb;
+    }
+
+    /* FIX: que la tarjeta de membresía no tenga saltos raros */
+    .membership-card p {
+        white-space: normal;
+        margin-top: 2px;
+    }
+
+</style>
+
+{% endblock %}

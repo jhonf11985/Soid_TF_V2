@@ -1,0 +1,252 @@
+{% extends 'core/base_modulo.html' %}
+
+{% block title %}Listado general de miembros{% endblock %}
+
+{% block breadcrumb %}
+Miembros / Reportes / Listado general
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h1 class="page-title">Listado general de miembros</h1>
+        <p class="page-subtitle">
+            Versión imprimible del listado de miembros. Por defecto se muestran solo los activos.
+        </p>
+    </div>
+</section>
+
+<section class="page-section">
+    <!-- Filtros avanzados -->
+    <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
+
+        <!-- Búsqueda de texto -->
+        <div class="form-field">
+            <label for="id_q">Buscar</label>
+            <input
+                id="id_q"
+                type="text"
+                name="q"
+                placeholder="Nombre, apellido, teléfono o correo…"
+                value="{{ query }}"
+            >
+        </div>
+
+        <!-- Estado -->
+        <div class="form-field">
+            <label for="id_estado">Estado</label>
+            <select id="id_estado" name="estado">
+                <option value="">Todos</option>
+                {% for value, label in estados_choices %}
+                    <option value="{{ value }}" {% if value == estado %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Categoría de edad -->
+        <div class="form-field">
+            <label for="id_categoria_edad">Categoría de edad</label>
+            <select id="id_categoria_edad" name="categoria_edad">
+                <option value="">Todas</option>
+                {% for value, label in categorias_choices %}
+                    <option value="{{ value }}" {% if value == categoria_edad_filtro %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Bautismo -->
+        <div class="form-field">
+            <label for="id_bautizado">Bautismo</label>
+            <select id="id_bautizado" name="bautizado">
+                <option value="">Todos</option>
+                <option value="1" {% if bautizado == "1" %}selected{% endif %}>Solo bautizados</option>
+                <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
+            </select>
+        </div>
+
+        <!-- Mostrar todos / Solo con contacto -->
+        <div class="form-field form-field-full" style="font-size:12px; color:#4b5563;">
+            <label style="display:flex; align-items:center; gap:10px; font-weight:400; margin:0; flex-wrap:wrap;">
+
+                <span style="display:flex; align-items:center; gap:6px;">
+                    <input
+                        type="checkbox"
+                        name="mostrar_todos"
+                        value="1"
+                        {% if mostrar_todos %}checked{% endif %}
+                    >
+                    Mostrar todos (incluye inactivos)
+                </span>
+
+                <span style="display:flex; align-items:center; gap:6px;">
+                    <input
+                        type="checkbox"
+                        name="tiene_contacto"
+                        value="1"
+                        {% if tiene_contacto %}checked{% endif %}
+                    >
+                    Solo con teléfono o email
+                </span>
+            </label>
+        </div>
+
+        <!-- Botones -->
+        <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
+            <button type="submit" class="btn-secondary">
+                <span class="material-icons" style="font-size:16px;">search</span>
+                Aplicar filtros
+            </button>
+            <button type="button" class="btn-secondary" onclick="window.print()">
+                <span class="material-icons" style="font-size:16px;">print</span>
+                Imprimir
+            </button>
+        </div>
+
+        <!-- Resumen -->
+        <div class="form-field form-field-full" style="margin-top: -4px; font-size:12px; color:#6b7280;">
+            {% if miembros %}
+                {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }} encontrados
+            {% else %}
+                No se encontraron miembros con el criterio indicado.
+            {% endif %}
+        </div>
+    </form>
+
+
+    <!-- Tabla -->
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Miembro</th>
+                    <th>Contacto</th>
+                    <th>Estado</th>
+                    <th>Bautismo</th>
+                    <th>Ingreso</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% if miembros %}
+                {% for m in miembros %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+
+                        <td>
+                            <div style="font-weight:600; font-size:13px;">
+                                {{ m.nombres }} {{ m.apellidos }}
+                            </div>
+                            <div style="font-size:11px; color:#6b7280;">
+                                {{ m.profesion|default:"Sin profesión registrada" }}
+                            </div>
+                        </td>
+
+                        <td>
+                            {% if m.telefono %}
+                                <div style="font-size:12px;">{{ m.telefono }}</div>
+                            {% endif %}
+                            {% if m.email %}
+                                <div style="font-size:12px;">{{ m.email }}</div>
+                            {% endif %}
+                            {% if not m.telefono and not m.email %}
+                                <span style="font-size:11px; color:#6b7280;">Sin datos de contacto</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if m.estado_miembro %}
+                                <div style="font-size:12px; font-weight:600;">
+                                    {{ m.get_estado_miembro_display }}
+                                </div>
+                            {% else %}
+                                <div style="font-size:11px; color:#6b7280;">Sin estado</div>
+                            {% endif %}
+
+                            {% if m.categoria_edad %}
+                                <div style="font-size:11px; color:#6b7280;">
+                                    {{ m.get_categoria_edad_display }}
+                                </div>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if m.bautizado_confirmado %}
+                                <span class="pill pill-success">Sí</span>
+                                {% if m.fecha_bautismo %}
+                                    <div style="font-size:11px; color:#6b7280;">
+                                        {{ m.fecha_bautismo|date:"d/m/Y" }}
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <span class="pill pill-muted">No</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if m.fecha_ingreso_iglesia %}
+                                {{ m.fecha_ingreso_iglesia|date:"d/m/Y" }}
+                            {% else %}
+                                <span style="font-size:11px; color:#6b7280;">Sin fecha</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="table-empty">
+                        No se encontraron miembros con el criterio indicado.
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</section>
+
+<style>
+@media print {
+    .topbar,
+    .main-nav,
+    .footer,
+    .form-actions,
+    .form-grid,
+    .page-header-actions {
+        display: none !important;
+    }
+
+    .layout {
+        margin: 0;
+        max-width: 100%;
+        padding: 0;
+    }
+
+    .page-section {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+    }
+
+    .page-title {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+
+    .page-subtitle {
+        font-size: 11px;
+    }
+
+    .table th,
+    .table td {
+        font-size: 11px;
+        padding: 4px 4px;
+    }
+}
+</style>
+
+{% endblock %}

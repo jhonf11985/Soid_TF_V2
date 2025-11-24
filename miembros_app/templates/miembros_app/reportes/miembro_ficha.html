@@ -1,0 +1,227 @@
+{% extends 'core/base_modulo.html' %}
+
+{% block title %}Ficha pastoral · {{ miembro.nombres }}{% endblock %}
+
+{% block content %}
+
+<div class="report-container">
+
+    <h1 class="report-title">Ficha Pastoral del Miembro</h1>
+    <p class="report-subtitle">Iglesia Torre Fuerte</p>
+
+    <div class="report-header">
+        <div class="report-photo">
+            {% if miembro.foto %}
+                <img src="{{ miembro.foto.url }}" alt="Foto de {{ miembro.nombres }}">
+            {% else %}
+                <span class="material-icons" style="font-size:48px; color:#9ca3af;">person</span>
+            {% endif %}
+        </div>
+
+        <div class="report-basic">
+            <h2>{{ miembro.nombres }} {{ miembro.apellidos }}</h2>
+
+            <p><strong>Estado:</strong> 
+                {% if miembro.estado_miembro %}
+                    {{ miembro.get_estado_miembro_display }}
+                {% else %}
+                    — 
+                {% endif %}
+            </p>
+
+            <p><strong>Edad:</strong> 
+                {% if miembro.edad %}{{ miembro.edad }} años{% else %}—{% endif %}
+            </p>
+
+            <p><strong>Categoría:</strong> 
+                {% if miembro.categoria_edad %}
+                    {{ miembro.get_categoria_edad_display }}
+                {% else %}
+                    — 
+                {% endif %}
+            </p>
+
+            <p><strong>Fecha de nacimiento:</strong>
+                {% if miembro.fecha_nacimiento %}
+                    {{ miembro.fecha_nacimiento|date:"d/m/Y" }}
+                {% else %}
+                    —
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- CONTACTO -->
+    <h3 class="section-title">Contacto</h3>
+    <div class="section-grid">
+        <p><strong>Teléfono:</strong> {{ miembro.telefono|default:"—" }}</p>
+        <p><strong>Teléfono secundario:</strong> {{ miembro.telefono_secundario|default:"—" }}</p>
+        <p><strong>WhatsApp:</strong> {{ miembro.whatsapp|default:"—" }}</p>
+        <p><strong>Email:</strong> {{ miembro.email|default:"—" }}</p>
+        <p class="full"><strong>Dirección:</strong> 
+            {% if miembro.direccion %}
+                {{ miembro.direccion }}
+                {% if miembro.sector %} · {{ miembro.sector }}{% endif %}
+                {% if miembro.ciudad %} · {{ miembro.ciudad }}{% endif %}
+                {% if miembro.provincia %} · {{ miembro.provincia }}{% endif %}
+            {% else %}
+                —
+            {% endif %}
+        </p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- EMERGENCIA -->
+    <h3 class="section-title">Emergencia y Salud</h3>
+    <div class="section-grid">
+        <p><strong>Contacto:</strong> {{ miembro.contacto_emergencia_nombre|default:"—" }}</p>
+        <p><strong>Teléfono:</strong> {{ miembro.contacto_emergencia_telefono|default:"—" }}</p>
+        <p><strong>Relación:</strong> {{ miembro.contacto_emergencia_relacion|default:"—" }}</p>
+        <p><strong>Tipo de sangre:</strong> {{ miembro.tipo_sangre|default:"—" }}</p>
+        <p class="full"><strong>Alergias:</strong> {{ miembro.alergias|default:"—" }}</p>
+        <p class="full"><strong>Condiciones médicas:</strong> {{ miembro.condiciones_medicas|default:"—" }}</p>
+        <p class="full"><strong>Medicamentos:</strong> {{ miembro.medicamentos|default:"—" }}</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- MEMBRESÍA -->
+    <h3 class="section-title">Membresía</h3>
+    <div class="section-grid">
+        <p><strong>Estado:</strong> {{ miembro.get_estado_miembro_display|default:"—" }}</p>
+        <p><strong>Ingreso:</strong> 
+            {% if miembro.fecha_ingreso_iglesia %}
+                {{ miembro.fecha_ingreso_iglesia|date:"d/m/Y" }}
+            {% else %}
+                —
+            {% endif %}
+        </p>
+        <p><strong>Conversión:</strong>
+            {% if miembro.fecha_conversion %}
+                {{ miembro.fecha_conversion|date:"d/m/Y" }}
+            {% else %}
+                —
+            {% endif %}
+        </p>
+        <p><strong>Bautismo:</strong>
+            {% if miembro.fecha_bautismo %}
+                {{ miembro.fecha_bautismo|date:"d/m/Y" }}
+            {% else %}
+                —
+            {% endif %}
+        </p>
+        <p class="full"><strong>Iglesia anterior:</strong> {{ miembro.iglesia_anterior|default:"—" }}</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- FAMILIA -->
+    <h3 class="section-title">Familia</h3>
+
+    {% if relaciones_familia %}
+        <table class="family-table">
+            <thead>
+                <tr>
+                    <th>Familiar</th>
+                    <th>Relación</th>
+                    <th>Vive juntos</th>
+                    <th>Responsable</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rel in relaciones_familia %}
+                    <tr>
+                        <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
+                        <td>{{ rel.get_tipo_relacion_display }}</td>
+                        <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
+                        <td>{% if rel.es_responsable %}Sí{% else %}No{% endif %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay familiares registrados.</p>
+    {% endif %}
+
+    <hr class="divider">
+
+    <!-- NOTAS -->
+    <h3 class="section-title">Notas pastorales</h3>
+    <p>
+        {{ miembro.notas|default:"Sin notas registradas." }}
+    </p>
+
+</div>
+
+<style>
+.report-container {
+    background:white;
+    padding:24px;
+    border-radius:16px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.05);
+}
+.report-title {
+    margin:0;
+    font-size:24px;
+    font-weight:700;
+}
+.report-subtitle {
+    margin:0 0 20px;
+    font-size:14px;
+    color:#6b7280;
+}
+.report-header {
+    display:flex;
+    gap:20px;
+}
+.report-photo {
+    width:90px;
+    height:90px;
+    border-radius:50%;
+    overflow:hidden;
+    background:#e5e7eb;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.report-photo img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+.report-basic h2 {
+    margin:0 0 6px;
+}
+.section-title {
+    margin:20px 0 6px;
+    font-size:16px;
+    font-weight:600;
+}
+.section-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+    gap:6px 12px;
+}
+.section-grid .full { grid-column:1 / -1; }
+.family-table {
+    width:100%;
+    border-collapse:collapse;
+    margin:10px 0;
+}
+.family-table th, .family-table td {
+    border:1px solid #e5e7eb;
+    padding:6px;
+    font-size:13px;
+}
+.divider {
+    margin:20px 0;
+    border:none;
+    height:1px;
+    background:#e5e7eb;
+}
+</style>
+
+{% endblock %}

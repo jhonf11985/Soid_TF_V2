@@ -1,0 +1,144 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <meta charset="UTF-8">
+    <title>{% block title %}Soid_Tf_2{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Tipografía -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS principal -->
+    <link rel="stylesheet" href="{% static 'core/css/main.css' %}">
+</head>
+<body>
+
+<!-- BARRA SUPERIOR -->
+<header class="topbar">
+    <div class="topbar__brand">
+        <img src="{% static 'core/images/logo.png' %}" alt="Logo Torre Fuerte" class="topbar__logo">
+        <span class="topbar__brand-main">TORRE FUERTE</span>
+    </div>
+
+    <div class="topbar__right">
+        <span class="topbar__user-name">Usuario</span>
+    </div>
+</header>
+
+<!-- MENÚ DEL MÓDULO -->
+<nav class="main-nav">
+    <div class="main-nav__inner">
+        <div class="main-nav__left">
+
+            <a href="/miembros/" class="main-nav__link">
+                <span class="material-icons main-nav__icon">dashboard</span>
+                <span>Panel</span>
+            </a>
+
+            <a href="/miembros/lista/" class="main-nav__link">
+                <span class="material-icons main-nav__icon">list</span>
+                <span>Lista</span>
+            </a>
+
+            <a href="/miembros/crear/" class="main-nav__link">
+                <span class="material-icons main-nav__icon">add</span>
+                <span>Crear miembro</span>
+            </a>
+
+            <a href="/miembros/reportes/" class="main-nav__link">
+                <span class="material-icons main-nav__icon">description</span>
+                <span>Reportes</span>
+            </a>
+
+        </div>
+
+        <div class="main-nav__right">
+            <span class="main-nav__breadcrumb">
+                {% block breadcrumb %}{% endblock %}
+            </span>
+        </div>
+    </div>
+</nav>
+
+<!-- CONTENIDO PRINCIPAL -->
+<main class="layout">
+{% if messages %}
+<div class="modal-overlay" id="messages-modal">
+    <div class="modal-window">
+        <div class="modal-header">
+            <span class="modal-title">
+                {% if messages|length == 1 %}
+                    Aviso importante
+                {% else %}
+                    Avisos importantes
+                {% endif %}
+            </span>
+            <button class="modal-close-btn" id="messages-modal-close" type="button">
+                &times;
+            </button>
+        </div>
+        <div class="modal-body">
+            <ul class="modal-messages-list">
+                {% for message in messages %}
+                    <li class="modal-message-item modal-message-{{ message.tags|default:'info' }}">
+                        {{ message }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-primary" id="messages-modal-ok" type="button">
+                Entendido
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('messages-modal');
+    if (!modal) return;
+
+    const btnClose = document.getElementById('messages-modal-close');
+    const btnOk = document.getElementById('messages-modal-ok');
+
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    if (btnClose) {
+        btnClose.addEventListener('click', closeModal);
+    }
+    if (btnOk) {
+        btnOk.addEventListener('click', closeModal);
+    }
+
+    // Cerrar si hace clic fuera de la ventana
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Cerrar con ESC
+    document.addEventListener('keyup', function(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    });
+});
+</script>
+{% endif %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <span>Soid_Tf_2 · Módulo de Miembros</span>
+</footer>
+
+</body>
+</html>
