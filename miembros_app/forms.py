@@ -15,10 +15,11 @@ class MiembroForm(forms.ModelForm):
 
     # Género obligatorio
     GENERO_CHOICES = [
-        ("", "Seleccione género"),
-        ("Masculino", "Masculino"),
-        ("Femenino", "Femenino"),
+    ("", "Seleccione género"),
+    ("masculino", "Masculino"),
+    ("femenino", "Femenino"),
     ]
+
 
     ESTADO_CIVIL_CHOICES = [
         ("", "Seleccione estado civil"),
@@ -70,9 +71,10 @@ class MiembroForm(forms.ModelForm):
 
     genero = forms.ChoiceField(
         choices=GENERO_CHOICES,
-        required=True,   # <-- obligatorio
+        required=True,
         label="Género",
     )
+
 
     estado_civil = forms.ChoiceField(
         choices=ESTADO_CIVIL_CHOICES,

@@ -2,6 +2,12 @@ from datetime import date
 from django.db import models
 
 
+GENERO_CHOICES = [
+    ("masculino", "Masculino"),
+    ("femenino", "Femenino"),
+]
+
+
 ESTADO_MIEMBRO_CHOICES = [
     ("activo", "Activo"),
     ("pasivo", "Pasivo"),
@@ -53,7 +59,11 @@ class Miembro(models.Model):
     # --- Información personal básica ---
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
-    genero = models.CharField(max_length=20, blank=True)
+    genero = models.CharField(
+        max_length=20,
+        choices=GENERO_CHOICES,
+        blank=True,
+    )
 
     fecha_nacimiento = models.DateField(
         blank=True,

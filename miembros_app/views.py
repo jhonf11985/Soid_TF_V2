@@ -166,6 +166,7 @@ def miembros_dashboard(request):
 # -------------------------------------
 # FUNCIÓN AUXILIAR DE FILTRO DE MIEMBROS
 # -------------------------------------
+
 def filtrar_miembros(request):
     """
     Aplica filtros comunes a las vistas de lista y reportes,
@@ -182,15 +183,14 @@ def filtrar_miembros(request):
         * NO se filtra por campo activo (aparecen también los que se fueron)
         * Si NO hay estado elegido -> se muestran TODOS los estados
           (activo, pasivo, catecúmeno, descarriado, observación, etc.)
-        * Si hay un estado elegido -> solo ese estado.
 
     - 'incluir_ninos' solo se aplica cuando NO se ha elegido un estado.
-      Nunca se mezclarán niños con catecúmenos, descarriados, etc.
 
-    - Si la categoría de edad filtrada es de niños ('infante' o 'nino'),
-      se devuelve SOLO el listado de niños (no adultos),
-      aunque no se haya marcado 'incluir_ninos', y solo si NO hay estado elegido.
+    - El filtro por edad funciona SOLO si se marca 'usar_rango_edad':
+        * Aplica un rango libre (edad_min / edad_max)
+        * Se aplica sobre el resultado final ya filtrado
     """
+
     query = request.GET.get("q", "").strip()
     mostrar_todos = request.GET.get("mostrar_todos") == "1"
     incluir_ninos = request.GET.get("incluir_ninos") == "1"
@@ -201,6 +201,25 @@ def filtrar_miembros(request):
     genero = request.GET.get("genero", "").strip()
     bautizado = request.GET.get("bautizado", "").strip()  # "1", "0" o ""
     tiene_contacto = request.GET.get("tiene_contacto") == "1"
+
+    # Filtro de edad controlado por checkbox
+    usar_rango_edad = request.GET.get("usar_rango_edad") == "1"
+    edad_min_str = request.GET.get("edad_min", "").strip()
+    edad_max_str = request.GET.get("edad_max", "").strip()
+
+    edad_min = None
+    edad_max = None
+    if edad_min_str:
+        try:
+            edad_min = int(edad_min_str)
+        except ValueError:
+            edad_min = None
+
+    if edad_max_str:
+        try:
+            edad_max = int(edad_max_str)
+        except ValueError:
+            edad_max = None
 
     miembros_base = Miembro.objects.all()
 
@@ -268,7 +287,7 @@ def filtrar_miembros(request):
             miembros_oficiales = miembros_oficiales.filter(
                 categoria_edad=categoria_edad_filtro
             )
-        # Si la categoría es niño/infante + estado, no devolvemos niños ni adultos con esa categoría
+        # Si la categoría es niño/infante + estado, no devolvemos niños
         mostrar_ninos = False
 
     else:
@@ -318,6 +337,38 @@ def filtrar_miembros(request):
     miembros = miembros.order_by("nombres", "apellidos")
 
     # -------------------------
+    # FILTRO POR RANGO DE EDAD (SOLO SI EL CHECK ESTÁ ACTIVADO)
+    # -------------------------
+    if usar_rango_edad and (edad_min is not None or edad_max is not None):
+        miembros_filtrados = []
+        for m in miembros:
+            # Si no tiene fecha de nacimiento, no se puede filtrar por edad
+            if not m.fecha_nacimiento:
+                continue
+
+            # Usamos el método del modelo si existe
+            if hasattr(m, "calcular_edad"):
+                edad = m.calcular_edad()
+            else:
+                fn = m.fecha_nacimiento
+                hoy = date.today()
+                edad = hoy.year - fn.year
+                if (hoy.month, hoy.day) < (fn.month, fn.day):
+                    edad -= 1
+
+            if edad is None:
+                continue
+
+            if edad_min is not None and edad < edad_min:
+                continue
+            if edad_max is not None and edad > edad_max:
+                continue
+
+            miembros_filtrados.append(m)
+
+        miembros = miembros_filtrados
+
+    # -------------------------
     # CHOICES PARA LOS SELECTS
     # -------------------------
     campo_estado = Miembro._meta.get_field("estado_miembro")
@@ -344,10 +395,12 @@ def filtrar_miembros(request):
         "estados_choices": estados_choices,
         "categorias_choices": categorias_choices,
         "generos_choices": generos_choices,
+        "usar_rango_edad": usar_rango_edad,
+        "edad_min": edad_min_str,
+        "edad_max": edad_max_str,
     }
 
     return miembros, filtros_context
-
 
 # -------------------------------------
 # LISTA DE MIEMBROS

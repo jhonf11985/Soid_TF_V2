@@ -20,58 +20,122 @@ Miembros / Reportes / Listado general
 <section class="page-section">
 
     <!-- Filtros avanzados -->
-    <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
+   <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
 
-        <!-- Búsqueda -->
-        <div class="form-field">
-            <label for="id_q">Buscar</label>
-            <input
-                id="id_q"
-                type="text"
-                name="q"
-                placeholder="Nombre, apellido, teléfono o correo…"
-                value="{{ query }}"
-            >
+    {# Fila 1: Buscador (fila completa) #}
+    <div class="form-field form-field-full">
+        <label for="id_q">Buscar</label>
+        <input
+            id="id_q"
+            type="text"
+            name="q"
+            placeholder="Nombre, apellido, teléfono o correo…"
+            value="{{ query }}"
+        >
+    </div>
+
+    {# Fila 2: Estado / Género / Categoría / Bautismo #}
+    <div class="form-field form-field-full">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+
+            <!-- Estado -->
+            <div style="flex:1; min-width:160px;">
+                <label for="id_estado">Estado</label>
+                <select id="id_estado" name="estado">
+                    <option value="">Todos</option>
+                    {% for value, label in estados_choices %}
+                        <option value="{{ value }}" {% if value == estado %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Género -->
+            <div style="flex:1; min-width:160px;">
+                <label for="id_genero">Género</label>
+                <select id="id_genero" name="genero">
+                    <option value="">Todos</option>
+                    {% for value, label in generos_choices %}
+                        <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Categoría de edad -->
+            <div style="flex:1; min-width:160px;">
+                <label for="id_categoria_edad">Categoría</label>
+                <select id="id_categoria_edad" name="categoria_edad">
+                    <option value="">Todas</option>
+                    {% for value, label in categorias_choices %}
+                        <option value="{{ value }}" {% if value == categoria_edad_filtro %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Bautismo -->
+            <div style="flex:1; min-width:160px;">
+                <label for="id_bautizado">Bautismo</label>
+                <select id="id_bautizado" name="bautizado">
+                    <option value="">Todos</option>
+                    <option value="1" {% if bautizado == "1" %}selected{% endif %}>Solo bautizados</option>
+                    <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
+                </select>
+            </div>
+
+        </div>
+    </div>
+
+    {# Fila 3: Rango de edad + check para activarlo #}
+    <div class="form-field form-field-full">
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
+
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <label>Edad (años)</label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <input
+                        type="number"
+                        name="edad_min"
+                        min="0"
+                        value="{{ edad_min }}"
+                        placeholder="Desde"
+                        style="width:80px;"
+                    >
+                    <span style="font-size:12px; color:#6b7280;">a</span>
+                    <input
+                        type="number"
+                        name="edad_max"
+                        min="0"
+                        value="{{ edad_max }}"
+                        placeholder="Hasta"
+                        style="width:80px;"
+                    >
+                </div>
+            </div>
+
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; margin-bottom:4px;">
+                <input
+                    type="checkbox"
+                    name="usar_rango_edad"
+                    value="1"
+                    {% if usar_rango_edad %}checked{% endif %}
+                >
+                Aplicar este rango de edad a los resultados
+            </label>
         </div>
 
-        <!-- Estado -->
-        <div class="form-field">
-            <label for="id_estado">Estado</label>
-            <select id="id_estado" name="estado">
-                <option value="">Todos</option>
-                {% for value, label in estados_choices %}
-                    <option value="{{ value }}" {% if value == estado %}selected{% endif %}>
-                        {{ label }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
+        <p style="font-size:11px; color:#6b7280; margin-top:2px;">
+            Si el check no está marcado, el reporte ignora estos valores.
+        </p>
+    </div>
 
-        <!-- Categoría de edad -->
-        <div class="form-field">
-            <label for="id_categoria_edad">Categoría</label>
-            <select id="id_categoria_edad" name="categoria_edad">
-                <option value="">Todas</option>
-                {% for value, label in categorias_choices %}
-                    <option value="{{ value }}" {% if value == categoria_edad_filtro %}selected{% endif %}>
-                        {{ label }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <!-- Bautismo -->
-        <div class="form-field">
-            <label for="id_bautizado">Bautismo</label>
-            <select id="id_bautizado" name="bautizado">
-                <option value="">Todos</option>
-                <option value="1" {% if bautizado == "1" %}selected{% endif %}>Solo bautizados</option>
-                <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
-            </select>
-        </div>
-
-        <!-- Checkboxes -->
-        <div class="form-field form-field-full" style="font-size:12px; display:flex; flex-direction:column; gap:4px;">
+    {# Fila 4: Checkboxes especiales #}
+    <div class="form-field form-field-full" style="font-size:12px;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px;">
 
             <!-- Solo con contacto -->
             <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
@@ -105,30 +169,31 @@ Miembros / Reportes / Listado general
                 >
                 Incluir niños (menores de 12 años)
             </label>
-
         </div>
+    </div>
 
-        <!-- Acciones -->
-        <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
-            <button type="submit" class="btn-secondary">
-                <span class="material-icons" style="font-size:16px;">search</span>
-                Aplicar filtros
-            </button>
-            <button type="button" class="btn-secondary" onclick="window.print()">
-                <span class="material-icons" style="font-size:16px;">print</span>
-                Imprimir
-            </button>
-        </div>
+    <!-- Acciones -->
+    <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
+        <button type="submit" class="btn-secondary">
+            <span class="material-icons" style="font-size:16px;">search</span>
+            Aplicar filtros
+        </button>
+        <button type="button" class="btn-secondary" onclick="window.print()">
+            <span class="material-icons" style="font-size:16px;">print</span>
+            Imprimir
+        </button>
+    </div>
 
-        <!-- Resumen -->
-        <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
-            {% if miembros %}
-                {{ miembros|length }} registro{{ miembros|length|pluralize:"s" }} encontrados
-            {% else %}
-                No se encontraron resultados con el criterio indicado.
-            {% endif %}
-        </div>
-    </form>
+    <!-- Resumen -->
+    <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
+        {% if miembros %}
+            {{ miembros|length }} registro{{ miembros|length|pluralize:"s" }} encontrados
+        {% else %}
+            No se encontraron resultados con el criterio indicado.
+        {% endif %}
+    </div>
+</form>
+
 
     <!-- Tabla -->
     <div class="table-wrapper">
