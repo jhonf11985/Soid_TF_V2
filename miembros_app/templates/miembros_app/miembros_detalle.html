@@ -35,74 +35,173 @@ Miembros / Perfil
     <!-- Panel principal -->
     <div class="member-profile-main">
         <div class="member-profile-header">
-            <div class="member-profile-photo">
-                {% if miembro.foto %}
-                    <img src="{{ miembro.foto.url }}" alt="{{ miembro.nombres }} {{ miembro.apellidos }}">
-                {% else %}
-                    <span class="material-icons">person</span>
-                {% endif %}
-            </div>
-            <div class="member-profile-info">
-                <h2>{{ miembro.nombres }} {{ miembro.apellidos }}</h2>
 
-                <div class="member-profile-tags">
-                    {# Estado del miembro (Activo, Pasivo, Descarriado, En observación) con colores #}
-                    {% if miembro.estado_miembro %}
-                        {% if miembro.estado_miembro == "activo" %}
-                            <span class="badge badge-green">
-                                Estado: {{ miembro.get_estado_miembro_display }}
-                            </span>
-                        {% elif miembro.estado_miembro == "pasivo" %}
-                            <span class="badge badge-yellow">
-                                Estado: {{ miembro.get_estado_miembro_display }}
-                            </span>
-                        {% elif miembro.estado_miembro == "observacion" %}
-                            <span class="badge badge-blue">
-                                Estado: {{ miembro.get_estado_miembro_display }}
-                            </span>
-                        {% elif miembro.estado_miembro == "descarriado" %}
-                            <span class="badge badge-red">
-                                Estado: {{ miembro.get_estado_miembro_display }}
+            <!-- IZQUIERDA: FOTO + NOMBRE + TAGS + SUBINFO -->
+            <div class="member-profile-left">
+                <div class="member-profile-photo">
+                    {% if miembro.foto %}
+                        <img src="{{ miembro.foto.url }}" alt="{{ miembro.nombres }} {{ miembro.apellidos }}">
+                    {% else %}
+                        <span class="material-icons">person</span>
+                    {% endif %}
+                </div>
+
+                <div class="member-profile-info">
+                    <h2>{{ miembro.nombres }} {{ miembro.apellidos }}</h2>
+
+                    <div class="member-profile-tags">
+                        {# NIÑOS: no son miembros oficiales #}
+                        {% if miembro.edad and miembro.edad < 12 %}
+                            <span class="badge badge-neutral">
+                                Niño(a) de la congregación
                             </span>
                         {% else %}
-                            <span class="badge badge-neutral">
-                                {{ miembro.get_estado_miembro_display }}
+                            {# ADULTOS / ADOLESCENTES: estados pastorales #}
+                            {% if not miembro.activo %}
+                                <span class="badge badge-red">Inactivo</span>
+                            {% endif %}
+
+                            {% if miembro.estado_miembro %}
+                                <span class="badge badge-neutral">
+                                    {{ miembro.get_estado_miembro_display }}
+                                </span>
+                            {% endif %}
+                        {% endif %}
+
+                        {# Edad calculada #}
+                        {% if miembro.edad %}
+                            <span class="badge badge-blue">
+                                {{ miembro.edad }} años
                             </span>
                         {% endif %}
-                    {% endif %}
 
-                    {# Edad calculada #}
-                    {% if miembro.edad %}
-                        <span class="badge badge-blue">
-                            {{ miembro.edad }} años
-                        </span>
-                    {% endif %}
-
-                    {# Categoría de edad (Infante, Niño, Adolescente, etc.) #}
-                    {% if miembro.categoria_edad %}
-                        <span class="badge badge-neutral">
-                            {{ miembro.get_categoria_edad_display }}
-                        </span>
-                    {% endif %}
-                </div>
-
-                <div class="member-profile-subinfo">
-                    <div>
-                        <strong>Fecha de nacimiento</strong>
-                        <span>
-                            {% if miembro.fecha_nacimiento %}
-                                {{ miembro.fecha_nacimiento|date:"d/m/Y" }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </span>
+                        {# Categoría de edad (Infante, Niño, Adolescente, etc.) #}
+                        {% if miembro.categoria_edad %}
+                            <span class="badge badge-neutral">
+                                {{ miembro.get_categoria_edad_display }}
+                            </span>
+                        {% endif %}
                     </div>
-                    <div>
-                        <strong>Género</strong>
-                        <span>{{ miembro.genero|default:"—" }}</span>
+
+                    <div class="member-profile-subinfo">
+                        <div>
+                            <strong>Fecha de nacimiento</strong>
+                            <span>
+                                {% if miembro.fecha_nacimiento %}
+                                    {{ miembro.fecha_nacimiento|date:"d/m/Y" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div>
+                            <strong>Género</strong>
+                            <span>{{ miembro.genero|default:"—" }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- DERECHA: SITUACIÓN ACTUAL EN LA IGLESIA -->
+            <div class="member-profile-exit">
+                <div class="status-exit-block">
+                    <strong>Situación actual en la iglesia</strong>
+
+                    {# 1) NIÑOS: no forman parte de la membresía oficial #}
+                    {% if miembro.edad and miembro.edad < 12 %}
+                        <p class="status-exit-text">
+                            Actualmente es menor de 12 años. Está registrado como niño(a) de la congregación,
+                            pero aún no forma parte de la membresía oficial.
+                        </p>
+
+                    {% else %}
+
+                        {# 2) MIEMBRO CON SALIDA (ACTIVO = False) #}
+                        {% if not miembro.activo %}
+                            <p class="status-exit-text">
+                                Actualmente no está activo en la membresía oficial de Torre Fuerte.
+                            </p>
+
+                            <p class="status-exit-text">
+                                <span class="status-exit-label">Razón de salida:</span>
+                                {{ miembro.razon_salida|default:"No especificada." }}
+                            </p>
+
+                            <p class="status-exit-text">
+                                <span class="status-exit-label">Fecha de salida:</span>
+                                {% if miembro.fecha_salida %}
+                                    {{ miembro.fecha_salida|date:"d/m/Y" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </p>
+
+                            {% if miembro.comentario_salida %}
+                                <p class="status-exit-text">
+                                    <span class="status-exit-label">Comentario pastoral:</span>
+                                    {{ miembro.comentario_salida }}
+                                </p>
+                            {% endif %}
+
+                        {% else %}
+                            {# 3) SIGUE PERTENECIENDO A TORRE FUERTE (activo=True) #}
+
+                            {# ¿Es miembro oficial según la lógica del modelo? #}
+                            {% if miembro.es_miembro_oficial %}
+                                {# Es miembro oficial, ahora matizamos por estado_miembro #}
+                                {% if miembro.estado_miembro == "pasivo" %}
+                                    <p class="status-exit-text">
+                                        Forma parte de la membresía oficial, pero actualmente está en estado
+                                        <strong>pasivo</strong> y no participa activamente en ministerios ni responsabilidades.
+                                    </p>
+                                {% elif miembro.estado_miembro == "observacion" %}
+                                    <p class="status-exit-text">
+                                        Se considera miembro oficial, pero está en
+                                        <strong>observación pastoral</strong> y tiene restricciones para participar en algunas áreas.
+                                    </p>
+                                {% elif miembro.estado_miembro == "disciplina" %}
+                                    <p class="status-exit-text">
+                                        Es miembro oficial, pero actualmente está bajo
+                                        <strong>disciplina</strong> y no puede participar en ningún ministerio ni servicio
+                                        mientras se mantenga esta condición.
+                                    </p>
+                                {% elif miembro.estado_miembro == "descarriado" %}
+                                    <p class="status-exit-text">
+                                        Se considera miembro <strong>descarriado</strong>: no se congrega de forma regular
+                                        y está apartado de la vida activa de la iglesia, aunque se mantiene en el registro
+                                        de membresía para seguimiento pastoral.
+                                    </p>
+                                {% elif miembro.estado_miembro == "catecumeno" %}
+                                    <p class="status-exit-text">
+                                        Se encuentra como <strong>catecúmeno</strong>: en proceso de preparación antes de ser
+                                        plenamente recibido como miembro oficial, aunque ya cumple los requisitos básicos.
+                                    </p>
+                                {% else %}
+                                    {# Activo u otro valor por defecto #}
+                                    <p class="status-exit-text">
+                                        Actualmente forma parte de la <strong>membresía oficial</strong> de Torre Fuerte
+                                        y puede participar normalmente en los ministerios y actividades de la iglesia.
+                                    </p>
+                                {% endif %}
+                            {% else %}
+                                {# No cumple criterios de miembro oficial (no bautizado confirmado, etc.) #}
+                                {% if miembro.estado_miembro == "catecumeno" %}
+                                    <p class="status-exit-text">
+                                        Se encuentra como <strong>catecúmeno</strong>: asistiendo y en preparación para
+                                        ser recibido como miembro oficial de la iglesia.
+                                    </p>
+                                {% else %}
+                                    <p class="status-exit-text">
+                                        Se congrega en Torre Fuerte, pero aún no forma parte de la
+                                        <strong>membresía oficial</strong> (en proceso de membresía o preparación).
+                                    </p>
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
         </div>
 
         <!-- Bloques de información -->
@@ -259,52 +358,51 @@ Miembros / Perfil
                         <strong>Líder de célula</strong>
                         <p>{{ miembro.lider_celula|default:"—" }}</p>
                     </div>
+
                 </div>
             </div>
 
            <!-- Familia -->
-<div class="profile-card">
-    <h3>Familia</h3>
+           <div class="profile-card">
+                <h3>Familia</h3>
 
-    {% if relaciones_familia %}
-        <div class="profile-grid-full">
-            <table class="family-table">
-                <thead>
-                    <tr>
-                        <th>Miembro principal</th>
-                        <th>Familiar</th>
-                        <th>Relación</th>
-                        <th>Vive en casa</th>
-                        <th>Responsable</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for rel in relaciones_familia %}
-                        <tr>
-                            <td>{{ rel.miembro.nombres }} {{ rel.miembro.apellidos }}</td>
-                            <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
-                            <td>{{ rel.get_tipo_relacion_display }}</td>
-                            <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
-                            <td>{% if rel.es_responsable %}Sí{% else %}No{% endif %}</td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="5" style="text-align:center; color:#6b7280;">
-                                No hay familiares registrados para este miembro.
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p style="color:#6b7280; font-size:13px;">
-            No hay familiares registrados para este miembro.
-        </p>
-    {% endif %}
-</div>
-
-
+                {% if relaciones_familia %}
+                    <div class="profile-grid-full">
+                        <table class="family-table">
+                            <thead>
+                                <tr>
+                                    <th>Miembro principal</th>
+                                    <th>Familiar</th>
+                                    <th>Relación</th>
+                                    <th>Vive en casa</th>
+                                    <th>Responsable</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rel in relaciones_familia %}
+                                    <tr>
+                                        <td>{{ rel.miembro.nombres }} {{ rel.miembro.apellidos }}</td>
+                                        <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
+                                        <td>{{ rel.get_tipo_relacion_display }}</td>
+                                        <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
+                                        <td>{% if rel.es_responsable %}Sí{% else %}No{% endif %}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="5" style="text-align:center; color:#6b7280;">
+                                            No hay familiares registrados para este miembro.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p style="color:#6b7280; font-size:13px;">
+                        No hay familiares registrados para este miembro.
+                    </p>
+                {% endif %}
+            </div>
 
             <!-- Intereses -->
             <div class="profile-card">
@@ -358,9 +456,26 @@ Miembros / Perfil
 
     .member-profile-header {
         display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    .member-profile-left {
+        display: flex;
         gap: 16px;
         align-items: center;
-        margin-bottom: 18px;
+    }
+
+    .member-profile-exit {
+        text-align: right;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-end;
+        font-size: 12px;
+        max-width: 320px;
     }
 
     .member-profile-photo {
@@ -505,8 +620,16 @@ Miembros / Perfil
             flex-direction: column;
             align-items: flex-start;
         }
+        .member-profile-left {
+            width: 100%;
+        }
         .member-profile-info h2 {
             font-size: 18px;
+        }
+        .member-profile-exit {
+            align-items: flex-start;
+            text-align: left;
+            max-width: 100%;
         }
     }
 
@@ -534,12 +657,29 @@ Miembros / Perfil
         background: #f9fafb;
     }
 
-    /* FIX: que la tarjeta de membresía no tenga saltos raros */
     .membership-card p {
         white-space: normal;
         margin-top: 2px;
     }
 
+    .status-exit-block {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+    }
+
+    .status-exit-text {
+        margin: 2px 0;
+        font-size: 12px;
+        color: #374151;
+    }
+
+    .status-exit-label {
+        font-weight: 600;
+        color: #111827;
+        margin-right: 4px;
+    }
 </style>
 
 {% endblock %}
+    

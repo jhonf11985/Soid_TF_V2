@@ -60,7 +60,7 @@ Miembros / Lista
                         value="1"
                         {% if mostrar_todos %}checked{% endif %}
                     >
-                    Mostrar todos (incluye inactivos)
+                    Mostrar todos (incluye inactivos,niños)
                 </label>
             </form>
         </div>
@@ -137,6 +137,25 @@ Miembros / Lista
 
                     <!-- Columna Estado / Etapa de vida -->
                     <td>
+                    {% if not m.activo %}
+                        <!-- Miembro inactivo (salida registrada) -->
+                        <span class="pill pill-muted" style="background:#fee2e2; color:#b91c1c; margin-bottom:2px; display:inline-block;">
+                            Inactivo
+                        </span>
+
+                        {% if m.razon_salida %}
+                            <div class="member-subtext">
+                                {{ m.razon_salida }}
+                            </div>
+                        {% endif %}
+
+                        {% if m.fecha_salida %}
+                            <div class="member-subtext">
+                                Salida: {{ m.fecha_salida|date:"d/m/Y" }}
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <!-- Miembro activo en la iglesia -->
                         {% if m.estado_miembro %}
                             <div class="member-subtext" style="font-weight:600; color:#111827;">
                                 {{ m.get_estado_miembro_display }}
@@ -144,13 +163,15 @@ Miembros / Lista
                         {% else %}
                             <div class="member-subtext">Sin estado</div>
                         {% endif %}
+                    {% endif %}
 
-                        {% if m.categoria_edad %}
-                            <div class="member-subtext">
-                                {{ m.get_categoria_edad_display }}
-                            </div>
-                        {% endif %}
-                    </td>
+                    {% if m.categoria_edad %}
+                        <div class="member-subtext">
+                            {{ m.get_categoria_edad_display }}
+                        </div>
+                    {% endif %}
+                </td>
+
 
                     <!-- Columna Bautismo -->
                     <td class="col-center">

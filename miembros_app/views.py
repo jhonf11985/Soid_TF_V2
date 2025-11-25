@@ -171,13 +171,15 @@ def filtrar_miembros(request):
     Aplica filtros comunes a las vistas de lista y reportes,
     y devuelve (queryset_filtrado, contexto_filtros).
 
-    Regla importante:
+    Reglas importantes:
     - Por defecto (si NO se marca "mostrar todos" y no se ha elegido un estado),
-      solo se muestran miembros ACTIVOS oficiales:
-        estado_miembro = 'activo' y edad >= 12 años.
+      se muestran solo miembros ACTIVOS oficiales:
+        * activo = True
+        * estado_miembro = 'activo'
+        * edad >= 12 años.
 
-    - Si se marca "mostrar todos", NO se aplica filtro por estado ni por edad,
-      de modo que aparecen también los niños y registros sin estado.
+    - Si se marca "mostrar todos", NO se filtra por 'activo',
+      y aparecen también los inactivos (miembros con salida registrada).
     """
     query = request.GET.get("q", "").strip()
     mostrar_todos = request.GET.get("mostrar_todos") == "1"
@@ -192,10 +194,16 @@ def filtrar_miembros(request):
     miembros = Miembro.objects.all()
 
     # -------------------------
+    # FILTRO POR ACTIVO / INACTIVO
+    # -------------------------
+    if not mostrar_todos:
+        # Vista por defecto: solo miembros activos
+        miembros = miembros.filter(activo=True)
+
+    # -------------------------
     # CÁLCULO DE EDAD >= 12
     # -------------------------
     today = timezone.localdate()
-    # Aprox 12 años (suficiente para esta lógica)
     cutoff_12 = today - timedelta(days=12 * 365)
     edad_q = Q(fecha_nacimiento__lte=cutoff_12) | Q(fecha_nacimiento__isnull=True)
 
@@ -214,8 +222,8 @@ def filtrar_miembros(request):
         if not mostrar_todos:
             # Vista por defecto: solo activos oficiales
             miembros = miembros.filter(estado_miembro="activo").filter(edad_q)
-        # Si mostrar_todos es True y no hay estado elegido
-        # no aplicamos filtro de estado ni de edad
+        # Si mostrar_todos es True y no hay estado elegido,
+        # no aplicamos filtro extra de estado ni de edad aquí.
 
     # -------------------------
     # RESTO DE FILTROS
@@ -225,7 +233,7 @@ def filtrar_miembros(request):
     if categoria_edad_filtro:
         miembros = miembros.filter(categoria_edad=categoria_edad_filtro)
 
-    # Filtro por género (si existe el campo)
+    # Filtro por género
     if genero:
         miembros = miembros.filter(genero=genero)
 
