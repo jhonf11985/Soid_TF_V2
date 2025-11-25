@@ -21,6 +21,34 @@ CATEGORIA_EDAD_CHOICES = [
 ]
 
 
+class RazonSalidaMiembro(models.Model):
+    nombre = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Nombre corto de la razón de salida (Traslado, Distancia, etc.).",
+    )
+    descripcion = models.TextField(
+        blank=True,
+        help_text="Descripción opcional de la razón.",
+    )
+    activo = models.BooleanField(
+        default=True,
+        help_text="Si se desmarca, deja de aparecer en el selector, pero se mantiene el histórico.",
+    )
+    orden = models.PositiveIntegerField(
+        default=0,
+        help_text="Permite ordenar las razones en el selector.",
+    )
+
+    class Meta:
+        verbose_name = "Razón de salida de miembro"
+        verbose_name_plural = "Razones de salida de miembros"
+        ordering = ["orden", "nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+
 class Miembro(models.Model):
     # --- Información personal básica ---
     nombres = models.CharField(max_length=100)
@@ -39,7 +67,7 @@ class Miembro(models.Model):
     nivel_educativo = models.CharField(max_length=50, blank=True)
     profesion = models.CharField(max_length=100, blank=True)
 
-    # --- Contacto y dirección ---
+    # --- Información de contacto ---
     telefono = models.CharField(max_length=20, blank=True)
     telefono_secundario = models.CharField(max_length=20, blank=True)
     whatsapp = models.CharField(max_length=20, blank=True)
@@ -74,6 +102,10 @@ class Miembro(models.Model):
         blank=True,
         help_text="Estado pastoral del miembro (activo, pasivo, etc.)",
     )
+    activo = models.BooleanField(
+        default=True,
+        help_text="Si está desmarcado, el miembro ya no pertenece a la iglesia Torre Fuerte.",
+    )
     fecha_ingreso_iglesia = models.DateField(
         blank=True,
         null=True,
@@ -100,6 +132,25 @@ class Miembro(models.Model):
         help_text="Marcar si se ha confirmado el bautismo del miembro.",
     )
 
+    # --- Información de salida de la iglesia ---
+    razon_salida = models.ForeignKey(
+        "RazonSalidaMiembro",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="miembros",
+        help_text="Motivo principal por el que ya no pertenece a la iglesia.",
+    )
+    fecha_salida = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha en que dejó de pertenecer a la iglesia Torre Fuerte.",
+    )
+    comentario_salida = models.TextField(
+        blank=True,
+        help_text="Comentarios adicionales sobre la salida (opcional).",
+    )
+
     categoria_miembro = models.CharField(
         max_length=50,
         blank=True,
@@ -116,27 +167,42 @@ class Miembro(models.Model):
     )
     habilidades = models.TextField(
         blank=True,
-        help_text="Habilidades / talentos (también podemos usar JSON o texto estructurado).",
+        help_text="Habilidades específicas (música, docencia, administración, etc.)",
     )
-    otros_intereses = models.TextField(blank=True)
-    otras_habilidades = models.TextField(blank=True)
+    otros_intereses = models.TextField(
+        blank=True,
+        help_text="Otros intereses no contemplados arriba.",
+    )
+    otras_habilidades = models.TextField(
+        blank=True,
+        help_text="Otras habilidades no contempladas arriba.",
+    )
 
-    # --- Notas pastorales y foto ---
-    notas = models.TextField(blank=True)
-    foto = models.ImageField(upload_to="miembros_fotos/", blank=True, null=True)
-
-    # --- Metadatos del sistema ---
+    # --- Información de clasificación automática ---
     categoria_edad = models.CharField(
         max_length=20,
-        blank=True,
         choices=CATEGORIA_EDAD_CHOICES,
-        help_text="Categoría de edad calculada automáticamente.",
+        blank=True,
+        help_text="Clasificación automática según la edad.",
     )
+
+    # --- Fotografía y notas ---
+    foto = models.ImageField(
+        upload_to="miembros_fotos/",
+        blank=True,
+        null=True,
+    )
+    notas = models.TextField(
+        blank=True,
+        help_text="Notas pastorales o información relevante.",
+    )
+
+    # --- Metadatos ---
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.nombres} {self.apellidos}".strip()
+        return f"{self.nombres} {self.apellidos}"
 
     # ==========================
     # LÓGICA DE EDAD Y CATEGORÍA
@@ -157,30 +223,28 @@ class Miembro(models.Model):
 
     def actualizar_categoria_edad(self):
         """
-        Asigna la categoría de edad según la edad calculada.
+        Actualiza la categoría de edad en función de la edad calculada.
         """
         edad = self.calcular_edad()
-
         if edad is None:
             self.categoria_edad = ""
             return
 
-        if edad <= 5:
+        if edad < 6:
             self.categoria_edad = "infante"
-        elif edad <= 11:
+        elif 6 <= edad <= 11:
             self.categoria_edad = "nino"
-        elif edad <= 17:
+        elif 12 <= edad <= 17:
             self.categoria_edad = "adolescente"
-        elif edad <= 59:
+        elif 18 <= edad <= 30:
+            self.categoria_edad = "joven"
+        elif 31 <= edad <= 59:
             self.categoria_edad = "adulto"
         else:
             self.categoria_edad = "adulto_mayor"
 
     def save(self, *args, **kwargs):
-        """
-        Sobrescribimos save para mantener actualizada la
-        categoría de edad.
-        """
+        # Antes de guardar, actualizamos la categoría de edad
         self.actualizar_categoria_edad()
         super().save(*args, **kwargs)
 

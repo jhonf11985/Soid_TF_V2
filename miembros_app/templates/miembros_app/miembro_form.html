@@ -359,6 +359,68 @@ Miembros /
                                     {{ form.activo }}
                                     Miembro activo
                                 </label>
+                                <p class="field-help">
+                                    Si desmarcas esta casilla, el miembro dejará de aparecer en la lista oficial.
+                                    Podrás indicar el motivo y la fecha de salida.
+                                </p>
+                            </div>
+
+                            <!-- Bloque de salida: se muestra solo cuando "Miembro activo" está desmarcado -->
+                            <div id="bloque-salida-miembro" class="form-field form-field-full" style="display: none;">
+                                <h4 class="tab-subtitle">Información de salida</h4>
+                                <p class="field-help">
+                                    Estos datos se usan para llevar estadísticas de cuántos miembros se van y por qué.
+                                </p>
+
+                                <div class="form-grid">
+                                    <!-- Razón de salida -->
+                                    <div class="form-field">
+                                        <label for="{{ form.razon_salida.id_for_label }}">Razón de salida</label>
+                                        {{ form.razon_salida }}
+
+                                        {% if form.razon_salida.errors %}
+                                        <div class="field-error">
+                                            {% for error in form.razon_salida.errors %}
+                                            {{ error }}{% if not forloop.last %}<br>{% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- Fecha de salida -->
+                                    <div class="form-field">
+                                        <label for="{{ form.fecha_salida.id_for_label }}">Fecha de salida</label>
+                                        {{ form.fecha_salida }}
+
+                                        {% if form.fecha_salida.errors %}
+                                        <div class="field-error">
+                                            {% for error in form.fecha_salida.errors %}
+                                            {{ error }}{% if not forloop.last %}<br>{% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        <p class="field-help">
+                                            Si no indicas una fecha, se usará la fecha actual automáticamente.
+                                        </p>
+                                    </div>
+
+                                    <!-- Comentario de salida -->
+                                    <div class="form-field form-field-full">
+                                        <label for="{{ form.comentario_salida.id_for_label }}">Comentario</label>
+                                        {{ form.comentario_salida }}
+
+                                        {% if form.comentario_salida.errors %}
+                                        <div class="field-error">
+                                            {% for error in form.comentario_salida.errors %}
+                                            {{ error }}{% if not forloop.last %}<br>{% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        <p class="field-help">
+                                            Opcional. Puedes añadir detalles breves (ej: se mudó de ciudad, cambio de trabajo, etc.).
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
 
                         </div>
@@ -1280,6 +1342,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+// =======================================================
+//  MOSTRAR / OCULTAR CAMPOS DE SALIDA SEGÚN "Miembro activo"
+// =======================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const chkActivo = document.getElementById('id_activo');
+    const bloqueSalida = document.getElementById('bloque-salida-miembro');
+
+    function actualizarBloqueSalida() {
+        if (!chkActivo || !bloqueSalida) return;
+
+        // Si el checkbox está desmarcado, mostramos el bloque
+        if (chkActivo.checked) {
+            bloqueSalida.style.display = 'none';
+        } else {
+            bloqueSalida.style.display = '';
+        }
+    }
+
+    if (chkActivo && bloqueSalida) {
+        // Estado inicial (por si se está editando un miembro ya dado de baja)
+        actualizarBloqueSalida();
+
+        // Cuando el usuario cambia el checkbox
+        chkActivo.addEventListener('change', actualizarBloqueSalida);
+    }
+});
+
 </script>
 
 

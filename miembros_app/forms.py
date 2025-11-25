@@ -160,6 +160,12 @@ class MiembroForm(forms.ModelForm):
 
             "notas": "Notas pastorales",
             "foto": "Fotografía",
+
+            # NUEVOS CAMPOS DE SALIDA
+            "activo": "Miembro activo",
+            "razon_salida": "Razón de salida",
+            "fecha_salida": "Fecha de salida",
+            "comentario_salida": "Comentario de salida",
         }
 
         widgets = {
@@ -222,6 +228,15 @@ class MiembroForm(forms.ModelForm):
                 }
             ),
 
+            # NUEVO: FECHA DE SALIDA CON FORMATO DATE
+            "fecha_salida": forms.DateInput(
+                attrs={
+                    "type": "date",
+                    "min": "1900-01-01",
+                    "max": date.today().isoformat(),
+                }
+            ),
+
             "intereses": forms.Textarea(attrs={"rows": 2, "placeholder": "Áreas de interés"}),
             "otros_intereses": forms.Textarea(attrs={"rows": 2, "placeholder": "Otros intereses"}),
             "habilidades": forms.Textarea(attrs={"rows": 2, "placeholder": "Habilidades"}),
@@ -230,6 +245,14 @@ class MiembroForm(forms.ModelForm):
             "notas": forms.Textarea(attrs={"rows": 3, "placeholder": "Notas pastorales"}),
 
             "foto": forms.ClearableFileInput(attrs={"accept": "image/*"}),
+
+            # NUEVO: COMENTARIO DE SALIDA (opcional)
+            "comentario_salida": forms.Textarea(
+                attrs={
+                    "rows": 2,
+                    "placeholder": "Detalles breves sobre el motivo de salida (opcional)…",
+                }
+            ),
         }
 
     # ==========================
@@ -304,6 +327,48 @@ class MiembroForm(forms.ModelForm):
                 "fecha_bautismo",
                 "No puedes registrar una fecha de bautismo para un miembro no bautizado.",
             )
+
+        # ---------------------------------------
+        # 3) LÓGICA DE SALIDA (activo / inactivo)
+        # ---------------------------------------
+        activo = cleaned_data.get("activo")
+        razon_salida = cleaned_data.get("razon_salida")
+        fecha_salida = cleaned_data.get("fecha_salida")
+        comentario_salida = cleaned_data.get("comentario_salida")
+        fecha_ingreso = cleaned_data.get("fecha_ingreso_iglesia")
+        hoy = date.today()
+
+        if activo:
+            # Si el miembro es activo, limpiamos cualquier dato de salida residual
+            cleaned_data["razon_salida"] = None
+            cleaned_data["fecha_salida"] = None
+            cleaned_data["comentario_salida"] = ""
+        else:
+            # Miembro inactivo -> debe tener al menos una razón de salida
+            if not razon_salida:
+                self.add_error(
+                    "razon_salida",
+                    "Debes indicar la razón por la que el miembro deja de pertenecer a la iglesia.",
+                )
+
+            # Si no se indica fecha de salida, usamos la fecha actual
+            if not fecha_salida:
+                cleaned_data["fecha_salida"] = hoy
+                fecha_salida = hoy
+
+            # No permitir fechas futuras
+            if fecha_salida and fecha_salida > hoy:
+                self.add_error(
+                    "fecha_salida",
+                    "La fecha de salida no puede ser una fecha futura.",
+                )
+
+            # No permitir que la fecha de salida sea anterior a la fecha de ingreso
+            if fecha_ingreso and fecha_salida and fecha_salida < fecha_ingreso:
+                self.add_error(
+                    "fecha_salida",
+                    "La fecha de salida no puede ser anterior a la fecha de ingreso a la iglesia.",
+                )
 
         return cleaned_data
 

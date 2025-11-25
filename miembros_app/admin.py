@@ -1,7 +1,21 @@
 from django.contrib import admin
-from .models import Miembro
+from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
 
 
+# ---------------------------
+#  ADMIN PARA RAZONES DE SALIDA
+# ---------------------------
+@admin.register(RazonSalidaMiembro)
+class RazonSalidaMiembroAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "activo", "orden")
+    list_filter = ("activo",)
+    search_fields = ("nombre",)
+    ordering = ("orden", "nombre")
+
+
+# ---------------------------
+#  ADMIN PARA MIEMBRO
+# ---------------------------
 @admin.register(Miembro)
 class MiembroAdmin(admin.ModelAdmin):
     list_display = (
@@ -27,8 +41,11 @@ class MiembroAdmin(admin.ModelAdmin):
     )
     ordering = ("nombres", "apellidos")
     list_per_page = 25
-from .models import MiembroRelacion
 
+
+# ---------------------------
+#  ADMIN PARA RELACIONES
+# ---------------------------
 @admin.register(MiembroRelacion)
 class MiembroRelacionAdmin(admin.ModelAdmin):
     list_display = ("miembro", "familiar", "tipo_relacion", "vive_junto", "es_responsable")
@@ -39,3 +56,4 @@ class MiembroRelacionAdmin(admin.ModelAdmin):
         "familiar__apellidos",
     )
     list_filter = ("tipo_relacion", "vive_junto", "es_responsable")
+    ordering = ("miembro__nombres", "miembro__apellidos")

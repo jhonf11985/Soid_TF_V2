@@ -307,7 +307,8 @@ def miembro_crear(request):
             # No guardamos todavía, para poder ajustar el estado
             miembro = form.save(commit=False)
 
-            edad = calcular_edad_simple(miembro.fecha_nacimiento)
+            # Usamos el propio método del modelo para calcular la edad
+            edad = miembro.calcular_edad()
 
             # Si es menor de 12 años, se guarda SIN estado de miembro
             if edad is not None and edad < 12:
@@ -320,6 +321,7 @@ def miembro_crear(request):
                     )
 
             miembro.save()
+
             messages.success(request, "Miembro creado correctamente.")
             return redirect("miembros_app:editar", pk=miembro.pk)
     else:
