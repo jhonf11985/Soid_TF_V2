@@ -12,16 +12,17 @@ Miembros / Reportes / Listado general
     <div>
         <h1 class="page-title">Listado general de miembros</h1>
         <p class="page-subtitle">
-            Versión imprimible del listado de miembros. Por defecto se muestran solo los activos.
+            Versión imprimible del listado de miembros. Por defecto se muestran solo los activos y pasivos (mayores de 12 años).
         </p>
     </div>
 </section>
 
 <section class="page-section">
+
     <!-- Filtros avanzados -->
     <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
 
-        <!-- Búsqueda de texto -->
+        <!-- Búsqueda -->
         <div class="form-field">
             <label for="id_q">Buscar</label>
             <input
@@ -48,7 +49,7 @@ Miembros / Reportes / Listado general
 
         <!-- Categoría de edad -->
         <div class="form-field">
-            <label for="id_categoria_edad">Categoría de edad</label>
+            <label for="id_categoria_edad">Categoría</label>
             <select id="id_categoria_edad" name="categoria_edad">
                 <option value="">Todas</option>
                 {% for value, label in categorias_choices %}
@@ -69,33 +70,45 @@ Miembros / Reportes / Listado general
             </select>
         </div>
 
-        <!-- Mostrar todos / Solo con contacto -->
-        <div class="form-field form-field-full" style="font-size:12px; color:#4b5563;">
-            <label style="display:flex; align-items:center; gap:10px; font-weight:400; margin:0; flex-wrap:wrap;">
+        <!-- Checkboxes -->
+        <div class="form-field form-field-full" style="font-size:12px; display:flex; flex-direction:column; gap:4px;">
 
-                <span style="display:flex; align-items:center; gap:6px;">
-                    <input
-                        type="checkbox"
-                        name="mostrar_todos"
-                        value="1"
-                        {% if mostrar_todos %}checked{% endif %}
-                    >
-                    Mostrar todos (incluye inactivos)
-                </span>
-
-                <span style="display:flex; align-items:center; gap:6px;">
-                    <input
-                        type="checkbox"
-                        name="tiene_contacto"
-                        value="1"
-                        {% if tiene_contacto %}checked{% endif %}
-                    >
-                    Solo con teléfono o email
-                </span>
+            <!-- Solo con contacto -->
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input
+                    type="checkbox"
+                    name="tiene_contacto"
+                    value="1"
+                    {% if tiene_contacto %}checked{% endif %}
+                >
+                Solo con contacto
             </label>
+
+            <!-- Mostrar todos (incluye inactivos) -->
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input
+                    type="checkbox"
+                    name="mostrar_todos"
+                    value="1"
+                    {% if mostrar_todos %}checked{% endif %}
+                >
+                Mostrar todos (incluye inactivos)
+            </label>
+
+            <!-- Incluir niños -->
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input
+                    type="checkbox"
+                    name="incluir_ninos"
+                    value="1"
+                    {% if incluir_ninos %}checked{% endif %}
+                >
+                Incluir niños (menores de 12 años)
+            </label>
+
         </div>
 
-        <!-- Botones -->
+        <!-- Acciones -->
         <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
             <button type="submit" class="btn-secondary">
                 <span class="material-icons" style="font-size:16px;">search</span>
@@ -108,15 +121,14 @@ Miembros / Reportes / Listado general
         </div>
 
         <!-- Resumen -->
-        <div class="form-field form-field-full" style="margin-top: -4px; font-size:12px; color:#6b7280;">
+        <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
             {% if miembros %}
-                {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }} encontrados
+                {{ miembros|length }} registro{{ miembros|length|pluralize:"s" }} encontrados
             {% else %}
-                No se encontraron miembros con el criterio indicado.
+                No se encontraron resultados con el criterio indicado.
             {% endif %}
         </div>
     </form>
-
 
     <!-- Tabla -->
     <div class="table-wrapper">
@@ -131,75 +143,107 @@ Miembros / Reportes / Listado general
                     <th>Ingreso</th>
                 </tr>
             </thead>
+
             <tbody>
             {% if miembros %}
                 {% for m in miembros %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
+                <tr>
+                    <td>{{ forloop.counter }}</td>
 
-                        <td>
-                            <div style="font-weight:600; font-size:13px;">
-                                {{ m.nombres }} {{ m.apellidos }}
+                    <td>
+                        <div style="font-weight:600; font-size:13px;">
+                            {{ m.nombres }} {{ m.apellidos }}
+                        </div>
+                        <div style="font-size:11px; color:#6b7280;">
+                            {{ m.profesion|default:"Sin profesión registrada" }}
+                        </div>
+                    </td>
+
+                    <td>
+                        {% if m.telefono %}
+                            <div style="font-size:12px;">{{ m.telefono }}</div>
+                        {% endif %}
+                        {% if m.email %}
+                            <div style="font-size:12px;">{{ m.email }}</div>
+                        {% endif %}
+                        {% if not m.telefono and not m.email %}
+                            <span style="font-size:11px; color:#6b7280;">Sin datos</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if not m.activo %}
+                            {# Miembro inactivo (salida registrada) #}
+                            <div style="
+                                display:inline-block;
+                                padding:2px 6px;
+                                border-radius:999px;
+                                background:#fee2e2;
+                                color:#b91c1c;
+                                font-size:11px;
+                                font-weight:600;
+                                margin-bottom:2px;
+                            ">
+                                Inactivo
                             </div>
-                            <div style="font-size:11px; color:#6b7280;">
-                                {{ m.profesion|default:"Sin profesión registrada" }}
-                            </div>
-                        </td>
 
-                        <td>
-                            {% if m.telefono %}
-                                <div style="font-size:12px;">{{ m.telefono }}</div>
+                            {% if m.razon_salida %}
+                                <div style="font-size:11px; color:#6b7280;">
+                                    {{ m.razon_salida }}
+                                </div>
                             {% endif %}
-                            {% if m.email %}
-                                <div style="font-size:12px;">{{ m.email }}</div>
-                            {% endif %}
-                            {% if not m.telefono and not m.email %}
-                                <span style="font-size:11px; color:#6b7280;">Sin datos de contacto</span>
-                            {% endif %}
-                        </td>
 
-                        <td>
+                            {% if m.fecha_salida %}
+                                <div style="font-size:11px; color:#6b7280;">
+                                    Salida: {{ m.fecha_salida|date:"d/m/Y" }}
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            {# Miembro activo en la iglesia #}
                             {% if m.estado_miembro %}
-                                <div style="font-size:12px; font-weight:600;">
+                                <div style="font-size:12px; font-weight:600; color:#111827;">
                                     {{ m.get_estado_miembro_display }}
                                 </div>
                             {% else %}
                                 <div style="font-size:11px; color:#6b7280;">Sin estado</div>
                             {% endif %}
+                        {% endif %}
 
-                            {% if m.categoria_edad %}
+                        {% if m.categoria_edad %}
+                            <div style="font-size:11px; color:#6b7280;">
+                                {{ m.get_categoria_edad_display }}
+                            </div>
+                        {% endif %}
+                    </td>
+
+
+                    <td>
+                        {% if m.bautizado_confirmado %}
+                            <span class="pill pill-success">Sí</span>
+                            {% if m.fecha_bautismo %}
                                 <div style="font-size:11px; color:#6b7280;">
-                                    {{ m.get_categoria_edad_display }}
+                                    {{ m.fecha_bautismo|date:"d/m/Y" }}
                                 </div>
                             {% endif %}
-                        </td>
+                        {% else %}
+                            <span class="pill pill-muted">No</span>
+                        {% endif %}
+                    </td>
 
-                        <td>
-                            {% if m.bautizado_confirmado %}
-                                <span class="pill pill-success">Sí</span>
-                                {% if m.fecha_bautismo %}
-                                    <div style="font-size:11px; color:#6b7280;">
-                                        {{ m.fecha_bautismo|date:"d/m/Y" }}
-                                    </div>
-                                {% endif %}
-                            {% else %}
-                                <span class="pill pill-muted">No</span>
-                            {% endif %}
-                        </td>
+                    <td>
+                        {% if m.fecha_ingreso_iglesia %}
+                            {{ m.fecha_ingreso_iglesia|date:"d/m/Y" }}
+                        {% else %}
+                            <span style="font-size:11px; color:#6b7280;">—</span>
+                        {% endif %}
+                    </td>
 
-                        <td>
-                            {% if m.fecha_ingreso_iglesia %}
-                                {{ m.fecha_ingreso_iglesia|date:"d/m/Y" }}
-                            {% else %}
-                                <span style="font-size:11px; color:#6b7280;">Sin fecha</span>
-                            {% endif %}
-                        </td>
-                    </tr>
+                </tr>
                 {% endfor %}
             {% else %}
                 <tr>
                     <td colspan="6" class="table-empty">
-                        No se encontraron miembros con el criterio indicado.
+                        No se encontraron resultados.
                     </td>
                 </tr>
             {% endif %}

@@ -171,18 +171,29 @@ def filtrar_miembros(request):
     Aplica filtros comunes a las vistas de lista y reportes,
     y devuelve (queryset_filtrado, contexto_filtros).
 
-    Reglas importantes:
-    - Por defecto (si NO se marca "mostrar todos" y no se ha elegido un estado),
-      se muestran solo miembros ACTIVOS oficiales:
-        * activo = True
-        * estado_miembro = 'activo'
-        * edad >= 12 años.
+    Reglas:
 
-    - Si se marca "mostrar todos", NO se filtra por 'activo',
-      y aparecen también los inactivos (miembros con salida registrada).
+    - Por defecto (sin 'mostrar_todos' y sin 'estado'):
+        * activo = True
+        * estado_miembro en ('activo', 'pasivo')
+        * edad >= 12 años (no niños)
+
+    - Si se marca 'mostrar_todos':
+        * NO se filtra por campo activo (aparecen también los que se fueron)
+        * Si NO hay estado elegido -> se muestran TODOS los estados
+          (activo, pasivo, catecúmeno, descarriado, observación, etc.)
+        * Si hay un estado elegido -> solo ese estado.
+
+    - 'incluir_ninos' solo se aplica cuando NO se ha elegido un estado.
+      Nunca se mezclarán niños con catecúmenos, descarriados, etc.
+
+    - Si la categoría de edad filtrada es de niños ('infante' o 'nino'),
+      se devuelve SOLO el listado de niños (no adultos),
+      aunque no se haya marcado 'incluir_ninos', y solo si NO hay estado elegido.
     """
     query = request.GET.get("q", "").strip()
     mostrar_todos = request.GET.get("mostrar_todos") == "1"
+    incluir_ninos = request.GET.get("incluir_ninos") == "1"
 
     # Filtros avanzados
     estado = request.GET.get("estado", "").strip()
@@ -191,74 +202,118 @@ def filtrar_miembros(request):
     bautizado = request.GET.get("bautizado", "").strip()  # "1", "0" o ""
     tiene_contacto = request.GET.get("tiene_contacto") == "1"
 
-    miembros = Miembro.objects.all()
+    miembros_base = Miembro.objects.all()
 
     # -------------------------
-    # FILTRO POR ACTIVO / INACTIVO
+    # FILTRO POR ACTIVO / INACTIVO (CAMPO 'activo')
     # -------------------------
     if not mostrar_todos:
-        # Vista por defecto: solo miembros activos
-        miembros = miembros.filter(activo=True)
+        # Vista por defecto: solo miembros que siguen activos en Torre Fuerte
+        miembros_base = miembros_base.filter(activo=True)
 
     # -------------------------
-    # CÁLCULO DE EDAD >= 12
+    # FILTROS GENERALES (SE APLICAN A TODO: ADULTOS Y NIÑOS)
     # -------------------------
-    today = timezone.localdate()
-    cutoff_12 = today - timedelta(days=12 * 365)
-    edad_q = Q(fecha_nacimiento__lte=cutoff_12) | Q(fecha_nacimiento__isnull=True)
-
-    # -------------------------
-    # LÓGICA DE ESTADO / ACTIVOS
-    # -------------------------
-    if estado:
-        # Si el usuario elige explícitamente un estado
-        if estado == "activo":
-            # Activos oficiales: estado activo + edad >= 12
-            miembros = miembros.filter(estado_miembro="activo").filter(edad_q)
-        else:
-            miembros = miembros.filter(estado_miembro=estado)
-    else:
-        # Sin estado elegido en el filtro
-        if not mostrar_todos:
-            # Vista por defecto: solo activos oficiales
-            miembros = miembros.filter(estado_miembro="activo").filter(edad_q)
-        # Si mostrar_todos es True y no hay estado elegido,
-        # no aplicamos filtro extra de estado ni de edad aquí.
-
-    # -------------------------
-    # RESTO DE FILTROS
-    # -------------------------
-
-    # Filtro por categoría de edad
-    if categoria_edad_filtro:
-        miembros = miembros.filter(categoria_edad=categoria_edad_filtro)
-
-    # Filtro por género
     if genero:
-        miembros = miembros.filter(genero=genero)
+        miembros_base = miembros_base.filter(genero=genero)
 
-    # Filtro por bautismo confirmado
     if bautizado == "1":
-        miembros = miembros.filter(bautizado_confirmado=True)
+        miembros_base = miembros_base.filter(bautizado_confirmado=True)
     elif bautizado == "0":
-        miembros = miembros.filter(bautizado_confirmado=False)
+        miembros_base = miembros_base.filter(bautizado_confirmado=False)
 
-    # Filtro "solo con contacto" (teléfono o email)
     if tiene_contacto:
-        miembros = miembros.filter(
-            Q(telefono__isnull=False, telefono__gt="") |
-            Q(email__isnull=False, email__gt="")
+        miembros_base = miembros_base.filter(
+            Q(telefono__isnull=False, telefono__gt="")
+            | Q(email__isnull=False, email__gt="")
         )
 
-    # Búsqueda de texto libre
     if query:
-        miembros = miembros.filter(
+        miembros_base = miembros_base.filter(
             Q(nombres__icontains=query)
             | Q(apellidos__icontains=query)
             | Q(email__icontains=query)
             | Q(telefono__icontains=query)
             | Q(telefono_secundario__icontains=query)
         )
+
+    # -------------------------
+    # CÁLCULO EDAD (OFICIALES vs NIÑOS)
+    # -------------------------
+    today = timezone.localdate()
+    cutoff_12 = today - timedelta(days=12 * 365)
+
+    edad_oficial_q = Q(fecha_nacimiento__lte=cutoff_12) | Q(
+        fecha_nacimiento__isnull=True
+    )
+    edad_nino_q = Q(fecha_nacimiento__gt=cutoff_12)
+
+    # Partimos de la base ya filtrada (búsqueda, género, contacto, etc.)
+    miembros_oficiales = miembros_base.filter(edad_oficial_q)
+    miembros_ninos = miembros_base.filter(edad_nino_q)
+
+    # Categorías que consideramos "de niños"
+    categorias_nino = ("infante", "nino")
+
+    # -------------------------
+    # LÓGICA DE ESTADO Y CATEGORÍA
+    # -------------------------
+    if estado:
+        # Si hay estado elegido:
+        #  - SOLO se muestran mayores de 12 con ese estado
+        #  - Nunca se añaden niños
+        miembros_oficiales = miembros_oficiales.filter(estado_miembro=estado)
+        # Si además filtraron por categoría, se aplica solo a oficiales
+        if categoria_edad_filtro and categoria_edad_filtro not in categorias_nino:
+            miembros_oficiales = miembros_oficiales.filter(
+                categoria_edad=categoria_edad_filtro
+            )
+        # Si la categoría es niño/infante + estado, no devolvemos niños ni adultos con esa categoría
+        mostrar_ninos = False
+
+    else:
+        # SIN estado elegido
+        if categoria_edad_filtro in categorias_nino:
+            # Si se pidió explícitamente "Infante" o "Niño" sin estado:
+            #  -> devolver SOLO niños de esa categoría
+            miembros_oficiales = miembros_oficiales.none()
+            miembros_ninos = miembros_ninos.filter(
+                categoria_edad=categoria_edad_filtro
+            )
+            mostrar_ninos = True
+        else:
+            # Categoría NO es de niños (o no se eligió categoría)
+            if categoria_edad_filtro:
+                # Filtramos por categoría (adolescente, joven, adulto, adulto_mayor...)
+                miembros_oficiales = miembros_oficiales.filter(
+                    categoria_edad=categoria_edad_filtro
+                )
+                miembros_ninos = miembros_ninos.filter(
+                    categoria_edad=categoria_edad_filtro
+                )
+
+            # Ahora aplicamos la lógica de estados según 'mostrar_todos'
+            if mostrar_todos:
+                # Estado vacío + mostrar_todos marcado:
+                # -> mostrar todos los estados posibles (no filtramos estado_miembro)
+                pass
+            else:
+                # Vista normal por defecto: solo ACTIVO y PASIVO
+                miembros_oficiales = miembros_oficiales.filter(
+                    estado_miembro__in=["activo", "pasivo"]
+                )
+
+            # En este caso (sin estado y sin categoría de niños),
+            # SÍ respetamos el checkbox "incluir_ninos"
+            mostrar_ninos = incluir_ninos
+
+    # -------------------------
+    # COMBINACIÓN FINAL (ADULTOS + NIÑOS)
+    # -------------------------
+    if mostrar_ninos:
+        miembros = miembros_oficiales | miembros_ninos
+    else:
+        miembros = miembros_oficiales
 
     miembros = miembros.order_by("nombres", "apellidos")
 
@@ -280,6 +335,7 @@ def filtrar_miembros(request):
     filtros_context = {
         "query": query,
         "mostrar_todos": mostrar_todos,
+        "incluir_ninos": incluir_ninos,
         "estado": estado,
         "categoria_edad_filtro": categoria_edad_filtro,
         "genero_filtro": genero,
@@ -291,6 +347,7 @@ def filtrar_miembros(request):
     }
 
     return miembros, filtros_context
+
 
 # -------------------------------------
 # LISTA DE MIEMBROS
