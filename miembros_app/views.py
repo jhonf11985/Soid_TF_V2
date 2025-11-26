@@ -10,6 +10,11 @@ from datetime import date
 from django.utils import timezone
 from django.conf import settings
 from django.db.models.functions import ExtractDay
+from .models import RazonSalidaMiembro
+from django.http import HttpResponse
+
+
+
 
 
 # Edad mínima para ser considerado miembro oficial (configurable por settings)
@@ -752,16 +757,16 @@ def miembro_ficha(request, pk):
 # --------------------------------------------
 def reporte_miembros_salida(request):
     """
-    Reporte de miembros que ya no están activos en Torre Fuerte.
-    Muestra solo los miembros con activo = False, opcionalmente filtrados
-    por fecha de salida y por texto (nombre, correo, teléfono…).
+    Reporte de miembros inactivos con filtros por fecha y razón de salida.
+    Usa el campo razon_salida como ForeignKey a RazonSalidaMiembro.
     """
 
     query = request.GET.get("q", "").strip()
     fecha_desde_str = request.GET.get("fecha_desde", "").strip()
     fecha_hasta_str = request.GET.get("fecha_hasta", "").strip()
+    razon_salida_id_str = request.GET.get("razon_salida", "").strip()
 
-    # Base: solo miembros inactivos (se fueron / trasladados / etc.)
+    # Base: solo miembros inactivos
     miembros = Miembro.objects.filter(activo=False)
 
     # Filtro de búsqueda general
@@ -774,28 +779,35 @@ def reporte_miembros_salida(request):
             | Q(telefono_secundario__icontains=query)
         )
 
-    # Filtros por fecha de salida
-    fecha_desde = None
-    fecha_hasta = None
-
+    # Filtros de fecha
     if fecha_desde_str:
         try:
             fecha_desde = date.fromisoformat(fecha_desde_str)
+            miembros = miembros.filter(fecha_salida__gte=fecha_desde)
         except ValueError:
-            fecha_desde = None
+            pass
 
     if fecha_hasta_str:
         try:
             fecha_hasta = date.fromisoformat(fecha_hasta_str)
+            miembros = miembros.filter(fecha_salida__lte=fecha_hasta)
         except ValueError:
-            fecha_hasta = None
+            pass
 
-    if fecha_desde:
-        miembros = miembros.filter(fecha_salida__gte=fecha_desde)
-    if fecha_hasta:
-        miembros = miembros.filter(fecha_salida__lte=fecha_hasta)
+    # Filtro por razón de salida (ForeignKey)
+    razon_salida_id = None
+    razon_salida_obj = None
+    if razon_salida_id_str and razon_salida_id_str.isdigit():
+        razon_salida_id = int(razon_salida_id_str)
+        miembros = miembros.filter(razon_salida_id=razon_salida_id)
+        razon_salida_obj = RazonSalidaMiembro.objects.filter(pk=razon_salida_id).first()
 
-    # Orden: primero los que salieron más recientemente
+    # Razones disponibles (solo activas)
+    razones_disponibles = RazonSalidaMiembro.objects.filter(activo=True).order_by(
+        "orden", "nombre"
+    )
+
+    # Orden final
     miembros = miembros.order_by("-fecha_salida", "apellidos", "nombres")
 
     context = {
@@ -803,12 +815,18 @@ def reporte_miembros_salida(request):
         "query": query,
         "fecha_desde": fecha_desde_str,
         "fecha_hasta": fecha_hasta_str,
+        "razones_disponibles": razones_disponibles,
+        "razon_salida_id": razon_salida_id,
+        "razon_salida_obj": razon_salida_obj,
     }
+
     return render(
         request,
         "miembros_app/reportes/reporte_miembros_salida.html",
         context,
     )
+    
+
 # -------------------------------------
 # REPORTE: RELACIONES FAMILIARES
 # -------------------------------------
@@ -1087,3 +1105,54 @@ def reporte_miembros_nuevos_mes(request):
         "miembros_app/reportes/reporte_miembros_nuevos_mes.html",
         context,
     )
+# -------------------------------
+# CARTA DE SALIDA / TRASLADO
+# -------------------------------
+
+
+# -------------------------------
+# CARTA DE SALIDA / TRASLADO
+# -------------------------------
+
+def carta_salida_miembro(request, pk):
+    """
+    Genera una carta imprimible de salida / traslado para un miembro.
+    En caso de error, muestra el mensaje en pantalla para depurar.
+    """
+    try:
+        miembro = get_object_or_404(Miembro, pk=pk)
+
+        hoy = timezone.localdate()
+
+        iglesia_nombre = getattr(settings, "NOMBRE_IGLESIA", "Iglesia Torre Fuerte")
+        iglesia_ciudad = getattr(
+            settings, "CIUDAD_IGLESIA", "Higüey, República Dominicana"
+        )
+        pastor_principal = getattr(
+            settings, "PASTOR_PRINCIPAL", "Pastor de la iglesia"
+        )
+
+        context = {
+            "miembro": miembro,
+            "hoy": hoy,
+            "iglesia_nombre": iglesia_nombre,
+            "iglesia_ciudad": iglesia_ciudad,
+            "pastor_principal": pastor_principal,
+        }
+
+        return render(
+            request,
+            "miembros_app/cartas/carta_salida.html",
+            context,
+        )
+
+    except Exception as e:
+        import traceback
+        # Imprime el error en la consola (por si acaso)
+        traceback.print_exc()
+        # Y lo muestra en el navegador para que sepamos qué está pasando
+        return HttpResponse(
+            f"<h2>Error en carta_salida_miembro</h2>"
+            f"<pre>{e}</pre>",
+            status=500,
+        )

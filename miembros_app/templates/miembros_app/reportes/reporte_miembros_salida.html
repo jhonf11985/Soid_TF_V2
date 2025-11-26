@@ -58,6 +58,27 @@ Miembros / Reportes / Salidas y traslados
                         value="{{ fecha_hasta }}"
                     >
                 </div>
+
+                <!-- Razón de salida -->
+                <div>
+                    <label for="id_razon_salida">Razón de salida</label>
+                    <select id="id_razon_salida" name="razon_salida">
+                        <option value="">Todas las razones</option>
+                        {% for r in razones_disponibles %}
+                            <option value="{{ r.id }}"
+                                {% if razon_salida_id == r.id %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ r.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <p style="font-size:11px; color:#6b7280; margin-top:2px;">
+                        Puedes filtrar, por ejemplo: solo Traslados, solo Distancia, etc.
+                    </p>
+                </div>
+
             </div>
 
             <p style="font-size:11px; color:#6b7280; margin-top:2px;">
@@ -80,7 +101,12 @@ Miembros / Reportes / Salidas y traslados
         <!-- Resumen -->
         <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
             {% if miembros %}
-                {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }} inactivo{{ miembros|length|pluralize:"s" }} encontrado{{ miembros|length|pluralize:"s" }}.
+                {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }}
+                inactivo{{ miembros|length|pluralize:"s" }}
+                encontrado{{ miembros|length|pluralize:"s" }}
+                {% if razon_salida_obj %}
+                    por razón: <strong>{{ razon_salida_obj.nombre }}</strong>
+                {% endif %}.
             {% else %}
                 No se encontraron miembros con los filtros seleccionados.
             {% endif %}
@@ -98,7 +124,7 @@ Miembros / Reportes / Salidas y traslados
                     <th>Último estado</th>
                     <th>Razón de salida</th>
                     <th>Fecha de salida</th>
-                    <th class="col-center no-print">Ver</th>
+                    <th class="col-center no-print">Acciones</th>
                 </tr>
             </thead>
 
@@ -108,15 +134,34 @@ Miembros / Reportes / Salidas y traslados
                 <tr>
                     <td>{{ forloop.counter }}</td>
 
-                    <!-- Miembro -->
+                    <!-- Miembro (NOMBRE + CATEGORÍA + ACCIONES) -->
                     <td>
-                        <div style="font-weight:600; font-size:13px;">
-                            <a href="{% url 'miembros_app:detalle' m.pk %}">
-                                {{ m.nombres }} {{ m.apellidos }}
-                            </a>
+                        <div style="font-size:14px; font-weight:600; color:#111827;">
+                            {{ m.nombres }} {{ m.apellidos }}
                         </div>
+
                         <div style="font-size:11px; color:#6b7280;">
-                            {{ m.profesion|default:"Sin profesión registrada" }}
+                            {% if m.categoria_edad %}
+                                {{ m.get_categoria_edad_display }}
+                            {% else %}
+                                Sin categoría
+                            {% endif %}
+                        </div>
+
+                        <div class="no-print" style="margin-top:4px; display:flex; gap:6px;">
+                            <!-- Ver ficha -->
+                            <a href="{% url 'miembros_app:detalle' m.pk %}"
+                               class="btn-secondary"
+                               style="padding:4px; min-width:auto;">
+                                <span class="material-icons" style="font-size:18px;">visibility</span>
+                            </a>
+
+                            <!-- Ver carta -->
+                            <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}"
+                               class="btn-secondary"
+                               style="padding:4px; min-width:auto;">
+                                <span class="material-icons" style="font-size:18px;">description</span>
+                            </a>
                         </div>
                     </td>
 
@@ -148,7 +193,7 @@ Miembros / Reportes / Salidas y traslados
                     <td>
                         {% if m.razon_salida %}
                             <div style="font-size:12px;">
-                                {{ m.razon_salida }}
+                                {{ m.razon_salida.nombre }}
                             </div>
                         {% else %}
                             <span style="font-size:11px; color:#6b7280;">No especificada</span>
@@ -164,12 +209,18 @@ Miembros / Reportes / Salidas y traslados
                         {% endif %}
                     </td>
 
-                    <!-- Ver detalle -->
-                    <td class="col-center no-print">
+                    <!-- Acciones -->
+                    <td class="col-center no-print" style="display:flex; justify-content:center; gap:4px;">
                         <a href="{% url 'miembros_app:detalle' m.pk %}"
                            class="btn-secondary"
                            style="padding:4px; min-width:auto;">
                             <span class="material-icons" style="font-size:18px;">visibility</span>
+                        </a>
+
+                        <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}"
+                           class="btn-secondary"
+                           style="padding:4px; min-width:auto;">
+                            <span class="material-icons" style="font-size:18px;">description</span>
                         </a>
                     </td>
                 </tr>

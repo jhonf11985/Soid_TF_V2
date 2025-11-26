@@ -46,5 +46,10 @@ urlpatterns = [
         name="reporte_miembros_nuevos_mes",
     ),
 
+    path(
+        "cartas/salida/<int:pk>/",
+        views.carta_salida_miembro,
+        name="carta_salida_miembro",
+    ),
 
 ]
