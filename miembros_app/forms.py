@@ -3,7 +3,7 @@ from core.utils_config import get_edad_minima_miembro_oficial
 from django import forms
 from .models import Miembro, MiembroRelacion
 
-EDAD_MINIMA_MIEMBRO_OFICIAL = get_edad_minima_miembro_oficial()
+
    
 
 class MiembroForm(forms.ModelForm):
@@ -280,7 +280,7 @@ class MiembroForm(forms.ModelForm):
         es_trasladado = cleaned_data.get("es_trasladado")
 
         edad = self._calcular_edad_desde_fecha(fecha_nacimiento)
-        edad_minima = EDAD_MIN_BAUTISMO_POR_DEFECTO
+        edad_minima = get_edad_minima_miembro_oficial()
 
         # ---------------------------------------
         # 1) LÓGICA DE TRASLADO / IGLESIA ANTERIOR

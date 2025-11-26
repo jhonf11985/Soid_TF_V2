@@ -1,7 +1,7 @@
 from datetime import date
 from django.db import models
 from core.utils_config import get_edad_minima_miembro_oficial
-EDAD_MINIMA_MIEMBRO_OFICIAL = get_edad_minima_miembro_oficial()
+
 
 
 

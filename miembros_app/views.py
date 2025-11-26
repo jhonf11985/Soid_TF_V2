@@ -2,32 +2,31 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.db.models import Q, Count
 from django.contrib import messages
-from django.urls import reverse   # 👈 IMPORTANTE: necesario para eliminar_familiar
+from django.urls import reverse   # necesario para eliminar_familiar
 from datetime import date, timedelta
-from .models import Miembro, MiembroRelacion
-from .forms import MiembroForm, MiembroRelacionForm
-from datetime import date
+
 from django.utils import timezone
 from django.db.models.functions import ExtractDay
-from .models import RazonSalidaMiembro
 from django.http import HttpResponse
+from django.conf import settings
+
+from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
+from .forms import MiembroForm, MiembroRelacionForm
+
 from core.utils_config import get_edad_minima_miembro_oficial
-EDAD_MINIMA_MIEMBRO_OFICIAL = get_edad_minima_miembro_oficial()
-
-
-
-
-
+from django.http import HttpResponse
+import traceback
 
 
 
 # -------------------------------------
 # DASHBOARD
 # -------------------------------------
-# -------------------------------------
-
 def miembros_dashboard(request):
     miembros = Miembro.objects.all()
+
+    # Edad mínima oficial desde parámetros
+    edad_minima = get_edad_minima_miembro_oficial()
 
     # -----------------------------
     # Cálculo de edades
@@ -43,7 +42,7 @@ def miembros_dashboard(request):
 
     # -----------------------------
     # Conteo de miembros oficiales
-    # (solo >= EDAD_MINIMA_MIEMBRO_OFICIAL)
+    # (solo >= edad_minima)
     # -----------------------------
     activos = 0
     pasivos = 0
@@ -52,7 +51,7 @@ def miembros_dashboard(request):
 
     for m in miembros:
         edad = calcular_edad(m.fecha_nacimiento)
-        if edad is None or edad < EDAD_MINIMA_MIEMBRO_OFICIAL:
+        if edad is None or edad < edad_minima:
             # No se considera miembro oficial
             continue
 
@@ -147,7 +146,7 @@ def miembros_dashboard(request):
         "titulo_pagina": "Miembros",
         "descripcion_pagina": (
             f"Resumen de la membresía oficial "
-            f"(mayores de {EDAD_MINIMA_MIEMBRO_OFICIAL} años) y distribución general."
+            f"(mayores de {edad_minima} años) y distribución general."
         ),
         # Tarjetas oficiales
         "total_oficiales": total_oficiales,
@@ -165,7 +164,7 @@ def miembros_dashboard(request):
         "proximos_cumpleanos": proximos_cumpleanos,
         "miembros_recientes": miembros_recientes,
         # Parámetro global para la vista
-        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
     }
     return render(request, "miembros_app/miembros_dashboard.html", context)
 
@@ -182,7 +181,7 @@ def filtrar_miembros(request):
 
     - Por defecto (sin 'mostrar_todos' y sin 'estado'):
         * activo = True  (siguen perteneciendo a la iglesia)
-        * edad >= 12 años (los niños se manejan aparte)
+        * edad >= edad mínima oficial (los niños se manejan aparte)
 
     - Si se marca 'mostrar_todos':
         * NO se filtra por campo activo (aparecen también los que se fueron)
@@ -265,12 +264,13 @@ def filtrar_miembros(request):
     # CÁLCULO EDAD (OFICIALES vs NIÑOS)
     # -------------------------
     today = timezone.localdate()
-    cutoff_12 = today - timedelta(days=12 * 365)
+    edad_minima_oficial = get_edad_minima_miembro_oficial()
+    cutoff_oficial = today - timedelta(days=edad_minima_oficial * 365)
 
-    edad_oficial_q = Q(fecha_nacimiento__lte=cutoff_12) | Q(
+    edad_oficial_q = Q(fecha_nacimiento__lte=cutoff_oficial) | Q(
         fecha_nacimiento__isnull=True
     )
-    edad_nino_q = Q(fecha_nacimiento__gt=cutoff_12)
+    edad_nino_q = Q(fecha_nacimiento__gt=cutoff_oficial)
 
     # Partimos de la base ya filtrada (búsqueda, género, contacto, etc.)
     miembros_oficiales = miembros_base.filter(edad_oficial_q)
@@ -287,7 +287,7 @@ def filtrar_miembros(request):
     # -------------------------
     if estado:
         # Si hay estado elegido:
-        #  - SOLO se muestran mayores de 12 con ese estado
+        #  - SOLO se muestran mayores de edad mínima con ese estado
         #  - Nunca se añaden niños
         miembros_oficiales = miembros_oficiales.filter(estado_miembro=estado)
 
@@ -405,6 +405,7 @@ def filtrar_miembros(request):
 
     return miembros, filtros_context
 
+
 # -------------------------------------
 # LISTA DE MIEMBROS
 # -------------------------------------
@@ -415,10 +416,11 @@ def miembro_lista(request):
     que el reporte imprimible de listado general.
     """
     miembros, filtros_context = filtrar_miembros(request)
+    edad_minima = get_edad_minima_miembro_oficial()
 
     context = {
         "miembros": miembros,
-        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
         **filtros_context,
     }
     return render(request, "miembros_app/reportes/listado_miembros.html", context)
@@ -427,25 +429,41 @@ def miembro_lista(request):
 # -------------------------------------
 # CREAR MIEMBRO
 # -------------------------------------
+
 def miembro_crear(request):
+    """
+    Vista normal para crear un miembro.
+    Con la lógica de edad mínima tomando el valor desde los parámetros del sistema.
+    """
+
+    edad_minima = get_edad_minima_miembro_oficial()
+
     if request.method == "POST":
         form = MiembroForm(request.POST, request.FILES)
+
         if form.is_valid():
-            # No guardamos todavía, para poder ajustar el estado
             miembro = form.save(commit=False)
 
-            # Usamos el propio método del modelo para calcular la edad
-            edad = miembro.calcular_edad()
+            # Calcular edad
+            edad = None
+            if hasattr(miembro, "calcular_edad"):
+                edad = miembro.calcular_edad()
+            elif miembro.fecha_nacimiento:
+                hoy = date.today()
+                fn = miembro.fecha_nacimiento
+                edad = hoy.year - fn.year
+                if (hoy.month, hoy.day) < (fn.month, fn.day):
+                    edad -= 1
 
-            # Si es menor de la edad mínima oficial, se guarda SIN estado de miembro
-            if edad is not None and edad < EDAD_MINIMA_MIEMBRO_OFICIAL:
+            # Lógica de edad mínima
+            if edad is not None and edad < edad_minima:
                 if miembro.estado_miembro:
-                    miembro.estado_miembro = ""  # sin estado
+                    miembro.estado_miembro = ""
                     messages.info(
                         request,
                         (
-                            f"Este registro es menor de {EDAD_MINIMA_MIEMBRO_OFICIAL} años. "
-                            "Se ha guardado sin estado de miembro, ya que aún no es miembro oficial."
+                            f"Este registro es menor de {edad_minima} años. "
+                            "Se ha guardado sin estado de miembro."
                         ),
                     )
 
@@ -453,6 +471,7 @@ def miembro_crear(request):
 
             messages.success(request, "Miembro creado correctamente.")
             return redirect("miembros_app:editar", pk=miembro.pk)
+
     else:
         form = MiembroForm()
 
@@ -460,10 +479,10 @@ def miembro_crear(request):
         "form": form,
         "modo": "crear",
         "miembro": None,
-        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
     }
-    return render(request, "miembros_app/miembro_form.html", context)
 
+    return render(request, "miembros_app/miembro_form.html", context)
 
 
 # -------------------------------------
@@ -473,6 +492,9 @@ class MiembroUpdateView(View):
     def get(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
         form = MiembroForm(instance=miembro)
+
+        # Siempre tomar la edad mínima desde la configuración
+        edad_minima = get_edad_minima_miembro_oficial()
 
         # Usamos MiembroRelacion directamente para evitar problemas con related_name
         familiares_qs = (
@@ -498,12 +520,15 @@ class MiembroUpdateView(View):
             "modo": "editar",
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,  # para la pestaña Familiares
-            "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+            "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
         }
         return render(request, "miembros_app/miembro_form.html", context)
 
     def post(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
+
+        # Siempre tomamos la edad mínima desde la configuración
+        edad_minima = get_edad_minima_miembro_oficial()
 
         # --- SI VIENE DEL BOTÓN "AGREGAR FAMILIAR" ---
         if "agregar_familiar" in request.POST:
@@ -536,13 +561,13 @@ class MiembroUpdateView(View):
                 if (hoy.month, hoy.day) < (fn.month, fn.day):
                     edad -= 1
 
-            if edad is not None and edad < EDAD_MINIMA_MIEMBRO_OFICIAL:
+            if edad is not None and edad < edad_minima:
                 if miembro_editado.estado_miembro:
                     miembro_editado.estado_miembro = ""  # sin estado
                     messages.info(
                         request,
                         (
-                            f"Este miembro es menor de {EDAD_MINIMA_MIEMBRO_OFICIAL} años. "
+                            f"Este miembro es menor de {edad_minima} años. "
                             "Se ha guardado sin estado de miembro para no contarlo como miembro oficial."
                         ),
                     )
@@ -572,15 +597,13 @@ class MiembroUpdateView(View):
             "modo": "editar",
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,
-            "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+            "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
         }
         return render(request, "miembros_app/miembro_form.html", context)
-
 
 # -------------------------------------
 # DETALLE DEL MIEMBRO
 # -------------------------------------
-
 class MiembroDetailView(View):
     def get(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
@@ -610,12 +633,16 @@ class MiembroDetailView(View):
                 # Cualquier otra relación (padre, madre, hijo, etc.) se agrega tal cual
                 relaciones_familia.append(rel)
 
+        edad_minima = get_edad_minima_miembro_oficial()
+
         context = {
             "miembro": miembro,
             "relaciones_familia": relaciones_familia,
-            "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+            "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
         }
         return render(request, "miembros_app/miembros_detalle.html", context)
+
+
 # -------------------------------------
 # AGREGAR FAMILIAR (VERSIÓN ANTIGUA)
 # -------------------------------------
@@ -640,8 +667,6 @@ def agregar_familiar(request, pk):
 # -------------------------------------
 # ELIMINAR FAMILIAR
 # -------------------------------------
-from django.urls import reverse  # asegúrate de tener este import arriba
-
 def eliminar_familiar(request, relacion_id):
     """
     Elimina una relación familiar (NO borra al miembro, solo la relación)
@@ -658,6 +683,7 @@ def eliminar_familiar(request, relacion_id):
     # Volvemos a la pestaña 'familiares' del mismo miembro
     url = reverse("miembros_app:editar", kwargs={"pk": miembro_pk})
     return redirect(f"{url}?tab=familiares")
+
 
 def miembro_ficha(request, pk):
     """
@@ -685,10 +711,12 @@ def miembro_ficha(request, pk):
         else:
             relaciones_familia.append(rel)
 
+    edad_minima = get_edad_minima_miembro_oficial()
+
     context = {
         "miembro": miembro,
         "relaciones_familia": relaciones_familia,
-        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
     }
 
     return render(request, "miembros_app/reportes/miembro_ficha.html", context)
@@ -716,9 +744,9 @@ def reporte_listado_miembros(request):
     return miembro_lista(request)
 
 
-
 # -------------------------------------
 # REPORTE: FICHA PASTORAL DEL MIEMBRO
+# (segunda definición simplificada)
 # -------------------------------------
 def miembro_ficha(request, pk):
     """
@@ -746,12 +774,16 @@ def miembro_ficha(request, pk):
         else:
             relaciones_familia.append(rel)
 
+    edad_minima = get_edad_minima_miembro_oficial()
+
     context = {
         "miembro": miembro,
         "relaciones_familia": relaciones_familia,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
     }
 
     return render(request, "miembros_app/reportes/miembro_ficha.html", context)
+
 
 # --------------------------------------------
 # REPORTE: MIEMBROS QUE SE FUERON / TRASLADOS
@@ -826,7 +858,7 @@ def reporte_miembros_salida(request):
         "miembros_app/reportes/reporte_miembros_salida.html",
         context,
     )
-    
+
 
 # -------------------------------------
 # REPORTE: RELACIONES FAMILIARES
@@ -877,9 +909,8 @@ def reporte_relaciones_familiares(request):
         "miembros_app/reportes/reporte_relaciones_familiares.html",
         context,
     )
-# -------------------------------------
-# REPORTE: CUMPLEAÑOS DEL MES
-# -------------------------------------
+
+
 # -------------------------------------
 # REPORTE: CUMPLEAÑOS DEL MES
 # -------------------------------------
@@ -889,10 +920,11 @@ def reporte_cumple_mes(request):
     - Por defecto muestra el mes actual.
     - Filtros:
         * solo_activos: solo miembros activos en Torre Fuerte.
-        * solo_oficiales: solo mayores de EDAD_MINIMA_MIEMBRO_OFICIAL.
+        * solo_oficiales: solo mayores de edad mínima oficial.
     """
 
     hoy = timezone.localdate()
+    edad_minima = get_edad_minima_miembro_oficial()
 
     # --- Mes seleccionado ---
     mes_str = request.GET.get("mes", "").strip()
@@ -937,9 +969,9 @@ def reporte_cumple_mes(request):
     if solo_activos:
         miembros = miembros.filter(activo=True)
 
-    # Solo oficiales (>= EDAD_MINIMA_MIEMBRO_OFICIAL)
+    # Solo oficiales (>= edad mínima)
     if solo_oficiales:
-        cutoff = hoy - timedelta(days=EDAD_MINIMA_MIEMBRO_OFICIAL * 365)
+        cutoff = hoy - timedelta(days=edad_minima * 365)
         miembros = miembros.filter(fecha_nacimiento__lte=cutoff)
 
     # Añadimos el día del mes y ordenamos
@@ -967,10 +999,12 @@ def reporte_cumple_mes(request):
         "nombre_mes": nombre_mes,
         "solo_activos": solo_activos,
         "solo_oficiales": solo_oficiales,
-        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
     }
 
     return render(request, "miembros_app/reportes/cumple_mes.html", context)
+
+
 # -------------------------------------
 # REPORTE: MIEMBROS NUEVOS DEL MES
 # -------------------------------------
@@ -980,10 +1014,11 @@ def reporte_miembros_nuevos_mes(request):
     - Por defecto muestra el mes actual.
     - Filtros:
         * solo_activos: solo miembros activos en Torre Fuerte.
-        * solo_oficiales: solo mayores de EDAD_MINIMA_MIEMBRO_OFICIAL.
+        * solo_oficiales: solo mayores de edad mínima oficial.
     """
 
     hoy = timezone.localdate()
+    edad_minima = get_edad_minima_miembro_oficial()
 
     # --- Mes seleccionado (input type="month" -> YYYY-MM) ---
     mes_str = request.GET.get("mes", "").strip()
@@ -1051,9 +1086,9 @@ def reporte_miembros_nuevos_mes(request):
     if solo_activos:
         miembros = miembros.filter(activo=True)
 
-    # Solo oficiales (>= EDAD_MINIMA_MIEMBRO_OFICIAL)
+    # Solo oficiales (>= edad mínima)
     if solo_oficiales:
-        cutoff = hoy - timedelta(days=EDAD_MINIMA_MIEMBRO_OFICIAL * 365)
+        cutoff = hoy - timedelta(days=edad_minima * 365)
         miembros = miembros.filter(
             Q(fecha_nacimiento__isnull=False) & Q(fecha_nacimiento__lte=cutoff)
         )
@@ -1098,7 +1133,7 @@ def reporte_miembros_nuevos_mes(request):
         "solo_activos": solo_activos,
         "solo_oficiales": solo_oficiales,
         "query": query,
-        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
     }
 
     return render(
@@ -1106,15 +1141,11 @@ def reporte_miembros_nuevos_mes(request):
         "miembros_app/reportes/reporte_miembros_nuevos_mes.html",
         context,
     )
-# -------------------------------
-# CARTA DE SALIDA / TRASLADO
-# -------------------------------
 
 
 # -------------------------------
 # CARTA DE SALIDA / TRASLADO
 # -------------------------------
-
 def carta_salida_miembro(request, pk):
     """
     Genera una carta imprimible de salida / traslado para un miembro.

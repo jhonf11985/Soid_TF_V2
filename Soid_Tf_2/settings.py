@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-oocq3z)#kql+c%1ylhcqpi3v5vnh$1ltj_h7f(5*^#!0s@#&p)'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 # Render necesita un host válido — esto permite acceso desde cualquier dominio
 ALLOWED_HOSTS = ["*"]
@@ -120,7 +120,7 @@ USE_TZ = True
 
 # Edad mínima para considerar a alguien miembro oficial / bautizable.
 # Más adelante esto será configurable por iglesia.
-EDAD_MINIMA_MIEMBRO_OFICIAL = 12
+EDAD_MINIMA_MIEMBRO_OFICIAL = 14
 
 # Static files (CSS, JavaScript, Images)
 # =====================================
