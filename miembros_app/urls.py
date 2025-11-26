@@ -40,5 +40,11 @@ urlpatterns = [
     views.reporte_cumple_mes,
     name="reporte_cumple_mes",
 ),
+    path(
+        "reportes/nuevos-mes/",
+        views.reporte_miembros_nuevos_mes,
+        name="reporte_miembros_nuevos_mes",
+    ),
+
 
 ]

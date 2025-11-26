@@ -1,0 +1,254 @@
+{% extends 'core/base_modulo.html' %}
+
+{% block title %}Miembros nuevos del mes{% endblock %}
+
+{% block breadcrumb %}
+Miembros / Reportes / Miembros nuevos del mes
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h1 class="page-title">Miembros nuevos del mes</h1>
+        <p class="page-subtitle">
+            Reporte de personas que ingresaron a Torre Fuerte en un mes específico.
+        </p>
+    </div>
+</section>
+
+<section class="page-section">
+
+    <!-- Filtros del reporte -->
+    <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
+
+        <!-- Buscar -->
+        <div class="form-field form-field-full">
+            <label for="id_q">Buscar</label>
+            <input
+                id="id_q"
+                type="text"
+                name="q"
+                placeholder="Nombre, apellido, teléfono o correo…"
+                value="{{ query }}"
+            >
+        </div>
+
+        <!-- Mes -->
+        <div class="form-field form-field-full">
+            <label for="id_mes">Mes</label>
+            <input
+                id="id_mes"
+                type="month"
+                name="mes"
+                value="{{ mes_str }}"
+            >
+            <p style="font-size:11px; color:#6b7280; margin-top:2px;">
+                Si no eliges un mes, se mostrará el mes actual.
+            </p>
+        </div>
+
+        <!-- Checkboxes -->
+        <div class="form-field form-field-full">
+            <div style="display:flex; flex-wrap:wrap; gap:16px; font-size:13px;">
+                <label style="display:flex; align-items:center; gap:6px;">
+                    <input
+                        type="checkbox"
+                        name="solo_activos"
+                        value="1"
+                        {% if solo_activos %}checked{% endif %}
+                    >
+                    <span>Solo miembros activos (siguen en la iglesia)</span>
+                </label>
+
+                <label style="display:flex; align-items:center; gap:6px;">
+                    <input
+                        type="checkbox"
+                        name="solo_oficiales"
+                        value="1"
+                        {% if solo_oficiales %}checked{% endif %}
+                    >
+                    <span>Solo miembros oficiales (mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años)</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
+            <button type="submit" class="btn-secondary">
+                <span class="material-icons" style="font-size:16px;">search</span>
+                Aplicar filtros
+            </button>
+            <button type="button" class="btn-secondary" onclick="window.print()">
+                <span class="material-icons" style="font-size:16px;">print</span>
+                Imprimir
+            </button>
+        </div>
+
+        <!-- Resumen -->
+        <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
+            {% if miembros %}
+                {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }}
+                encontrado{{ miembros|length|pluralize:"s" }}
+                en {{ nombre_mes }} de {{ anio }}.
+            {% else %}
+                No se encontraron miembros nuevos en {{ nombre_mes }} de {{ anio }} con los filtros seleccionados.
+            {% endif %}
+        </div>
+    </form>
+
+    <!-- Tabla -->
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Miembro</th>
+                    <th>Contacto</th>
+                    <th>Fecha ingreso</th>
+                    <th>Estado</th>
+                    <th>Categoría / edad</th>
+                    <th class="col-center no-print">Ver</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% if miembros %}
+                {% for m in miembros %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+
+                    <!-- Miembro -->
+                    <td>
+                        <div style="font-weight:600; font-size:13px;">
+                            <a href="{% url 'miembros_app:detalle' m.pk %}">
+                                {{ m.nombres }} {{ m.apellidos }}
+                            </a>
+                        </div>
+                        <div style="font-size:11px; color:#6b7280;">
+                            {{ m.profesion|default:"Sin profesión registrada" }}
+                        </div>
+                    </td>
+
+                    <!-- Contacto -->
+                    <td>
+                        {% if m.telefono %}
+                            <div style="font-size:12px;">{{ m.telefono }}</div>
+                        {% endif %}
+                        {% if m.email %}
+                            <div style="font-size:12px;">{{ m.email }}</div>
+                        {% endif %}
+                        {% if not m.telefono and not m.email %}
+                            <span style="font-size:11px; color:#6b7280;">Sin datos</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Fecha ingreso -->
+                    <td>
+                        {% if m.fecha_ingreso_iglesia %}
+                            {{ m.fecha_ingreso_iglesia|date:"d/m/Y" }}
+                        {% else %}
+                            <span style="font-size:11px; color:#6b7280;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Estado -->
+                    <td>
+                        {% if m.estado_miembro %}
+                            <div style="font-size:12px; font-weight:600; color:#111827;">
+                                {{ m.get_estado_miembro_display }}
+                            </div>
+                        {% else %}
+                            <div style="font-size:11px; color:#6b7280;">Sin estado</div>
+                        {% endif %}
+                        <div style="font-size:11px; color:#6b7280;">
+                            {% if m.activo %}
+                                Sigue activo en Torre Fuerte
+                            {% else %}
+                                Actualmente inactivo / trasladado
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Categoría / edad -->
+                    <td>
+                        <div style="font-size:12px;">
+                            {% if m.categoria_edad %}
+                                {{ m.get_categoria_edad_display }}
+                            {% else %}
+                                Sin categoría
+                            {% endif %}
+                        </div>
+                        <div style="font-size:11px; color:#6b7280;">
+                            {% if m.edad_actual %}
+                                {{ m.edad_actual }} años
+                            {% else %}
+                                Edad no registrada
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Ver detalle -->
+                    <td class="col-center no-print">
+                        <a href="{% url 'miembros_app:detalle' m.pk %}"
+                           class="btn-secondary"
+                           style="padding:4px; min-width:auto;">
+                            <span class="material-icons" style="font-size:18px;">visibility</span>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="7" class="table-empty">
+                        No se encontraron miembros nuevos en el mes seleccionado.
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</section>
+
+<style>
+@media print {
+    .topbar,
+    .main-nav,
+    .footer,
+    .form-actions,
+    .page-header-actions,
+    .no-print {
+        display: none !important;
+    }
+
+    .layout {
+        margin: 0;
+        max-width: 100%;
+        padding: 0;
+    }
+
+    .page-section {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+    }
+
+    .page-title {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+
+    .page-subtitle {
+        font-size: 11px;
+    }
+
+    .table th,
+    .table td {
+        font-size: 11px;
+        padding: 4px 4px;
+    }
+}
+</style>
+
+{% endblock %}

@@ -952,3 +952,138 @@ def reporte_cumple_mes(request):
     }
 
     return render(request, "miembros_app/reportes/cumple_mes.html", context)
+# -------------------------------------
+# REPORTE: MIEMBROS NUEVOS DEL MES
+# -------------------------------------
+def reporte_miembros_nuevos_mes(request):
+    """
+    Reporte de miembros que ingresaron a la iglesia en un mes concreto.
+    - Por defecto muestra el mes actual.
+    - Filtros:
+        * solo_activos: solo miembros activos en Torre Fuerte.
+        * solo_oficiales: solo mayores de EDAD_MINIMA_MIEMBRO_OFICIAL.
+    """
+
+    hoy = timezone.localdate()
+
+    # --- Mes seleccionado (input type="month" -> YYYY-MM) ---
+    mes_str = request.GET.get("mes", "").strip()
+
+    if mes_str:
+        # Intentamos parsear "YYYY-MM"
+        try:
+            partes = mes_str.split("-")
+            anio = int(partes[0])
+            mes = int(partes[1])
+            if mes < 1 or mes > 12:
+                raise ValueError
+        except Exception:
+            anio = hoy.year
+            mes = hoy.month
+            mes_str = f"{anio:04d}-{mes:02d}"
+    else:
+        anio = hoy.year
+        mes = hoy.month
+        mes_str = f"{anio:04d}-{mes:02d}"
+
+    # --- Flags de filtros (por defecto: solo_activos=ON, solo_oficiales=OFF) ---
+    solo_activos = request.GET.get("solo_activos", "1") == "1"
+    solo_oficiales = request.GET.get("solo_oficiales", "0") == "1"
+
+    # Texto de búsqueda
+    query = request.GET.get("q", "").strip()
+
+    # Nombres de meses (para mostrar título bonito)
+    MESES_ES = {
+        1: "enero",
+        2: "febrero",
+        3: "marzo",
+        4: "abril",
+        5: "mayo",
+        6: "junio",
+        7: "julio",
+        8: "agosto",
+        9: "septiembre",
+        10: "octubre",
+        11: "noviembre",
+        12: "diciembre",
+    }
+    nombre_mes = MESES_ES.get(mes, "")
+
+    # --- Rango de fechas del mes seleccionado ---
+    # Primer día del mes
+    fecha_inicio = date(anio, mes, 1)
+    # Primer día del mes siguiente
+    if mes == 12:
+        fecha_fin_mes_siguiente = date(anio + 1, 1, 1)
+    else:
+        fecha_fin_mes_siguiente = date(anio, mes + 1, 1)
+    # Último día del mes seleccionado
+    fecha_fin = fecha_fin_mes_siguiente - timedelta(days=1)
+
+    # Base: miembros con fecha de ingreso en ese rango
+    miembros = Miembro.objects.filter(
+        fecha_ingreso_iglesia__isnull=False,
+        fecha_ingreso_iglesia__gte=fecha_inicio,
+        fecha_ingreso_iglesia__lte=fecha_fin,
+    )
+
+    # Solo activos (siguen en la iglesia)
+    if solo_activos:
+        miembros = miembros.filter(activo=True)
+
+    # Solo oficiales (>= EDAD_MINIMA_MIEMBRO_OFICIAL)
+    if solo_oficiales:
+        cutoff = hoy - timedelta(days=EDAD_MINIMA_MIEMBRO_OFICIAL * 365)
+        miembros = miembros.filter(
+            Q(fecha_nacimiento__isnull=False) & Q(fecha_nacimiento__lte=cutoff)
+        )
+
+    # Búsqueda por nombre, apellidos, correo o teléfono
+    if query:
+        miembros = miembros.filter(
+            Q(nombres__icontains=query)
+            | Q(apellidos__icontains=query)
+            | Q(email__icontains=query)
+            | Q(telefono__icontains=query)
+            | Q(telefono_secundario__icontains=query)
+        )
+
+    # Orden: por fecha de ingreso y luego por nombre
+    miembros = miembros.order_by(
+        "fecha_ingreso_iglesia",
+        "apellidos",
+        "nombres",
+    )
+
+    # Calculamos la edad actual (para mostrar en la tabla)
+    for m in miembros:
+        if hasattr(m, "calcular_edad"):
+            m.edad_actual = m.calcular_edad()
+        else:
+            if m.fecha_nacimiento:
+                fn = m.fecha_nacimiento
+                edad = hoy.year - fn.year
+                if (hoy.month, hoy.day) < (fn.month, fn.day):
+                    edad -= 1
+                m.edad_actual = edad
+            else:
+                m.edad_actual = None
+
+    context = {
+        "miembros": miembros,
+        "mes_str": mes_str,
+        "anio": anio,
+        "mes": mes,
+        "nombre_mes": nombre_mes,
+        "solo_activos": solo_activos,
+        "solo_oficiales": solo_oficiales,
+        "query": query,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+    }
+
+    return render(
+        request,
+        "miembros_app/reportes/reporte_miembros_nuevos_mes.html",
+        context,
+    )
