@@ -49,3 +49,75 @@ class Module(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ConfiguracionSistema(models.Model):
+    """
+    Parámetros globales del sistema.
+    Usamos un único registro (pk=1) como 'singleton'.
+    """
+    nombre_iglesia = models.CharField(
+        "Nombre de la iglesia",
+        max_length=150,
+        default="Iglesia Torre Fuerte",
+    )
+    email_oficial = models.EmailField(
+        "Correo oficial",
+        blank=True
+    )
+    telefono_oficial = models.CharField(
+        "Teléfono oficial",
+        max_length=50,
+        blank=True
+    )
+    direccion = models.TextField(
+        "Dirección",
+        blank=True
+    )
+    logo = models.ImageField(
+        "Logo principal",
+        upload_to="configuracion/",
+        blank=True,
+        null=True
+    )
+    edad_minima_miembro_oficial = models.PositiveIntegerField(
+        "Edad mínima miembro oficial",
+        default=12,
+        help_text="Años para considerar a alguien miembro oficial / bautizable."
+    )
+    whatsapp_oficial = models.CharField(
+        "WhatsApp oficial",
+        max_length=50,
+        blank=True,
+        help_text="Solo números con código de país, sin espacios ni guiones."
+    )
+    pie_cartas = models.TextField(
+        "Texto de pie de cartas",
+        blank=True,
+        help_text="Se puede usar al final de las cartas automáticas."
+    )
+
+    class Meta:
+        verbose_name = "Configuración del sistema"
+        verbose_name_plural = "Configuración del sistema"
+
+    def __str__(self):
+        return "Configuración del sistema"
+
+    def save(self, *args, **kwargs):
+        # Forzamos que siempre sea el registro 1
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        """
+        Devuelve la configuración única (la crea si no existe).
+        """
+        obj, created = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                "nombre_iglesia": "Iglesia Torre Fuerte",
+            }
+        )
+        return obj
