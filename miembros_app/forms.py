@@ -1,11 +1,10 @@
 from datetime import date
-from django.conf import settings
+from core.utils_config import get_edad_minima_miembro_oficial
 from django import forms
 from .models import Miembro, MiembroRelacion
 
-    
-
-EDAD_MIN_BAUTISMO_POR_DEFECTO = getattr(settings, "EDAD_MINIMA_MIEMBRO_OFICIAL", 12)    
+EDAD_MINIMA_MIEMBRO_OFICIAL = get_edad_minima_miembro_oficial()
+   
 
 class MiembroForm(forms.ModelForm):
     # ==========================

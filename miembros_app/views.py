@@ -8,17 +8,18 @@ from .models import Miembro, MiembroRelacion
 from .forms import MiembroForm, MiembroRelacionForm
 from datetime import date
 from django.utils import timezone
-from django.conf import settings
 from django.db.models.functions import ExtractDay
 from .models import RazonSalidaMiembro
 from django.http import HttpResponse
+from core.utils_config import get_edad_minima_miembro_oficial
+EDAD_MINIMA_MIEMBRO_OFICIAL = get_edad_minima_miembro_oficial()
 
 
 
 
 
-# Edad mínima para ser considerado miembro oficial (configurable por settings)
-EDAD_MINIMA_MIEMBRO_OFICIAL = getattr(settings, "EDAD_MINIMA_MIEMBRO_OFICIAL", 12)
+
+
 
 # -------------------------------------
 # DASHBOARD
