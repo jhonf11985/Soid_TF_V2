@@ -1,0 +1,261 @@
+{% extends 'core/base_modulo.html' %}
+
+{% block title %}Cumpleaños del mes{% endblock %}
+
+{% block breadcrumb %}
+Miembros / Reportes / Cumpleaños del mes
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h1 class="page-title">Cumpleaños del mes</h1>
+        <p class="page-subtitle">
+            Lista de cumpleaños para el mes de
+            {{ nombre_mes|capfirst }} {{ anio }}.
+        </p>
+    </div>
+</section>
+
+<section class="page-section">
+
+    <!-- Filtros -->
+    <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
+
+        <!-- Mes -->
+        <div class="form-field">
+            <label for="id_mes">Mes</label>
+            <select id="id_mes" name="mes">
+                <option value="1"  {% if mes == 1 %}selected{% endif %}>Enero</option>
+                <option value="2"  {% if mes == 2 %}selected{% endif %}>Febrero</option>
+                <option value="3"  {% if mes == 3 %}selected{% endif %}>Marzo</option>
+                <option value="4"  {% if mes == 4 %}selected{% endif %}>Abril</option>
+                <option value="5"  {% if mes == 5 %}selected{% endif %}>Mayo</option>
+                <option value="6"  {% if mes == 6 %}selected{% endif %}>Junio</option>
+                <option value="7"  {% if mes == 7 %}selected{% endif %}>Julio</option>
+                <option value="8"  {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                <option value="9"  {% if mes == 9 %}selected{% endif %}>Septiembre</option>
+                <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre</option>
+                <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre</option>
+                <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre</option>
+            </select>
+        </div>
+
+        <!-- Checkboxes compactos -->
+        <div class="form-field form-field-full">
+            <div style="display:flex; flex-wrap:wrap; gap:12px;">
+
+                <!-- Solo activos -->
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                    <input type="hidden" name="solo_activos" value="0">
+                    <input
+                        type="checkbox"
+                        name="solo_activos"
+                        value="1"
+                        {% if solo_activos %}checked{% endif %}
+                    >
+                    Solo miembros activos
+                </label>
+
+                <!-- Solo oficiales -->
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                    <input type="hidden" name="solo_oficiales" value="0">
+                    <input
+                        type="checkbox"
+                        name="solo_oficiales"
+                        value="1"
+                        {% if solo_oficiales %}checked{% endif %}
+                    >
+                    Solo oficiales (≥ {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años)
+                </label>
+
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
+            <button type="submit" class="btn-secondary">
+                <span class="material-icons" style="font-size:16px;">search</span>
+                Aplicar filtros
+            </button>
+            <button type="button" class="btn-secondary" onclick="window.print()">
+                <span class="material-icons" style="font-size:16px;">print</span>
+                Imprimir
+            </button>
+        </div>
+
+        <!-- Resumen -->
+        <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
+            {% if miembros %}
+                {{ miembros|length }} cumpleaños encontrados para {{ nombre_mes|capfirst }}.
+            {% else %}
+                No hay cumpleaños registrados para {{ nombre_mes|capfirst }}.
+            {% endif %}
+        </div>
+
+    </form>
+
+    <!-- Tabla -->
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Miembro</th>
+                    <th>Cumpleaños</th>
+                    <th>Edad actual</th>
+                    <th>Cumple</th>
+                    <th>Contacto</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% if miembros %}
+                {% for m in miembros %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+
+                    <!-- Miembro -->
+                    <td>
+                        <div style="font-weight:600; font-size:13px;">
+                            <a href="{% url 'miembros_app:detalle' m.pk %}">
+                                {{ m.nombres }} {{ m.apellidos }}
+                            </a>
+                        </div>
+                        <div style="font-size:11px; color:#6b7280;">
+                            {{ m.profesion|default:"Sin profesión registrada" }}
+                        </div>
+                    </td>
+
+                    <!-- Cumpleaños -->
+                    <td>
+                        {% if m.fecha_nacimiento %}
+                            {{ m.fecha_nacimiento|date:"d/m" }}
+                        {% else %}
+                            <span style="font-size:11px; color:#9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Edad actual -->
+                    <td>
+                        {% if m.calcular_edad %}
+                            {{ m.calcular_edad }} años
+                        {% else %}
+                            <span style="font-size:11px; color:#9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Edad que cumple -->
+                    <td>
+                        {% if m.edad_que_cumple %}
+                            <span style="
+                                display:inline-block;
+                                padding:2px 8px;
+                                border-radius:999px;
+                                background:#ecfdf3;
+                                color:#166534;
+                                font-size:11px;
+                                font-weight:600;
+                            ">
+                                {{ m.edad_que_cumple }} años
+                            </span>
+                        {% else %}
+                            <span style="font-size:11px; color:#9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Contacto -->
+                    <td>
+                        {% if m.telefono %}
+                            <div style="font-size:12px;">{{ m.telefono }}</div>
+                        {% endif %}
+                        {% if m.email %}
+                            <div style="font-size:12px;">{{ m.email }}</div>
+                        {% endif %}
+                        {% if not m.telefono and not m.email %}
+                            <span style="font-size:11px; color:#6b7280;">Sin datos</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Estado -->
+                    <td>
+                        {% if not m.activo %}
+                            <div style="
+                                display:inline-block;
+                                padding:2px 6px;
+                                border-radius:999px;
+                                background:#fee2e2;
+                                color:#b91c1c;
+                                font-size:11px;
+                                font-weight:600;">
+                                Inactivo
+                            </div>
+                        {% else %}
+                            {% if m.estado_miembro %}
+                                <div style="font-size:12px; font-weight:600; color:#111827;">
+                                    {{ m.get_estado_miembro_display }}
+                                </div>
+                            {% else %}
+                                <div style="font-size:11px; color:#6b7280;">Sin estado</div>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="7" class="table-empty">
+                        No se encontraron cumpleaños para este mes.
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</section>
+
+<style>
+@media print {
+    .topbar,
+    .main-nav,
+    .footer,
+    .form-actions,
+    .form-grid,
+    .page-header-actions {
+        display: none !important;
+    }
+
+    .layout {
+        margin: 0;
+        max-width: 100%;
+        padding: 0;
+    }
+
+    .page-section {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+    }
+
+    .page-title {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+
+    .page-subtitle {
+        font-size: 11px;
+    }
+
+    .table th,
+    .table td {
+        font-size: 11px;
+        padding: 4px 4px;
+    }
+}
+</style>
+
+{% endblock %}

@@ -9,6 +9,7 @@ from .forms import MiembroForm, MiembroRelacionForm
 from datetime import date
 from django.utils import timezone
 from django.conf import settings
+from django.db.models.functions import ExtractDay
 
 
 # Edad mínima para ser considerado miembro oficial (configurable por settings)
@@ -746,3 +747,208 @@ def miembro_ficha(request, pk):
 
     return render(request, "miembros_app/reportes/miembro_ficha.html", context)
 
+# --------------------------------------------
+# REPORTE: MIEMBROS QUE SE FUERON / TRASLADOS
+# --------------------------------------------
+def reporte_miembros_salida(request):
+    """
+    Reporte de miembros que ya no están activos en Torre Fuerte.
+    Muestra solo los miembros con activo = False, opcionalmente filtrados
+    por fecha de salida y por texto (nombre, correo, teléfono…).
+    """
+
+    query = request.GET.get("q", "").strip()
+    fecha_desde_str = request.GET.get("fecha_desde", "").strip()
+    fecha_hasta_str = request.GET.get("fecha_hasta", "").strip()
+
+    # Base: solo miembros inactivos (se fueron / trasladados / etc.)
+    miembros = Miembro.objects.filter(activo=False)
+
+    # Filtro de búsqueda general
+    if query:
+        miembros = miembros.filter(
+            Q(nombres__icontains=query)
+            | Q(apellidos__icontains=query)
+            | Q(email__icontains=query)
+            | Q(telefono__icontains=query)
+            | Q(telefono_secundario__icontains=query)
+        )
+
+    # Filtros por fecha de salida
+    fecha_desde = None
+    fecha_hasta = None
+
+    if fecha_desde_str:
+        try:
+            fecha_desde = date.fromisoformat(fecha_desde_str)
+        except ValueError:
+            fecha_desde = None
+
+    if fecha_hasta_str:
+        try:
+            fecha_hasta = date.fromisoformat(fecha_hasta_str)
+        except ValueError:
+            fecha_hasta = None
+
+    if fecha_desde:
+        miembros = miembros.filter(fecha_salida__gte=fecha_desde)
+    if fecha_hasta:
+        miembros = miembros.filter(fecha_salida__lte=fecha_hasta)
+
+    # Orden: primero los que salieron más recientemente
+    miembros = miembros.order_by("-fecha_salida", "apellidos", "nombres")
+
+    context = {
+        "miembros": miembros,
+        "query": query,
+        "fecha_desde": fecha_desde_str,
+        "fecha_hasta": fecha_hasta_str,
+    }
+    return render(
+        request,
+        "miembros_app/reportes/reporte_miembros_salida.html",
+        context,
+    )
+# -------------------------------------
+# REPORTE: RELACIONES FAMILIARES
+# -------------------------------------
+def reporte_relaciones_familiares(request):
+    """
+    Reporte de relaciones familiares entre miembros.
+    Muestra quién está relacionado con quién (cónyuges, hijos, etc.).
+    """
+
+    query = request.GET.get("q", "").strip()
+    solo_miembros = request.GET.get("solo_miembros", "") == "1"
+
+    # Traemos todas las relaciones, incluyendo los datos del miembro y del familiar
+    relaciones = (
+        MiembroRelacion.objects
+        .select_related("miembro", "familiar")
+        .all()
+    )
+
+    # Búsqueda por nombres / apellidos de miembro o familiar
+    if query:
+        relaciones = relaciones.filter(
+            Q(miembro__nombres__icontains=query)
+            | Q(miembro__apellidos__icontains=query)
+            | Q(familiar__nombres__icontains=query)
+            | Q(familiar__apellidos__icontains=query)
+        )
+
+    # Opcional: solo relaciones donde el familiar también es miembro registrado
+    if solo_miembros:
+        relaciones = relaciones.filter(familiar__isnull=False)
+
+    # Orden: por miembro y tipo de relación
+    relaciones = relaciones.order_by(
+        "miembro__apellidos",
+        "miembro__nombres",
+        "tipo_relacion",
+    )
+
+    context = {
+        "relaciones": relaciones,
+        "query": query,
+        "solo_miembros": solo_miembros,
+    }
+    return render(
+        request,
+        "miembros_app/reportes/reporte_relaciones_familiares.html",
+        context,
+    )
+# -------------------------------------
+# REPORTE: CUMPLEAÑOS DEL MES
+# -------------------------------------
+# -------------------------------------
+# REPORTE: CUMPLEAÑOS DEL MES
+# -------------------------------------
+def reporte_cumple_mes(request):
+    """
+    Reporte imprimible de los cumpleaños de un mes.
+    - Por defecto muestra el mes actual.
+    - Filtros:
+        * solo_activos: solo miembros activos en Torre Fuerte.
+        * solo_oficiales: solo mayores de EDAD_MINIMA_MIEMBRO_OFICIAL.
+    """
+
+    hoy = timezone.localdate()
+
+    # --- Mes seleccionado ---
+    mes_str = request.GET.get("mes", "").strip()
+    if mes_str.isdigit():
+        mes = int(mes_str)
+        if mes < 1 or mes > 12:
+            mes = hoy.month
+    else:
+        mes = hoy.month
+
+    # Año solo para mostrar en el título (no afecta el filtro)
+    anio = hoy.year
+
+    # Flags de filtros (por defecto: solo_activos=ON, solo_oficiales=OFF)
+    solo_activos = request.GET.get("solo_activos", "1") == "1"
+    solo_oficiales = request.GET.get("solo_oficiales", "0") == "1"
+
+    # Nombres de meses
+    MESES_ES = {
+        1: "enero",
+        2: "febrero",
+        3: "marzo",
+        4: "abril",
+        5: "mayo",
+        6: "junio",
+        7: "julio",
+        8: "agosto",
+        9: "septiembre",
+        10: "octubre",
+        11: "noviembre",
+        12: "diciembre",
+    }
+    nombre_mes = MESES_ES.get(mes, "")
+
+    # Base: miembros con fecha de nacimiento en ese mes
+    miembros = Miembro.objects.filter(
+        fecha_nacimiento__isnull=False,
+        fecha_nacimiento__month=mes,
+    )
+
+    # Solo activos (siguen en la iglesia)
+    if solo_activos:
+        miembros = miembros.filter(activo=True)
+
+    # Solo oficiales (>= EDAD_MINIMA_MIEMBRO_OFICIAL)
+    if solo_oficiales:
+        cutoff = hoy - timedelta(days=EDAD_MINIMA_MIEMBRO_OFICIAL * 365)
+        miembros = miembros.filter(fecha_nacimiento__lte=cutoff)
+
+    # Añadimos el día del mes y ordenamos
+    miembros = (
+        miembros
+        .annotate(dia=ExtractDay("fecha_nacimiento"))
+        .order_by("dia", "apellidos", "nombres")
+    )
+
+    # Calculamos cuántos años cumplen (edad_que_cumple)
+    for m in miembros:
+        if m.fecha_nacimiento:
+            edad_actual = m.calcular_edad()
+            if edad_actual is not None:
+                m.edad_que_cumple = edad_actual + 1
+            else:
+                m.edad_que_cumple = None
+        else:
+            m.edad_que_cumple = None
+
+    context = {
+        "miembros": miembros,
+        "mes": mes,
+        "anio": anio,
+        "nombre_mes": nombre_mes,
+        "solo_activos": solo_activos,
+        "solo_oficiales": solo_oficiales,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
+    }
+
+    return render(request, "miembros_app/reportes/cumple_mes.html", context)

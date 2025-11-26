@@ -1,0 +1,206 @@
+{% extends 'core/base_modulo.html' %}
+
+{% block title %}Relaciones familiares{% endblock %}
+
+{% block breadcrumb %}
+Miembros / Reportes / Relaciones familiares
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h1 class="page-title">Relaciones familiares</h1>
+        <p class="page-subtitle">
+            Vista de las familias y vínculos (cónyuges, hijos, etc.) registrados entre los miembros.
+        </p>
+    </div>
+</section>
+
+<section class="page-section">
+
+    <!-- Filtros -->
+    <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
+
+        <!-- Buscar -->
+        <div class="form-field form-field-full">
+            <label for="id_q">Buscar</label>
+            <input
+                id="id_q"
+                type="text"
+                name="q"
+                placeholder="Nombre o apellido del miembro o del familiar…"
+                value="{{ query }}"
+            >
+        </div>
+
+        <!-- Check solo relaciones entre miembros -->
+        <div class="form-field form-field-full" style="font-size:12px;">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input
+                    type="checkbox"
+                    name="solo_miembros"
+                    value="1"
+                    {% if solo_miembros %}checked{% endif %}
+                >
+                Mostrar solo relaciones donde el familiar también es miembro registrado
+            </label>
+        </div>
+
+        <!-- Botones -->
+        <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
+            <button type="submit" class="btn-secondary">
+                <span class="material-icons" style="font-size:16px;">search</span>
+                Aplicar filtros
+            </button>
+            <button type="button" class="btn-secondary" onclick="window.print()">
+                <span class="material-icons" style="font-size:16px;">print</span>
+                Imprimir
+            </button>
+        </div>
+
+        <!-- Resumen -->
+        <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
+            {% if relaciones %}
+                {{ relaciones|length }} relación{{ relaciones|length|pluralize:"es" }} encontrada{{ relaciones|length|pluralize:"s" }}.
+            {% else %}
+                No se encontraron relaciones con los filtros seleccionados.
+            {% endif %}
+        </div>
+    </form>
+
+    <!-- Tabla -->
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Miembro</th>
+                    <th>Relación</th>
+                    <th>Familiar</th>
+                    <th>Responsable</th>
+                    <th class="col-center no-print">Ver</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% if relaciones %}
+                {% for rel in relaciones %}
+                <tr>
+                    <!-- # -->
+                    <td>{{ forloop.counter }}</td>
+
+                    <!-- Miembro principal -->
+                    <td>
+                        <div style="font-weight:600; font-size:13px;">
+                            <a href="{% url 'miembros_app:detalle' rel.miembro.pk %}">
+                                {{ rel.miembro.nombres }} {{ rel.miembro.apellidos }}
+                            </a>
+                        </div>
+                        <div style="font-size:11px; color:#6b7280;">
+                            {{ rel.miembro.profesion|default:"Sin profesión registrada" }}
+                        </div>
+                    </td>
+
+                    <!-- Tipo de relación -->
+                    <td>
+                        {% if rel.tipo_relacion %}
+                            {{ rel.get_tipo_relacion_display }}
+                        {% else %}
+                            <span style="font-size:11px; color:#9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Familiar -->
+                    <td>
+                        {% if rel.familiar %}
+                            <div style="font-weight:500; font-size:13px;">
+                                <a href="{% url 'miembros_app:detalle' rel.familiar.pk %}">
+                                    {{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}
+                                </a>
+                            </div>
+                            <div style="font-size:11px; color:#6b7280;">
+                                {{ rel.familiar.profesion|default:"Sin profesión registrada" }}
+                            </div>
+                        {% elif rel.nombre_familiar %}
+                            <div style="font-size:13px;">
+                                {{ rel.nombre_familiar }}
+                            </div>
+                        {% else %}
+                            <span style="font-size:11px; color:#9ca3af;">No registrado como miembro</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Responsable principal -->
+                    <td>
+                        {% if rel.responsable_principal %}
+                            <span class="pill pill-success">Responsable principal</span>
+                        {% else %}
+                            <span class="pill pill-muted">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Ver ficha -->
+                    <td class="col-center no-print">
+                        <a href="{% url 'miembros_app:detalle' rel.miembro.pk %}"
+                           class="btn-secondary"
+                           style="padding:4px; min-width:auto;">
+                            <span class="material-icons" style="font-size:18px;">visibility</span>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="table-empty">
+                        No se encontraron relaciones familiares con los filtros seleccionados.
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</section>
+
+<style>
+@media print {
+    .topbar,
+    .main-nav,
+    .footer,
+    .form-actions,
+    .page-header-actions,
+    .no-print {
+        display: none !important;
+    }
+
+    .layout {
+        margin: 0;
+        max-width: 100%;
+        padding: 0;
+    }
+
+    .page-section {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+    }
+
+    .page-title {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+
+    .page-subtitle {
+        font-size: 11px;
+    }
+
+    .table th,
+    .table td {
+        font-size: 11px;
+        padding: 4px 4px;
+    }
+}
+</style>
+
+{% endblock %}

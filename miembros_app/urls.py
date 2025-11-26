@@ -25,4 +25,20 @@ urlpatterns = [
         views.eliminar_familiar,
         name="eliminar_familiar",
     ),
+    path(
+    "reportes/salidas/",
+    views.reporte_miembros_salida,
+    name="reporte_miembros_salida",
+    ),
+    path(
+    "reportes/relaciones-familiares/",
+    views.reporte_relaciones_familiares,
+    name="reporte_relaciones_familiares",
+        ),
+    path(
+    "reportes/cumple-mes/",
+    views.reporte_cumple_mes,
+    name="reporte_cumple_mes",
+),
+
 ]
