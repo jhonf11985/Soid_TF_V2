@@ -3,8 +3,9 @@ from django.conf import settings
 from django import forms
 from .models import Miembro, MiembroRelacion
 
- EDAD_MIN_BAUTISMO_POR_DEFECTO = getattr(settings, "EDAD_MINIMA_MIEMBRO_OFICIAL", 12)
+    
 
+EDAD_MIN_BAUTISMO_POR_DEFECTO = getattr(settings, "EDAD_MINIMA_MIEMBRO_OFICIAL", 12)    
 
 class MiembroForm(forms.ModelForm):
     # ==========================
