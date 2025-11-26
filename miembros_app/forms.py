@@ -1,11 +1,9 @@
 from datetime import date
-
+from django.conf import settings
 from django import forms
 from .models import Miembro, MiembroRelacion
 
-# Edad mínima para considerar a alguien bautizable como miembro oficial.
-# Más adelante esto se puede leer desde parámetros configurables.
-EDAD_MIN_BAUTISMO_POR_DEFECTO = 12
+ EDAD_MIN_BAUTISMO_POR_DEFECTO = getattr(settings, "EDAD_MINIMA_MIEMBRO_OFICIAL", 12)
 
 
 class MiembroForm(forms.ModelForm):

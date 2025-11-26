@@ -1,6 +1,9 @@
 from datetime import date
 from django.db import models
+from django.conf import settings  
 
+# Edad mínima para miembro oficial / bautismo confirmando (configurable por settings)
+EDAD_MINIMA_MIEMBRO_OFICIAL = getattr(settings, "EDAD_MINIMA_MIEMBRO_OFICIAL", 12)
 
 GENERO_CHOICES = [
     ("masculino", "Masculino"),

@@ -114,6 +114,9 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Edad mínima para considerar a alguien miembro oficial / bautizable.
+# Más adelante esto será configurable por iglesia.
+EDAD_MINIMA_MIEMBRO_OFICIAL = 12
 
 # Static files (CSS, JavaScript, Images)
 # =====================================

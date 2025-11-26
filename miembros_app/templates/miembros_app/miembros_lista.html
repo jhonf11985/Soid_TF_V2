@@ -26,10 +26,12 @@ Miembros / Lista
 
 <section class="page-section">
 
-    <!-- Barra de búsqueda y resumen -->
+    <!-- Barra de búsqueda, filtros y resumen -->
     <div class="form-grid" style="margin-bottom: 16px; align-items: center;">
         <div class="form-field form-field-full">
-            <form method="get" style="display:flex; gap:8px; flex-wrap:wrap;">
+            <form method="get" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+
+                <!-- Buscador -->
                 <input
                     type="text"
                     name="q"
@@ -37,16 +39,70 @@ Miembros / Lista
                     value="{{ query }}"
                     style="flex:1; min-width:230px;"
                 >
+
                 <button type="submit" class="btn-secondary">
                     <span class="material-icons" style="font-size:16px;">search</span>
                     Buscar
                 </button>
 
+                <!-- Filtros compactos -->
+                <div style="display:flex; flex-wrap:wrap; gap:8px; width:100%; margin-top:6px;">
+
+                    <!-- Estado -->
+                    <div style="flex:1; min-width:140px;">
+                        <label for="id_estado" style="font-size:11px; color:#6b7280;">Estado</label>
+                        <select id="id_estado" name="estado" style="width:100%; font-size:12px;">
+                            <option value="">Todos</option>
+                            {% for value, label in estados_choices %}
+                                <option value="{{ value }}" {% if value == estado %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Género -->
+                    <div style="flex:1; min-width:120px;">
+                        <label for="id_genero" style="font-size:11px; color:#6b7280;">Género</label>
+                        <select id="id_genero" name="genero" style="width:100%; font-size:12px;">
+                            <option value="">Todos</option>
+                            {% for value, label in generos_choices %}
+                                <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Categoría de edad -->
+                    <div style="flex:1; min-width:150px;">
+                        <label for="id_categoria_edad" style="font-size:11px; color:#6b7280;">Categoría</label>
+                        <select id="id_categoria_edad" name="categoria_edad" style="width:100%; font-size:12px;">
+                            <option value="">Todas</option>
+                            {% for value, label in categorias_choices %}
+                                <option value="{{ value }}" {% if value == categoria_edad_filtro %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Bautismo -->
+                    <div style="flex:1; min-width:150px;">
+                        <label for="id_bautizado" style="font-size:11px; color:#6b7280;">Bautismo</label>
+                        <select id="id_bautizado" name="bautizado" style="width:100%; font-size:12px;">
+                            <option value="">Todos</option>
+                            <option value="1" {% if bautizado == "1" %}selected{% endif %}>Solo bautizados</option>
+                            <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Checkbox Mostrar todos -->
                 <label
                     style="
                         width:100%;
-                        margin-top:4px;
+                        margin-top:6px;
                         font-size:12px;
                         color:#4b5563;
                         display:flex;
@@ -60,7 +116,7 @@ Miembros / Lista
                         value="1"
                         {% if mostrar_todos %}checked{% endif %}
                     >
-                    Mostrar todos (incluye inactivos,niños)
+                    Mostrar todos (incluye inactivos y niños)
                 </label>
             </form>
         </div>
@@ -114,6 +170,20 @@ Miembros / Lista
                                 <div class="member-subtext">
                                     {{ m.profesion|default:"Sin profesión registrada" }}
                                 </div>
+
+                                <!-- Edad + Categoría -->
+                                <div class="member-subtext">
+                                    {% if m.calcular_edad %}
+                                        {{ m.calcular_edad }} años
+                                        {% if m.categoria_edad %}
+                                            · {{ m.get_categoria_edad_display }}
+                                        {% endif %}
+                                    {% else %}
+                                        {% if m.categoria_edad %}
+                                            {{ m.get_categoria_edad_display }}
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </td>
@@ -135,43 +205,36 @@ Miembros / Lista
                         {% endif %}
                     </td>
 
-                    <!-- Columna Estado / Etapa de vida -->
+                    <!-- Columna Estado / salida -->
                     <td>
-                    {% if not m.activo %}
-                        <!-- Miembro inactivo (salida registrada) -->
-                        <span class="pill pill-muted" style="background:#fee2e2; color:#b91c1c; margin-bottom:2px; display:inline-block;">
-                            Inactivo
-                        </span>
+                        {% if not m.activo %}
+                            <!-- Miembro inactivo (salida registrada) -->
+                            <span class="pill pill-muted" style="background:#fee2e2; color:#b91c1c; margin-bottom:2px; display:inline-block;">
+                                Inactivo
+                            </span>
 
-                        {% if m.razon_salida %}
-                            <div class="member-subtext">
-                                {{ m.razon_salida }}
-                            </div>
-                        {% endif %}
+                            {% if m.razon_salida %}
+                                <div class="member-subtext">
+                                    {{ m.razon_salida }}
+                                </div>
+                            {% endif %}
 
-                        {% if m.fecha_salida %}
-                            <div class="member-subtext">
-                                Salida: {{ m.fecha_salida|date:"d/m/Y" }}
-                            </div>
-                        {% endif %}
-                    {% else %}
-                        <!-- Miembro activo en la iglesia -->
-                        {% if m.estado_miembro %}
-                            <div class="member-subtext" style="font-weight:600; color:#111827;">
-                                {{ m.get_estado_miembro_display }}
-                            </div>
+                            {% if m.fecha_salida %}
+                                <div class="member-subtext">
+                                    Salida: {{ m.fecha_salida|date:"d/m/Y" }}
+                                </div>
+                            {% endif %}
                         {% else %}
-                            <div class="member-subtext">Sin estado</div>
+                            <!-- Miembro activo en la iglesia -->
+                            {% if m.estado_miembro %}
+                                <div class="member-subtext" style="font-weight:600; color:#111827;">
+                                    {{ m.get_estado_miembro_display }}
+                                </div>
+                            {% else %}
+                                <div class="member-subtext">Sin estado</div>
+                            {% endif %}
                         {% endif %}
-                    {% endif %}
-
-                    {% if m.categoria_edad %}
-                        <div class="member-subtext">
-                            {{ m.get_categoria_edad_display }}
-                        </div>
-                    {% endif %}
-                </td>
-
+                    </td>
 
                     <!-- Columna Bautismo -->
                     <td class="col-center">

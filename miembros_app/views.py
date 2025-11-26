@@ -8,19 +8,17 @@ from .models import Miembro, MiembroRelacion
 from .forms import MiembroForm, MiembroRelacionForm
 from datetime import date
 from django.utils import timezone
+from django.conf import settings
 
 
-
+# Edad mínima para ser considerado miembro oficial (configurable por settings)
+EDAD_MINIMA_MIEMBRO_OFICIAL = getattr(settings, "EDAD_MINIMA_MIEMBRO_OFICIAL", 12)
 
 # -------------------------------------
 # DASHBOARD
 # -------------------------------------
 # -------------------------------------
-# DASHBOARD DE MIEMBROS
-# -------------------------------------
-# -------------------------------------
-# DASHBOARD DE MIEMBROS
-# -------------------------------------
+
 def miembros_dashboard(request):
     miembros = Miembro.objects.all()
 
@@ -38,7 +36,7 @@ def miembros_dashboard(request):
 
     # -----------------------------
     # Conteo de miembros oficiales
-    # (solo >= 12 años)
+    # (solo >= EDAD_MINIMA_MIEMBRO_OFICIAL)
     # -----------------------------
     activos = 0
     pasivos = 0
@@ -47,7 +45,7 @@ def miembros_dashboard(request):
 
     for m in miembros:
         edad = calcular_edad(m.fecha_nacimiento)
-        if edad is None or edad < 12:
+        if edad is None or edad < EDAD_MINIMA_MIEMBRO_OFICIAL:
             # No se considera miembro oficial
             continue
 
@@ -140,7 +138,10 @@ def miembros_dashboard(request):
 
     context = {
         "titulo_pagina": "Miembros",
-        "descripcion_pagina": "Resumen de la membresía oficial (mayores de 12 años) y distribución general.",
+        "descripcion_pagina": (
+            f"Resumen de la membresía oficial "
+            f"(mayores de {EDAD_MINIMA_MIEMBRO_OFICIAL} años) y distribución general."
+        ),
         # Tarjetas oficiales
         "total_oficiales": total_oficiales,
         "activos": activos,
@@ -156,6 +157,8 @@ def miembros_dashboard(request):
         "distribucion_etapa_vida": distribucion_etapa_vida,
         "proximos_cumpleanos": proximos_cumpleanos,
         "miembros_recientes": miembros_recientes,
+        # Parámetro global para la vista
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
     }
     return render(request, "miembros_app/miembros_dashboard.html", context)
 
@@ -163,10 +166,6 @@ def miembros_dashboard(request):
 # -------------------------------------
 # FUNCIÓN AUXILIAR DE FILTRO DE MIEMBROS
 # -------------------------------------
-# -------------------------------------
-# FUNCIÓN AUXILIAR DE FILTRO DE MIEMBROS
-# -------------------------------------
-
 def filtrar_miembros(request):
     """
     Aplica filtros comunes a las vistas de lista y reportes,
@@ -175,14 +174,12 @@ def filtrar_miembros(request):
     Reglas:
 
     - Por defecto (sin 'mostrar_todos' y sin 'estado'):
-        * activo = True
-        * estado_miembro en ('activo', 'pasivo')
-        * edad >= 12 años (no niños)
+        * activo = True  (siguen perteneciendo a la iglesia)
+        * edad >= 12 años (los niños se manejan aparte)
 
     - Si se marca 'mostrar_todos':
         * NO se filtra por campo activo (aparecen también los que se fueron)
-        * Si NO hay estado elegido -> se muestran TODOS los estados
-          (activo, pasivo, catecúmeno, descarriado, observación, etc.)
+        * El estado_miembro NO se limita; se respetan todos los estados.
 
     - 'incluir_ninos' solo se aplica cuando NO se ha elegido un estado.
 
@@ -229,6 +226,7 @@ def filtrar_miembros(request):
     if not mostrar_todos:
         # Vista por defecto: solo miembros que siguen activos en Torre Fuerte
         miembros_base = miembros_base.filter(activo=True)
+    # Si mostrar_todos = True, no filtramos por 'activo' y se verán también los inactivos.
 
     # -------------------------
     # FILTROS GENERALES (SE APLICAN A TODO: ADULTOS Y NIÑOS)
@@ -274,6 +272,9 @@ def filtrar_miembros(request):
     # Categorías que consideramos "de niños"
     categorias_nino = ("infante", "nino")
 
+    # Preparamos flag
+    mostrar_ninos = False
+
     # -------------------------
     # LÓGICA DE ESTADO Y CATEGORÍA
     # -------------------------
@@ -282,12 +283,14 @@ def filtrar_miembros(request):
         #  - SOLO se muestran mayores de 12 con ese estado
         #  - Nunca se añaden niños
         miembros_oficiales = miembros_oficiales.filter(estado_miembro=estado)
+
         # Si además filtraron por categoría, se aplica solo a oficiales
         if categoria_edad_filtro and categoria_edad_filtro not in categorias_nino:
             miembros_oficiales = miembros_oficiales.filter(
                 categoria_edad=categoria_edad_filtro
             )
-        # Si la categoría es niño/infante + estado, no devolvemos niños
+
+        # Con estado elegido no devolvemos niños
         mostrar_ninos = False
 
     else:
@@ -311,19 +314,12 @@ def filtrar_miembros(request):
                     categoria_edad=categoria_edad_filtro
                 )
 
-            # Ahora aplicamos la lógica de estados según 'mostrar_todos'
-            if mostrar_todos:
-                # Estado vacío + mostrar_todos marcado:
-                # -> mostrar todos los estados posibles (no filtramos estado_miembro)
-                pass
-            else:
-                # Vista normal por defecto: solo ACTIVO y PASIVO
-                miembros_oficiales = miembros_oficiales.filter(
-                    estado_miembro__in=["activo", "pasivo"]
-                )
-
-            # En este caso (sin estado y sin categoría de niños),
-            # SÍ respetamos el checkbox "incluir_ninos"
+            # IMPORTANTE:
+            # Aquí ya NO limitamos a estado_miembro in ["activo", "pasivo"].
+            # De esta forma, en la vista normal se ven todos los estados pastorales
+            # mientras el miembro siga 'activo = True'.
+            # El checkbox 'mostrar_todos' solo controla si también se incluyen
+            # los miembros con activo = False.
             mostrar_ninos = incluir_ninos
 
     # -------------------------
@@ -406,13 +402,19 @@ def filtrar_miembros(request):
 # LISTA DE MIEMBROS
 # -------------------------------------
 def miembro_lista(request):
+    """
+    Lista principal de miembros.
+    Usa exactamente la misma lógica y plantilla
+    que el reporte imprimible de listado general.
+    """
     miembros, filtros_context = filtrar_miembros(request)
 
     context = {
         "miembros": miembros,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
         **filtros_context,
     }
-    return render(request, "miembros_app/miembros_lista.html", context)
+    return render(request, "miembros_app/reportes/listado_miembros.html", context)
 
 
 # -------------------------------------
@@ -428,14 +430,16 @@ def miembro_crear(request):
             # Usamos el propio método del modelo para calcular la edad
             edad = miembro.calcular_edad()
 
-            # Si es menor de 12 años, se guarda SIN estado de miembro
-            if edad is not None and edad < 12:
+            # Si es menor de la edad mínima oficial, se guarda SIN estado de miembro
+            if edad is not None and edad < EDAD_MINIMA_MIEMBRO_OFICIAL:
                 if miembro.estado_miembro:
                     miembro.estado_miembro = ""  # sin estado
                     messages.info(
                         request,
-                        "Este registro es menor de 12 años. "
-                        "Se ha guardado sin estado de miembro, ya que aún no es miembro oficial."
+                        (
+                            f"Este registro es menor de {EDAD_MINIMA_MIEMBRO_OFICIAL} años. "
+                            "Se ha guardado sin estado de miembro, ya que aún no es miembro oficial."
+                        ),
                     )
 
             miembro.save()
@@ -449,8 +453,10 @@ def miembro_crear(request):
         "form": form,
         "modo": "crear",
         "miembro": None,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
     }
     return render(request, "miembros_app/miembro_form.html", context)
+
 
 
 # -------------------------------------
@@ -485,6 +491,7 @@ class MiembroUpdateView(View):
             "modo": "editar",
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,  # para la pestaña Familiares
+            "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
         }
         return render(request, "miembros_app/miembro_form.html", context)
 
@@ -513,7 +520,7 @@ class MiembroUpdateView(View):
         if form.is_valid():
             miembro_editado = form.save(commit=False)
 
-            # Lógica de edad: si es menor de 12 años, se guarda SIN estado de miembro
+            # Lógica de edad: si es menor de la edad mínima oficial, se guarda SIN estado de miembro
             edad = None
             if miembro_editado.fecha_nacimiento:
                 hoy = date.today()
@@ -522,13 +529,15 @@ class MiembroUpdateView(View):
                 if (hoy.month, hoy.day) < (fn.month, fn.day):
                     edad -= 1
 
-            if edad is not None and edad < 12:
+            if edad is not None and edad < EDAD_MINIMA_MIEMBRO_OFICIAL:
                 if miembro_editado.estado_miembro:
                     miembro_editado.estado_miembro = ""  # sin estado
                     messages.info(
                         request,
-                        "Este miembro es menor de 12 años. "
-                        "Se ha guardado sin estado de miembro para no contarlo como miembro oficial."
+                        (
+                            f"Este miembro es menor de {EDAD_MINIMA_MIEMBRO_OFICIAL} años. "
+                            "Se ha guardado sin estado de miembro para no contarlo como miembro oficial."
+                        ),
                     )
 
             miembro_editado.save()
@@ -556,8 +565,10 @@ class MiembroUpdateView(View):
             "modo": "editar",
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,
+            "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
         }
         return render(request, "miembros_app/miembro_form.html", context)
+
 
 # -------------------------------------
 # DETALLE DEL MIEMBRO
@@ -595,6 +606,7 @@ class MiembroDetailView(View):
         context = {
             "miembro": miembro,
             "relaciones_familia": relaciones_familia,
+            "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
         }
         return render(request, "miembros_app/miembros_detalle.html", context)
 # -------------------------------------
@@ -641,6 +653,9 @@ def eliminar_familiar(request, relacion_id):
     return redirect(f"{url}?tab=familiares")
 
 def miembro_ficha(request, pk):
+    """
+    Ficha pastoral imprimible para un miembro concreto.
+    """
     miembro = get_object_or_404(Miembro, pk=pk)
 
     # Traer familiares igual que en el detalle
@@ -666,9 +681,11 @@ def miembro_ficha(request, pk):
     context = {
         "miembro": miembro,
         "relaciones_familia": relaciones_familia,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": EDAD_MINIMA_MIEMBRO_OFICIAL,
     }
 
     return render(request, "miembros_app/reportes/miembro_ficha.html", context)
+
 
 # -------------------------------------
 # REPORTES - PANTALLA PRINCIPAL
@@ -686,13 +703,10 @@ def reportes_miembros(request):
 # REPORTE: LISTADO GENERAL IMPRIMIBLE
 # -------------------------------------
 def reporte_listado_miembros(request):
-    miembros, filtros_context = filtrar_miembros(request)
-
-    context = {
-        "miembros": miembros,
-        **filtros_context,
-    }
-    return render(request, "miembros_app/reportes/listado_miembros.html", context)
+    """
+    Alias del listado principal para usarlo desde la sección de reportes.
+    """
+    return miembro_lista(request)
 
 
 

@@ -175,7 +175,8 @@ Miembros /
                                 <div id="edad_aviso" 
                                 style="display:none; margin-top:6px; padding:10px; border-radius:6px;
                                         background:#fff7ed; color:#c2410c; font-size:13px;">
-                                ⚠️ Este registro corresponde a un menor de 12 años.
+                                ⚠️ ⚠️ Este registro corresponde a un menor de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años.
+
                                 <br>
                                 <strong>Los niños no se incluyen en el listado oficial de miembros.</strong>
                             </div>
@@ -587,19 +588,25 @@ Miembros /
                                     <div class="form-field">
                                         <label for="id_tipo_relacion">Relación <span class="required">*</span></label>
                                         <select name="tipo_relacion" id="id_tipo_relacion" class="input">
-                                            <option value="">Seleccione relación</option>
-                                            <option value="padre">Padre</option>
-                                            <option value="madre">Madre</option>
-                                            <option value="hijo">Hijo</option>
-                                            <option value="hija">Hija</option>
-                                            <option value="hermano">Hermano</option>
-                                            <option value="hermana">Hermana</option>
-                                            <option value="conyuge">Cónyuge</option>
-                                            <option value="abuelo">Abuelo</option>
-                                            <option value="abuela">Abuela</option>
-                                            <option value="tutor">Tutor / Encargado</option>
-                                            <option value="otro">Otro familiar</option>
-                                        </select>
+                                        <option value="">Seleccione relación</option>
+
+                                        <option value="padre">Padre</option>
+                                        <option value="madre">Madre</option>
+
+                                        <!-- Valor 'hijo' (el modelo entiende Hijo/a) -->
+                                        <option value="hijo">Hijo / Hija</option>
+
+                                        <!-- Valor 'hermano' (el modelo entiende Hermano/a) -->
+                                        <option value="hermano">Hermano / Hermana</option>
+
+                                        <option value="conyuge">Cónyuge</option>
+
+                                        <!-- Todo lo demás entra como 'otro' -->
+                                        <option value="otro">Abuelo / Abuela</option>
+                                        <option value="otro">Tutor / Encargado</option>
+                                        <option value="otro">Otro familiar</option>
+                                    </select>
+
                                     </div>
 
                                     <div class="form-field">
@@ -722,6 +729,10 @@ Miembros /
     </div>
 </section>
 <script>
+    const EDAD_MINIMA_MIEMBRO_OFICIAL = {{ EDAD_MINIMA_MIEMBRO_OFICIAL }};
+</script>
+
+<script>
 function openTab(tabName, btn) {
     // Ocultar todas las tabs
     document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
@@ -776,11 +787,12 @@ function obtenerCategoriaEdad(edad) {
     if (edad <= 5)  return "Infante";
     if (edad <= 11) return "Niño";
     if (edad <= 17) return "Adolescente";
-    if (edad <= 29) return "Jóven";
-    if (edad <= 40) return "Jóven adulto";
-    if (edad <= 59) return "Caballero";
-    return "Anciano";
+    if (edad <= 30) return "Joven";
+    if (edad <= 59) return "Adulto";
+    return "Adulto mayor";
 }
+
+
 
 function actualizarEdadYCategoria() {
     const inputFecha       = document.getElementById('id_fecha_nacimiento');
@@ -845,7 +857,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const edad = inputFecha ? calcularEdadDesdeFecha(inputFecha.value) : null;
         const estado = estadoSelect ? estadoSelect.value : "";
-        const EDAD_MIN_BAUTISMO = 12;  // Debe coincidir con el backend por ahora
+        const EDAD_MIN_BAUTISMO = EDAD_MINIMA_MIEMBRO_OFICIAL;
+
 
         // Por defecto dejamos que el usuario pueda marcar/desmarcar
         bautizadoCheckbox.disabled = false;
