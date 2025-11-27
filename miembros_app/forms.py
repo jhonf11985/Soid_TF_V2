@@ -117,6 +117,9 @@ class MiembroForm(forms.ModelForm):
             "estado_civil": "Estado civil",
             "nivel_educativo": "Nivel educativo",
             "profesion": "Profesión",
+            "cedula": "Cédula",              # ✔ CORREGIDO
+             "pasaporte": "Pasaporte", 
+                    
 
             "telefono": "Teléfono",
             "telefono_secundario": "Teléfono secundario",
@@ -193,6 +196,21 @@ class MiembroForm(forms.ModelForm):
             "provincia": forms.TextInput(attrs={"placeholder": "Provincia"}),
             "codigo_postal": forms.TextInput(attrs={"placeholder": "Código postal"}),
 
+            
+            # 👇 AQUÍ EL WIDGET DE CÉDULA
+            "cedula": forms.TextInput(
+                attrs={
+                    "placeholder": "000-0000000-0",
+                    "maxlength": "13",          # 11 dígitos + 2 guiones
+                    "inputmode": "numeric",     # en móvil abre teclado numérico
+                    "autocomplete": "off",
+                }
+            ),
+            "pasaporte": forms.TextInput(
+                attrs={
+                    "placeholder": "Número de pasaporte",
+                }
+            ),
             "contacto_emergencia_nombre": forms.TextInput(attrs={"placeholder": "Nombre completo"}),
             "contacto_emergencia_telefono": forms.TextInput(attrs={"type": "tel", "placeholder": "Teléfono de emergencia"}),
             "contacto_emergencia_relacion": forms.TextInput(attrs={"placeholder": "Ej: Madre, Padre…"}),

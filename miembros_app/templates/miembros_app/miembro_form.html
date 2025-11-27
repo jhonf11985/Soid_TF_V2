@@ -217,6 +217,22 @@ Miembros /
                                 <label for="{{ form.nacionalidad.id_for_label }}">Nacionalidad</label>
                                 {{ form.nacionalidad }}
                             </div>
+                       <!-- 👇 NUEVOS CAMPOS DE IDENTIDAD -->
+                            <div class="form-field">
+                                <label for="{{ form.cedula.id_for_label }}">Cédula</label>
+                                {{ form.cedula }}
+                                <small class="field-help">
+                                    Formato: 000-0000000-0
+                                </small>
+                            </div>
+
+                            <div class="form-field">
+                                <label for="{{ form.pasaporte.id_for_label }}">Pasaporte</label>
+                                {{ form.pasaporte }}
+                                <small class="field-help">
+                                    Solo si aplica.
+                                </small>
+                            </div>
 
                             <div class="form-field">
                                 <label for="{{ form.estado_civil.id_for_label }}">Estado civil</label>
@@ -1385,6 +1401,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </script>
 
+<script>
+// ============================
+// FORMATEO DE CÉDULA DOMINICANA
+// ============================
+document.addEventListener('DOMContentLoaded', function () {
+    const cedulaInput = document.getElementById('id_cedula');
+    if (!cedulaInput) return;
+
+    function formatearCedula(valor) {
+        // 1) Quitar todo lo que no sea dígito
+        let soloDigitos = valor.replace(/\D/g, '');
+
+        // 2) Limitar a 11 dígitos (formato oficial)
+        soloDigitos = soloDigitos.slice(0, 11);
+
+        // 3) Reconstruir con guiones: 000-0000000-0
+        if (soloDigitos.length <= 3) {
+            return soloDigitos;
+        } else if (soloDigitos.length <= 10) {
+            return soloDigitos.slice(0, 3) + '-' + soloDigitos.slice(3);
+        } else {
+            return (
+                soloDigitos.slice(0, 3) +
+                '-' +
+                soloDigitos.slice(3, 10) +
+                '-' +
+                soloDigitos.slice(10)
+            );
+        }
+    }
+
+    // Formatear el valor inicial (por si viene de la BD)
+    if (cedulaInput.value) {
+        cedulaInput.value = formatearCedula(cedulaInput.value);
+    }
+
+    // Re-formatear cada vez que el usuario escribe
+    cedulaInput.addEventListener('input', function () {
+        const valorFormateado = formatearCedula(cedulaInput.value);
+        cedulaInput.value = valorFormateado;
+    });
+});
+</script>
 
 
 

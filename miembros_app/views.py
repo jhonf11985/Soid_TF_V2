@@ -4,7 +4,7 @@ from django.db.models import Q, Count
 from django.contrib import messages
 from django.urls import reverse   # necesario para eliminar_familiar
 from datetime import date, timedelta
-
+from django.contrib.auth.decorators import login_required 
 from django.utils import timezone
 from django.db.models.functions import ExtractDay
 from django.http import HttpResponse
@@ -172,41 +172,33 @@ def miembros_dashboard(request):
 # -------------------------------------
 # FUNCIÓN AUXILIAR DE FILTRO DE MIEMBROS
 # -------------------------------------
-def filtrar_miembros(request):
+
+def filtrar_miembros(request, miembros_base):
     """
-    Aplica filtros comunes a las vistas de lista y reportes,
-    y devuelve (queryset_filtrado, contexto_filtros).
-
-    Reglas:
-
-    - Por defecto (sin 'mostrar_todos' y sin 'estado'):
-        * activo = True  (siguen perteneciendo a la iglesia)
-        * edad >= edad mínima oficial (los niños se manejan aparte)
-
-    - Si se marca 'mostrar_todos':
-        * NO se filtra por campo activo (aparecen también los que se fueron)
-        * El estado_miembro NO se limita; se respetan todos los estados.
-
-    - 'incluir_ninos' solo se aplica cuando NO se ha elegido un estado.
-
-    - El filtro por edad funciona SOLO si se marca 'usar_rango_edad':
-        * Aplica un rango libre (edad_min / edad_max)
-        * Se aplica sobre el resultado final ya filtrado
+    Aplica todos los filtros del listado general de miembros.
+    Devuelve:
+        - miembros (queryset o lista filtrada)
+        - filtros_context (diccionario para la plantilla)
     """
 
+    # -----------------------------
+    # 1. Leer parámetros del GET
+    # -----------------------------
     query = request.GET.get("q", "").strip()
-    mostrar_todos = request.GET.get("mostrar_todos") == "1"
-    incluir_ninos = request.GET.get("incluir_ninos") == "1"
 
-    # Filtros avanzados
     estado = request.GET.get("estado", "").strip()
     categoria_edad_filtro = request.GET.get("categoria_edad", "").strip()
     genero = request.GET.get("genero", "").strip()
-    bautizado = request.GET.get("bautizado", "").strip()  # "1", "0" o ""
-    tiene_contacto = request.GET.get("tiene_contacto") == "1"
 
-    # Filtro de edad controlado por checkbox
-    usar_rango_edad = request.GET.get("usar_rango_edad") == "1"
+    # En el HTML: bautizado = "" / "1" / "0"
+    bautizado = request.GET.get("bautizado", "").strip()
+
+    # Checkboxes (vienen solo si están marcados)
+    tiene_contacto = request.GET.get("tiene_contacto", "") == "1"
+    mostrar_todos = request.GET.get("mostrar_todos", "") == "1"
+    incluir_ninos = request.GET.get("incluir_ninos", "") == "1"
+
+    usar_rango_edad = request.GET.get("usar_rango_edad", "") == "1"
     edad_min_str = request.GET.get("edad_min", "").strip()
     edad_max_str = request.GET.get("edad_max", "").strip()
 
@@ -217,136 +209,96 @@ def filtrar_miembros(request):
             edad_min = int(edad_min_str)
         except ValueError:
             edad_min = None
-
     if edad_max_str:
         try:
             edad_max = int(edad_max_str)
         except ValueError:
             edad_max = None
 
-    miembros_base = Miembro.objects.all()
+    hoy = date.today()
 
-    # -------------------------
-    # FILTRO POR ACTIVO / INACTIVO (CAMPO 'activo')
-    # -------------------------
+    # -----------------------------
+    # 2. Base de miembros
+    # -----------------------------
+    miembros = miembros_base
+
+    # Solo activos por defecto. Si NO marcas "Mostrar todos",
+    # se filtra por activo=True
     if not mostrar_todos:
-        # Vista por defecto: solo miembros que siguen activos en Torre Fuerte
-        miembros_base = miembros_base.filter(activo=True)
-    # Si mostrar_todos = True, no filtramos por 'activo' y se verán también los inactivos.
+        miembros = miembros.filter(activo=True)
 
-    # -------------------------
-    # FILTROS GENERALES (SE APLICAN A TODO: ADULTOS Y NIÑOS)
-    # -------------------------
-    if genero:
-        miembros_base = miembros_base.filter(genero=genero)
-
-    if bautizado == "1":
-        miembros_base = miembros_base.filter(bautizado_confirmado=True)
-    elif bautizado == "0":
-        miembros_base = miembros_base.filter(bautizado_confirmado=False)
-
-    if tiene_contacto:
-        miembros_base = miembros_base.filter(
-            Q(telefono__isnull=False, telefono__gt="")
-            | Q(email__isnull=False, email__gt="")
-        )
-
-    if query:
-        miembros_base = miembros_base.filter(
-            Q(nombres__icontains=query)
-            | Q(apellidos__icontains=query)
-            | Q(email__icontains=query)
-            | Q(telefono__icontains=query)
-            | Q(telefono_secundario__icontains=query)
-        )
-
-    # -------------------------
-    # CÁLCULO EDAD (OFICIALES vs NIÑOS)
-    # -------------------------
-    today = timezone.localdate()
-    edad_minima_oficial = get_edad_minima_miembro_oficial()
-    cutoff_oficial = today - timedelta(days=edad_minima_oficial * 365)
-
-    edad_oficial_q = Q(fecha_nacimiento__lte=cutoff_oficial) | Q(
-        fecha_nacimiento__isnull=True
-    )
-    edad_nino_q = Q(fecha_nacimiento__gt=cutoff_oficial)
-
-    # Partimos de la base ya filtrada (búsqueda, género, contacto, etc.)
-    miembros_oficiales = miembros_base.filter(edad_oficial_q)
-    miembros_ninos = miembros_base.filter(edad_nino_q)
+    # -----------------------------
+    # 3. Exclusión de niños por defecto
+    # (niños = menores de 12 años)
+    # -----------------------------
+    CORTE_NINOS = 12
+    cutoff_ninos = hoy - timedelta(days=CORTE_NINOS * 365)
 
     # Categorías que consideramos "de niños"
     categorias_nino = ("infante", "nino")
 
-    # Preparamos flag
-    mostrar_ninos = False
+    # Si NO marcamos "incluir_ninos" y tampoco estamos filtrando
+    # por una categoría de niños, entonces ocultamos los < 12 años
+    if not incluir_ninos and categoria_edad_filtro not in categorias_nino:
+        miembros = miembros.filter(
+            Q(fecha_nacimiento__lte=cutoff_ninos) | Q(fecha_nacimiento__isnull=True)
+        )
 
-    # -------------------------
-    # LÓGICA DE ESTADO Y CATEGORÍA
-    # -------------------------
+    # -----------------------------
+    # 4. Búsqueda general
+    # -----------------------------
+    if query:
+        miembros = miembros.filter(
+            Q(nombres__icontains=query)
+            | Q(apellidos__icontains=query)
+            | Q(telefono__icontains=query)
+            | Q(email__icontains=query)
+            | Q(cedula__icontains=query)
+        )
+
+    # -----------------------------
+    # 5. Filtros simples
+    # -----------------------------
     if estado:
-        # Si hay estado elegido:
-        #  - SOLO se muestran mayores de edad mínima con ese estado
-        #  - Nunca se añaden niños
-        miembros_oficiales = miembros_oficiales.filter(estado_miembro=estado)
+        miembros = miembros.filter(estado_miembro=estado)
 
-        # Si además filtraron por categoría, se aplica solo a oficiales
-        if categoria_edad_filtro and categoria_edad_filtro not in categorias_nino:
-            miembros_oficiales = miembros_oficiales.filter(
-                categoria_edad=categoria_edad_filtro
-            )
+    if genero:
+        miembros = miembros.filter(genero=genero)
 
-        # Con estado elegido no devolvemos niños
-        mostrar_ninos = False
+    if categoria_edad_filtro:
+        miembros = miembros.filter(categoria_edad=categoria_edad_filtro)
 
-    else:
-        # SIN estado elegido
-        if categoria_edad_filtro in categorias_nino:
-            # Si se pidió explícitamente "Infante" o "Niño" sin estado:
-            #  -> devolver SOLO niños de esa categoría
-            miembros_oficiales = miembros_oficiales.none()
-            miembros_ninos = miembros_ninos.filter(
-                categoria_edad=categoria_edad_filtro
-            )
-            mostrar_ninos = True
-        else:
-            # Categoría NO es de niños (o no se eligió categoría)
-            if categoria_edad_filtro:
-                # Filtramos por categoría (adolescente, joven, adulto, adulto_mayor...)
-                miembros_oficiales = miembros_oficiales.filter(
-                    categoria_edad=categoria_edad_filtro
-                )
-                miembros_ninos = miembros_ninos.filter(
-                    categoria_edad=categoria_edad_filtro
-                )
+    # Bautismo: en el HTML usas 1/0
+    if bautizado == "1":
+        # Solo bautizados
+        miembros = miembros.filter(bautizado_confirmado=True)
+    elif bautizado == "0":
+        # No bautizados (o sin dato)
+        miembros = miembros.filter(
+            Q(bautizado_confirmado=False) | Q(bautizado_confirmado__isnull=True)
+        )
 
-            # IMPORTANTE:
-            # Aquí ya NO limitamos a estado_miembro in ["activo", "pasivo"].
-            # De esta forma, en la vista normal se ven todos los estados pastorales
-            # mientras el miembro siga 'activo = True'.
-            # El checkbox 'mostrar_todos' solo controla si también se incluyen
-            # los miembros con activo = False.
-            mostrar_ninos = incluir_ninos
+    # Solo con contacto
+    if tiene_contacto:
+        miembros = miembros.filter(
+            Q(telefono__isnull=False, telefono__gt="")
+            | Q(telefono_secundario__isnull=False, telefono_secundario__gt="")
+            | Q(email__isnull=False, email__gt="")
+        )
 
-    # -------------------------
-    # COMBINACIÓN FINAL (ADULTOS + NIÑOS)
-    # -------------------------
-    if mostrar_ninos:
-        miembros = miembros_oficiales | miembros_ninos
-    else:
-        miembros = miembros_oficiales
-
+    # Orden base
     miembros = miembros.order_by("nombres", "apellidos")
 
-    # -------------------------
-    # FILTRO POR RANGO DE EDAD (SOLO SI EL CHECK ESTÁ ACTIVADO)
-    # -------------------------
+    # -----------------------------
+    # 6. Filtro por rango de edad
+    # (solo si el check está marcado)
+    # -----------------------------
     if usar_rango_edad and (edad_min is not None or edad_max is not None):
         miembros_filtrados = []
+
         for m in miembros:
-            # Si no tiene fecha de nacimiento, no se puede filtrar por edad
             if not m.fecha_nacimiento:
+                # Si no tiene fecha de nacimiento, no se puede filtrar por edad
                 continue
 
             # Usamos el método del modelo si existe
@@ -354,7 +306,6 @@ def filtrar_miembros(request):
                 edad = m.calcular_edad()
             else:
                 fn = m.fecha_nacimiento
-                hoy = date.today()
                 edad = hoy.year - fn.year
                 if (hoy.month, hoy.day) < (fn.month, fn.day):
                     edad -= 1
@@ -369,11 +320,12 @@ def filtrar_miembros(request):
 
             miembros_filtrados.append(m)
 
+        # Ahora miembros es una lista, no un queryset
         miembros = miembros_filtrados
 
-    # -------------------------
-    # CHOICES PARA LOS SELECTS
-    # -------------------------
+    # -----------------------------
+    # 7. Choices para los selects
+    # -----------------------------
     campo_estado = Miembro._meta.get_field("estado_miembro")
     estados_choices = list(campo_estado.flatchoices)
 
@@ -386,6 +338,9 @@ def filtrar_miembros(request):
     except Exception:
         generos_choices = []
 
+    # -----------------------------
+    # 8. Contexto de filtros
+    # -----------------------------
     filtros_context = {
         "query": query,
         "mostrar_todos": mostrar_todos,
@@ -409,21 +364,31 @@ def filtrar_miembros(request):
 # -------------------------------------
 # LISTA DE MIEMBROS
 # -------------------------------------
+
 def miembro_lista(request):
     """
-    Lista principal de miembros.
-    Usa exactamente la misma lógica y plantilla
-    que el reporte imprimible de listado general.
+    Listado general de miembros (versión normal y versión imprimible).
+    Usa la función filtrar_miembros para aplicar todos los filtros.
     """
-    miembros, filtros_context = filtrar_miembros(request)
+    miembros_base = Miembro.objects.all()
+
+    miembros, filtros_context = filtrar_miembros(request, miembros_base)
+
+    # Edad mínima oficial para mostrar en el texto de la plantilla
     edad_minima = get_edad_minima_miembro_oficial()
 
     context = {
         "miembros": miembros,
         "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
-        **filtros_context,
     }
-    return render(request, "miembros_app/reportes/listado_miembros.html", context)
+    # Mezclamos con todos los filtros (para que el formulario recuerde el estado)
+    context.update(filtros_context)
+
+    return render(
+        request,
+        "miembros_app/reportes/listado_miembros.html",
+        context,
+    )
 
 
 # -------------------------------------

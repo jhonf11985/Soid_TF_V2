@@ -1,6 +1,8 @@
 from datetime import date
 from django.db import models
 from core.utils_config import get_edad_minima_miembro_oficial
+from django.core.validators import RegexValidator
+
 
 
 
@@ -79,6 +81,27 @@ class Miembro(models.Model):
     estado_civil = models.CharField(max_length=20, blank=True)
     nivel_educativo = models.CharField(max_length=50, blank=True)
     profesion = models.CharField(max_length=100, blank=True)
+    
+        # --- Identificación personal ---
+    cedula_validator = RegexValidator(
+        regex=r"^\d{3}-\d{7}-\d$",
+        message="La cédula debe tener el formato 000-0000000-0",
+    )
+
+    cedula = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        validators=[cedula_validator],
+        help_text="Formato: 000-0000000-0",
+    )
+
+    pasaporte = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="Número de pasaporte del miembro.",
+    )
 
     # --- Información de contacto ---
     telefono = models.CharField(max_length=20, blank=True)
