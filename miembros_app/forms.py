@@ -45,7 +45,6 @@ class MiembroForm(forms.ModelForm):
         ("pasivo", "Pasivo"),
         ("observacion", "En observación"),
         ("disciplina", "En disciplina"),
-        ("descarriado", "Descarriado"),
         ("catecumeno", "Catecúmeno"),
     ]
 
