@@ -1219,7 +1219,6 @@ def carta_salida_miembro(request, pk):
             status=500,
         )
 from django.utils import timezone  # ya lo tienes arriba
-
 def nuevo_creyente_crear(request):
     """
     Registro rápido de nuevos creyentes.
@@ -1229,18 +1228,7 @@ def nuevo_creyente_crear(request):
     if request.method == "POST":
         form = NuevoCreyenteForm(request.POST)
         if form.is_valid():
-            # No guardamos directamente, ajustamos algunos campos
-            miembro = form.save(commit=False)
-
-            # Aseguramos que se marque como nuevo creyente
-            miembro.nuevo_creyente = True
-
-            # Si no se puso fecha de conversión, la rellenamos automática
-            if not getattr(miembro, "fecha_conversion", None):
-                miembro.fecha_conversion = timezone.localdate()
-
-            miembro.save()
-
+            miembro = form.save()
             messages.success(
                 request,
                 f"Nuevo creyente registrado correctamente: {miembro.nombres} {miembro.apellidos}.",
@@ -1251,6 +1239,7 @@ def nuevo_creyente_crear(request):
 
     context = {
         "form": form,
+        "modo": "crear",  # 👈 importante para el template
     }
     return render(request, "miembros_app/nuevos_creyentes_form.html", context)
 
@@ -1273,10 +1262,9 @@ def nuevo_creyente_lista(request):
             | Q(telefono_secundario__icontains=query)
         )
 
-    # Usamos -id como respaldo por si no existe fecha_creacion
     miembros = miembros.order_by(
         "-fecha_conversion",
-        "-id",
+        "-fecha_creacion",
         "apellidos",
         "nombres",
     )
@@ -1288,3 +1276,29 @@ def nuevo_creyente_lista(request):
 
     return render(request, "miembros_app/nuevos_creyentes_lista.html", context)
 
+
+def nuevo_creyente_editar(request, pk):
+    """
+    Editar un nuevo creyente usando el mismo formulario sencillo.
+    Solo permite editar registros marcados como nuevo_creyente=True.
+    """
+    miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True)
+
+    if request.method == "POST":
+        form = NuevoCreyenteForm(request.POST, instance=miembro)
+        if form.is_valid():
+            miembro = form.save()
+            messages.success(
+                request,
+                f"Datos del nuevo creyente actualizados: {miembro.nombres} {miembro.apellidos}."
+            )
+            return redirect("miembros_app:nuevo_creyente_lista")
+    else:
+        form = NuevoCreyenteForm(instance=miembro)
+
+    context = {
+        "form": form,
+        "modo": "editar",  # 👈 así el template sabe que está en modo edición
+        "miembro": miembro,
+    }
+    return render(request, "miembros_app/nuevos_creyentes_form.html", context)
