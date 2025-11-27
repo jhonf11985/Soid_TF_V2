@@ -1273,22 +1273,55 @@ def nuevo_creyente_crear(request):
     return render(request, "miembros_app/nuevos_creyentes_form.html", context)
 
 
+
 def nuevo_creyente_lista(request):
     """
-    Lista separada de nuevos creyentes (nuevo_creyente=True).
-    No se mezclan con el listado general de miembros.
+    Lista de nuevos creyentes (miembros con nuevo_creyente=True),
+    con filtros por texto, género, rango de fecha de conversión
+    y si tienen o no datos de contacto.
     """
+
     query = request.GET.get("q", "").strip()
+    genero_filtro = request.GET.get("genero", "").strip()
+    fecha_desde = request.GET.get("fecha_desde", "").strip()
+    fecha_hasta = request.GET.get("fecha_hasta", "").strip()
+    solo_contacto = request.GET.get("solo_contacto", "") == "1"
 
     miembros = Miembro.objects.filter(nuevo_creyente=True)
 
+    # Búsqueda por nombre / contacto
     if query:
         miembros = miembros.filter(
             Q(nombres__icontains=query)
             | Q(apellidos__icontains=query)
-            | Q(email__icontains=query)
             | Q(telefono__icontains=query)
             | Q(telefono_secundario__icontains=query)
+            | Q(email__icontains=query)
+        )
+
+    # Filtro por género
+    if genero_filtro:
+        miembros = miembros.filter(genero=genero_filtro)
+
+    # Filtro por rango de fecha de conversión
+    if fecha_desde:
+        try:
+            miembros = miembros.filter(fecha_conversion__gte=fecha_desde)
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            miembros = miembros.filter(fecha_conversion__lte=fecha_hasta)
+        except ValueError:
+            pass
+
+    # Solo los que tienen algún dato de contacto
+    if solo_contacto:
+        miembros = miembros.filter(
+            Q(telefono__isnull=False, telefono__gt="")
+            | Q(telefono_secundario__isnull=False, telefono_secundario__gt="")
+            | Q(email__isnull=False, email__gt="")
         )
 
     miembros = miembros.order_by(
@@ -1298,14 +1331,24 @@ def nuevo_creyente_lista(request):
         "nombres",
     )
 
+    # Para llenar el select de género en la plantilla
+    generos_choices = Miembro._meta.get_field("genero").choices
+
     context = {
         "miembros": miembros,
         "query": query,
+        "genero_filtro": genero_filtro,
+        "generos_choices": generos_choices,
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        "solo_contacto": solo_contacto,
+        "hoy": timezone.localdate(),
     }
-
-    return render(request, "miembros_app/nuevos_creyentes_lista.html", context)
-
-
+    return render(
+        request,
+        "miembros_app/nuevos_creyentes_lista.html",
+        context,
+    )
 def nuevo_creyente_editar(request, pk):
     """
     Editar un nuevo creyente usando el mismo formulario sencillo.
