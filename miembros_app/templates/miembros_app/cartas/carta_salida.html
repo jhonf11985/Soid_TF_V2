@@ -6,75 +6,122 @@
 
     <style>
         body {
-            font-family: "Georgia", "Times New Roman", serif;
-            margin: 60px auto;
-            max-width: 750px;
+            font-family: "Inter", Arial, sans-serif;
+            margin: 40px auto;
+            max-width: 780px;
             line-height: 1.6;
-            color: #333;
+            color: #222;
         }
 
-        h1, h2, h3 {
-            text-align: center;
-            margin: 0;
-            padding: 0;
+        .btn-print {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            background: #4b5563;
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+        }
+
+        @media print {
+            .btn-print {
+                display: none;
+            }
         }
 
         .encabezado {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 35px;
+        }
+
+        .encabezado img {
+            max-height: 80px;
+            margin-bottom: 8px;
         }
 
         .encabezado h2 {
+            margin: 0;
             font-size: 22px;
-            margin-bottom: 5px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
         }
 
         .encabezado p {
-            margin: 0;
-            font-size: 14px;
+            margin: 2px 0;
+            font-size: 13px;
+            color: #555;
         }
 
         .fecha {
             text-align: right;
-            margin-bottom: 40px;
+            margin-bottom: 35px;
             font-size: 14px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 22px;
+            margin-bottom: 28px;
+            font-weight: 700;
         }
 
         .cuerpo {
             text-align: justify;
             font-size: 16px;
-            margin-bottom: 45px;
+            margin-bottom: 50px;
         }
 
         .firma {
-            margin-top: 60px;
+            margin-top: 70px;
             text-align: center;
         }
 
         .firma-linea {
-            width: 250px;
+            width: 260px;
             border-top: 1px solid #000;
             margin: 0 auto 5px auto;
         }
 
         .pastor {
-            font-size: 14px;
+            font-size: 15px;
         }
 
-        /* Vista de impresión */
         @media print {
             body {
-                margin: 20mm;
+                margin: 15mm;
             }
         }
     </style>
 </head>
 <body>
 
+    <!-- BOTÓN IMPRIMIR -->
+    <button class="btn-print" onclick="window.print()">
+        Imprimir
+    </button>
+
     <!-- ENCABEZADO -->
     <div class="encabezado">
-        <h2>{{ iglesia_nombre }}</h2>
-        <p>{{ iglesia_ciudad }}</p>
+        {% if CFG.logo %}
+            <img src="{{ CFG.logo.url }}" alt="Logo {{ CFG.nombre_iglesia }}">
+        {% endif %}
+
+        <h2>{{ CFG.nombre_iglesia|default:"IGLESIA TORRE FUERTE" }}</h2>
+
+        {% if CFG.denominacion %}
+            <p>{{ CFG.denominacion }}</p>
+        {% endif %}
+
+        {% if CFG.lema %}
+            <p><em>“{{ CFG.lema }}”</em></p>
+        {% endif %}
+
+        {% if CFG.direccion %}
+            <p>{{ CFG.direccion }}</p>
+        {% endif %}
     </div>
 
     <!-- FECHA -->
@@ -83,29 +130,25 @@
     </div>
 
     <!-- TITULO -->
-    <h1 style="font-size: 22px; margin-bottom: 35px;">Carta de Traslado / Recomendación</h1>
+    <h1>Carta de Traslado / Recomendación</h1>
 
     <!-- CUERPO -->
     <div class="cuerpo">
         A quien pueda interesar:
-
         <br><br>
 
-        Por medio de la presente certificamos que el(la) hermano(a)
-        <strong>{{ miembro.nombre }} {{ miembro.apellido }}</strong>,
-        miembro de nuestra congregación, ha solicitado su salida por la siguiente razón:
-        <strong>{{ miembro.razon_salida }}</strong>.
-
+        Certificamos que el(la) hermano(a)
+        <strong>{{ miembro.nombres }} {{ miembro.apellidos }}</strong>,
+        quien formó parte de nuestra congregación, ha solicitado su salida por la razón:
+        <strong>{{ miembro.razon_salida.nombre }}</strong>.
         <br><br>
 
-        Confirmamos que durante su tiempo con nosotros mantuvo una conducta adecuada
+        Durante su tiempo con nosotros mostró una buena conducta cristiana
         y participó fielmente en las actividades de la iglesia según sus posibilidades.
-
         <br><br>
 
-        Recomendamos al(la) hermano(a) a la congregación donde decida continuar su vida espiritual,
-        deseando que Dios bendiga su caminar y le guíe siempre en su crecimiento cristiano.
-
+        Recomendamos al(la) hermano(a) a la congregación donde decida continuar su vida espiritual.
+        Oramos para que el Señor guíe sus pasos y fortalezca su fe en esta nueva etapa.
         <br><br>
 
         Sin más que agregar, quedamos a su disposición.
@@ -114,8 +157,9 @@
     <!-- FIRMA -->
     <div class="firma">
         <div class="firma-linea"></div>
-        <div class="pastor">{{ pastor_principal }}</div>
-        <div class="pastor">Pastor Principal</div>
+        <div class="pastor">
+            {{ CFG.pastor_principal|default:"Pastor Principal" }}
+        </div>
     </div>
 
 </body>

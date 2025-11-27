@@ -67,5 +67,11 @@ urlpatterns = [
         views.nuevo_creyente_editar,
         name="nuevo_creyente_editar",
     ),
+    path(
+    "reportes/nuevos-creyentes/",
+    views.reporte_nuevos_creyentes,
+    name="reporte_nuevos_creyentes"
+),
+
 
 ]

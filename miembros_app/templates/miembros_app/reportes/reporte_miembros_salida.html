@@ -8,9 +8,9 @@ Miembros / Reportes / Salidas y traslados
 
 {% block content %}
 
-<section class="page-header">
+<section class="page-header no-print">
     <div>
-        <h1 class="page-title">Miembros que ya no Pertenecen a La Congragacion</h1>
+        <h1 class="page-title">Miembros que ya no pertenecen a la congregación</h1>
         <p class="page-subtitle">
             Reporte de miembros que ya no están activos en Torre Fuerte
             (inactivos por traslado, distancia u otra razón de salida).
@@ -20,9 +20,50 @@ Miembros / Reportes / Salidas y traslados
 
 <section class="page-section">
 
+    {# 🔹 CABEZAL INSTITUCIONAL: SOLO SE VE AL IMPRIMIR #}
+    <div class="only-print" style="text-align:center; margin-bottom:12px;">
+
+        {% if CFG.logo %}
+            <img src="{{ CFG.logo.url }}"
+                 alt="{{ CFG.nombre_iglesia|default:'Logo iglesia' }}"
+                 style="max-height:70px; margin-bottom:6px;">
+        {% endif %}
+
+        <h2 style="margin:0; font-size:18px; font-weight:700; letter-spacing:0.04em;">
+            {% if CFG.nombre_iglesia %}
+                {{ CFG.nombre_iglesia|upper }}
+            {% else %}
+                IGLESIA TORRE FUERTE
+            {% endif %}
+        </h2>
+
+        {% if CFG.denominacion %}
+            <div style="font-size:12px; color:#4b5563; margin-top:2px;">
+                {{ CFG.denominacion }}
+            </div>
+        {% endif %}
+
+        {% if CFG.lema %}
+            <div style="font-size:12px; color:#6b7280; margin-top:4px; font-style:italic;">
+                “{{ CFG.lema }}”
+            </div>
+        {% endif %}
+
+        {% if CFG.direccion %}
+            <div style="font-size:11px; color:#6b7280; margin-top:4px;">
+                {{ CFG.direccion }}
+            </div>
+        {% endif %}
+
+        <div style="font-size:11px; color:#6b7280; margin-top:6px;">
+            Reporte: Miembros que se fueron · Fecha: {{ hoy|date:"d/m/Y" }}
+        </div>
+
+        <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
+    </div>
+
     <!-- Filtros del reporte -->
     <form method="get" class="form-grid no-print" style="margin-bottom: 12px; align-items: flex-end;">
-
 
         <!-- Buscar -->
         <div class="form-field form-field-full">
@@ -140,7 +181,7 @@ Miembros / Reportes / Salidas y traslados
                         <div style="display:flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:#111827;">
                             <!-- Icono de carta delante del nombre -->
                             <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}"
-                               class="btn-secondary"
+                               class="btn-secondary no-print"
                                style="padding:2px 4px; min-width:auto;">
                                 <span class="material-icons" style="font-size:16px;">description</span>
                             </a>
@@ -235,11 +276,16 @@ Miembros / Reportes / Salidas y traslados
 </section>
 
 <style>
+.only-print {
+    display: none;
+}
+
 @media print {
     .topbar,
     .main-nav,
     .footer,
     .form-actions,
+    .page-header,
     .page-header-actions,
     .no-print {
         display: none !important;
@@ -270,6 +316,10 @@ Miembros / Reportes / Salidas y traslados
     .table td {
         font-size: 11px;
         padding: 4px 4px;
+    }
+
+    .only-print {
+        display: block !important;
     }
 }
 </style>
