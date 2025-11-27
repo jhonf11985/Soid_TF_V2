@@ -41,20 +41,32 @@ def miembros_dashboard(request):
         return edad
 
     # -----------------------------
-    # Conteo de miembros oficiales
+    # Conteo de membresía oficial y base de porcentaje
     # (solo >= edad_minima)
     # -----------------------------
     activos = 0
     pasivos = 0
     descarriados = 0
     observacion = 0
+    disciplina = 0
+    catecumenos = 0  # no bautizados en edad oficial
 
     for m in miembros:
         edad = calcular_edad(m.fecha_nacimiento)
         if edad is None or edad < edad_minima:
-            # No se considera miembro oficial
+            # No se considera miembro oficial (niños fuera de la membresía oficial)
             continue
 
+        # Excluir del cálculo de estado pastoral a los nuevos creyentes
+        if m.nuevo_creyente:
+            continue
+
+        # Si no está bautizado/confirmado, se cuenta como catecúmeno
+        if not m.bautizado_confirmado:
+            catecumenos += 1
+            continue
+
+        # Miembro oficial bautizado: se distribuye por estado
         if m.estado_miembro == "activo":
             activos += 1
         elif m.estado_miembro == "pasivo":
@@ -63,17 +75,35 @@ def miembros_dashboard(request):
             descarriados += 1
         elif m.estado_miembro == "observacion":
             observacion += 1
+        elif m.estado_miembro == "disciplina":
+            disciplina += 1
 
-    total_oficiales = activos + pasivos + descarriados + observacion
+    # Total de membresía oficial (para referencia general)
+    total_oficiales = (
+        activos
+        + pasivos
+        + observacion
+        + disciplina
+        + catecumenos
+        + descarriados
+    )
 
-    def porcentaje(cantidad):
-        if total_oficiales == 0:
+    # Base para los porcentajes del panel:
+    # Se excluyen descarriados y miembros en disciplina,
+    # para ver qué proporción de la membresía oficial activa está en estados "sanos":
+    # activos, pasivos, observación y catecúmenos.
+    total_base = activos + pasivos + observacion + catecumenos
+
+    def porcentaje(cantidad, base=None):
+        if base is None:
+            base = total_base
+        if base == 0:
             return 0
-        return round((cantidad * 100) / total_oficiales)
+        # 1 decimal para que se vea más fino en las tarjetas
+        return round((cantidad * 100) / base, 1)
 
     # -----------------------------
-    # Distribución por etapa de vida
-    # (usa a TODOS los miembros)
+    # Totales generales y distribución por etapa de vida
     # -----------------------------
     total_miembros = miembros.count()
 
@@ -102,9 +132,7 @@ def miembros_dashboard(request):
     hoy = date.today()
     fin_rango = hoy + timedelta(days=30)
 
-    cumple_qs = miembros.filter(
-        fecha_nacimiento__isnull=False,
-    )
+    cumple_qs = miembros.filter(fecha_nacimiento__isnull=False)
 
     proximos_cumpleanos = []
     for m in cumple_qs:
@@ -127,34 +155,22 @@ def miembros_dashboard(request):
     proximos_cumpleanos = sorted(proximos_cumpleanos, key=lambda x: x["fecha"])
 
     # -----------------------------
-    # NUEVOS CREYENTES RECIENTES (máx. 5)
+    # KPI específicos
     # -----------------------------
-    nuevos_creyentes_recientes = (
-        Miembro.objects.filter(nuevo_creyente=True)
-        .order_by("-fecha_conversion", "-fecha_ingreso_iglesia", "-id")[:5]
-    )
+    # Nuevos miembros del mes (según fecha de ingreso)
+    nuevos_mes = miembros.filter(
+        fecha_ingreso_iglesia__year=hoy.year,
+        fecha_ingreso_iglesia__month=hoy.month,
+    ).count()
 
-    context = {
-        "activos": activos,
-        "pasivos": pasivos,
-        "descarriados": descarriados,
-        "observacion": observacion,
-        "total_oficiales": total_oficiales,
-        "pct_activos": porcentaje(activos),
-        "pct_pasivos": porcentaje(pasivos),
-        "pct_descarriados": porcentaje(descarriados),
-        "pct_observacion": porcentaje(observacion),
-        "total_miembros": total_miembros,
-        "distribucion_etapa_vida": distribucion_etapa_vida,
-        "proximos_cumpleanos": proximos_cumpleanos,
-        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
-        "nuevos_creyentes_recientes": nuevos_creyentes_recientes,
-    }
+    # Nuevos creyentes en los últimos 7 días
+    hace_7_dias = timezone.now() - timedelta(days=7)
+    nuevos_creyentes_semana = Miembro.objects.filter(
+        nuevo_creyente=True,
+        fecha_creacion__gte=hace_7_dias,
+    ).count()
 
-    return render(request, "miembros_app/miembros_dashboard.html", context)
-    # -----------------------------
-    # Miembros recientes
-    # -----------------------------
+    # Miembros recientes (por si lo usamos luego)
     try:
         miembros_recientes = miembros.order_by(
             "-fecha_ingreso_iglesia", "-fecha_creacion"
@@ -187,14 +203,14 @@ def miembros_dashboard(request):
         Miembro.objects.filter(activo=False, fecha_salida__isnull=False)
         .order_by("-fecha_salida", "apellidos", "nombres")[:5]
     )
-     # -----------------------------
-    # Nuevos creyentes recientes
+
+    # -----------------------------
+    # Nuevos creyentes recientes (máx. 5)
     # -----------------------------
     nuevos_creyentes_recientes = (
-        Miembro.objects
-        .filter(nuevo_creyente=True)
+        Miembro.objects.filter(nuevo_creyente=True)
         .order_by("-fecha_creacion", "-id")[:5]
-    )       
+    )
 
     context = {
         "titulo_pagina": "Miembros",
@@ -212,10 +228,13 @@ def miembros_dashboard(request):
         "pasivos": pasivos,
         "descarriados": descarriados,
         "observacion": observacion,
+        "disciplina": disciplina,
+        "catecumenos": catecumenos,
         "pct_activos": porcentaje(activos),
         "pct_pasivos": porcentaje(pasivos),
         "pct_descarriados": porcentaje(descarriados),
         "pct_observacion": porcentaje(observacion),
+        "pct_catecumenos": porcentaje(catecumenos),
         # Gráfico y listas
         "distribucion_etapa_vida": distribucion_etapa_vida,
         "proximos_cumpleanos": proximos_cumpleanos,
@@ -225,6 +244,8 @@ def miembros_dashboard(request):
         "sin_foto": sin_foto,
         "sin_fecha_nacimiento": sin_fecha_nacimiento,
         "ultimas_salidas": ultimas_salidas,
+        # Panel nuevos creyentes
+        "nuevos_creyentes_recientes": nuevos_creyentes_recientes,
         # Parámetro global para la vista
         "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
     }
@@ -1439,5 +1460,20 @@ def reporte_nuevos_creyentes(request):
     return render(
         request,
         "miembros_app/reportes/reporte_nuevos_creyentes.html",
+        context,
+    )
+def nuevo_creyente_ficha(request, pk):
+    """
+    Ficha imprimible del nuevo creyente.
+    """
+    miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True)
+
+    context = {
+        "miembro": miembro,
+        "hoy": timezone.localdate(),
+    }
+    return render(
+        request,
+        "miembros_app/reportes/nuevo_creyente_ficha.html",
         context,
     )

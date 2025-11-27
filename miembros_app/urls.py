@@ -73,5 +73,10 @@ urlpatterns = [
     name="reporte_nuevos_creyentes"
 ),
 
+path(
+    "nuevos-creyentes/ficha/<int:pk>/",
+    views.nuevo_creyente_ficha,
+    name="nuevo_creyente_ficha"
+),
 
 ]
