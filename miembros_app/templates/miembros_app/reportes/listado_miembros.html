@@ -1,27 +1,52 @@
-{% extends 'core/base_modulo.html' %}
+{% extends 'core/reporte_base.html' %}
 
 {% block title %}Listado general de miembros{% endblock %}
 
-{% block breadcrumb %}
-Miembros / Reportes / Listado general
+{% block extra_head %}
+<style>
+    @media print {
+        .table th,
+        .table td {
+            font-size: 11px;
+            padding: 4px 4px;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 
-<section class="page-header">
-    <div>
-        <h1 class="page-title">Listado general de miembros</h1>
-        <p class="page-subtitle">
-            Versión imprimible del listado de miembros. Por defecto se muestran solo los activos y pasivos
-            (mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años).
-        </p>
+    <!-- Título del reporte + acciones (los botones no se imprimen) -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+        <div>
+            <h2 class="report-title">Listado general de miembros</h2>
+            <p class="report-subtitle">
+                Versión imprimible del listado de miembros. Por defecto se muestran solo los activos y pasivos
+                (mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años).
+            </p>
+        </div>
+        <div class="no-print-inline">
+            <button type="button" class="btn-secondary" onclick="window.print()">
+                <span class="material-icons" style="font-size:16px;">print</span>
+                Imprimir
+            </button>
+        </div>
     </div>
-</section>
 
-<section class="page-section">
+    <!-- Meta info -->
+    <div class="report-meta no-print">
+        <span>Registros encontrados:
+            {% if miembros %}
+                {{ miembros|length }}
+            {% else %}
+                0
+            {% endif %}
+        </span>
+        <span>Fecha de generación: {{ hoy|date:"d/m/Y" }}</span>
+    </div>
 
-    <!-- Filtros avanzados -->
-    <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
+    <!-- Filtros avanzados (NO se imprimen) -->
+    <form method="get" class="form-grid no-print" style="margin-bottom: 12px; align-items: flex-end;">
 
         {# Fila 1: Buscador (fila completa) #}
         <div class="form-field form-field-full">
@@ -180,19 +205,6 @@ Miembros / Reportes / Listado general
                 <span class="material-icons" style="font-size:16px;">search</span>
                 Aplicar filtros
             </button>
-            <button type="button" class="btn-secondary" onclick="window.print()">
-                <span class="material-icons" style="font-size:16px;">print</span>
-                Imprimir
-            </button>
-        </div>
-
-        <!-- Resumen -->
-        <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
-            {% if miembros %}
-                {{ miembros|length }} registro{{ miembros|length|pluralize:"s" }} encontrados
-            {% else %}
-                No se encontraron resultados con el criterio indicado.
-            {% endif %}
         </div>
     </form>
 
@@ -222,9 +234,12 @@ Miembros / Reportes / Listado general
                     <!-- Miembro -->
                     <td>
                         <div style="font-weight:600; font-size:13px;">
-                            <a href="{% url 'miembros_app:detalle' m.pk %}">
+                            <a href="{% url 'miembros_app:detalle' m.pk %}" class="no-print">
                                 {{ m.nombres }} {{ m.apellidos }}
                             </a>
+                            <span class="only-print">
+                                {{ m.nombres }} {{ m.apellidos }}
+                            </span>
                         </div>
                         <div style="font-size:11px; color:#6b7280;">
                             {{ m.profesion|default:"Sin profesión registrada" }}
@@ -262,26 +277,20 @@ Miembros / Reportes / Listado general
                         {% if m.telefono or m.whatsapp or m.email %}
                             {% if m.telefono or m.whatsapp %}
                                 <div style="font-size:12px;">
-                                    {# Número mostrado: prioridad al teléfono, luego WhatsApp #}
                                     {% if m.telefono %}
                                         {% with numero=m.telefono %}
                                             {{ numero }}
                                             <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
                                                target="_blank"
-                                               title="Enviar WhatsApp">
-                                                <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
-                                                    target="_blank"
-                                                    title="Enviar WhatsApp">
-                                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                                            width="13"
-                                                            height="13"
-                                                            viewBox="0 0 24 24"
-                                                            style="margin-left:6px; fill:#6b7280;">
-                                                        <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm0 18a7.93 7.93 0 0 1-4.062-1.129l-.289-.172-2.999.807.802-2.92-.188-.3A7.924 7.924 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8zm4.427-5.444c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
-                                                        </svg>
-                                                    </a>
-
-
+                                               title="Enviar WhatsApp"
+                                               class="no-print-inline">
+                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                     width="13"
+                                                     height="13"
+                                                     viewBox="0 0 24 24"
+                                                     style="margin-left:6px; fill:#6b7280;">
+                                                    <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm0 18a7.93 7.93 0 0 1-4.062-1.129l-.289-.172-2.999.807.802-2.92-.188-.3A7.924 7.924 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8zm4.427-5.444c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
+                                                </svg>
                                             </a>
                                         {% endwith %}
                                     {% else %}
@@ -289,9 +298,10 @@ Miembros / Reportes / Listado general
                                             {{ numero }}
                                             <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
                                                target="_blank"
-                                               title="Enviar WhatsApp">
+                                               title="Enviar WhatsApp"
+                                               class="no-print-inline">
                                                 <i class="bi bi-whatsapp"
-                                                   style="color:#25D366; font-size:1.25rem; margin-left:6px;">
+                                                   style="font-size:1.25rem; margin-left:6px;">
                                                 </i>
                                             </a>
                                         {% endwith %}
@@ -366,7 +376,7 @@ Miembros / Reportes / Listado general
                         {% endif %}
                     </td>
 
-                    <!-- Acciones -->
+                    <!-- Acciones (solo pantalla) -->
                     <td class="col-center no-print">
                         <div style="display:flex; justify-content:center; gap:4px;">
                             <!-- Ver detalle -->
@@ -396,48 +406,5 @@ Miembros / Reportes / Listado general
             </tbody>
         </table>
     </div>
-
-</section>
-
-<style>
-@media print {
-    .topbar,
-    .main-nav,
-    .footer,
-    .form-actions,
-    .form-grid,
-    .page-header-actions,
-    .no-print {
-        display: none !important;
-    }
-
-    .layout {
-        margin: 0;
-        max-width: 100%;
-        padding: 0;
-    }
-
-    .page-section {
-        box-shadow: none;
-        border: none;
-        padding: 0;
-    }
-
-    .page-title {
-        font-size: 18px;
-        margin-bottom: 4px;
-    }
-
-    .page-subtitle {
-        font-size: 11px;
-    }
-
-    .table th,
-    .table td {
-        font-size: 11px;
-        padding: 4px 4px;
-    }
-}
-</style>
 
 {% endblock %}
