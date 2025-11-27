@@ -11,7 +11,7 @@ from django.http import HttpResponse
 from django.conf import settings
 
 from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
-from .forms import MiembroForm, MiembroRelacionForm
+from .forms import MiembroForm, MiembroRelacionForm,NuevoCreyenteForm
 
 from core.utils_config import get_edad_minima_miembro_oficial
 from django.http import HttpResponse
@@ -369,8 +369,11 @@ def miembro_lista(request):
     """
     Listado general de miembros (versión normal y versión imprimible).
     Usa la función filtrar_miembros para aplicar todos los filtros.
+    IMPORTANTE: excluye a los nuevos creyentes (nuevo_creyente=True).
     """
-    miembros_base = Miembro.objects.all()
+
+    # Base: solo miembros que NO son nuevos creyentes
+    miembros_base = Miembro.objects.filter(nuevo_creyente=False)
 
     miembros, filtros_context = filtrar_miembros(request, miembros_base)
 
@@ -389,6 +392,7 @@ def miembro_lista(request):
         "miembros_app/reportes/listado_miembros.html",
         context,
     )
+
 
 
 # -------------------------------------
@@ -1153,3 +1157,59 @@ def carta_salida_miembro(request, pk):
             f"<pre>{e}</pre>",
             status=500,
         )
+def nuevo_creyente_crear(request):
+    """
+    Registro rápido de nuevos creyentes.
+    Guarda en Miembro pero marcando nuevo_creyente=True
+    y sin mezclarlos todavía con la membresía oficial.
+    """
+    if request.method == "POST":
+        form = NuevoCreyenteForm(request.POST)
+        if form.is_valid():
+            miembro = form.save()
+            messages.success(
+                request,
+                f"Nuevo creyente registrado correctamente: {miembro.nombres} {miembro.apellidos}.",
+            )
+            return redirect("miembros_app:nuevo_creyente_lista")
+    else:
+        form = NuevoCreyenteForm()
+
+    context = {
+        "form": form,
+    }
+    return render(request, "miembros_app/nuevos_creyentes_form.html", context)
+
+def nuevo_creyente_lista(request):
+    """
+    Lista separada de nuevos creyentes (nuevo_creyente=True).
+    No se mezclan con el listado general de miembros.
+    """
+
+    query = request.GET.get("q", "").strip()
+
+    miembros = Miembro.objects.filter(nuevo_creyente=True)
+
+    if query:
+        miembros = miembros.filter(
+            Q(nombres__icontains=query)
+            | Q(apellidos__icontains=query)
+            | Q(email__icontains=query)
+            | Q(telefono__icontains=query)
+            | Q(telefono_secundario__icontains=query)
+        )
+
+    miembros = miembros.order_by(
+        "-fecha_conversion",
+        "-fecha_creacion",
+        "apellidos",
+        "nombres",
+    )
+
+    context = {
+        "miembros": miembros,
+        "query": query,
+    }
+
+    return render(request, "miembros_app/nuevos_creyentes_lista.html", context)
+

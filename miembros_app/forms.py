@@ -104,7 +104,8 @@ class MiembroForm(forms.ModelForm):
             "fecha_creacion",
             "fecha_actualizacion",
             "categoria_edad",
-            "categoria_miembro",   # <-- no se muestra
+            "categoria_miembro", 
+            "nuevo_creyente",
         )
 
         labels = {
@@ -389,7 +390,100 @@ class MiembroForm(forms.ModelForm):
                 )
 
         return cleaned_data
+class NuevoCreyenteForm(forms.ModelForm):
+    """
+    Formulario sencillo para registrar nuevos creyentes.
+    Usa el mismo modelo Miembro, pero con pocos campos esenciales,
+    pensado para usarse rápido desde el móvil.
+    """
 
+    class Meta:
+        model = Miembro
+        fields = [
+            "nombres",
+            "apellidos",
+            "genero",
+            "fecha_nacimiento",
+            "telefono",
+            "whatsapp",
+            "email",
+            "direccion",
+            "fecha_conversion",
+            "notas",
+        ]
+
+        widgets = {
+            "fecha_conversion": forms.DateInput(attrs={"type": "date"}),
+            "fecha_nacimiento": forms.DateInput(attrs={"type": "date"}),
+
+            "telefono": forms.TextInput(
+                attrs={
+                    "type": "tel",
+                    "placeholder": "Teléfono principal",
+                    "autocomplete": "off",
+                }
+            ),
+            "notas": forms.Textarea(
+                attrs={
+                    "rows": 2,
+                    "placeholder": "Notas breves (opcional)",
+                }
+            ),
+
+            "whatsapp": forms.TextInput(
+                attrs={
+                    "type": "tel",
+                    "placeholder": "WhatsApp (opcional)",
+                    "autocomplete": "off",
+                }
+            ),
+            "email": forms.EmailInput(
+                attrs={
+                    "placeholder": "correo@ejemplo.com (opcional)",
+                    "autocomplete": "off",
+                }
+            ),
+            "direccion": forms.TextInput(
+                attrs={
+                    "placeholder": "Dirección / Sector",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Si es un registro nuevo, proponemos la fecha de hoy en el formulario
+        if not self.instance.pk and not self.initial.get("fecha_conversion"):
+            self.initial["fecha_conversion"] = date.today()
+
+    def save(self, commit=True):
+        miembro = super().save(commit=False)
+
+        # Asegurar que lo vacío venga como None
+        fecha_conv = self.cleaned_data.get("fecha_conversion")
+
+        # Si el usuario la dejó vacía → poner la fecha de hoy
+        if not fecha_conv:
+            miembro.fecha_conversion = date.today()
+        else:
+            miembro.fecha_conversion = fecha_conv
+
+        # Marcar como nuevo creyente
+        miembro.nuevo_creyente = True
+
+        # Nunca debe ser tratado como miembro oficial todavía
+        miembro.estado_miembro = ""
+        miembro.bautizado_confirmado = False
+        miembro.fecha_bautismo = None
+
+        # Asegurar que quede activo en el sistema
+        if miembro.activo is None:
+            miembro.activo = True
+
+        if commit:
+            miembro.save()
+
+        return miembro
 
 class MiembroRelacionForm(forms.ModelForm):
     """

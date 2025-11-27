@@ -1,0 +1,153 @@
+{% extends 'core/base_modulo.html' %}
+
+{% block title %}Nuevos creyentes · Soid_Tf_2{% endblock %}
+
+{% block breadcrumb %}
+Miembros / Nuevos creyentes / Lista
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h1 class="page-title">Nuevos creyentes</h1>
+        <p class="page-subtitle">
+            Registro de personas que han recibido a Cristo recientemente.
+            Aquí se gestionan aparte de la membresía oficial para darles seguimiento.
+        </p>
+    </div>
+
+    <div class="page-header-actions">
+        <a href="{% url 'miembros_app:nuevo_creyente_crear' %}" class="btn-primary">
+            <span class="material-icons">person_add</span>
+            Registrar nuevo creyente
+        </a>
+    </div>
+</section>
+
+<section class="page-section">
+
+    <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
+
+        <div class="form-field form-field-full">
+            <label for="id_q">Buscar</label>
+            <input
+                id="id_q"
+                type="text"
+                name="q"
+                placeholder="Nombre, apellido, teléfono o correo…"
+                value="{{ query }}"
+            >
+        </div>
+
+        <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
+            <button type="submit" class="btn-secondary">
+                <span class="material-icons" style="font-size:16px;">search</span>
+                Buscar
+            </button>
+        </div>
+
+        <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
+            {% if miembros %}
+                {{ miembros|length }} registro{{ miembros|length|pluralize:"s" }} encontrados
+            {% else %}
+                No hay nuevos creyentes registrados aún.
+            {% endif %}
+        </div>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>Contacto</th>
+                    <th>Fecha conversión</th>
+                    <th>Edad</th>
+                    <th class="col-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% if miembros %}
+                {% for m in miembros %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+
+                        <td>
+                            <div style="font-weight:600; font-size:13px;">
+                                {{ m.nombres }} {{ m.apellidos }}
+                            </div>
+                            <div style="font-size:11px; color:#6b7280;">
+                                {% if m.genero %}
+                                    {{ m.get_genero_display }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <td>
+                            {% if m.telefono or m.whatsapp or m.email %}
+                                {% if m.telefono or m.whatsapp %}
+                                    <div style="font-size:12px;">
+                                        {% if m.telefono %}
+                                            {{ m.telefono }}
+                                        {% else %}
+                                            {{ m.whatsapp }}
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                                {% if m.email %}
+                                    <div style="font-size:11px; color:#6b7280;">
+                                        {{ m.email }}
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <span style="font-size:11px; color:#9ca3af;">Sin datos</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if m.fecha_conversion %}
+                                {{ m.fecha_conversion|date:"d/m/Y" }}
+                            {% else %}
+                                <span style="font-size:11px; color:#9ca3af;">—</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if m.calcular_edad %}
+                                {{ m.calcular_edad }} años
+                            {% else %}
+                                <span style="font-size:11px; color:#9ca3af;">—</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="col-center">
+                            <div style="display:flex; justify-content:center; gap:4px;">
+                                <!-- Ver / editar como miembro completo -->
+                                <a href="{% url 'miembros_app:editar' m.pk %}"
+                                   class="btn-secondary"
+                                   style="padding:4px; min-width:auto;"
+                                   title="Editar ficha completa">
+                                    <span class="material-icons" style="font-size:18px;">edit</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="table-empty">
+                        No hay registros para mostrar.
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</section>
+
+{% endblock %}

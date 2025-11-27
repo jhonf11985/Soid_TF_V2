@@ -51,5 +51,16 @@ urlpatterns = [
         views.carta_salida_miembro,
         name="carta_salida_miembro",
     ),
+    # Nuevos creyentes
+    path(
+        "nuevos-creyentes/",
+        views.nuevo_creyente_lista,
+        name="nuevo_creyente_lista",
+    ),
+    path(
+        "nuevos-creyentes/registrar/",
+        views.nuevo_creyente_crear,
+        name="nuevo_creyente_crear",
+    ),
 
 ]

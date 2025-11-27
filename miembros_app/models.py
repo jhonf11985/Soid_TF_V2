@@ -81,7 +81,7 @@ class Miembro(models.Model):
     estado_civil = models.CharField(max_length=20, blank=True)
     nivel_educativo = models.CharField(max_length=50, blank=True)
     profesion = models.CharField(max_length=100, blank=True)
-    
+
         # --- Identificación personal ---
     cedula_validator = RegexValidator(
         regex=r"^\d{3}-\d{7}-\d$",
@@ -124,6 +124,13 @@ class Miembro(models.Model):
     alergias = models.TextField(blank=True)
     condiciones_medicas = models.TextField(blank=True)
     medicamentos = models.TextField(blank=True)
+
+    
+    # --- Seguimiento espiritual básico ---
+    nuevo_creyente = models.BooleanField(
+        default=False,
+        help_text="Marcar si es un nuevo creyente en proceso de seguimiento (aún no miembro oficial).",
+            )
 
     # --- Información laboral ---
     empleador = models.CharField(max_length=150, blank=True)
