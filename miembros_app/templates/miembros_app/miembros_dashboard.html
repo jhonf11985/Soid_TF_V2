@@ -12,7 +12,7 @@ Miembros / Panel
     <div>
         <h1 class="page-title">Panel de miembros</h1>
         <p class="page-subtitle">
-            Resumen de la membresía oficial (según edad mínima configurada) y distribución general de la iglesia Torre Fuerte.
+            Vista general de la membresía oficial (según edad mínima configurada) y estado pastoral de la iglesia Torre Fuerte.
         </p>
     </div>
 
@@ -30,7 +30,28 @@ Miembros / Panel
 
 <section class="dashboard-section">
 
-    <!-- TARJETAS PRINCIPALES -->
+    <!-- KPI PRINCIPALES -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">Miembros registrados</div>
+            <div class="kpi-value">{{ total_miembros|default:"0" }}</div>
+            <div class="kpi-sub">Incluye niños, nuevos creyentes y registros sin estado.</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Miembros oficiales</div>
+            <div class="kpi-value">{{ total_oficiales|default:"0" }}</div>
+            <div class="kpi-sub">
+                Mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años con estado pastoral.
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Nuevos este mes</div>
+            <div class="kpi-value">{{ nuevos_mes|default:"0" }}</div>
+            <div class="kpi-sub">Según fecha de ingreso a la iglesia.</div>
+        </div>
+    </div>
+
+    <!-- TARJETAS DE ESTADO PASTORAL -->
     <div class="dashboard-cards">
         <div class="dash-card dash-card--activo">
             <div class="dash-card-label">Miembros activos</div>
@@ -69,24 +90,90 @@ Miembros / Panel
         </div>
     </div>
 
-    <!-- DISTRIBUCIÓN + CUMPLEAÑOS -->
-    <div class="dashboard-grid">
-        <!-- Distribución por etapa de vida -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Distribución por Edad</h2>
-                <p>Resumen por grupo de edad (niños, adolescentes, jóvenes, adultos…).</p>
+    <!-- GRÁFICO: DISTRIBUCIÓN POR ESTADO PASTORAL -->
+    <div class="dash-panel">
+        <div class="dash-panel-header">
+            <h2>Distribución por estado pastoral</h2>
+            <p>Solo cuenta miembros oficiales (mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años).</p>
+        </div>
+
+        {% if total_oficiales %}
+            <div class="estado-bar-wrapper">
+                {% if pct_activos > 0 %}
+                    <div class="estado-bar estado-activo"
+                         style="width: {{ pct_activos }}%;"
+                         title="Activos: {{ activos }} ({{ pct_activos }}%)">
+                    </div>
+                {% endif %}
+
+                {% if pct_pasivos > 0 %}
+                    <div class="estado-bar estado-pasivo"
+                         style="width: {{ pct_pasivos }}%;"
+                         title="Pasivos: {{ pasivos }} ({{ pct_pasivos }}%)">
+                    </div>
+                {% endif %}
+
+                {% if pct_descarriados > 0 %}
+                    <div class="estado-bar estado-descarriado"
+                         style="width: {{ pct_descarriados }}%;"
+                         title="Descarriados: {{ descarriados }} ({{ pct_descarriados }}%)">
+                    </div>
+                {% endif %}
+
+                {% if pct_observacion > 0 %}
+                    <div class="estado-bar estado-observacion"
+                         style="width: {{ pct_observacion }}%;"
+                         title="En observación: {{ observacion }} ({{ pct_observacion }}%)">
+                    </div>
+                {% endif %}
             </div>
 
-            {% if distribucion_etapa_vida and total_miembros %}
+            <ul class="estado-legend">
+                <li>
+                    <span class="estado-dot estado-activo"></span>
+                    <span class="estado-label">Activos</span>
+                    <span class="estado-percent">{{ pct_activos }}%</span>
+                </li>
+                <li>
+                    <span class="estado-dot estado-pasivo"></span>
+                    <span class="estado-label">Pasivos</span>
+                    <span class="estado-percent">{{ pct_pasivos }}%</span>
+                </li>
+                <li>
+                    <span class="estado-dot estado-descarriado"></span>
+                    <span class="estado-label">Descarriados</span>
+                    <span class="estado-percent">{{ pct_descarriados }}%</span>
+                </li>
+                <li>
+                    <span class="estado-dot estado-observacion"></span>
+                    <span class="estado-label">En observación</span>
+                    <span class="estado-percent">{{ pct_observacion }}%</span>
+                </li>
+            </ul>
+        {% else %}
+            <p class="dash-empty">
+                Aún no hay suficientes miembros oficiales para mostrar esta distribución.
+            </p>
+        {% endif %}
+    </div>
+
+    <!-- DISTRIBUCIÓN POR EDAD + NUEVOS CREYENTES -->
+    <div class="dashboard-grid">
+        <!-- Distribución por etapas de vida -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <h2>Distribución por etapas de vida</h2>
+                <p>Cómo se reparte la iglesia por grupos de edad.</p>
+            </div>
+
+            {% if distribucion_etapa_vida and distribucion_etapa_vida|length > 0 %}
                 <div class="etapas-list">
                     {% for e in distribucion_etapa_vida %}
                         <div class="etapa-row">
                             <div class="etapa-label">{{ e.nombre }}</div>
                             <div class="etapa-bar-wrapper">
                                 <div class="etapa-bar"
-                                     style="width: {% widthratio e.cantidad total_miembros 100 %}%;">
-                                </div>
+                                     style="width: {% widthratio e.cantidad total_miembros 100 %}%;"></div>
                             </div>
                             <div class="etapa-count">{{ e.cantidad }}</div>
                         </div>
@@ -97,6 +184,55 @@ Miembros / Panel
             {% endif %}
         </div>
 
+        <!-- Nuevos creyentes registrados -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <h2>Nuevos creyentes registrados</h2>
+                <p>Personas marcadas como nuevos creyentes en proceso de seguimiento.</p>
+            </div>
+
+            {% if nuevos_creyentes_recientes %}
+                <ul class="recent-list">
+                    {% for m in nuevos_creyentes_recientes %}
+                        <li>
+                            <div class="recent-main">
+                                <div class="recent-avatar">
+                                    {% if m.foto %}
+                                        <img src="{{ m.foto.url }}" alt="{{ m.nombres }} {{ m.apellidos }}">
+                                    {% else %}
+                                        <span>{{ m.nombres|default:""|first }}{{ m.apellidos|default:""|first }}</span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="recent-name">
+                                        <a href="{% url 'miembros_app:detalle' m.pk %}">
+                                            {{ m.nombres }} {{ m.apellidos }}
+                                        </a>
+                                    </div>
+                                    <div class="recent-sub">
+                                        Registrado como nuevo creyente
+                                        {% if m.fecha_creacion %}
+                                            · {{ m.fecha_creacion|date:"d/m/Y H:i" }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="recent-tag">
+                                Nuevo creyente
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="dash-empty">
+                    Aún no hay nuevos creyentes registrados recientemente.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- CUMPLEAÑOS + ACCIONES RÁPIDAS (UNO AL LADO DEL OTRO) -->
+    <div class="dashboard-grid">
         <!-- Próximos cumpleaños -->
         <div class="dash-panel">
             <div class="dash-panel-header">
@@ -124,60 +260,8 @@ Miembros / Panel
                 <p class="dash-empty">No hay cumpleaños registrados en los próximos 30 días.</p>
             {% endif %}
         </div>
-    </div>
 
-    <!-- MIEMBROS RECIENTES + ACCIONES RÁPIDAS -->
-    <div class="dashboard-grid">
-        <!-- Miembros recientes -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Miembros añadidos recientemente</h2>
-                <p>Últimos registros de la base de datos.</p>
-            </div>
-
-            {% if miembros_recientes %}
-                <ul class="recent-list">
-                    {% for m in miembros_recientes %}
-                        <li>
-                            <div class="recent-main">
-                                <div class="recent-avatar">
-                                    {% if m.foto %}
-                                        <img src="{{ m.foto.url }}" alt="{{ m.nombres }} {{ m.apellidos }}">
-                                    {% else %}
-                                        <span>{{ m.nombres|default:""|first }}{{ m.apellidos|default:""|first }}</span>
-                                    {% endif %}
-                                </div>
-                                <div>
-                                    <div class="recent-name">
-                                        <a href="{% url 'miembros_app:detalle' m.pk %}">
-                                            {{ m.nombres }} {{ m.apellidos }}
-                                        </a>
-                                    </div>
-                                    <div class="recent-sub">
-                                        {% if m.fecha_ingreso_iglesia %}
-                                            Ingreso: {{ m.fecha_ingreso_iglesia|date:"d/m/Y" }}
-                                        {% else %}
-                                            Registrado recientemente
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="recent-tag">
-                                {% if m.estado_miembro %}
-                                    {{ m.get_estado_miembro_display }}
-                                {% else %}
-                                    Sin estado
-                                {% endif %}
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="dash-empty">Aún no hay miembros registrados.</p>
-            {% endif %}
-        </div>
-
-        <!-- Acciones rápidas -->
+        <!-- Acciones rápidas + Alertas -->
         <div class="dash-panel">
             <div class="dash-panel-header">
                 <h2>Acciones rápidas</h2>
@@ -201,11 +285,11 @@ Miembros / Panel
                     </div>
                 </a>
 
-                <a href="{% url 'miembros_app:lista' %}?estado=observacion" class="quick-action">
-                    <span class="material-icons">visibility</span>
+                <a href="{% url 'miembros_app:nuevo_creyente_crear' %}" class="quick-action">
+                    <span class="material-icons">hail</span>
                     <div>
-                        <div class="qa-title">Miembros en observación</div>
-                        <div class="qa-sub">Revisar a quienes necesitan seguimiento.</div>
+                        <div class="qa-title">Registrar nuevo creyente</div>
+                        <div class="qa-sub">Registro rápido desde una decisión reciente.</div>
                     </div>
                 </a>
 
@@ -217,18 +301,163 @@ Miembros / Panel
                     </div>
                 </a>
             </div>
+
+            <div class="dash-divider"></div>
+
+            <div class="dash-panel-header mt-2">
+                <h2>Alertas pastorales y de datos</h2>
+                <p>Información clave que necesita atención.</p>
+            </div>
+
+            <div class="alerts-grid">
+                <div class="alert-item">
+                    <div class="alert-label">Nuevos creyentes (últimos 7 días)</div>
+                    <div class="alert-value">{{ nuevos_creyentes_semana|default:"0" }}</div>
+                </div>
+                <div class="alert-item">
+                    <div class="alert-label">Miembros sin contacto</div>
+                    <div class="alert-value">{{ sin_contacto|default:"0" }}</div>
+                    <div class="alert-sub">Sin teléfono ni correo.</div>
+                </div>
+                <div class="alert-item">
+                    <div class="alert-label">Miembros sin foto</div>
+                    <div class="alert-value">{{ sin_foto|default:"0" }}</div>
+                </div>
+                <div class="alert-item">
+                    <div class="alert-label">Sin fecha de nacimiento</div>
+                    <div class="alert-value">{{ sin_fecha_nacimiento|default:"0" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ÚLTIMAS SALIDAS / TRASLADOS + ESPACIO RESERVADO -->
+    <div class="dashboard-grid">
+        <!-- Últimas salidas / traslados -->
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <h2>Últimas salidas / traslados</h2>
+                <p>Miembros que ya no pertenecen a Torre Fuerte.</p>
+            </div>
+
+            {% if ultimas_salidas %}
+                <ul class="recent-list">
+                    {% for m in ultimas_salidas %}
+                        <li>
+                            <div class="recent-main">
+                                <div>
+                                    <div class="recent-name">
+                                        {{ m.nombres }} {{ m.apellidos }}
+                                    </div>
+                                    <div class="recent-sub">
+                                        Salida: {{ m.fecha_salida|date:"d/m/Y" }}
+                                        {% if m.razon_salida %}
+                                            · {{ m.razon_salida.nombre }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="recent-tag recent-tag--inactive">
+                                Inactivo
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="dash-empty">No hay registros recientes de salida.</p>
+            {% endif %}
+        </div>
+
+        <!-- Panel vacío reservado para futuros gráficos o módulos -->
+        <div class="dash-panel dash-panel--placeholder">
+            <div class="dash-panel-header">
+                <h2>Espacio reservado</h2>
+                <p>Aquí más adelante podemos añadir gráficos de tendencia, células, etc.</p>
+            </div>
+            <p class="dash-empty">
+                Por ahora se reserva este espacio para futuras funciones del módulo de discipulado y seguimiento.
+            </p>
         </div>
     </div>
 
 </section>
 
+
+
 <style>
+    :root {
+        /* Colores base suaves (puedes afinarlos más adelante) */
+        --accent: #0f766e;           /* verde azulado principal */
+        --accent-soft: #ecfdf5;
+        --accent-strong: #0f766e;
+        --accent-alt: #2563eb;       /* azul suave */
+        --accent-warning: #f59e0b;   /* ámbar */
+        --accent-danger: #dc2626;    /* rojo */
+        --panel-bg: #ffffff;
+        --panel-border: #e5e7eb;
+    }
+
     .dashboard-section {
         display: flex;
         flex-direction: column;
         gap: 18px;
+
+        /* Fondo suave tipo app, sin exagerar */
+        background: radial-gradient(circle at top left, #ecfdf5 0, #eff6ff 45%, #f9fafb 100%);
+        border-radius: 18px;
+        padding: 14px;
+        border: 1px solid #e5e7eb;
     }
 
+    /* KPI superiores */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .kpi-card {
+        background: linear-gradient(135deg, #ffffff, #f4f4ff);
+        border-radius: 14px;
+        padding: 12px 14px;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .kpi-card::before {
+        content: "";
+        position: absolute;
+        inset-inline-start: -1px;
+        top: -1px;
+        bottom: -1px;
+        width: 4px;
+        background: linear-gradient(to bottom, var(--accent-strong), #22c55e);
+    }
+
+    .kpi-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #6b7280;
+    }
+
+    .kpi-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .kpi-sub {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    /* Tarjetas de estado */
     .dashboard-cards {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -236,7 +465,6 @@ Miembros / Panel
     }
 
     .dash-card {
-        background: #ffffff;
         border-radius: 14px;
         padding: 12px 14px;
         border: 1px solid #e5e7eb;
@@ -244,6 +472,8 @@ Miembros / Panel
         display: flex;
         flex-direction: column;
         gap: 4px;
+        position: relative;
+        overflow: hidden;
     }
 
     .dash-card-label {
@@ -264,28 +494,28 @@ Miembros / Panel
         color: #4b5563;
     }
 
-    /* Colores suaves por estado */
+    /* Colores suaves por estado, con ligero degradado */
     .dash-card--activo {
         border-color: #bbf7d0;
-        background: #f0fdf4;
+        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
     }
 
     .dash-card--pasivo {
         border-color: #fef3c7;
-        background: #fffbeb;
+        background: linear-gradient(135deg, #fffbeb, #fef9c3);
     }
 
     .dash-card--descarriado {
         border-color: #fee2e2;
-        background: #fef2f2;
+        background: linear-gradient(135deg, #fef2f2, #fee2e2);
     }
 
     .dash-card--observacion {
         border-color: #e0e7ff;
-        background: #eef2ff;
+        background: linear-gradient(135deg, #eef2ff, #e0f2fe);
     }
 
-    /* Grids inferiores */
+    /* Grids */
     .dashboard-grid {
         display: grid;
         grid-template-columns: minmax(0, 2fr) minmax(0, 2fr);
@@ -296,20 +526,54 @@ Miembros / Panel
         .dashboard-grid {
             grid-template-columns: minmax(0, 1fr);
         }
+
+        .dashboard-section {
+            padding: 10px;
+        }
     }
 
     .dash-panel {
-        background: #ffffff;
+        background: var(--panel-bg);
         border-radius: 16px;
         padding: 14px 16px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--panel-border);
         box-shadow: 0 10px 24px rgba(15,23,42,0.05);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dash-panel::before {
+        /* Línea superior de color muy fina */
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: -1px;
+        height: 3px;
+        background: linear-gradient(to right, var(--accent-strong), var(--accent-alt));
+        opacity: 0.5;
+    }
+
+    .dash-panel--placeholder {
+        background: linear-gradient(135deg, #f9fafb, #e5f3ff);
     }
 
     .dash-panel-header h2 {
         margin: 0;
         font-size: 15px;
-        color: #111827;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .dash-panel-header h2::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--accent-strong);
+        opacity: 0.75;
     }
 
     .dash-panel-header p {
@@ -321,6 +585,15 @@ Miembros / Panel
     .dash-empty {
         font-size: 12px;
         color: #9ca3af;
+    }
+
+    .dash-divider {
+        margin: 10px 0;
+        border-top: 1px dashed #e5e7eb;
+    }
+
+    .mt-2 {
+        margin-top: 8px;
     }
 
     /* Distribución por etapa de vida */
@@ -348,11 +621,12 @@ Miembros / Panel
         border-radius: 999px;
         overflow: hidden;
         height: 8px;
+        position: relative;
     }
 
     .etapa-bar {
         height: 100%;
-        background: #4f46e5;
+        background: linear-gradient(90deg, var(--accent-strong), #22c55e);
     }
 
     .etapa-count {
@@ -380,11 +654,12 @@ Miembros / Panel
         padding: 6px 8px;
         border-radius: 8px;
         background: #f9fafb;
+        border: 1px solid #e5e7eb;
     }
 
     .birthday-date {
-        font-weight: 600;
-        color: #1d4ed8;
+        font-weight: 700;
+        color: var(--accent-alt);
         min-width: 48px;
     }
 
@@ -412,11 +687,13 @@ Miembros / Panel
 
     .recent-list li {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
+        gap: 8px;
         padding: 6px 8px;
-        border-radius: 8px;
+        border-radius: 10px;
         background: #f9fafb;
+        border: 1px solid #e5e7eb;
     }
 
     .recent-main {
@@ -426,17 +703,17 @@ Miembros / Panel
     }
 
     .recent-avatar {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         border-radius: 999px;
-        background: #e5e7eb;
+        background: #e0f2fe;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 11px;
-        color: #374151;
+        font-size: 12px;
+        font-weight: 600;
+        color: #0f172a;
         overflow: hidden;
-        flex-shrink: 0;
     }
 
     .recent-avatar img {
@@ -463,38 +740,46 @@ Miembros / Panel
 
     .recent-tag {
         font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #e5e7eb;
         color: #374151;
+        white-space: nowrap;
+    }
+
+    .recent-tag--inactive {
+        background: #fee2e2;
+        color: var(--accent-danger);
     }
 
     /* Acciones rápidas */
     .quick-actions {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
+        margin-bottom: 6px;
     }
 
     .quick-action {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         gap: 8px;
-        padding: 8px;
+        padding: 8px 10px;
         border-radius: 10px;
-        background: #f9fafb;
+        background: #eff6ff;
         text-decoration: none;
         color: inherit;
-        border: 1px solid transparent;
         font-size: 12px;
+        border: 1px solid #dbeafe;
     }
 
     .quick-action:hover {
-        border-color: #d1d5db;
-        background: #f3f4f6;
+        background: #dbeafe;
     }
 
     .quick-action .material-icons {
         font-size: 18px;
-        color: #4f46e5;
-        margin-top: 2px;
+        color: var(--accent-alt);
     }
 
     .qa-title {
@@ -508,11 +793,119 @@ Miembros / Panel
         color: #6b7280;
     }
 
-    @media (max-width: 768px) {
-        .dash-card-value {
-            font-size: 22px;
-        }
+    /* Alertas */
+    .alerts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 8px;
+        margin-top: 6px;
     }
+
+    .alert-item {
+        border-radius: 10px;
+        background: #f9fafb;
+        padding: 8px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .alert-label {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    .alert-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--accent-strong);
+    }
+
+    .alert-sub {
+        font-size: 10px;
+        color: #9ca3af;
+    }
+
+        /* Gráfico de distribución por estado pastoral */
+    .estado-bar-wrapper {
+        width: 100%;
+        height: 18px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #f3f4f6;
+        display: flex;
+        margin-bottom: 8px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .estado-bar {
+        height: 100%;
+    }
+
+    .estado-activo {
+        background: linear-gradient(90deg, #16a34a, #22c55e);
+    }
+
+    .estado-pasivo {
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    }
+
+    .estado-descarriado {
+        background: linear-gradient(90deg, #ef4444, #f97373);
+    }
+
+    .estado-observacion {
+        background: linear-gradient(90deg, #6366f1, #a855f7);
+    }
+
+    .estado-legend {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 4px 10px;
+        font-size: 11px;
+    }
+
+    .estado-legend li {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: #4b5563;
+    }
+
+    .estado-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        display: inline-block;
+    }
+
+    .estado-dot.estado-activo {
+        background: #16a34a;
+    }
+    .estado-dot.estado-pasivo {
+        background: #f59e0b;
+    }
+    .estado-dot.estado-descarriado {
+        background: #ef4444;
+    }
+    .estado-dot.estado-observacion {
+        background: #6366f1;
+    }
+
+    .estado-label {
+        flex: 1;
+    }
+
+    .estado-percent {
+        font-weight: 600;
+        color: #111827;
+    }
+
 </style>
+
 
 {% endblock %}

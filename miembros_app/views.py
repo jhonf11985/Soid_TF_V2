@@ -100,37 +100,58 @@ def miembros_dashboard(request):
     # Próximos cumpleaños (30 días)
     # -----------------------------
     hoy = date.today()
-    limite = hoy + timedelta(days=30)
+    fin_rango = hoy + timedelta(days=30)
+
+    cumple_qs = miembros.filter(
+        fecha_nacimiento__isnull=False,
+    )
+
     proximos_cumpleanos = []
-
-    for m in miembros.filter(fecha_nacimiento__isnull=False):
+    for m in cumple_qs:
         fn = m.fecha_nacimiento
-        # Próximo cumpleaños en este año
-        try:
-            proximo = fn.replace(year=hoy.year)
-        except ValueError:
-            # Por si es 29 de febrero
-            proximo = fn.replace(year=hoy.year, day=28)
-
+        proximo = fn.replace(year=hoy.year)
+        # Si ya pasó este año, usamos el año siguiente
         if proximo < hoy:
-            try:
-                proximo = proximo.replace(year=hoy.year + 1)
-            except ValueError:
-                proximo = proximo.replace(year=hoy.year + 1, day=28)
+            proximo = proximo.replace(year=hoy.year + 1)
 
-        if hoy <= proximo <= limite:
-            edad_proxima = calcular_edad(fn) or ""
+        if hoy <= proximo <= fin_rango:
+            edad_que_cumple = proximo.year - fn.year
             proximos_cumpleanos.append(
                 {
                     "nombre": f"{m.nombres} {m.apellidos}",
                     "fecha": proximo,
-                    "edad": edad_proxima,
+                    "edad": edad_que_cumple,
                 }
             )
 
-    proximos_cumpleanos.sort(key=lambda x: x["fecha"])
-    proximos_cumpleanos = proximos_cumpleanos[:5]
+    proximos_cumpleanos = sorted(proximos_cumpleanos, key=lambda x: x["fecha"])
 
+    # -----------------------------
+    # NUEVOS CREYENTES RECIENTES (máx. 5)
+    # -----------------------------
+    nuevos_creyentes_recientes = (
+        Miembro.objects.filter(nuevo_creyente=True)
+        .order_by("-fecha_conversion", "-fecha_ingreso_iglesia", "-id")[:5]
+    )
+
+    context = {
+        "activos": activos,
+        "pasivos": pasivos,
+        "descarriados": descarriados,
+        "observacion": observacion,
+        "total_oficiales": total_oficiales,
+        "pct_activos": porcentaje(activos),
+        "pct_pasivos": porcentaje(pasivos),
+        "pct_descarriados": porcentaje(descarriados),
+        "pct_observacion": porcentaje(observacion),
+        "total_miembros": total_miembros,
+        "distribucion_etapa_vida": distribucion_etapa_vida,
+        "proximos_cumpleanos": proximos_cumpleanos,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+        "nuevos_creyentes_recientes": nuevos_creyentes_recientes,
+    }
+
+    return render(request, "miembros_app/miembros_dashboard.html", context)
     # -----------------------------
     # Miembros recientes
     # -----------------------------
@@ -142,14 +163,51 @@ def miembros_dashboard(request):
         # Por si no existiera fecha_creacion en el modelo
         miembros_recientes = miembros.order_by("-fecha_ingreso_iglesia", "-id")[:5]
 
+    # -----------------------------
+    # Alertas de datos incompletos
+    # -----------------------------
+    sin_contacto = miembros.filter(
+        (Q(telefono__isnull=True) | Q(telefono="")),
+        (Q(telefono_secundario__isnull=True) | Q(telefono_secundario="")),
+        (Q(email__isnull=True) | Q(email="")),
+    ).count()
+
+    sin_foto = miembros.filter(
+        Q(foto__isnull=True) | Q(foto="")
+    ).count()
+
+    sin_fecha_nacimiento = miembros.filter(
+        fecha_nacimiento__isnull=True
+    ).count()
+
+    # -----------------------------
+    # Últimas salidas / traslados
+    # -----------------------------
+    ultimas_salidas = (
+        Miembro.objects.filter(activo=False, fecha_salida__isnull=False)
+        .order_by("-fecha_salida", "apellidos", "nombres")[:5]
+    )
+     # -----------------------------
+    # Nuevos creyentes recientes
+    # -----------------------------
+    nuevos_creyentes_recientes = (
+        Miembro.objects
+        .filter(nuevo_creyente=True)
+        .order_by("-fecha_creacion", "-id")[:5]
+    )       
+
     context = {
         "titulo_pagina": "Miembros",
         "descripcion_pagina": (
             f"Resumen de la membresía oficial "
             f"(mayores de {edad_minima} años) y distribución general."
         ),
-        # Tarjetas oficiales
+        # KPI
+        "total_miembros": total_miembros,
         "total_oficiales": total_oficiales,
+        "nuevos_mes": nuevos_mes,
+        "nuevos_creyentes_semana": nuevos_creyentes_semana,
+        # Tarjetas oficiales
         "activos": activos,
         "pasivos": pasivos,
         "descarriados": descarriados,
@@ -159,15 +217,18 @@ def miembros_dashboard(request):
         "pct_descarriados": porcentaje(descarriados),
         "pct_observacion": porcentaje(observacion),
         # Gráfico y listas
-        "total_miembros": total_miembros,
         "distribucion_etapa_vida": distribucion_etapa_vida,
         "proximos_cumpleanos": proximos_cumpleanos,
         "miembros_recientes": miembros_recientes,
+        # Alertas
+        "sin_contacto": sin_contacto,
+        "sin_foto": sin_foto,
+        "sin_fecha_nacimiento": sin_fecha_nacimiento,
+        "ultimas_salidas": ultimas_salidas,
         # Parámetro global para la vista
         "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
     }
     return render(request, "miembros_app/miembros_dashboard.html", context)
-
 
 # -------------------------------------
 # FUNCIÓN AUXILIAR DE FILTRO DE MIEMBROS
@@ -1157,6 +1218,8 @@ def carta_salida_miembro(request, pk):
             f"<pre>{e}</pre>",
             status=500,
         )
+from django.utils import timezone  # ya lo tienes arriba
+
 def nuevo_creyente_crear(request):
     """
     Registro rápido de nuevos creyentes.
@@ -1166,7 +1229,18 @@ def nuevo_creyente_crear(request):
     if request.method == "POST":
         form = NuevoCreyenteForm(request.POST)
         if form.is_valid():
-            miembro = form.save()
+            # No guardamos directamente, ajustamos algunos campos
+            miembro = form.save(commit=False)
+
+            # Aseguramos que se marque como nuevo creyente
+            miembro.nuevo_creyente = True
+
+            # Si no se puso fecha de conversión, la rellenamos automática
+            if not getattr(miembro, "fecha_conversion", None):
+                miembro.fecha_conversion = timezone.localdate()
+
+            miembro.save()
+
             messages.success(
                 request,
                 f"Nuevo creyente registrado correctamente: {miembro.nombres} {miembro.apellidos}.",
@@ -1180,12 +1254,12 @@ def nuevo_creyente_crear(request):
     }
     return render(request, "miembros_app/nuevos_creyentes_form.html", context)
 
+
 def nuevo_creyente_lista(request):
     """
     Lista separada de nuevos creyentes (nuevo_creyente=True).
     No se mezclan con el listado general de miembros.
     """
-
     query = request.GET.get("q", "").strip()
 
     miembros = Miembro.objects.filter(nuevo_creyente=True)
@@ -1199,9 +1273,10 @@ def nuevo_creyente_lista(request):
             | Q(telefono_secundario__icontains=query)
         )
 
+    # Usamos -id como respaldo por si no existe fecha_creacion
     miembros = miembros.order_by(
         "-fecha_conversion",
-        "-fecha_creacion",
+        "-id",
         "apellidos",
         "nombres",
     )
