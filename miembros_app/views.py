@@ -893,16 +893,28 @@ def reporte_miembros_salida(request):
 # -------------------------------------
 # REPORTE: RELACIONES FAMILIARES
 # -------------------------------------
+# -------------------------------------
+# REPORTE: RELACIONES FAMILIARES
+# -------------------------------------
 def reporte_relaciones_familiares(request):
     """
     Reporte de relaciones familiares entre miembros.
-    Muestra quién está relacionado con quién (cónyuges, hijos, etc.).
+    Muestra quién está relacionado con quién (cónyuges, hijos, etc.),
+    con filtros por tipo de relación, convivencia y responsable.
     """
 
+    # Texto de búsqueda
     query = request.GET.get("q", "").strip()
-    solo_miembros = request.GET.get("solo_miembros", "") == "1"
 
-    # Traemos todas las relaciones, incluyendo los datos del miembro y del familiar
+    # Filtros booleanos
+    solo_miembros = request.GET.get("solo_miembros", "") == "1"
+    solo_conviven = request.GET.get("solo_conviven", "") == "1"
+    solo_responsables = request.GET.get("solo_responsables", "") == "1"
+
+    # Filtro por tipo de relación (padre, madre, hijo, conyuge, etc.)
+    tipo_relacion = request.GET.get("tipo_relacion", "").strip()
+
+    # Base queryset
     relaciones = (
         MiembroRelacion.objects
         .select_related("miembro", "familiar")
@@ -918,9 +930,23 @@ def reporte_relaciones_familiares(request):
             | Q(familiar__apellidos__icontains=query)
         )
 
-    # Opcional: solo relaciones donde el familiar también es miembro registrado
+    # Solo relaciones donde el familiar también es miembro registrado
+    # (en tu modelo 'familiar' siempre es un Miembro, pero mantenemos el filtro
+    # por si en el futuro se permite null)
     if solo_miembros:
         relaciones = relaciones.filter(familiar__isnull=False)
+
+    # Filtro por tipo de relación
+    if tipo_relacion:
+        relaciones = relaciones.filter(tipo_relacion=tipo_relacion)
+
+    # Solo los que viven juntos
+    if solo_conviven:
+        relaciones = relaciones.filter(vive_junto=True)
+
+    # Solo responsables principales
+    if solo_responsables:
+        relaciones = relaciones.filter(es_responsable=True)
 
     # Orden: por miembro y tipo de relación
     relaciones = relaciones.order_by(
@@ -933,13 +959,16 @@ def reporte_relaciones_familiares(request):
         "relaciones": relaciones,
         "query": query,
         "solo_miembros": solo_miembros,
+        "solo_conviven": solo_conviven,
+        "solo_responsables": solo_responsables,
+        "tipo_relacion": tipo_relacion,
+        "tipo_relacion_choices": MiembroRelacion.TIPO_RELACION_CHOICES,
     }
     return render(
         request,
         "miembros_app/reportes/reporte_relaciones_familiares.html",
         context,
     )
-
 
 # -------------------------------------
 # REPORTE: CUMPLEAÑOS DEL MES

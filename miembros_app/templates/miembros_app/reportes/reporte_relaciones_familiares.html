@@ -8,7 +8,7 @@ Miembros / Reportes / Relaciones familiares
 
 {% block content %}
 
-<section class="page-header">
+<section class="page-header no-print">
     <div>
         <h1 class="page-title">Relaciones familiares</h1>
         <p class="page-subtitle">
@@ -19,8 +19,50 @@ Miembros / Reportes / Relaciones familiares
 
 <section class="page-section">
 
-    <!-- Filtros -->
-    <form method="get" class="form-grid" style="margin-bottom: 12px; align-items: flex-end;">
+    {# 🔹 CABEZAL INSTITUCIONAL: SOLO SE VE AL IMPRIMIR #}
+    <div class="only-print" style="text-align:center; margin-bottom:12px;">
+
+        {% if CFG.logo %}
+            <img src="{{ CFG.logo.url }}"
+                 alt="{{ CFG.nombre_iglesia|default:'Logo iglesia' }}"
+                 style="max-height:70px; margin-bottom:6px;">
+        {% endif %}
+
+        <h2 style="margin:0; font-size:18px; font-weight:700; letter-spacing:0.04em;">
+            {% if CFG.nombre_iglesia %}
+                {{ CFG.nombre_iglesia|upper }}
+            {% else %}
+                IGLESIA TORRE FUERTE
+            {% endif %}
+        </h2>
+
+        {% if CFG.denominacion %}
+            <div style="font-size:12px; color:#4b5563; margin-top:2px;">
+                {{ CFG.denominacion }}
+            </div>
+        {% endif %}
+
+        {% if CFG.lema %}
+            <div style="font-size:12px; color:#6b7280; margin-top:4px; font-style:italic;">
+                “{{ CFG.lema }}”
+            </div>
+        {% endif %}
+
+        {% if CFG.direccion %}
+            <div style="font-size:11px; color:#6b7280; margin-top:4px;">
+                {{ CFG.direccion }}
+            </div>
+        {% endif %}
+
+        <div style="font-size:11px; color:#6b7280; margin-top:6px;">
+            Reporte: Relaciones familiares · Fecha: {{ hoy|date:"d/m/Y" }}
+        </div>
+
+        <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
+    </div>
+
+    <!-- Filtros (solo en pantalla) -->
+    <form method="get" class="form-grid no-print" style="margin-bottom: 12px; align-items: flex-end;">
 
         <!-- Buscar -->
         <div class="form-field form-field-full">
@@ -34,17 +76,63 @@ Miembros / Reportes / Relaciones familiares
             >
         </div>
 
-        <!-- Check solo relaciones entre miembros -->
-        <div class="form-field form-field-full" style="font-size:12px;">
-            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                <input
-                    type="checkbox"
-                    name="solo_miembros"
-                    value="1"
-                    {% if solo_miembros %}checked{% endif %}
-                >
-                Mostrar solo relaciones donde el familiar también es miembro registrado
-            </label>
+        <!-- Fila: Tipo de relación + checks -->
+        <div class="form-field form-field-full">
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+
+                <!-- Tipo de relación -->
+                <div style="flex:1; min-width:180px;">
+                    <label for="id_tipo_relacion">Tipo de relación</label>
+                    <select id="id_tipo_relacion" name="tipo_relacion">
+                        <option value="">Todas</option>
+                        {% for value, label in tipo_relacion_choices %}
+                            <option value="{{ value }}" {% if value == tipo_relacion %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Solo relaciones donde ambos son miembros -->
+                <div style="flex:1; min-width:200px; font-size:12px; margin-top:4px;">
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input
+                            type="checkbox"
+                            name="solo_miembros"
+                            value="1"
+                            {% if solo_miembros %}checked{% endif %}
+                        >
+                        Solo si el familiar también es miembro
+                    </label>
+                </div>
+
+                <!-- Solo los que viven juntos -->
+                <div style="flex:1; min-width:200px; font-size:12px; margin-top:4px;">
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input
+                            type="checkbox"
+                            name="solo_conviven"
+                            value="1"
+                            {% if solo_conviven %}checked{% endif %}
+                        >
+                        Solo quienes viven en la misma casa
+                    </label>
+                </div>
+
+                <!-- Solo responsables principales -->
+                <div style="flex:1; min-width:200px; font-size:12px; margin-top:4px;">
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input
+                            type="checkbox"
+                            name="solo_responsables"
+                            value="1"
+                            {% if solo_responsables %}checked{% endif %}
+                        >
+                        Solo responsables principales
+                    </label>
+                </div>
+
+            </div>
         </div>
 
         <!-- Botones -->
@@ -78,7 +166,7 @@ Miembros / Reportes / Relaciones familiares
                     <th>Miembro</th>
                     <th>Relación</th>
                     <th>Familiar</th>
-                    <th>Responsable</th>
+                    <th>Responsable / Hogar</th>
                     <th class="col-center no-print">Ver</th>
                 </tr>
             </thead>
@@ -93,9 +181,12 @@ Miembros / Reportes / Relaciones familiares
                     <!-- Miembro principal -->
                     <td>
                         <div style="font-weight:600; font-size:13px;">
-                            <a href="{% url 'miembros_app:detalle' rel.miembro.pk %}">
+                            <a href="{% url 'miembros_app:detalle' rel.miembro.pk %}" class="no-print">
                                 {{ rel.miembro.nombres }} {{ rel.miembro.apellidos }}
                             </a>
+                            <span class="only-print">
+                                {{ rel.miembro.nombres }} {{ rel.miembro.apellidos }}
+                            </span>
                         </div>
                         <div style="font-size:11px; color:#6b7280;">
                             {{ rel.miembro.profesion|default:"Sin profesión registrada" }}
@@ -105,7 +196,9 @@ Miembros / Reportes / Relaciones familiares
                     <!-- Tipo de relación -->
                     <td>
                         {% if rel.tipo_relacion %}
-                            {{ rel.get_tipo_relacion_display }}
+                            <span class="pill pill-blue">
+                                {{ rel.get_tipo_relacion_display }}
+                            </span>
                         {% else %}
                             <span style="font-size:11px; color:#9ca3af;">—</span>
                         {% endif %}
@@ -115,26 +208,32 @@ Miembros / Reportes / Relaciones familiares
                     <td>
                         {% if rel.familiar %}
                             <div style="font-weight:500; font-size:13px;">
-                                <a href="{% url 'miembros_app:detalle' rel.familiar.pk %}">
+                                <a href="{% url 'miembros_app:detalle' rel.familiar.pk %}" class="no-print">
                                     {{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}
                                 </a>
+                                <span class="only-print">
+                                    {{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}
+                                </span>
                             </div>
                             <div style="font-size:11px; color:#6b7280;">
                                 {{ rel.familiar.profesion|default:"Sin profesión registrada" }}
-                            </div>
-                        {% elif rel.nombre_familiar %}
-                            <div style="font-size:13px;">
-                                {{ rel.nombre_familiar }}
                             </div>
                         {% else %}
                             <span style="font-size:11px; color:#9ca3af;">No registrado como miembro</span>
                         {% endif %}
                     </td>
 
-                    <!-- Responsable principal -->
+                    <!-- Responsable / Hogar -->
                     <td>
-                        {% if rel.responsable_principal %}
+                        {% if rel.es_responsable %}
                             <span class="pill pill-success">Responsable principal</span>
+                            {% if rel.vive_junto %}
+                                <div style="font-size:11px; color:#6b7280; margin-top:2px;">
+                                    Viven en la misma casa
+                                </div>
+                            {% endif %}
+                        {% elif rel.vive_junto %}
+                            <span class="pill pill-muted">Viven en la misma casa</span>
                         {% else %}
                             <span class="pill pill-muted">—</span>
                         {% endif %}
@@ -164,11 +263,16 @@ Miembros / Reportes / Relaciones familiares
 </section>
 
 <style>
+.only-print {
+    display: none;
+}
+
 @media print {
     .topbar,
     .main-nav,
     .footer,
     .form-actions,
+    .page-header,
     .page-header-actions,
     .no-print {
         display: none !important;
@@ -199,6 +303,10 @@ Miembros / Reportes / Relaciones familiares
     .table td {
         font-size: 11px;
         padding: 4px 4px;
+    }
+
+    .only-print {
+        display: inline !important;
     }
 }
 </style>
