@@ -1,55 +1,69 @@
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
-from django.utils.html import strip_tags
+from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
-def enviar_correo_sencillo(asunto, cuerpo_html, destinatarios):
+
+def enviar_correo_sencillo(subject, body_html, destinatarios):
     """
-    Envía un correo HTML sencillo usando SIEMPRE el remitente del settings:
+    Envía un correo sencillo en HTML (con versión de texto plano).
 
-    - FROM: settings.EMAIL_HOST_USER (en tu caso: jhonf1_b@zoho.com)
-    - TO: lista de destinatarios
+    - subject: asunto del correo
+    - body_html: contenido en HTML
+    - destinatarios: string o lista de correos
     """
-
-    # Aceptamos un string o una lista como destinatarios
     if isinstance(destinatarios, str):
         destinatarios = [destinatarios]
 
-    from_email = getattr(settings, "EMAIL_HOST_USER", None)
-    if not from_email:
-        raise ValueError(
-            "EMAIL_HOST_USER no está configurado en settings.py. "
-            "Configura tu cuenta de Zoho en settings."
-        )
+    if not destinatarios:
+        destinatarios = [settings.DEFAULT_FROM_EMAIL]
 
-    # Versión en texto plano
-    text_body = strip_tags(cuerpo_html)
+    # Versión de texto plano (por si el cliente de correo no soporta HTML)
+    body_text = strip_tags(body_html)
 
-    msg = EmailMultiAlternatives(
-        subject=asunto,
-        body=text_body,
-        from_email=from_email,  # <- remitente EXACTO = usuario Zoho
+    email = EmailMessage(
+        subject=subject,
+        body=body_html,
+        from_email=settings.EMAIL_HOST_USER,
         to=destinatarios,
     )
-    msg.attach_alternative(cuerpo_html, "text/html")
-    msg.send()
+    email.content_subtype = "html"  # el body es HTML
+    email.extra_headers = {"X-Mailer": "Soid_Tf_2"}
+
+    # Adjuntamos también la versión de texto plano como alternativa si quieres
+    # (opcional; muchos clientes ya se apañan solo con HTML)
+    # email.attach_alternative(body_text, "text/plain")
+
+    email.send()
+    return True
+
 
 def enviar_correo_sistema(
     subject,
     heading=None,
     subheading=None,
-    body_html="",
+    body_html=None,
     destinatarios=None,
     button_url=None,
     button_text=None,
     meta_text=None,
     extra_context=None,
+    adjuntos=None,
 ):
     """
-    Función genérica para enviar correos usando la plantilla base_email.html.
-    Sirve para TODOS los módulos del sistema.
+    Envía un correo usando la plantilla base del sistema:
+    - subject: asunto
+    - heading: título grande dentro del correo
+    - subheading: subtítulo opcional
+    - body_html: contenido HTML principal (se inyecta en el bloque central)
+    - destinatarios: string o lista de correos
+    - button_url / button_text: botón opcional
+    - meta_text: texto pequeño al final (ej: 'Correo generado automáticamente')
+    - extra_context: diccionario extra para la plantilla
+    - adjuntos: lista de rutas de archivo a adjuntar (ruta absoluta en disco)
     """
 
+    # Normalizar destinatarios
     if isinstance(destinatarios, str):
         destinatarios = [destinatarios]
 
@@ -63,11 +77,35 @@ def enviar_correo_sistema(
         "body_html": body_html,
         "button_url": button_url,
         "button_text": button_text,
-        "meta_text": meta_text or "Este correo fue generado automáticamente por Soid_Tf_2.",
+        "meta_text": meta_text,
     }
 
     if extra_context:
         contexto.update(extra_context)
 
+    # Renderizamos la plantilla base del correo
     html = render_to_string("core/emails/base_email.html", contexto)
-    enviar_correo_sencillo(subject, html, destinatarios)
+    body_text = strip_tags(html)
+
+    email = EmailMessage(
+        subject=subject,
+        body=html,
+        from_email=settings.EMAIL_HOST_USER,
+        to=destinatarios,
+    )
+    email.content_subtype = "html"  # indicamos que el body es HTML
+    email.extra_headers = {"X-Mailer": "Soid_Tf_2"}
+
+    # Adjuntar archivos si se pasan
+    if adjuntos:
+        for ruta in adjuntos:
+            if ruta:
+                try:
+                    email.attach_file(ruta)
+                except FileNotFoundError:
+                    # Si algún archivo no existe, simplemente lo ignoramos
+                    # (podrías loguearlo si quieres)
+                    pass
+
+    email.send()
+    return True

@@ -778,7 +778,11 @@ def miembro_enviar_ficha_email(request, pk):
     miembro = get_object_or_404(Miembro, pk=pk)
     config = ConfiguracionSistema.load()
 
-    destinatario_inicial = miembro.email or config.email_oficial or settings.DEFAULT_FROM_EMAIL
+    destinatario_inicial = (
+        miembro.email
+        or config.email_oficial
+        or settings.DEFAULT_FROM_EMAIL
+    )
     asunto_inicial = f"Ficha del miembro: {miembro.nombres} {miembro.apellidos}"
     mensaje_inicial = (
         f"Le enviamos la ficha del miembro {miembro.nombres} {miembro.apellidos} "
@@ -793,7 +797,7 @@ def miembro_enviar_ficha_email(request, pk):
             mensaje = form.cleaned_data["mensaje"] or mensaje_inicial
             adjunto = form.cleaned_data.get("adjunto")
 
-            # Cuerpo HTML dentro de la plantilla de correo (base_email.html)
+            # Cuerpo HTML que irá dentro de la plantilla base_email.html
             body_html = f"""
                 <p>{mensaje}</p>
                 <p style="margin-top:16px;">
@@ -809,6 +813,7 @@ def miembro_enviar_ficha_email(request, pk):
             html_final = render_to_string(
                 "core/emails/base_email.html",
                 {
+                    "CFG": config,  # 👉 AQUÍ INYECTAMOS LA CONFIGURACIÓN
                     "subject": asunto,
                     "heading": "Ficha de miembro",
                     "subheading": f"{miembro.nombres} {miembro.apellidos}",
@@ -826,7 +831,11 @@ def miembro_enviar_ficha_email(request, pk):
             email.attach_alternative(html_final, "text/html")
 
             if adjunto:
-                email.attach(adjunto.name, adjunto.read(), adjunto.content_type or "application/pdf")
+                email.attach(
+                    adjunto.name,
+                    adjunto.read(),
+                    adjunto.content_type or "application/pdf",
+                )
 
             try:
                 email.send()

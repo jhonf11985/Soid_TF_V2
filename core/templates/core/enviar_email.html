@@ -1,82 +1,112 @@
 {% extends "core/base.html" %}
 
-
 {% block title %}
     {{ titulo_pagina|default:"Enviar correo" }}
 {% endblock %}
 
+{% block breadcrumb %}
+    {{ titulo_pagina|default:"Enviar correo" }}
+{% endblock %}
+
 {% block content %}
-<div class="container my-4">
+<section class="page-section">
+
     <h1 class="page-title">
         {{ titulo_pagina|default:"Enviar correo" }}
     </h1>
 
     {% if descripcion %}
-        <p class="text-muted mb-2">
+        <p class="page-subtitle">
             {{ descripcion }}
         </p>
     {% endif %}
 
     {% if objeto_label %}
-        <p class="mb-3">
+        <p class="mb-2">
             <strong>{{ objeto_label }}</strong>
         </p>
     {% endif %}
 
-    <form method="post" enctype="multipart/form-data" class="card p-3">
+    {# Errores generales del formulario #}
+    {% if form.non_field_errors %}
+        <div class="alert alert-error" style="margin-bottom: 12px;">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="card">
         {% csrf_token %}
 
-        <div class="mb-3">
-            {{ form.destinatario.label_tag }}
-            {{ form.destinatario }}
-            {% if form.destinatario.help_text %}
-                <small class="form-text text-muted">{{ form.destinatario.help_text }}</small>
-            {% endif %}
-            {% if form.destinatario.errors %}
-                <div class="text-danger small">{{ form.destinatario.errors }}</div>
-            {% endif %}
+        <div class="form-grid">
+            {# DESTINATARIO(S) #}
+            <div class="form-field form-field-full">
+                {{ form.destinatario.label_tag }}
+                {{ form.destinatario }}
+                <p class="form-help">
+                    Puedes escribir varios correos separados por coma o punto y coma.
+                    <br>
+                    Ejemplo: <code>persona1@mail.com, persona2@mail.com; persona3@mail.com</code>
+                </p>
+                {% if form.destinatario.help_text %}
+                    <p class="form-help">{{ form.destinatario.help_text }}</p>
+                {% endif %}
+                {% if form.destinatario.errors %}
+                    <div class="form-error">
+                        {{ form.destinatario.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            {# ASUNTO #}
+            <div class="form-field form-field-full">
+                {{ form.asunto.label_tag }}
+                {{ form.asunto }}
+                {% if form.asunto.errors %}
+                    <div class="form-error">
+                        {{ form.asunto.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            {# MENSAJE #}
+            <div class="form-field form-field-full">
+                {{ form.mensaje.label_tag }}
+                {{ form.mensaje }}
+                {% if form.mensaje.help_text %}
+                    <p class="form-help">{{ form.mensaje.help_text }}</p>
+                {% endif %}
+                {% if form.mensaje.errors %}
+                    <div class="form-error">
+                        {{ form.mensaje.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            {# ADJUNTO #}
+            <div class="form-field form-field-full">
+                {{ form.adjunto.label_tag }}
+                {{ form.adjunto }}
+                {% if form.adjunto.help_text %}
+                    <p class="form-help">{{ form.adjunto.help_text }}</p>
+                {% endif %}
+                {% if form.adjunto.errors %}
+                    <div class="form-error">
+                        {{ form.adjunto.errors }}
+                    </div>
+                {% endif %}
+            </div>
         </div>
 
-        <div class="mb-3">
-            {{ form.asunto.label_tag }}
-            {{ form.asunto }}
-            {% if form.asunto.errors %}
-                <div class="text-danger small">{{ form.asunto.errors }}</div>
-            {% endif %}
-        </div>
-
-        <div class="mb-3">
-            {{ form.mensaje.label_tag }}
-            {{ form.mensaje }}
-            {% if form.mensaje.help_text %}
-                <small class="form-text text-muted">{{ form.mensaje.help_text }}</small>
-            {% endif %}
-            {% if form.mensaje.errors %}
-                <div class="text-danger small">{{ form.mensaje.errors }}</div>
-            {% endif %}
-        </div>
-
-        <div class="mb-3">
-            {{ form.adjunto.label_tag }}
-            {{ form.adjunto }}
-            {% if form.adjunto.help_text %}
-                <small class="form-text text-muted">{{ form.adjunto.help_text }}</small>
-            {% endif %}
-            {% if form.adjunto.errors %}
-                <div class="text-danger small">{{ form.adjunto.errors }}</div>
-            {% endif %}
-        </div>
-
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
                 Enviar correo
             </button>
             {% if url_cancelar %}
-                <a href="{{ url_cancelar }}" class="btn btn-secondary">
+                <a href="{{ url_cancelar }}" class="btn-secondary">
                     Cancelar
                 </a>
             {% endif %}
         </div>
     </form>
-</div>
+</section>
 {% endblock %}
