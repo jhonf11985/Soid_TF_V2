@@ -143,3 +143,21 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ======================================================
+# CONFIGURACIÓN DE CORREO (SMTP ZOHO MAIL)
+# ======================================================
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = "smtp.zoho.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = "jhonf1_b@zoho.com"
+EMAIL_HOST_PASSWORD = "@Daryjhon1985@"   # tu contraseña normal de Zoho
+
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+

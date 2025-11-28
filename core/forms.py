@@ -11,6 +11,8 @@ class ConfiguracionGeneralForm(forms.ModelForm):
             "denominacion",
             "lema",
             "direccion",
+            "pastor_principal",
+            "email_pastor",
             "logo",
             "logo_oscuro",
             "plantilla_pdf_fondo",
@@ -21,6 +23,8 @@ class ConfiguracionGeneralForm(forms.ModelForm):
             "denominacion": forms.TextInput(attrs={"class": "form-input"}),
             "lema": forms.TextInput(attrs={"class": "form-input"}),
             "direccion": forms.Textarea(attrs={"rows": 3}),
+            "pastor_principal": forms.TextInput(attrs={"class": "form-input"}),
+            "email_pastor": forms.EmailInput(attrs={"class": "form-input"}),
         }
 
 
@@ -28,7 +32,7 @@ class ConfiguracionContactoForm(forms.ModelForm):
     class Meta:
         model = ConfiguracionSistema
         fields = ["email_oficial", "telefono_oficial", "whatsapp_oficial"]
-        widgets = {
+    widgets = {
             "email_oficial": forms.EmailInput(attrs={"class": "form-input"}),
             "telefono_oficial": forms.TextInput(attrs={"class": "form-input"}),
             "whatsapp_oficial": forms.TextInput(
@@ -49,17 +53,35 @@ class ConfiguracionReportesForm(forms.ModelForm):
             "color_secundario",
             "modo_impresion",
             "pie_cartas",
+            "mostrar_logo_en_reportes",
+            "mostrar_direccion_en_reportes",
+            "email_from_name",
+            "email_from_address",
+            "enviar_copia_a_pastor",
         ]
         widgets = {
             "edad_minima_miembro_oficial": forms.NumberInput(attrs={"min": 0}),
             "zona_horaria": forms.TextInput(attrs={"class": "form-input"}),
             "formato_fecha_corta": forms.TextInput(attrs={"class": "form-input"}),
             "formato_fecha_larga": forms.TextInput(attrs={"class": "form-input"}),
+
+            # 🎨 PICKER DE COLOR
             "color_primario": forms.TextInput(
-                attrs={"class": "form-input", "placeholder": "#0097A7"}
+                attrs={
+                    "type": "color",
+                    "class": "form-input",
+                    "style": "padding:0; width:70px; height:32px; cursor:pointer;",
+                }
             ),
             "color_secundario": forms.TextInput(
-                attrs={"class": "form-input", "placeholder": "#F59E0B"}
+                attrs={
+                    "type": "color",
+                    "class": "form-input",
+                    "style": "padding:0; width:70px; height:32px; cursor:pointer;",
+                }
             ),
+
             "pie_cartas": forms.Textarea(attrs={"rows": 3}),
+            "email_from_name": forms.TextInput(attrs={"class": "form-input"}),
+            "email_from_address": forms.EmailInput(attrs={"class": "form-input"}),
         }

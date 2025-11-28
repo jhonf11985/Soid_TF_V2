@@ -85,6 +85,17 @@ class ConfiguracionSistema(models.Model):
         "Dirección",
         blank=True
     )
+    pastor_principal = models.CharField(
+        "Pastor principal",
+        max_length=150,
+        blank=True,
+        help_text="Nombre que se mostrará en cartas y documentos oficiales."
+    )
+    email_pastor = models.EmailField(
+        "Correo del pastor / administración",
+        blank=True,
+        help_text="Correo para recibir notificaciones o copias de reportes."
+    )
 
     # MARCA Y LOGOS
     logo = models.ImageField(
@@ -167,6 +178,16 @@ class ConfiguracionSistema(models.Model):
         default="formal",
         help_text="Afecta el estilo de cartas, certificados y reportes."
     )
+    mostrar_logo_en_reportes = models.BooleanField(
+        "Mostrar logo en reportes",
+        default=True,
+        help_text="Si está marcado, el logo aparecerá en los reportes impresos."
+    )
+    mostrar_direccion_en_reportes = models.BooleanField(
+        "Mostrar dirección en reportes",
+        default=True,
+        help_text="Si está marcado, la dirección aparecerá bajo el logo en los reportes."
+    )
 
     # PARÁMETROS DE MEMBRESÍA Y REPORTES
     edad_minima_miembro_oficial = models.PositiveIntegerField(
@@ -178,6 +199,24 @@ class ConfiguracionSistema(models.Model):
         "Texto de pie de cartas",
         blank=True,
         help_text="Se puede mostrar al final de las cartas de salida, traslados, etc."
+    )
+
+    # CORREO Y NOTIFICACIONES
+    email_from_name = models.CharField(
+        "Nombre remitente de correos",
+        max_length=100,
+        blank=True,
+        help_text="Ej: Iglesia Torre Fuerte."
+    )
+    email_from_address = models.EmailField(
+        "Correo remitente de correos",
+        blank=True,
+        help_text="Dirección desde la que el sistema enviará correos."
+    )
+    enviar_copia_a_pastor = models.BooleanField(
+        "Enviar copia al pastor",
+        default=False,
+        help_text="Si está marcado, el sistema enviará copia al correo del pastor en los correos oficiales."
     )
 
     class Meta:
