@@ -9,6 +9,8 @@ from django.utils import timezone
 from django.db.models.functions import ExtractDay
 from django.http import HttpResponse
 from django.conf import settings
+from .forms import EnviarFichaMiembroEmailForm
+from .forms import EnviarFichaMiembroEmailForm
 
 from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
 from .forms import MiembroForm, MiembroRelacionForm,NuevoCreyenteForm
@@ -475,6 +477,66 @@ def miembro_lista(request):
         context,
     )
 
+# -------------------------------------
+# NOTIFICACIÓN POR CORREO: NUEVO MIEMBRO
+# -------------------------------------
+from core.models import ConfiguracionSistema
+from core.utils_email import enviar_correo_sistema
+
+def notificar_nuevo_miembro(miembro, request=None):
+    """
+    Envía un correo al correo oficial configurado cuando se registra un nuevo miembro.
+    """
+
+    config = ConfiguracionSistema.load()
+    destinatario = config.email_oficial or settings.DEFAULT_FROM_EMAIL
+
+    subject = f"Nuevo miembro: {miembro.nombres} {miembro.apellidos}"
+
+    # Fecha de ingreso (evitar errores)
+    if getattr(miembro, "fecha_ingreso_iglesia", None):
+        fecha_ingreso = miembro.fecha_ingreso_iglesia.strftime("%d/%m/%Y")
+    else:
+        fecha_ingreso = "-"
+
+    body_html = f"""
+        <p>Hola,</p>
+
+        <p>Se ha registrado un nuevo miembro en el sistema <strong>Soid_Tf_2</strong>:</p>
+
+        <p>
+            <strong>Nombre:</strong> {miembro.nombres} {miembro.apellidos}<br>
+            <strong>Estado:</strong> {miembro.get_estado_miembro_display() or "Sin estado"}<br>
+            <strong>Fecha de ingreso:</strong> {fecha_ingreso}
+        </p>
+
+        <p>Puedes consultar más detalles desde el sistema.</p>
+
+        <p style="margin-top:16px;">
+            Bendiciones,<br>
+            <strong>Soid_Tf_2</strong>
+        </p>
+    """
+
+    # Construir URL del detalle
+    button_url = None
+    if request is not None:
+        try:
+            detalle_url = reverse("miembros_app:editar", args=[miembro.pk])
+            button_url = request.build_absolute_uri(detalle_url)
+        except:
+            button_url = None
+
+    enviar_correo_sistema(
+        subject=subject,
+        heading="Nuevo miembro registrado",
+        subheading="Un nuevo miembro ha sido añadido al sistema.",
+        body_html=body_html,
+        destinatarios=destinatario,
+        button_url=button_url,
+        button_text="Ver ficha del miembro" if button_url else None,
+        meta_text="Correo generado por Soid_Tf_2 automáticamente.",
+    )
 
 
 # -------------------------------------
@@ -520,9 +582,7 @@ def miembro_crear(request):
 
             miembro.save()
 
-            messages.success(request, "Miembro creado correctamente.")
-            return redirect("miembros_app:editar", pk=miembro.pk)
-
+    
     else:
         form = MiembroForm()
 
@@ -713,7 +773,92 @@ def agregar_familiar(request, pk):
                     messages.error(request, f"{field}: {e}")
 
     return redirect("miembros_app:editar", pk=miembro.pk)
+@login_required
+def miembro_enviar_ficha_email(request, pk):
+    miembro = get_object_or_404(Miembro, pk=pk)
+    config = ConfiguracionSistema.load()
 
+    destinatario_inicial = miembro.email or config.email_oficial or settings.DEFAULT_FROM_EMAIL
+    asunto_inicial = f"Ficha del miembro: {miembro.nombres} {miembro.apellidos}"
+    mensaje_inicial = (
+        f"Le enviamos la ficha del miembro {miembro.nombres} {miembro.apellidos} "
+        f"de la iglesia {config.nombre_iglesia or 'Torre Fuerte'}."
+    )
+
+    if request.method == "POST":
+        form = EnviarFichaMiembroEmailForm(request.POST, request.FILES)
+        if form.is_valid():
+            destinatario = form.cleaned_data["destinatario"]
+            asunto = form.cleaned_data["asunto"]
+            mensaje = form.cleaned_data["mensaje"] or mensaje_inicial
+            adjunto = form.cleaned_data.get("adjunto")
+
+            # Cuerpo HTML dentro de la plantilla de correo (base_email.html)
+            body_html = f"""
+                <p>{mensaje}</p>
+                <p style="margin-top:16px;">
+                    Bendiciones,<br>
+                    <strong>Soid_Tf_2</strong>
+                </p>
+            """
+
+            from django.template.loader import render_to_string
+            from django.utils.html import strip_tags
+            from django.core.mail import EmailMultiAlternatives
+
+            html_final = render_to_string(
+                "core/emails/base_email.html",
+                {
+                    "subject": asunto,
+                    "heading": "Ficha de miembro",
+                    "subheading": f"{miembro.nombres} {miembro.apellidos}",
+                    "body_html": body_html,
+                    "meta_text": "Correo enviado desde el sistema Soid_Tf_2.",
+                },
+            )
+
+            email = EmailMultiAlternatives(
+                subject=asunto,
+                body=strip_tags(html_final),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[destinatario],
+            )
+            email.attach_alternative(html_final, "text/html")
+
+            if adjunto:
+                email.attach(adjunto.name, adjunto.read(), adjunto.content_type or "application/pdf")
+
+            try:
+                email.send()
+                messages.success(
+                    request,
+                    f"Correo enviado correctamente a {destinatario}."
+                )
+                return redirect("miembros_app:detalle", pk=miembro.pk)
+            except Exception as e:
+                messages.error(
+                    request,
+                    f"No se pudo enviar el correo: {e}"
+                )
+
+    else:
+        form = EnviarFichaMiembroEmailForm(
+            initial={
+                "destinatario": destinatario_inicial,
+                "asunto": asunto_inicial,
+                "mensaje": mensaje_inicial,
+            }
+        )
+
+    context = {
+        "form": form,
+        "miembro": miembro,
+        "titulo_pagina": "Enviar ficha por correo",
+        "descripcion": "Completa los datos para enviar esta ficha por correo electrónico.",
+        "objeto_label": f"Miembro: {miembro.nombres} {miembro.apellidos}",
+        "url_cancelar": reverse("miembros_app:detalle", args=[miembro.pk]),
+    }
+    return render(request, "core/enviar_email.html", context)
 
 # -------------------------------------
 # ELIMINAR FAMILIAR

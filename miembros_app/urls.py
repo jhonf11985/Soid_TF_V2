@@ -78,5 +78,10 @@ path(
     views.nuevo_creyente_ficha,
     name="nuevo_creyente_ficha"
 ),
+    path(
+        "miembro/<int:pk>/enviar-ficha-email/",
+        views.miembro_enviar_ficha_email,
+        name="miembro_enviar_ficha_email",
+    ),
 
 ]

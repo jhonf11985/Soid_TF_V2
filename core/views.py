@@ -123,37 +123,31 @@ def configuracion_reportes(request):
 @user_passes_test(es_staff)
 def probar_envio_correo(request):
     """
-    Envía un correo de prueba SIEMPRE a la cuenta de Zoho configurada en settings.
-    Esto evita problemas de 'relay' mientras probamos el SMTP.
+    Envía un correo de prueba usando la configuración SMTP actual (Zoho).
     """
+    from django.core.mail import send_mail
 
-    config = ConfiguracionSistema.load()
+    remitente = settings.EMAIL_HOST_USER
 
-    remitente = getattr(settings, "EMAIL_HOST_USER", None)
-    if not remitente:
-        messages.error(
-            request,
-            "EMAIL_HOST_USER no está configurado en settings.py. Revisa la configuración de correo."
-        )
-        return redirect("core:configuracion_contacto")
-
-    asunto = "Prueba de correo desde Soid_Tf_2 (Zoho)"
-
-    cuerpo_html = render_to_string(
-        "core/emails/prueba_correo.html",
-        {
-            "CFG": config,
-            "usuario": request.user,
-        },
+    asunto = "Prueba de correo desde Soid_Tf_2"
+    mensaje = (
+        "Hola,\n\n"
+        "Este es un correo de prueba enviado usando Zoho SMTP y funciona correctamente.\n\n"
+        "Si recibes este mensaje, todo está bien configurado.\n\n"
+        "Bendiciones."
     )
 
     try:
-        # 🔹 Destinatario = la misma cuenta Zoho
-        enviar_correo_sencillo(asunto, cuerpo_html, remitente)
-
+        send_mail(
+            subject=asunto,
+            message=mensaje,
+            from_email=remitente,
+            recipient_list=[remitente],  # Envia a tu propia cuenta de Zoho
+            fail_silently=False,
+        )
         messages.success(
             request,
-            f"Se envió un correo de prueba a la cuenta Zoho: {remitente}."
+            f"Correo de prueba enviado correctamente a: {remitente}"
         )
     except Exception as e:
         messages.error(
@@ -162,3 +156,4 @@ def probar_envio_correo(request):
         )
 
     return redirect("core:configuracion_contacto")
+

@@ -512,3 +512,24 @@ class MiembroRelacionForm(forms.ModelForm):
                 }
             ),
         }
+
+class EnviarFichaMiembroEmailForm(forms.Form):
+    destinatario = forms.EmailField(
+        label="Correo de destino",
+        help_text="Correo al que se enviará este mensaje."
+    )
+    asunto = forms.CharField(
+        label="Asunto",
+        max_length=150
+    )
+    mensaje = forms.CharField(
+        label="Mensaje",
+        widget=forms.Textarea,
+        required=False,
+        help_text="Mensaje opcional que se incluirá en el correo."
+    )
+    adjunto = forms.FileField(
+        label="Adjuntar PDF",
+        required=False,
+        help_text="Opcional: selecciona un archivo PDF para adjuntar."
+    )
