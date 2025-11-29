@@ -18,6 +18,10 @@ from .forms import MiembroForm, MiembroRelacionForm,NuevoCreyenteForm
 from core.utils_config import get_edad_minima_miembro_oficial
 from django.http import HttpResponse
 import traceback
+from io import BytesIO
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa
+import os
 
 
 
@@ -778,6 +782,9 @@ def miembro_enviar_ficha_email(request, pk):
     miembro = get_object_or_404(Miembro, pk=pk)
     config = ConfiguracionSistema.load()
 
+    # Nombre del archivo que se va a adjuntar automáticamente
+    nombre_adjunto_auto = f"ficha_miembro_{miembro.pk}.pdf"
+
     destinatario_inicial = (
         miembro.email
         or config.email_oficial
@@ -795,9 +802,18 @@ def miembro_enviar_ficha_email(request, pk):
             destinatario = form.cleaned_data["destinatario"]
             asunto = form.cleaned_data["asunto"]
             mensaje = form.cleaned_data["mensaje"] or mensaje_inicial
-            adjunto = form.cleaned_data.get("adjunto")
 
-            # Cuerpo HTML que irá dentro de la plantilla base_email.html
+            # 1) Generar el PDF de la ficha
+            try:
+                ruta_pdf = generar_pdf_ficha_miembro(miembro)
+            except Exception as e:
+                messages.error(
+                    request,
+                    f"No se pudo generar el PDF de la ficha del miembro: {e}",
+                )
+                return redirect("miembros_app:detalle", pk=miembro.pk)
+
+            # 2) Cuerpo HTML que irá dentro del correo
             body_html = f"""
                 <p>{mensaje}</p>
                 <p style="margin-top:16px;">
@@ -806,39 +822,20 @@ def miembro_enviar_ficha_email(request, pk):
                 </p>
             """
 
-            from django.template.loader import render_to_string
-            from django.utils.html import strip_tags
-            from django.core.mail import EmailMultiAlternatives
-
-            html_final = render_to_string(
-                "core/emails/base_email.html",
-                {
-                    "CFG": config,  # 👉 AQUÍ INYECTAMOS LA CONFIGURACIÓN
-                    "subject": asunto,
-                    "heading": "Ficha de miembro",
-                    "subheading": f"{miembro.nombres} {miembro.apellidos}",
-                    "body_html": body_html,
-                    "meta_text": "Correo enviado desde el sistema Soid_Tf_2.",
-                },
-            )
-
-            email = EmailMultiAlternatives(
-                subject=asunto,
-                body=strip_tags(html_final),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[destinatario],
-            )
-            email.attach_alternative(html_final, "text/html")
-
-            if adjunto:
-                email.attach(
-                    adjunto.name,
-                    adjunto.read(),
-                    adjunto.content_type or "application/pdf",
-                )
-
+            # 3) Usar el helper genérico del sistema para enviar el correo
             try:
-                email.send()
+                enviar_correo_sistema(
+                    subject=asunto,
+                    heading="Ficha de miembro",
+                    subheading=f"{miembro.nombres} {miembro.apellidos}",
+                    body_html=body_html,
+                    destinatarios=destinatario,
+                    meta_text="Correo enviado desde el sistema Soid_Tf_2.",
+                    adjuntos=[ruta_pdf],  # aquí se adjunta el PDF
+                    extra_context={
+                        "CFG": config,  # por si base_email.html usa CFG
+                    },
+                )
                 messages.success(
                     request,
                     f"Correo enviado correctamente a {destinatario}."
@@ -866,6 +863,7 @@ def miembro_enviar_ficha_email(request, pk):
         "descripcion": "Completa los datos para enviar esta ficha por correo electrónico.",
         "objeto_label": f"Miembro: {miembro.nombres} {miembro.apellidos}",
         "url_cancelar": reverse("miembros_app:detalle", args=[miembro.pk]),
+        "adjunto_auto_nombre": nombre_adjunto_auto,  # 👈 NUEVO
     }
     return render(request, "core/enviar_email.html", context)
 
@@ -1631,3 +1629,65 @@ def nuevo_creyente_ficha(request, pk):
         "miembros_app/reportes/nuevo_creyente_ficha.html",
         context,
     )
+def generar_pdf_ficha_miembro(miembro):
+    """
+    Genera un PDF de la ficha pastoral del miembro y devuelve
+    la ruta absoluta del archivo generado.
+    """
+    from django.conf import settings
+
+    # Configuración general (para CFG en la plantilla)
+    config = ConfiguracionSistema.load()
+
+    # Traer familiares igual que en la ficha imprimible
+    relaciones_qs = (
+        MiembroRelacion.objects
+        .filter(Q(miembro=miembro) | Q(familiar=miembro))
+        .select_related("miembro", "familiar")
+    )
+
+    relaciones_familia = []
+    parejas_vistas = set()
+
+    for rel in relaciones_qs:
+        if rel.tipo_relacion == "conyuge":
+            pareja = frozenset({rel.miembro_id, rel.familiar_id})
+            if pareja in parejas_vistas:
+                continue
+            parejas_vistas.add(pareja)
+            relaciones_familia.append(rel)
+        else:
+            relaciones_familia.append(rel)
+
+    edad_minima = get_edad_minima_miembro_oficial()
+
+    # ✨ AQUÍ SÍ INCLUIMOS CFG EN EL CONTEXTO
+    context = {
+        "miembro": miembro,
+        "relaciones_familia": relaciones_familia,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+        "CFG": config,  # ← ESTA ES LA CLAVE QUE FALTABA
+    }
+
+    # Renderizamos la misma plantilla que usas para imprimir la ficha
+    html = render_to_string("miembros_app/reportes/miembro_ficha.html", context)
+
+    # Creamos el PDF en memoria
+    resultado = BytesIO()
+    pisa_status = pisa.CreatePDF(html, dest=resultado)
+
+    if pisa_status.err:
+        raise Exception("Error generando el PDF de la ficha del miembro.")
+
+    # Carpeta donde guardaremos las fichas
+    carpeta = os.path.join(settings.MEDIA_ROOT, "fichas_miembro")
+    os.makedirs(carpeta, exist_ok=True)
+
+    nombre_archivo = f"ficha_miembro_{miembro.pk}.pdf"
+    ruta_pdf = os.path.join(carpeta, nombre_archivo)
+
+    # Guardamos el contenido del PDF en disco
+    with open(ruta_pdf, "wb") as f:
+        f.write(resultado.getvalue())
+
+    return ruta_pdf
