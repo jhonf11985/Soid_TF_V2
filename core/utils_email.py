@@ -97,15 +97,23 @@ def enviar_correo_sistema(
     email.extra_headers = {"X-Mailer": "Soid_Tf_2"}
 
     # Adjuntar archivos si se pasan
+        # Adjuntar archivos si se pasan
     if adjuntos:
-        for ruta in adjuntos:
-            if ruta:
+        for adj in adjuntos:
+            if not adj:
+                continue
+
+            # Si es una ruta de archivo (str)
+            if isinstance(adj, str):
                 try:
-                    email.attach_file(ruta)
+                    email.attach_file(adj)
                 except FileNotFoundError:
-                    # Si algún archivo no existe, simplemente lo ignoramos
-                    # (podrías loguearlo si quieres)
                     pass
+
+            # Si es un archivo en memoria → (nombre, contenido_bytes)
+            elif isinstance(adj, tuple) and len(adj) == 2:
+                nombre, contenido = adj
+                email.attach(nombre, contenido, "application/pdf")
 
     email.send()
     return True

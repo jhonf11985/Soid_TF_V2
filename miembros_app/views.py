@@ -11,7 +11,8 @@ from django.http import HttpResponse
 from django.conf import settings
 from .forms import EnviarFichaMiembroEmailForm
 from .forms import EnviarFichaMiembroEmailForm
-
+import tempfile
+import subprocess   # ← ESTE
 from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
 from .forms import MiembroForm, MiembroRelacionForm,NuevoCreyenteForm
 
@@ -20,10 +21,13 @@ from django.http import HttpResponse
 import traceback
 from io import BytesIO
 from django.template.loader import render_to_string
-from xhtml2pdf import pisa
+
 import os
+from django.core.files.storage import default_storage
+from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 
-
+CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 
 # -------------------------------------
 # DASHBOARD
@@ -471,6 +475,7 @@ def miembro_lista(request):
     context = {
         "miembros": miembros,
         "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+        "modo_pdf": False,   # 👈 importante para distinguir vista normal de PDF
     }
     # Mezclamos con todos los filtros (para que el formulario recuerde el estado)
     context.update(filtros_context)
@@ -1691,3 +1696,188 @@ def generar_pdf_ficha_miembro(miembro):
         f.write(resultado.getvalue())
 
     return ruta_pdf
+@login_required
+def listado_miembros_enviar_email(request):
+    """
+    Genera un PDF EXACTO del listado de miembros usando la URL real
+    y lo envía por correo.
+    """
+    config = ConfiguracionSistema.load()
+
+    # Obtener los filtros actuales
+    filtros = request.GET.urlencode()
+    base_url = request.build_absolute_uri(reverse("miembros_app:reporte_listado_miembros"))
+
+    # Construir URL completa con filtros
+    url_completa = base_url + (f"?{filtros}" if filtros else "")
+
+    # Datos iniciales del formulario
+    email_default = config.email_oficial or settings.DEFAULT_FROM_EMAIL
+    asunto_default = "Listado general de miembros"
+    mensaje_default = f"Adjunto el listado general de miembros de {config.nombre_iglesia or 'nuestra iglesia'}."
+
+    if request.method == "POST":
+        form = EnviarFichaMiembroEmailForm(request.POST)
+        if form.is_valid():
+            destinatario = form.cleaned_data["destinatario"]
+            asunto = form.cleaned_data["asunto"] or asunto_default
+            mensaje = form.cleaned_data["mensaje"] or mensaje_default
+
+            try:
+                # GENERAR PDF USANDO LA URL REAL
+                pdf_bytes = generar_pdf_desde_url(url_completa)
+
+                # Cuerpo del correo
+                body_html = (
+                    f"<p>{mensaje}</p>"
+                    "<p style='margin-top:16px;'>Bendiciones,<br><strong>Soid_Tf_2</strong></p>"
+                )
+
+                # Enviar correo con adjunto
+                enviar_correo_sistema(
+                    subject=asunto,
+                    heading="Listado general de miembros",
+                    body_html=body_html,
+                    destinatarios=destinatario,
+                    meta_text="Correo enviado desde Soid_Tf_2",
+                    extra_context={"CFG": config},
+                    adjuntos=[("listado_miembros.pdf", pdf_bytes)],
+                )
+
+                messages.success(
+                    request, f"Correo enviado correctamente a {destinatario}"
+                )
+                return redirect("miembros_app:reporte_listado_miembros")
+
+            except Exception as e:
+                messages.error(request, f"No se pudo enviar el correo: {e}")
+                return redirect("miembros_app:reporte_listado_miembros")
+
+    else:
+        form = EnviarFichaMiembroEmailForm(
+            initial={
+                "destinatario": email_default,
+                "asunto": asunto_default,
+                "mensaje": mensaje_default,
+            }
+        )
+
+    return render(
+        request,
+        "core/enviar_email.html",
+        {
+            "form": form,
+            "titulo_pagina": "Enviar listado por correo",
+            "descripcion": "Se generará un PDF idéntico al de impresión usando Chrome Headless.",
+            "objeto_label": "Listado general de miembros",
+            "url_cancelar": reverse("miembros_app:reporte_listado_miembros"),
+            "adjunto_auto_nombre": "listado_miembros.pdf",
+        },
+    )
+
+
+
+
+def generar_pdf_listado_miembros(request, miembros, filtros_context):
+    """
+    Genera un PDF usando la MISMA plantilla del listado,
+    conservando el diseño original sin modificar nada.
+    """
+    config = ConfiguracionSistema.load()
+    edad_minima = get_edad_minima_miembro_oficial()
+
+    # Contexto igualito al de la vista original
+    context = {
+        "miembros": miembros,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+        "CFG": config,
+        "hoy": timezone.localdate(),
+    }
+    context.update(filtros_context)
+
+    # Renderizamos el MISMO HTML del listado
+    html_string = render_to_string(
+        "miembros_app/reportes/listado_miembros.html",
+        context
+    )
+
+    # Convertir el HTML a PDF
+    pdf_file = BytesIO()
+    HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(pdf_file)
+
+    # Guardar en MEDIA/reportes_miembros/
+    carpeta = os.path.join(settings.MEDIA_ROOT, "reportes_miembros")
+    os.makedirs(carpeta, exist_ok=True)
+
+    ruta_pdf = os.path.join(carpeta, "listado_miembros.pdf")
+
+    with open(ruta_pdf, "wb") as f:
+        f.write(pdf_file.getvalue())
+
+    return ruta_pdf
+def generar_pdf_chrome_headless(request, html_content):
+    """
+    Genera un PDF en memoria usando Chrome Headless.
+    El resultado es IDENTICO al PDF que genera el navegador.
+    """
+    # Crear archivo HTML temporal
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as html_temp:
+        html_temp.write(html_content.encode("utf-8"))
+        html_temp_path = html_temp.name
+
+    # Archivo PDF temporal (salida)
+    pdf_temp_path = html_temp_path.replace(".html", ".pdf")
+
+    # Comando Chrome Headless
+    comando = [
+        CHROME_PATH,
+        "--headless",
+        "--disable-gpu",
+        f"--print-to-pdf={pdf_temp_path}",
+        html_temp_path
+    ]
+
+    # Ejecutar Chrome para generar PDF
+    subprocess.run(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Leer el PDF generado en memoria
+    with open(pdf_temp_path, "rb") as f:
+        pdf_bytes = f.read()
+
+    # Borrar archivos temporales
+    os.remove(html_temp_path)
+    os.remove(pdf_temp_path)
+
+    return pdf_bytes
+def generar_pdf_desde_url(url):
+    """
+    Genera un PDF desde una URL real usando Chrome Headless.
+    El PDF es idéntico al generado desde 'Imprimir → Guardar como PDF'.
+    """
+    import tempfile
+    import subprocess
+    import os
+
+    # Crear archivo PDF temporal
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as pdf_temp:
+        pdf_temp_path = pdf_temp.name
+
+    # Ejecutar Chrome Headless
+    comando = [
+        CHROME_PATH,
+        "--headless",
+        "--disable-gpu",
+        f"--print-to-pdf={pdf_temp_path}",
+        url
+    ]
+
+    subprocess.run(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Leer PDF en memoria
+    with open(pdf_temp_path, "rb") as f:
+        pdf_bytes = f.read()
+
+    # Borrar archivo temporal
+    os.remove(pdf_temp_path)
+
+    return pdf_bytes

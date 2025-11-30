@@ -83,5 +83,16 @@ path(
         views.miembro_enviar_ficha_email,
         name="miembro_enviar_ficha_email",
     ),
+ path(
+        "miembros/listado/enviar-email/",
+        views.listado_miembros_enviar_email,
+        name="listado_miembros_enviar_email",
+    ),
+    path(
+    "miembros/listado/enviar-email/",
+    views.listado_miembros_enviar_email,
+    name="listado_miembros_enviar_email",
+),
 
 ]
+
