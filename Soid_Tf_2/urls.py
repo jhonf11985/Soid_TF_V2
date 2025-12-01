@@ -16,7 +16,10 @@ urlpatterns = [
     # Ruta del módulo Miembros
     path("miembros/", include("miembros_app.urls")),
 
-    path("accounts/", include("django.contrib.auth.urls"))
+    path("accounts/", include("django.contrib.auth.urls")),
+
+    path("notificaciones/", include("notificaciones_app.urls"))  # 👈 AÑADIDO
+
 
 ]
 
