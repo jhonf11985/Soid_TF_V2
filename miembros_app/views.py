@@ -28,6 +28,11 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from core.utils_chrome import get_chrome_executable
 # Configuración de Chrome/Chromium (ruta opcional)
+from openpyxl import Workbook
+from datetime import date, timedelta, datetime
+from openpyxl import Workbook, load_workbook
+
+
 
 CHROME_PATH = getattr(settings, "CHROME_PATH", None) or os.environ.get("CHROME_PATH")
 
@@ -2057,3 +2062,282 @@ def nuevos_creyentes_enviar_email(request):
             "adjunto_auto_nombre": "nuevos_creyentes.pdf",
         },
     )
+def exportar_miembros_excel(request):
+    """
+    Exporta a Excel los miembros que se están viendo en el listado,
+    respetando TODOS los filtros aplicados en la vista miembro_lista.
+    """
+
+    # Base: solo miembros que NO son nuevos creyentes
+    miembros_base = Miembro.objects.filter(nuevo_creyente=False)
+
+    # Reutilizamos exactamente la misma lógica de filtros
+    miembros, filtros_context = filtrar_miembros(request, miembros_base)
+
+    # Creamos el libro de Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Miembros"
+
+    # Encabezados de columnas
+    headers = [
+        "ID",
+        "Nombres",
+        "Apellidos",
+        "Edad",
+        "Género",
+        "Estado",
+        "Categoría edad",
+        "Teléfono",
+        "Email",
+        "Bautizado",
+        "Fecha ingreso",
+        "Activo",
+    ]
+    ws.append(headers)
+
+    # Rellenar filas con los datos filtrados
+    for m in miembros:
+        # Edad calculada (si no hay fecha de nacimiento, queda vacío)
+        try:
+            edad = m.edad
+        except Exception:
+            edad = None
+
+        # Género, estado y categoría (usamos los display si existen)
+        genero_display = (
+            m.get_genero_display() if hasattr(m, "get_genero_display") else m.genero
+        )
+        estado_display = (
+            m.get_estado_miembro_display()
+            if hasattr(m, "get_estado_miembro_display")
+            else m.estado_miembro
+        )
+        categoria_display = (
+            m.get_categoria_edad_display()
+            if hasattr(m, "get_categoria_edad_display")
+            else m.categoria_edad
+        )
+
+        # Fecha de ingreso formateada
+        if getattr(m, "fecha_ingreso_iglesia", None):
+            fecha_ingreso_str = m.fecha_ingreso_iglesia.strftime("%d/%m/%Y")
+        else:
+            fecha_ingreso_str = ""
+
+        row = [
+            m.id,
+            m.nombres,
+            m.apellidos,
+            edad if edad is not None else "",
+            genero_display or "",
+            estado_display or "",
+            categoria_display or "",
+            m.telefono or "",
+            m.email or "",
+            "Sí" if m.bautizado_confirmado else "No",
+            fecha_ingreso_str,
+            "Activo" if m.activo else "Inactivo",
+        ]
+        ws.append(row)
+
+    # Ajustar un poco el ancho de las columnas automáticamente
+    for column_cells in ws.columns:
+        max_length = 0
+        column = column_cells[0].column_letter  # A, B, C...
+        for cell in column_cells:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except Exception:
+                pass
+        # Limitar el ancho a algo razonable
+        adjusted_width = min(max_length + 2, 40)
+        ws.column_dimensions[column].width = adjusted_width
+
+    # Preparar la respuesta HTTP con el archivo Excel
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = "miembros_filtrados.xlsx"
+
+    response = HttpResponse(
+        output.getvalue(),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def importar_miembros_excel(request):
+    """
+    Importa miembros desde un archivo de Excel.
+    Crea NUEVOS miembros usando las columnas del archivo.
+    
+    Formato esperado (fila 1 = encabezados):
+    - Nombres
+    - Apellidos
+    - Genero       (Masculino / Femenino)
+    - Estado       (Activo, Pasivo, En observación, En disciplina, Descarriado, Catecúmeno)
+    - Telefono
+    - Email
+    - Fecha_nacimiento (dd/mm/aaaa o yyyy-mm-dd)
+    """
+
+    if request.method != "POST":
+        messages.error(request, "Método no permitido para importar.")
+        return redirect("miembros_app:lista")
+
+    archivo = request.FILES.get("archivo_excel")
+
+    if not archivo:
+        messages.error(request, "No se ha enviado ningún archivo de Excel.")
+        return redirect("miembros_app:lista")
+
+    try:
+        wb = load_workbook(filename=archivo, data_only=True)
+        ws = wb.active
+    except Exception as e:
+        messages.error(request, f"El archivo no parece ser un Excel válido: {e}")
+        return redirect("miembros_app:lista")
+
+    # Leemos la fila de encabezados (fila 1)
+    try:
+        header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+    except StopIteration:
+        messages.error(request, "El archivo está vacío.")
+        return redirect("miembros_app:lista")
+
+    # Creamos un mapa nombre_columna -> índice
+    header_map = {}
+    for idx, name in enumerate(header_row):
+        if name:
+            key = str(name).strip().lower()
+            header_map[key] = idx
+
+    # Columnas mínimas obligatorias
+    columnas_obligatorias = ["nombres", "apellidos"]
+    faltantes = [col for col in columnas_obligatorias if col not in header_map]
+
+    if faltantes:
+        msg = (
+            "Faltan columnas obligatorias en el encabezado: "
+            + ", ".join(faltantes)
+            + ". Asegúrate de tener al menos: Nombres y Apellidos."
+        )
+        messages.error(request, msg)
+        return redirect("miembros_app:lista")
+
+    creados = 0
+    omitidos = 0
+
+    # Mapeos para género y estado
+    mapa_genero = {
+        "masculino": "masculino",
+        "m": "masculino",
+        "hombre": "masculino",
+        "male": "masculino",
+        "femenino": "femenino",
+        "f": "femenino",
+        "mujer": "femenino",
+        "female": "femenino",
+    }
+
+    mapa_estado = {
+        "activo": "activo",
+        "pasivo": "pasivo",
+        "en observación": "observacion",
+        "en observacion": "observacion",
+        "observacion": "observacion",
+        "observación": "observacion",
+        "disciplina": "disciplina",
+        "en disciplina": "disciplina",
+        "descarriado": "descarriado",
+        "catecumeno": "catecumeno",
+        "catecúmeno": "catecumeno",
+    }
+
+    # Recorremos las filas de datos (desde la fila 2)
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        # Si la fila está completamente vacía, la saltamos
+        if not row or all((cell is None or str(cell).strip() == "") for cell in row):
+            continue
+
+        def get_value(nombre_col):
+            idx = header_map.get(nombre_col)
+            if idx is None:
+                return ""
+            value = row[idx]
+            return "" if value is None else str(value).strip()
+
+        nombres = get_value("nombres")
+        apellidos = get_value("apellidos")
+
+        if not nombres and not apellidos:
+            # No tiene ni nombres ni apellidos, omitimos
+            omitidos += 1
+            continue
+
+        genero_val = ""
+        if "genero" in header_map:
+            genero_raw = get_value("genero").lower()
+            genero_val = mapa_genero.get(genero_raw, "")
+
+        estado_val = "activo"
+        if "estado" in header_map:
+            estado_raw = get_value("estado").lower()
+            estado_val = mapa_estado.get(estado_raw, "activo")
+
+        telefono = get_value("telefono")
+        email = get_value("email")
+
+        fecha_nacimiento = None
+        if "fecha_nacimiento" in header_map:
+            valor_fecha = row[header_map["fecha_nacimiento"]]
+            if valor_fecha:
+                # Puede venir como fecha de Excel o como texto
+                if hasattr(valor_fecha, "year"):
+                    # Ya es un objeto date/datetime
+                    try:
+                        # Si es datetime, extraemos solo la fecha
+                        fecha_nacimiento = valor_fecha.date()
+                    except AttributeError:
+                        fecha_nacimiento = valor_fecha
+                else:
+                    # Intentamos parsear texto
+                    texto_fecha = str(valor_fecha).strip()
+                    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+                        try:
+                            fecha_nacimiento = datetime.strptime(texto_fecha, fmt).date()
+                            break
+                        except ValueError:
+                            continue
+
+        # Creamos el miembro
+        try:
+            Miembro.objects.create(
+                nombres=nombres,
+                apellidos=apellidos,
+                genero=genero_val,
+                telefono=telefono,
+                email=email,
+                fecha_nacimiento=fecha_nacimiento,
+                estado_miembro=estado_val,
+                # El resto de campos quedan por defecto
+            )
+            creados += 1
+        except Exception:
+            omitidos += 1
+            continue
+
+    messages.success(
+        request,
+        f"Importación completada. Miembros creados: {creados}. Filas omitidas: {omitidos}.",
+    )
+    return redirect("miembros_app:lista")

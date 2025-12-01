@@ -8,21 +8,54 @@ Miembros / Lista
 
 {% block content %}
 
-<section class="page-header">
+<section class="page-header no-print">
     <div>
-        <h1 class="page-title">Miembros registrados</h1>
+        <h1 class="page-title">Listado general de miembros</h1>
         <p class="page-subtitle">
-            
+        
         </p>
     </div>
-
     <div class="page-header-actions">
-        <a href="{% url 'miembros_app:crear' %}" class="btn-primary">
-            <span class="material-icons">add</span>
-            <span>Nuevo miembro</span>
+        <button type="button" class="btn-secondary" onclick="window.print()">
+            <span class="material-icons" style="font-size:16px;">print</span>
+            Imprimir
+        </button>
+
+        <a href="{% url 'miembros_app:listado_miembros_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+           class="btn-primary"
+           style="display:inline-flex; align-items:center; gap:4px;">
+            <span class="material-icons" style="font-size:16px;">mail</span>
+            Enviar por correo
         </a>
+
+        <a href="{% url 'miembros_app:exportar_miembros_excel' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+           class="btn-secondary"
+           style="display:inline-flex; align-items:center; gap:4px;">
+            <span class="material-icons" style="font-size:16px;">download</span>
+            Exportar a Excel
+        </a>
+
+        <!-- Importar desde Excel -->
+        <form action="{% url 'miembros_app:importar_miembros_excel' %}"
+              method="post"
+              enctype="multipart/form-data"
+              style="display:inline-flex; align-items:center; gap:6px; margin-left:8px;">
+            {% csrf_token %}
+            <input type="file"
+                   name="archivo_excel"
+                   accept=".xlsx,.xls"
+                   required
+                   style="font-size:11px; max-width:180px;">
+            <button type="submit"
+                    class="btn-secondary"
+                    style="display:inline-flex; align-items:center; gap:4px;">
+                <span class="material-icons" style="font-size:16px;">upload</span>
+                Importar Excel
+            </button>
+        </form>
     </div>
 </section>
+
 
 <section class="page-section">
 

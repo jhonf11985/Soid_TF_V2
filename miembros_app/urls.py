@@ -94,11 +94,22 @@ path(
     name="listado_miembros_enviar_email",
 ),
 
-path(
-    "nuevos-creyentes/enviar-email/",
-    views.nuevos_creyentes_enviar_email,
-    name="nuevos_creyentes_enviar_email",
-),
+    path(
+        "nuevos-creyentes/enviar-email/",
+        views.nuevos_creyentes_enviar_email,
+        name="nuevos_creyentes_enviar_email",
+    ),
+        path(
+        "miembros/listado/exportar-excel/",
+        views.exportar_miembros_excel,
+        name="exportar_miembros_excel",
+    ),
+    path(
+        "miembros/listado/importar-excel/",
+        views.importar_miembros_excel,
+        name="importar_miembros_excel",
+    ),
+
 
 ]
 
