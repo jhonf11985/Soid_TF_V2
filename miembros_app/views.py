@@ -594,7 +594,24 @@ def miembro_crear(request):
 
             miembro.save()
 
-    
+            # --- AQUÍ DECIDIMOS SEGÚN EL BOTÓN PULSADO ---
+            if "guardar_y_nuevo" in request.POST:
+                messages.success(
+                    request,
+                    "Miembro creado correctamente. Puedes registrar otro."
+                )
+                # Volvemos al formulario de creación limpio
+                return redirect("miembros_app:crear")
+            else:
+                # Botón 'Guardar' normal
+                messages.success(request, "Miembro creado correctamente.")
+                return redirect("miembros_app:lista")
+        else:
+            # Si no es válido, se vuelve a mostrar el formulario con errores
+            messages.error(
+                request,
+                "Hay errores en el formulario. Revisa los campos marcados en rojo."
+            )
     else:
         form = MiembroForm()
 
@@ -606,7 +623,6 @@ def miembro_crear(request):
     }
 
     return render(request, "miembros_app/miembro_form.html", context)
-
 
 # -------------------------------------
 # EDITAR MIEMBRO
