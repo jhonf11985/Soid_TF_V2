@@ -117,8 +117,7 @@ class ConfiguracionSistema(models.Model):
         null=True,
         help_text="Imagen suave para utilizar como fondo o marca de agua en documentos."
     )
-
-    # CONTACTO Y COMUNICACIÓN
+        # CONTACTO Y COMUNICACIÓN
     email_oficial = models.EmailField(
         "Correo oficial",
         blank=True
@@ -134,6 +133,43 @@ class ConfiguracionSistema(models.Model):
         blank=True,
         help_text="Solo números con código de país, sin espacios ni guiones."
     )
+
+    encargado_comunicaciones = models.CharField(
+        "Nombre del encargado de comunicaciones",
+        max_length=150,
+        blank=True,
+        help_text="Ej: Secretaría, Administración, Ministerio de Comunicaciones."
+    )
+
+    horario_atencion = models.CharField(
+        "Horario de atención",
+        max_length=150,
+        blank=True,
+        help_text="Ej: Lun–Vie 9:00 a.m. – 6:00 p.m."
+    )
+
+    sitio_web = models.URLField(
+        "Página web oficial",
+        blank=True
+    )
+
+    facebook_url = models.URLField(
+        "Facebook",
+        blank=True
+    )
+
+    instagram_url = models.URLField(
+        "Instagram",
+        blank=True
+    )
+
+    mensaje_institucional_corto = models.CharField(
+        "Mensaje institucional corto",
+        max_length=150,
+        blank=True,
+        help_text="Se puede usar como firma en correos y reportes."
+    )
+
 
     # FORMATO Y ESTILO
     zona_horaria = models.CharField(

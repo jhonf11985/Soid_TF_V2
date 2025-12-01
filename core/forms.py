@@ -27,18 +27,62 @@ class ConfiguracionGeneralForm(forms.ModelForm):
             "email_pastor": forms.EmailInput(attrs={"class": "form-input"}),
         }
 
-
 class ConfiguracionContactoForm(forms.ModelForm):
     class Meta:
         model = ConfiguracionSistema
-        fields = ["email_oficial", "telefono_oficial", "whatsapp_oficial"]
-    widgets = {
-            "email_oficial": forms.EmailInput(attrs={"class": "form-input"}),
-            "telefono_oficial": forms.TextInput(attrs={"class": "form-input"}),
-            "whatsapp_oficial": forms.TextInput(
-                attrs={"class": "form-input", "placeholder": "Ej: 18095551234"}
-            ),
+        fields = [
+            "email_oficial",
+            "telefono_oficial",
+            "whatsapp_oficial",
+            "encargado_comunicaciones",
+            "horario_atencion",
+            "sitio_web",
+            "facebook_url",
+            "instagram_url",
+            "mensaje_institucional_corto",
+        ]
+        widgets = {
+            "email_oficial": forms.EmailInput(attrs={
+                "class": "form-input",
+                "placeholder": "Ej: correo@dominio.com"
+            }),
+            "telefono_oficial": forms.TextInput(attrs={
+                "class": "form-input",
+                "placeholder": "Ej: 8095551234"
+            }),
+            "whatsapp_oficial": forms.TextInput(attrs={
+                "class": "form-input",
+                "placeholder": "Ej: 18095551234"
+            }),
+
+            "encargado_comunicaciones": forms.TextInput(attrs={
+                "class": "form-input",
+                "placeholder": "Ej: Secretaría, Administración"
+            }),
+            "horario_atencion": forms.TextInput(attrs={
+                "class": "form-input",
+                "placeholder": "Ej: Lun–Vie 9:00 a.m. – 6:00 p.m."
+            }),
+
+            "sitio_web": forms.URLInput(attrs={
+                "class": "form-input",
+                "placeholder": "Ej: https://www.ejemplo.com"
+            }),
+            "facebook_url": forms.URLInput(attrs={
+                "class": "form-input",
+                "placeholder": "Ej: https://facebook.com/usuario"
+            }),
+            "instagram_url": forms.URLInput(attrs={
+                "class": "form-input",
+                "placeholder": "Ej: https://instagram.com/usuario"
+            }),
+
+            "mensaje_institucional_corto": forms.TextInput(attrs={
+                "class": "form-input",
+                "placeholder": "Ej: Un mensaje breve y significativo"
+            }),
         }
+
 
 
 class ConfiguracionReportesForm(forms.ModelForm):
@@ -58,6 +102,7 @@ class ConfiguracionReportesForm(forms.ModelForm):
             "email_from_name",
             "email_from_address",
             "enviar_copia_a_pastor",
+            
         ]
         widgets = {
             "edad_minima_miembro_oficial": forms.NumberInput(attrs={"min": 0}),
