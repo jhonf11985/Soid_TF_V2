@@ -801,14 +801,16 @@ def agregar_familiar(request, pk):
                     messages.error(request, f"{field}: {e}")
 
     return redirect("miembros_app:editar", pk=miembro.pk)
+
 @login_required
 def miembro_enviar_ficha_email(request, pk):
     miembro = get_object_or_404(Miembro, pk=pk)
     config = ConfiguracionSistema.load()
 
-    # Nombre del archivo que se va a adjuntar automáticamente
+    # Nombre que verá el destinatario en el adjunto
     nombre_adjunto_auto = f"ficha_miembro_{miembro.pk}.pdf"
 
+    # Datos iniciales para el formulario
     destinatario_inicial = (
         miembro.email
         or config.email_oficial
@@ -820,34 +822,33 @@ def miembro_enviar_ficha_email(request, pk):
         f"de la iglesia {config.nombre_iglesia or 'Torre Fuerte'}."
     )
 
+     # 👇 AQUÍ EL CAMBIO IMPORTANTE: usar 'ficha' como en la plantilla
+    ficha_url = request.build_absolute_uri(
+        reverse("miembros_app:ficha", args=[miembro.pk])
+    )
+
     if request.method == "POST":
-        form = EnviarFichaMiembroEmailForm(request.POST, request.FILES)
+        # Ya no necesitamos request.FILES porque el PDF lo generamos nosotros
+        form = EnviarFichaMiembroEmailForm(request.POST)
         if form.is_valid():
             destinatario = form.cleaned_data["destinatario"]
-            asunto = form.cleaned_data["asunto"]
+            asunto = form.cleaned_data["asunto"] or asunto_inicial
             mensaje = form.cleaned_data["mensaje"] or mensaje_inicial
 
-            # 1) Generar el PDF de la ficha
             try:
-                ruta_pdf = generar_pdf_ficha_miembro(miembro)
-            except Exception as e:
-                messages.error(
-                    request,
-                    f"No se pudo generar el PDF de la ficha del miembro: {e}",
+                # 1) Generar el PDF usando Chrome Headless desde la URL real
+                pdf_bytes = generar_pdf_desde_url(ficha_url)
+
+                # 2) Cuerpo HTML del correo
+                body_html = (
+                    f"<p>{mensaje}</p>"
+                    "<p style='margin-top:16px;'>"
+                    "Bendiciones,<br>"
+                    "<strong>Soid_Tf_2</strong>"
+                    "</p>"
                 )
-                return redirect("miembros_app:detalle", pk=miembro.pk)
 
-            # 2) Cuerpo HTML que irá dentro del correo
-            body_html = f"""
-                <p>{mensaje}</p>
-                <p style="margin-top:16px;">
-                    Bendiciones,<br>
-                    <strong>Soid_Tf_2</strong>
-                </p>
-            """
-
-            # 3) Usar el helper genérico del sistema para enviar el correo
-            try:
+                # 3) Enviar correo con el helper genérico
                 enviar_correo_sistema(
                     subject=asunto,
                     heading="Ficha de miembro",
@@ -855,16 +856,17 @@ def miembro_enviar_ficha_email(request, pk):
                     body_html=body_html,
                     destinatarios=destinatario,
                     meta_text="Correo enviado desde el sistema Soid_Tf_2.",
-                    adjuntos=[ruta_pdf],  # aquí se adjunta el PDF
-                    extra_context={
-                        "CFG": config,  # por si base_email.html usa CFG
-                    },
+                    extra_context={"CFG": config},
+                    # Adjuntamos el PDF EN MEMORIA, igual que en el listado
+                    adjuntos=[(nombre_adjunto_auto, pdf_bytes)],
                 )
+
                 messages.success(
                     request,
                     f"Correo enviado correctamente a {destinatario}."
                 )
                 return redirect("miembros_app:detalle", pk=miembro.pk)
+
             except Exception as e:
                 messages.error(
                     request,
@@ -887,7 +889,7 @@ def miembro_enviar_ficha_email(request, pk):
         "descripcion": "Completa los datos para enviar esta ficha por correo electrónico.",
         "objeto_label": f"Miembro: {miembro.nombres} {miembro.apellidos}",
         "url_cancelar": reverse("miembros_app:detalle", args=[miembro.pk]),
-        "adjunto_auto_nombre": nombre_adjunto_auto,  # 👈 NUEVO
+        "adjunto_auto_nombre": nombre_adjunto_auto,
     }
     return render(request, "core/enviar_email.html", context)
 
@@ -1969,4 +1971,89 @@ def get_chrome_path():
     raise RuntimeError(
         "No se encontró Chrome/Chromium. "
         "Instálalo o define CHROME_PATH en settings.py o en variables de entorno."
+    )
+@login_required
+def nuevos_creyentes_enviar_email(request):
+    """
+    Genera un PDF del listado de nuevos creyentes (con los filtros actuales)
+    y lo envía por correo.
+    """
+    config = ConfiguracionSistema.load()
+
+    # Tomamos los filtros que estén activos en la URL
+    filtros = request.GET.urlencode()
+
+    # OJO: el name correcto de la ruta es 'nuevo_creyente_lista'
+    base_url = request.build_absolute_uri(
+        reverse("miembros_app:nuevo_creyente_lista")
+    )
+    url_completa = base_url + (f"?{filtros}" if filtros else "")
+
+    email_default = config.email_oficial or settings.DEFAULT_FROM_EMAIL
+    asunto_default = "Listado de nuevos creyentes"
+    mensaje_default = (
+        f"Adjunto el listado de nuevos creyentes de "
+        f"{config.nombre_iglesia or 'nuestra iglesia'}."
+    )
+
+    if request.method == "POST":
+        form = EnviarFichaMiembroEmailForm(request.POST)
+        if form.is_valid():
+            destinatario = form.cleaned_data["destinatario"]
+            asunto = form.cleaned_data["asunto"] or asunto_default
+            mensaje = form.cleaned_data["mensaje"] or mensaje_default
+
+            try:
+                # Generar el PDF desde la URL real (Chrome Headless)
+                pdf_bytes = generar_pdf_desde_url(url_completa)
+
+                body_html = (
+                    f"<p>{mensaje}</p>"
+                    "<p style='margin-top:16px;'>"
+                    "Bendiciones,<br><strong>Soid_Tf_2</strong>"
+                    "</p>"
+                )
+
+                enviar_correo_sistema(
+                    subject=asunto,
+                    heading="Listado de nuevos creyentes",
+                    body_html=body_html,
+                    destinatarios=destinatario,
+                    meta_text="Correo enviado desde Soid_Tf_2",
+                    extra_context={"CFG": config},
+                    adjuntos=[("nuevos_creyentes.pdf", pdf_bytes)],
+                )
+
+                messages.success(
+                    request,
+                    f"Correo enviado correctamente a {destinatario}."
+                )
+                return redirect("miembros_app:nuevo_creyente_lista")
+
+            except Exception as e:
+                messages.error(
+                    request,
+                    f"No se pudo enviar el correo: {e}",
+                )
+                return redirect("miembros_app:nuevo_creyente_lista")
+    else:
+        form = EnviarFichaMiembroEmailForm(
+            initial={
+                "destinatario": email_default,
+                "asunto": asunto_default,
+                "mensaje": mensaje_default,
+            }
+        )
+
+    return render(
+        request,
+        "core/enviar_email.html",
+        {
+            "form": form,
+            "titulo_pagina": "Enviar listado de nuevos creyentes",
+            "descripcion": "Se generará un PDF idéntico al de impresión usando Chrome Headless.",
+            "objeto_label": "Listado de nuevos creyentes",
+            "url_cancelar": reverse("miembros_app:nuevo_creyente_lista"),
+            "adjunto_auto_nombre": "nuevos_creyentes.pdf",
+        },
     )

@@ -94,5 +94,11 @@ path(
     name="listado_miembros_enviar_email",
 ),
 
+path(
+    "nuevos-creyentes/enviar-email/",
+    views.nuevos_creyentes_enviar_email,
+    name="nuevos_creyentes_enviar_email",
+),
+
 ]
 
