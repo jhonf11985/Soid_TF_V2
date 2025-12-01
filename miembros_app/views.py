@@ -15,19 +15,22 @@ import tempfile
 import subprocess   # ← ESTE
 from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
 from .forms import MiembroForm, MiembroRelacionForm,NuevoCreyenteForm
-
+import platform   # ← ESTE FALTABA
 from core.utils_config import get_edad_minima_miembro_oficial
 from django.http import HttpResponse
 import traceback
 from io import BytesIO
 from django.template.loader import render_to_string
-
+import shutil       
 import os
 from django.core.files.storage import default_storage
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
+from core.utils_chrome import get_chrome_executable
+# Configuración de Chrome/Chromium (ruta opcional)
 
-CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+CHROME_PATH = getattr(settings, "CHROME_PATH", None) or os.environ.get("CHROME_PATH")
+
 
 # -------------------------------------
 # DASHBOARD
@@ -1818,8 +1821,10 @@ def generar_pdf_listado_miembros(request, miembros, filtros_context):
 def generar_pdf_chrome_headless(request, html_content):
     """
     Genera un PDF en memoria usando Chrome Headless.
-    El resultado es IDENTICO al PDF que genera el navegador.
+    El resultado es idéntico al PDF que genera el navegador.
     """
+    chrome_path = get_chrome_path()
+
     # Crear archivo HTML temporal
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as html_temp:
         html_temp.write(html_content.encode("utf-8"))
@@ -1828,23 +1833,29 @@ def generar_pdf_chrome_headless(request, html_content):
     # Archivo PDF temporal (salida)
     pdf_temp_path = html_temp_path.replace(".html", ".pdf")
 
-    # Comando Chrome Headless
     comando = [
-        CHROME_PATH,
+        chrome_path,
         "--headless",
         "--disable-gpu",
         f"--print-to-pdf={pdf_temp_path}",
-        html_temp_path
+        html_temp_path,
     ]
 
-    # Ejecutar Chrome para generar PDF
-    subprocess.run(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    resultado = subprocess.run(
+        comando,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
 
-    # Leer el PDF generado en memoria
+    if resultado.returncode != 0:
+        raise RuntimeError(
+            f"Error ejecutando Chrome Headless (código {resultado.returncode}): {resultado.stderr}"
+        )
+
     with open(pdf_temp_path, "rb") as f:
         pdf_bytes = f.read()
 
-    # Borrar archivos temporales
     os.remove(html_temp_path)
     os.remove(pdf_temp_path)
 
@@ -1854,30 +1865,92 @@ def generar_pdf_desde_url(url):
     Genera un PDF desde una URL real usando Chrome Headless.
     El PDF es idéntico al generado desde 'Imprimir → Guardar como PDF'.
     """
-    import tempfile
-    import subprocess
-    import os
+    chrome_path = get_chrome_path()
 
     # Crear archivo PDF temporal
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as pdf_temp:
         pdf_temp_path = pdf_temp.name
 
-    # Ejecutar Chrome Headless
     comando = [
-        CHROME_PATH,
+        chrome_path,
         "--headless",
         "--disable-gpu",
         f"--print-to-pdf={pdf_temp_path}",
-        url
+        url,  # aquí va la URL, no html_temp_path
     ]
 
-    subprocess.run(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    resultado = subprocess.run(
+        comando,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
 
-    # Leer PDF en memoria
+    if resultado.returncode != 0:
+        raise RuntimeError(
+            f"Error ejecutando Chrome Headless (código {resultado.returncode}): {resultado.stderr}"
+        )
+
     with open(pdf_temp_path, "rb") as f:
         pdf_bytes = f.read()
 
-    # Borrar archivo temporal
     os.remove(pdf_temp_path)
 
     return pdf_bytes
+
+
+def get_chrome_path():
+    """
+    Devuelve una ruta válida al ejecutable de Chrome/Chromium.
+    Orden de prioridad:
+    1) settings.CHROME_PATH
+    2) variable de entorno CHROME_PATH
+    3) detección automática (rutas típicas y ejecutables conocidos)
+    """
+    global CHROME_PATH
+
+    # 1) Si ya está resuelto y existe, úsalo
+    if CHROME_PATH and os.path.exists(CHROME_PATH):
+        return CHROME_PATH
+
+    # 2) Revisar settings.CHROME_PATH
+    settings_path = getattr(settings, "CHROME_PATH", "") or ""
+    if settings_path and os.path.exists(settings_path):
+        CHROME_PATH = settings_path
+        return CHROME_PATH
+
+    # 3) Revisar variable de entorno CHROME_PATH
+    env_path = os.environ.get("CHROME_PATH")
+    if env_path and os.path.exists(env_path):
+        CHROME_PATH = env_path
+        return CHROME_PATH
+
+    # 4) Detección automática según sistema operativo
+    system = platform.system()
+
+    candidatos = []
+    if system == "Windows":
+        candidatos = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            shutil.which("chrome"),
+            shutil.which("msedge"),  # Edge (Chromium) también sirve
+        ]
+    else:
+        candidatos = [
+            shutil.which("google-chrome"),
+            shutil.which("google-chrome-stable"),
+            shutil.which("chromium"),
+            shutil.which("chromium-browser"),
+        ]
+
+    for ruta in candidatos:
+        if ruta and os.path.exists(ruta):
+            CHROME_PATH = ruta
+            return CHROME_PATH
+
+    # 5) Si no se encuentra nada, error real
+    raise RuntimeError(
+        "No se encontró Chrome/Chromium. "
+        "Instálalo o define CHROME_PATH en settings.py o en variables de entorno."
+    )
