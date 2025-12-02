@@ -127,19 +127,16 @@ def miembros_dashboard(request):
         + catecumenos
     )
 
-    # Base para los porcentajes del panel:
-    # Se excluyen descarriados y miembros en disciplina,
-    # para ver qué proporción de la membresía oficial activa está en estados "sanos":
-    # activos, pasivos, observación y catecúmenos.
-    total_base = activos + pasivos + observacion + catecumenos
+    # Usamos el total oficial como base para los porcentajes del panel
+    total_base = total_oficiales
 
     def porcentaje(cantidad, base=None):
         if base is None:
             base = total_base
         if base == 0:
             return 0
-        # 1 decimal para que se vea más fino en las tarjetas
         return round((cantidad * 100) / base, 1)
+
 
     # -----------------------------
     # Totales generales y distribución por etapa de vida
@@ -274,6 +271,8 @@ def miembros_dashboard(request):
         "pct_descarriados": porcentaje(descarriados),
         "pct_observacion": porcentaje(observacion),
         "pct_catecumenos": porcentaje(catecumenos),
+        "pct_disciplina": porcentaje(disciplina),
+
         # Gráfico y listas
         "distribucion_etapa_vida": distribucion_etapa_vida,
         "proximos_cumpleanos": proximos_cumpleanos,
