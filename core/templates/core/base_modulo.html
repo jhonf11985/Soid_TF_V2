@@ -285,6 +285,73 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endif %}
     </span>
 </footer>
+<!-- Scripts para campanita de notificaciones -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const notifWrapper = document.getElementById('topbarNotifWrapper');
+    const notifToggle = document.getElementById('topbarNotifToggle');
+
+    if (!notifWrapper || !notifToggle) return;
+
+    function closeNotifMenu() {
+        notifWrapper.classList.remove('is-open');
+    }
+
+    notifToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const isOpening = !notifWrapper.classList.contains('is-open');
+        notifWrapper.classList.toggle('is-open');
+
+        // Si se está abriendo -> marcar como leídas
+        if (isOpening) {
+            fetch("{% url 'notificaciones_app:marcar_todas_leidas' %}", {
+                method: "GET",
+                credentials: "same-origin",
+            }).then(response => response.json())
+              .then(data => {
+                  // Ocultar el badge rojo del contador
+                  const badge = document.querySelector('.topbar-notif-badge');
+                  if (badge) badge.style.display = "none";
+              });
+        }
+    });
+
+    document.addEventListener('click', function () {
+        closeNotifMenu();
+    });
+
+    notifWrapper.addEventListener('click', function (e) {
+        e.stopPropagation();
+    });
+});
+</script>
+
+<!-- Scripts para menú de usuario -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const wrapper = document.getElementById('topbarUserWrapper');
+    const toggle = document.getElementById('topbarUserToggle');
+
+    if (!wrapper || !toggle) return;
+
+    function closeMenu() {
+        wrapper.classList.remove('is-open');
+    }
+
+    toggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        wrapper.classList.toggle('is-open');
+    });
+
+    document.addEventListener('click', function () {
+        closeMenu();
+    });
+
+    wrapper.addEventListener('click', function (e) {
+        e.stopPropagation();
+    });
+});
+</script>
 
 </body>
 </html>

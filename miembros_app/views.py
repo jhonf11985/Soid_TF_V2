@@ -31,6 +31,8 @@ from core.utils_chrome import get_chrome_executable
 from openpyxl import Workbook
 from datetime import date, timedelta, datetime
 from openpyxl import Workbook, load_workbook
+from notificaciones_app.utils import crear_notificacion
+
 
 
 
@@ -598,6 +600,27 @@ def miembro_crear(request):
                     )
 
             miembro.save()
+          
+
+            # 🔔 Crear notificación del sistema
+            try:
+                # URL al detalle del miembro (ej. /miembros/miembro/123/)
+                url_detalle = reverse("miembros_app:detalle", args=[miembro.pk])
+
+                # OJO: crear_notificacion espera:
+                # (usuario, titulo, mensaje="", url_name=None, tipo="info")
+                crear_notificacion(
+                    usuario=request.user,
+                    titulo="Nuevo miembro registrado",
+                    mensaje=f"{miembro.nombres} {miembro.apellidos} ha sido añadido al sistema.",
+                    # Le pasamos la URL completa como url_name; si no es un 'name',
+                    # la función la usará tal cual como destino.
+                    url_name=url_detalle,
+                    tipo="success",
+                )
+            except Exception as e:
+                print("Error creando notificación:", e)
+           
 
             # --- AQUÍ DECIDIMOS SEGÚN EL BOTÓN PULSADO ---
             if "guardar_y_nuevo" in request.POST:
@@ -674,6 +697,9 @@ class MiembroUpdateView(View):
         # Siempre tomamos la edad mínima desde la configuración
         edad_minima = get_edad_minima_miembro_oficial()
 
+        # ⚠️ Guardamos el estado ANTES de editar para saber si ahora se le da salida
+        salida_antes = (not miembro.activo and miembro.fecha_salida is not None)
+
         # --- SI VIENE DEL BOTÓN "AGREGAR FAMILIAR" ---
         if "agregar_familiar" in request.POST:
             rel_form = MiembroRelacionForm(request.POST)
@@ -716,7 +742,51 @@ class MiembroUpdateView(View):
                         ),
                     )
 
+            # 🔹 Guardamos los cambios
             miembro_editado.save()
+
+            # ⚠️ Detectar si AHORA se le ha dado salida
+            salida_despues = (
+                not miembro_editado.activo
+                and miembro_editado.fecha_salida is not None
+            )
+
+            # Solo creamos notificación si ANTES no estaba de salida y AHORA sí
+            if salida_despues and not salida_antes:
+                # Construimos un mensaje bonito con razón y fecha
+                partes = []
+
+                if getattr(miembro_editado, "razon_salida", None):
+                    partes.append(f"Razón: {miembro_editado.razon_salida}")
+
+                if getattr(miembro_editado, "fecha_salida", None):
+                    partes.append(
+                        "Fecha: "
+                        + miembro_editado.fecha_salida.strftime("%d/%m/%Y")
+                    )
+
+                mensaje = " | ".join(partes) or "Se ha registrado la salida de este miembro."
+
+                # Intentamos construir la URL del detalle para que la notificación sea clicable
+                try:
+                    detalle_path = reverse("miembros_app:detalle", args=[miembro_editado.pk])
+                except Exception:
+                    detalle_path = None
+
+                try:
+                    crear_notificacion(
+                        usuario=request.user,
+                        titulo=f"Salida de miembro: {miembro_editado.nombres} {miembro_editado.apellidos}",
+                        mensaje=mensaje,
+                        # Le pasamos el path directo; si reverse falla dentro del util,
+                        # se guardará tal cual.
+                        url_name=detalle_path,
+                        tipo="warning",
+                    )
+                except Exception:
+                    # No rompemos el guardado aunque falle la notificación
+                    pass
+
             messages.success(request, "Miembro actualizado correctamente.")
             return redirect("miembros_app:lista")
 
@@ -744,6 +814,7 @@ class MiembroUpdateView(View):
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
         }
         return render(request, "miembros_app/miembro_form.html", context)
+
 
 # -------------------------------------
 # DETALLE DEL MIEMBRO
@@ -1462,6 +1533,23 @@ def nuevo_creyente_crear(request):
         form = NuevoCreyenteForm(request.POST)
         if form.is_valid():
             miembro = form.save()
+
+            # 🔔 Crear notificación de nuevo creyente
+            try:
+                # URL a la pantalla de edición de ese nuevo creyente
+                url_detalle = reverse("miembros_app:nuevo_creyente_editar", args=[miembro.pk])
+
+                crear_notificacion(
+                    usuario=request.user,
+                    titulo="Nuevo creyente registrado",
+                    mensaje=f"{miembro.nombres} {miembro.apellidos} ha entregado su vida a Cristo.",
+                    # Le pasamos la URL ya resuelta; utils la usará tal cual si no puede hacer reverse
+                    url_name=url_detalle,
+                    tipo="info",
+                )
+            except Exception as e:
+                print("Error creando notificación de nuevo creyente:", e)
+
             messages.success(
                 request,
                 f"Nuevo creyente registrado correctamente: {miembro.nombres} {miembro.apellidos}.",
@@ -1472,7 +1560,7 @@ def nuevo_creyente_crear(request):
 
     context = {
         "form": form,
-        "modo": "crear",  # 👈 importante para el template
+        "modo": "crear",  
     }
     return render(request, "miembros_app/nuevos_creyentes_form.html", context)
 
