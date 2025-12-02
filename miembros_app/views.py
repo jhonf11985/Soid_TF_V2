@@ -43,7 +43,8 @@ CHROME_PATH = getattr(settings, "CHROME_PATH", None) or os.environ.get("CHROME_P
 # DASHBOARD
 # -------------------------------------
 def miembros_dashboard(request):
-    miembros = Miembro.objects.all()
+    miembros = Miembro.objects.filter(activo=True)
+
 
     # Edad mínima oficial desde parámetros
     edad_minima = get_edad_minima_miembro_oficial()
@@ -71,6 +72,7 @@ def miembros_dashboard(request):
     disciplina = 0
     catecumenos = 0  # no bautizados en edad oficial
 
+    # 1) Contamos estados pastorales SOLO para los miembros que siguen activos en la iglesia
     for m in miembros:
         edad = calcular_edad(m.fecha_nacimiento)
         if edad is None or edad < edad_minima:
@@ -91,21 +93,38 @@ def miembros_dashboard(request):
             activos += 1
         elif m.estado_miembro == "pasivo":
             pasivos += 1
-        elif m.estado_miembro == "descarriado":
-            descarriados += 1
         elif m.estado_miembro == "observacion":
             observacion += 1
         elif m.estado_miembro == "disciplina":
             disciplina += 1
+        # 👇 OJO: ya no usamos estado_miembro == "descarriado" aquí;
+        #        los descarriados se toman de los miembros INACTIVOS con razón de salida.
+
+    # 2) Recalcular descarriados: miembros inactivos con razón de salida "descarriado"
+    miembros_descarriados = Miembro.objects.filter(
+        activo=False,
+        razon_salida__isnull=False,
+    )
+
+    descarriados = 0
+    for m in miembros_descarriados:
+        edad = calcular_edad(m.fecha_nacimiento)
+        if edad is None or edad < edad_minima:
+            continue
+
+        # Convertimos la razón de salida a texto y buscamos "descarri"
+        texto_razon = str(m.razon_salida).lower()
+        if "descarri" in texto_razon:
+            descarriados += 1
 
     # Total de membresía oficial (para referencia general)
+    # 👉 Aquí ya NO incluimos a los descarriados porque son miembros inactivos.
     total_oficiales = (
         activos
         + pasivos
         + observacion
         + disciplina
         + catecumenos
-        + descarriados
     )
 
     # Base para los porcentajes del panel:
