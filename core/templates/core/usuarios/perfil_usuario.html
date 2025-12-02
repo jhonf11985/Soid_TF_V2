@@ -1,0 +1,325 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Mi perfil · Soid_Tf_2{% endblock %}
+
+{% block breadcrumb %}
+Mi perfil
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h1 class="page-title">Mi perfil</h1>
+        <p class="page-subtitle">
+            Información de tu cuenta en el sistema Soid_Tf_2.
+        </p>
+    </div>
+</section>
+
+<section class="page-section">
+    <div class="perfil-layout">
+        <!-- COLUMNA IZQUIERDA: FICHA -->
+        <div class="perfil-card">
+            <div class="perfil-header">
+                <div class="perfil-avatar">
+                    {{ usuario.first_name|default:usuario.username|first|upper }}
+                </div>
+                <div class="perfil-header-text">
+                    <h2 class="perfil-nombre">
+                        {{ usuario.get_full_name|default:usuario.username }}
+                    </h2>
+                    <p class="perfil-username">
+                        @{{ usuario.username }}
+                    </p>
+                    <p class="perfil-rol">
+                        {% if usuario.is_superuser %}
+                            Administrador del sistema
+                        {% elif usuario.is_staff %}
+                            Usuario de equipo / staff
+                        {% else %}
+                            Usuario estándar
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="perfil-section">
+                <h3>Datos de contacto</h3>
+                <dl class="perfil-lista">
+                    <div>
+                        <dt>Correo electrónico</dt>
+                        <dd>{{ usuario.email|default:"No definido" }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <div class="perfil-section">
+                <h3>Estado de la cuenta</h3>
+                <dl class="perfil-lista">
+                    <div>
+                        <dt>Activo</dt>
+                        <dd>
+                            {% if usuario.is_active %}
+                                Sí
+                            {% else %}
+                                No
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Puede acceder al sistema</dt>
+                        <dd>
+                            {% if usuario.is_staff %}
+                                Sí (staff)
+                            {% else %}
+                                Solo áreas públicas
+                            {% endif %}
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+
+            <div class="perfil-section">
+                <h3>Roles / grupos</h3>
+                {% with grupos=usuario.groups.all %}
+                    {% if grupos %}
+                        <ul class="perfil-tags">
+                            {% for g in grupos %}
+                                <li>{{ g.name }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="perfil-texto-secundario">
+                            Este usuario no tiene grupos asignados todavía.
+                        </p>
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <div class="perfil-actions">
+                <a href="{% url 'core:cambiar_contrasena' %}" class="btn-primary">
+                    Cambiar contraseña
+                </a>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: NOTAS / AYUDA -->
+        <aside class="perfil-help-card">
+            <h2>Sobre tu cuenta</h2>
+            <p class="perfil-help-text">
+                Tu usuario te permite acceder a los distintos módulos del sistema
+                según los permisos y grupos que el administrador te haya asignado.
+            </p>
+
+            <ul class="perfil-help-list">
+                <li>
+                    <strong>Administradores</strong> pueden gestionar usuarios, configuración y módulos.
+                </li>
+                <li>
+                    <strong>Secretaría</strong> suele registrar miembros y nuevos creyentes.
+                </li>
+                <li>
+                    <strong>Consulta</strong> solo ve información, sin modificarla.
+                </li>
+            </ul>
+
+            <div class="perfil-note">
+                <p>
+                    Si notas algo incorrecto en tus datos o necesitas más permisos,
+                    habla con el administrador del sistema.
+                </p>
+            </div>
+        </aside>
+    </div>
+</section>
+
+<style>
+    .perfil-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
+        gap: 18px;
+        align-items: flex-start;
+    }
+
+    @media (max-width: 900px) {
+        .perfil-layout {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    .perfil-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        padding: 16px 18px;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .perfil-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .perfil-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        background: #e0f2f1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 20px;
+        color: #047857;
+    }
+
+    .perfil-header-text {
+        min-width: 0;
+    }
+
+    .perfil-nombre {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .perfil-username {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .perfil-rol {
+        margin: 2px 0 0;
+        font-size: 11px;
+        color: #4b5563;
+    }
+
+    .perfil-section {
+        margin-top: 14px;
+        padding-top: 10px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .perfil-section h3 {
+        margin: 0 0 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .perfil-lista {
+        margin: 0;
+        padding: 0;
+    }
+
+    .perfil-lista > div {
+        margin-bottom: 6px;
+    }
+
+    .perfil-lista dt {
+        font-size: 11px;
+        color: #6b7280;
+        margin: 0;
+    }
+
+    .perfil-lista dd {
+        margin: 0;
+        font-size: 13px;
+        color: #111827;
+    }
+
+    .perfil-tags {
+        list-style: none;
+        padding: 0;
+        margin: 4px 0 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .perfil-tags li {
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #ecfdf3;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .perfil-texto-secundario {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .perfil-actions {
+        margin-top: 14px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .perfil-help-card {
+        background: #f9fafb;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        padding: 14px 16px;
+        font-size: 12px;
+        color: #374151;
+    }
+
+    .perfil-help-card h2 {
+        margin: 0 0 6px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .perfil-help-text {
+        margin: 0 0 10px;
+        color: #6b7280;
+    }
+
+    .perfil-help-list {
+        padding-left: 16px;
+        margin: 0 0 12px;
+    }
+
+    .perfil-help-list li {
+        margin-bottom: 4px;
+    }
+
+    .perfil-note {
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        font-size: 11px;
+        color: #1d4ed8;
+    }
+
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        border: none;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #198754;
+        color: #ffffff;
+        text-decoration: none;
+    }
+
+    .btn-primary:hover {
+        background: #146c43;
+    }
+</style>
+
+{% endblock %}

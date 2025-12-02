@@ -1,5 +1,8 @@
 from django import forms
 from .models import ConfiguracionSistema
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User, Group
+
 
 
 class ConfiguracionGeneralForm(forms.ModelForm):
@@ -129,4 +132,65 @@ class ConfiguracionReportesForm(forms.ModelForm):
             "pie_cartas": forms.Textarea(attrs={"rows": 3}),
             "email_from_name": forms.TextInput(attrs={"class": "form-input"}),
             "email_from_address": forms.EmailInput(attrs={"class": "form-input"}),
+        }
+class UsuarioIglesiaForm(UserCreationForm):
+    first_name = forms.CharField(
+        label="Nombre",
+        max_length=150,
+        required=True,
+        widget=forms.TextInput(attrs={
+            "class": "form-input",
+            "placeholder": "Ej.: María"
+        })
+    )
+    last_name = forms.CharField(
+        label="Apellidos",
+        max_length=150,
+        required=True,
+        widget=forms.TextInput(attrs={
+            "class": "form-input",
+            "placeholder": "Ej.: Martínez Pérez"
+        })
+    )
+    email = forms.EmailField(
+        label="Correo electrónico",
+        required=True,
+        widget=forms.EmailInput(attrs={
+            "class": "form-input",
+            "placeholder": "ejemplo@correo.com"
+        })
+    )
+    grupo = forms.ModelChoiceField(
+        label="Rol / Grupo",
+        queryset=Group.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={
+            "class": "form-input",
+        })
+    )
+
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "grupo",
+            "password1",
+            "password2",
+        ]
+        widgets = {
+            "username": forms.TextInput(attrs={
+                "class": "form-input",
+                "placeholder": "Nombre de usuario"
+            }),
+            "password1": forms.PasswordInput(attrs={
+                "class": "form-input",
+                "placeholder": "Contraseña segura"
+            }),
+            "password2": forms.PasswordInput(attrs={
+                "class": "form-input",
+                "placeholder": "Confirmar contraseña"
+            }),
         }

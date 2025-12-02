@@ -20,4 +20,10 @@ urlpatterns = [
         views.probar_envio_correo,
         name="probar_envio_correo",
     ),
+    path("usuarios/crear/", views.crear_usuario, name="crear_usuario"),
+    
+    # 👤 Cuenta de usuario
+    path("cuenta/perfil/", views.perfil_usuario, name="perfil_usuario"),
+    path("cuenta/cambiar-contrasena/", views.cambiar_contrasena, name="cambiar_contrasena"),
+    path("cuenta/salir/", views.cerrar_sesion, name="logout"),
 ]

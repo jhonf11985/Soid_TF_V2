@@ -4,7 +4,12 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.template.loader import render_to_string
 from .utils_email import enviar_correo_sencillo
 from django.conf import settings
+from django.contrib.auth.decorators import permission_required
+from .forms import UsuarioIglesiaForm
 
+from django.contrib.auth import logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.decorators import login_required
 
 from .models import Module, ConfiguracionSistema
 from .forms import (
@@ -157,3 +162,66 @@ def probar_envio_correo(request):
 
     return redirect("core:configuracion_contacto")
 
+# =================================================
+# CREAR USUARIO DESDE EL SISTEMA (SOLO ADMIN)
+# =================================================
+@login_required
+@permission_required('auth.add_user', raise_exception=True)
+def crear_usuario(request):
+    if request.method == "POST":
+        form = UsuarioIglesiaForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            nombre_mostrar = user.get_full_name() or user.username
+            messages.success(request, f"Usuario «{nombre_mostrar}» creado correctamente.")
+            return redirect("core:home")
+    else:
+        form = UsuarioIglesiaForm()
+
+    context = {
+        "form": form,
+    }
+    return render(request, "core/usuarios/crear_usuario.html", context)
+
+@login_required
+def perfil_usuario(request):
+    """
+    Muestra información básica del usuario actual.
+    """
+    usuario = request.user
+    context = {
+        "usuario": usuario,
+    }
+    return render(request, "core/usuarios/perfil_usuario.html", context)
+
+@login_required
+def cambiar_contrasena(request):
+    """
+    Permite al usuario autenticado cambiar su contraseña.
+    """
+    if request.method == "POST":
+        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Para que no se cierre la sesión al cambiar la contraseña
+            update_session_auth_hash(request, user)
+            messages.success(request, "Tu contraseña se ha actualizado correctamente.")
+            return redirect("core:perfil_usuario")
+        else:
+            messages.error(request, "Hay errores en el formulario. Revisa los campos en rojo.")
+    else:
+        form = PasswordChangeForm(user=request.user)
+
+    context = {
+        "form": form,
+    }
+    return render(request, "core/usuarios/cambiar_contrasena.html", context)
+
+@login_required
+def cerrar_sesion(request):
+    """
+    Cierra la sesión del usuario y lo lleva a la pantalla de login.
+    """
+    logout(request)
+    # Usamos la ruta definida en settings.LOGOUT_REDIRECT_URL
+    return redirect(settings.LOGOUT_REDIRECT_URL)
