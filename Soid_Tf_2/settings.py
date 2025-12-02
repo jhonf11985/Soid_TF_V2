@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 from pathlib import Path
+import platform
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -167,9 +168,7 @@ EMAIL_HOST_PASSWORD = "qorp qkza rxid btoj"
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
-# ======================================================
-# CONFIGURACIÓN DE AUTENTICACIÓN
-# ======================================================
+
 # ======================================================
 # CONFIGURACIÓN DE AUTENTICACIÓN
 # ======================================================
@@ -181,5 +180,12 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 # CONFIGURACIÓN DE CHROME HEADLESS
 # ======================================================
 
+# Detectamos si estamos corriendo en Render (variable de entorno)
+RUNNING_IN_RENDER = os.environ.get("RENDER", None) is not None
 
-CHROME_PATH = os.environ.get("CHROME_PATH", "")
+if RUNNING_IN_RENDER:
+    # Ruta típica de Chromium en los contenedores Linux de Render
+    CHROME_PATH = "/usr/bin/chromium-browser"
+else:
+    # Ruta estándar de Chrome en Windows
+    CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
