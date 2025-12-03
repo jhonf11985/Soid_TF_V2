@@ -2,6 +2,7 @@ from datetime import date
 from core.utils_config import get_edad_minima_miembro_oficial
 from django import forms
 from .models import Miembro, MiembroRelacion
+from django.db.models import Max
 
 
    
@@ -61,6 +62,18 @@ class MiembroForm(forms.ModelForm):
         ("AB-", "AB-"),
         ("No sabe", "No sabe"),
     ]
+    # Campo solo lectura para mostrar el código del miembro
+    codigo_miembro_display = forms.CharField(
+        required=False,
+        label="Código de miembro",
+        widget=forms.TextInput(
+            attrs={
+                "readonly": "readonly",
+                "class": "form-input",
+                "tabindex": "-1",  # para que no se enfoque al navegar con tab
+            }
+        ),
+    )
 
     # ==========================
     # CAMPOS PERSONALIZADOS
@@ -96,7 +109,7 @@ class MiembroForm(forms.ModelForm):
 
     # NOTA:
     # categoria_miembro se mantiene en el modelo pero no se muestra en el form
-
+    
     class Meta:
         model = Miembro
         exclude = (
@@ -280,6 +293,26 @@ class MiembroForm(forms.ModelForm):
     # ==========================
     # VALIDACIONES / LÓGICA DE NEGOCIO
     # ==========================
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        instancia = getattr(self, "instance", None)
+
+        # MODO EDITAR: usamos el código real guardado
+        if instancia and instancia.pk and instancia.codigo_miembro:
+            self.fields["codigo_miembro_display"].initial = instancia.codigo_miembro
+        else:
+            # MODO CREAR: calculamos el próximo código estimado
+            try:
+                cfg = get_config()
+                prefijo = getattr(cfg, "codigo_miembro_prefijo", "TF-") or "TF-"
+            except Exception:
+                prefijo = "TF-"
+
+            ultimo_num = Miembro.objects.aggregate(Max("numero_miembro"))["numero_miembro__max"] or 0
+            siguiente = ultimo_num + 1
+
+            self.fields["codigo_miembro_display"].initial = f"{prefijo}{siguiente:04d}"
 
     def _calcular_edad_desde_fecha(self, fecha):
         """Devuelve la edad en años a partir de una fecha de nacimiento."""
