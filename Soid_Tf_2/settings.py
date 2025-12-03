@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'core',
     'miembros_app',
     "notificaciones_app",
+    'votacion_app',
+
 ]
 
 MIDDLEWARE = [

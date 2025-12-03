@@ -1,0 +1,157 @@
+{% extends "core/base.html" %}
+
+{% block title %}Elecciones · Soid_Tf_2{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Elecciones</h1>
+        <p class="page-subtitle">
+            Gestiona aquí las elecciones creadas en el sistema.
+        </p>
+    </div>
+    <div class="page-header-actions">
+        <a href="{% url 'votacion:crear_votacion' %}" class="btn-primary">
+            <span class="material-icons" style="font-size: 18px;">add</span>
+            Nueva elección
+        </a>
+    </div>
+</div>
+
+<div class="page-section">
+    {% if messages %}
+        <div class="mb-2">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if votaciones %}
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th>Quórum</th>
+                        <th>Regla</th>
+                        <th>Votos</th>
+                        <th class="col-center" style="width: 220px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in votaciones %}
+                        <tr>
+                            <td>{{ v.nombre }}</td>
+                            <td>{{ v.get_tipo_display }}</td>
+                            <td>
+                                {% if v.estado == "ABIERTA" %}
+                                    <span class="badge-soft badge-soft-success">Abierta</span>
+                                {% elif v.estado == "CERRADA" %}
+                                    <span class="badge-soft badge-soft-muted">Cerrada</span>
+                                {% else %}
+                                    <span class="badge-soft badge-soft-warning">Borrador</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if v.quorum_minimo %}
+                                    {{ v.quorum_minimo }}
+                                    {% if v.total_habilitados %}
+                                        / {{ v.total_habilitados }}
+                                    {% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>{{ v.get_regla_ganador_display }}</td>
+                            <td>{{ v.total_votos_emitidos }}</td>
+
+                            <!-- ACCIONES -->
+                            <td class="col-center">
+                                <div class="elections-actions">
+
+                                    <!-- Configurar -->
+                                    <a href="{% url 'votacion:editar_votacion' v.pk %}"
+                                       class="btn-secondary btn-icon-only"
+                                       title="Configurar elección">
+                                        <span class="material-icons">settings</span>
+                                    </a>
+
+                                    <!-- Duplicar -->
+                                    <form method="post"
+                                          action="{% url 'votacion:duplicar_votacion' v.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="btn-secondary btn-icon-only"
+                                                title="Duplicar elección">
+                                            <span class="material-icons">content_copy</span>
+                                        </button>
+                                    </form>
+
+                                    <!-- Eliminar -->
+                                    <form method="post"
+                                          action="{% url 'votacion:eliminar_votacion' v.pk %}"
+                                          onsubmit="return confirm('¿Seguro que deseas eliminar esta elección? No se puede deshacer.');">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="btn-danger btn-icon-only"
+                                                title="Eliminar elección">
+                                            <span class="material-icons">delete</span>
+                                        </button>
+                                    </form>
+
+                                    <!-- Kiosko (solo si está ABIERTA) -->
+                                    {% if v.estado == "ABIERTA" %}
+                                        <a href="{% url 'votacion:kiosko_ingreso_codigo' %}"
+                                           class="btn-primary btn-icon-only"
+                                           title="Abrir modo kiosko">
+                                            <span class="material-icons">how_to_vote</span>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            Todavía no hay elecciones creadas.
+            Usa el botón <strong>“Nueva elección”</strong> para crear la primera.
+        </div>
+    {% endif %}
+</div>
+
+<!-- CSS ESPECÍFICO PARA ESTA TABLA -->
+<style>
+    .elections-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .elections-actions form {
+        margin: 0;
+    }
+
+    .btn-icon-only {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px;
+        min-width: 34px;
+        min-height: 34px;
+        border-radius: 999px;
+    }
+
+    .btn-icon-only .material-icons {
+        font-size: 18px;
+    }
+</style>
+
+{% endblock %}

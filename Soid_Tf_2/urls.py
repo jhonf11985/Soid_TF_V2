@@ -18,7 +18,9 @@ urlpatterns = [
 
     path("accounts/", include("django.contrib.auth.urls")),
 
-    path("notificaciones/", include("notificaciones_app.urls"))  # 👈 AÑADIDO
+    path("notificaciones/", include("notificaciones_app.urls")),  # 👈 AÑADIDO
+    path("votacion/", include("votacion_app.urls"))
+
 
 
 ]

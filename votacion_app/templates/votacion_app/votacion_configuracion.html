@@ -1,0 +1,203 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ titulo }} · Soid_Tf_2{% endblock %}
+
+{% block extra_css %}
+<style>
+
+/* === CONFIGURAR ELECCIÓN === */
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px 20px;
+    margin-top: 12px;
+    margin-bottom: 20px;
+}
+
+.form-field-full {
+    grid-column: 1 / -1;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.92rem;
+}
+
+.form-field label {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 0.95rem;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(25,135,84,0.18);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.text-danger.small {
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 15px;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ titulo }}</h1>
+        <p class="page-subtitle">Configura el tipo de elección, las reglas y el quórum.</p>
+    </div>
+
+    <div class="page-header-actions">
+
+        {% if not es_nueva and votacion %}
+            <form method="post"
+                  action="{% url 'votacion:duplicar_votacion' votacion.pk %}"
+                  style="display:inline-block; margin-right: 8px;">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary">
+                    <span class="material-icons" style="font-size: 18px;">content_copy</span>
+                    Duplicar
+                </button>
+            </form>
+
+            <form method="post"
+                  action="{% url 'votacion:eliminar_votacion' votacion.pk %}"
+                  onsubmit="return confirm('¿Seguro que deseas eliminar esta elección?')"
+                  style="display:inline-block; margin-right: 8px;">
+                {% csrf_token %}
+                <button type="submit" class="btn-danger">
+                    <span class="material-icons" style="font-size: 18px;">delete</span>
+                    Eliminar
+                </button>
+            </form>
+        {% endif %}
+
+        <a href="{% url 'votacion:lista_votaciones' %}" class="btn-secondary">
+            <span class="material-icons" style="font-size: 18px;">arrow_back</span>
+            Volver
+        </a>
+    </div>
+</div>
+
+<div class="page-section">
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="form-grid">
+
+            <div class="form-field form-field-full">
+                <label>Nombre de la elección</label>
+                {{ form.nombre }}
+            </div>
+
+            <div class="form-field form-field-full">
+                <label>Descripción</label>
+                {{ form.descripcion }}
+            </div>
+
+            <div class="form-field">
+                <label>Tipo</label>
+                {{ form.tipo }}
+            </div>
+
+            <div class="form-field">
+                <label>Estado</label>
+                {{ form.estado }}
+                <div class="form-text">Borrador · Abierta · Cerrada</div>
+            </div>
+
+            <div class="form-field">
+                <label>Regla de ganador</label>
+                {{ form.regla_ganador }}
+            </div>
+
+            <div class="form-field">
+                <label>Número de cargos</label>
+                {{ form.numero_cargos }}
+                <div class="form-text">Ej.: 3 diáconos, 2 líderes…</div>
+            </div>
+
+            <div class="form-field">
+                <label>Total habilitados</label>
+                {{ form.total_habilitados }}
+            </div>
+
+            <div class="form-field">
+                <label>Quórum mínimo</label>
+                {{ form.quorum_minimo }}
+            </div>
+
+            <div class="form-field">
+                <label>Fecha inicio</label>
+                {{ form.fecha_inicio }}
+            </div>
+
+            <div class="form-field">
+                <label>Fecha cierre</label>
+                {{ form.fecha_fin }}
+            </div>
+
+            <div class="form-field">
+                <label>
+                    {{ form.permite_empates }} Permitir empates
+                </label>
+            </div>
+
+            <div class="form-field">
+                <label>
+                    {{ form.permite_voto_remoto }} Permitir voto remoto
+                </label>
+            </div>
+
+            <div class="form-field form-field-full">
+                <label>Observaciones internas</label>
+                {{ form.observaciones_internas }}
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                <span class="material-icons" style="font-size: 18px;">save</span>
+                Guardar
+            </button>
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}
