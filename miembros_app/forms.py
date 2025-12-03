@@ -1,8 +1,11 @@
 from datetime import date
-from core.utils_config import get_edad_minima_miembro_oficial
+
 from django import forms
-from .models import Miembro, MiembroRelacion
 from django.db.models import Max
+
+from core.utils_config import get_edad_minima_miembro_oficial, get_config
+from .models import Miembro, MiembroRelacion
+
 
 
    
@@ -62,6 +65,20 @@ class MiembroForm(forms.ModelForm):
         ("AB-", "AB-"),
         ("No sabe", "No sabe"),
     ]
+        # Solo lectura: código que se mostrará arriba del formulario
+    codigo_miembro_display = forms.CharField(
+        label="Código de miembro",
+        required=False,
+        disabled=True,
+        widget=forms.TextInput(
+            attrs={
+                "class": "input",
+                "readonly": "readonly",
+                "tabindex": "-1",
+            }
+        ),
+    )
+
     # Campo solo lectura para mostrar el código del miembro
     codigo_miembro_display = forms.CharField(
         required=False,
@@ -296,23 +313,23 @@ class MiembroForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        instancia = getattr(self, "instance", None)
+        # Fecha de conversión por defecto (como ya lo tenías)
+        if not self.instance.pk and not self.initial.get("fecha_conversion"):
+            self.initial["fecha_conversion"] = date.today()
 
-        # MODO EDITAR: usamos el código real guardado
-        if instancia and instancia.pk and instancia.codigo_miembro:
-            self.fields["codigo_miembro_display"].initial = instancia.codigo_miembro
+        # === CÓDIGO PREVIO DE MIEMBRO, USANDO CONFIGURACIÓN ===
+        cfg = get_config()
+        prefijo = getattr(cfg, "codigo_miembro_prefijo", "TF-") or "TF-"
+
+        if self.instance and self.instance.pk:
+            # Modo editar: mostramos el código real del miembro
+            self.fields["codigo_miembro_display"].initial = self.instance.codigo_miembro
         else:
-            # MODO CREAR: calculamos el próximo código estimado
-            try:
-                cfg = get_config()
-                prefijo = getattr(cfg, "codigo_miembro_prefijo", "TF-") or "TF-"
-            except Exception:
-                prefijo = "TF-"
-
-            ultimo_num = Miembro.objects.aggregate(Max("numero_miembro"))["numero_miembro__max"] or 0
-            siguiente = ultimo_num + 1
-
+            # Modo crear: calculamos el siguiente número y lo mostramos con el prefijo
+            ultimo = Miembro.objects.aggregate(Max("numero_miembro"))["numero_miembro__max"] or 0
+            siguiente = ultimo + 1
             self.fields["codigo_miembro_display"].initial = f"{prefijo}{siguiente:04d}"
+
 
     def _calcular_edad_desde_fecha(self, fecha):
         """Devuelve la edad en años a partir de una fecha de nacimiento."""
