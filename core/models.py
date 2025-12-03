@@ -254,6 +254,13 @@ class ConfiguracionSistema(models.Model):
         default=False,
         help_text="Si está marcado, el sistema enviará copia al correo del pastor en los correos oficiales."
     )
+    codigo_miembro_prefijo = models.CharField(
+        "Prefijo para código de miembro",
+        max_length=20,
+        default="TF-",
+        help_text="Ej: TF-, IB-, CC-, etc."
+    )
+
 
     class Meta:
         verbose_name = "Configuración del sistema"

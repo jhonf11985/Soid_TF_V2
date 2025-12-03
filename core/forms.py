@@ -105,6 +105,7 @@ class ConfiguracionReportesForm(forms.ModelForm):
             "email_from_name",
             "email_from_address",
             "enviar_copia_a_pastor",
+            "codigo_miembro_prefijo",   # 👈 AÑADIDO AQUÍ
             
         ]
         widgets = {

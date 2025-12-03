@@ -82,7 +82,7 @@ class Miembro(models.Model):
     nivel_educativo = models.CharField(max_length=50, blank=True)
     profesion = models.CharField(max_length=100, blank=True)
 
-        # --- Identificación personal ---
+    # --- Identificación personal ---
     cedula_validator = RegexValidator(
         regex=r"^\d{3}-\d{7}-\d$",
         message="La cédula debe tener el formato 000-0000000-0",
@@ -125,12 +125,11 @@ class Miembro(models.Model):
     condiciones_medicas = models.TextField(blank=True)
     medicamentos = models.TextField(blank=True)
 
-    
     # --- Seguimiento espiritual básico ---
     nuevo_creyente = models.BooleanField(
         default=False,
         help_text="Marcar si es un nuevo creyente en proceso de seguimiento (aún no miembro oficial).",
-            )
+    )
 
     # --- Información laboral ---
     empleador = models.CharField(max_length=150, blank=True)
@@ -202,6 +201,22 @@ class Miembro(models.Model):
 
     mentor = models.CharField(max_length=150, blank=True)
     lider_celula = models.CharField(max_length=150, blank=True)
+
+    # --- Código único del miembro ---
+    numero_miembro = models.PositiveIntegerField(
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Número interno autogenerado para el miembro."
+    )
+
+    codigo_miembro = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,      # 👈 importante: permite null para no chocar en la migración
+        blank=True,
+        help_text="Código final del miembro con prefijo, ej: TF-0001."
+    )
 
     # --- Intereses y habilidades ---
     intereses = models.TextField(
@@ -287,8 +302,28 @@ class Miembro(models.Model):
             self.categoria_edad = "adulto_mayor"
 
     def save(self, *args, **kwargs):
-        # Antes de guardar, actualizamos la categoría de edad
+        """
+        Genera número_miembro y codigo_miembro (TF-0001, TF-0002, etc.)
+        respetando el prefijo configurado.
+        """
+        from django.db.models import Max
+        from core.utils_config import get_config
+
+        # 1) Mantener la lógica de categoría de edad
         self.actualizar_categoria_edad()
+
+        # 2) Obtener configuración y prefijo
+        cfg = get_config()
+        prefijo = getattr(cfg, "codigo_miembro_prefijo", "TF-") or "TF-"
+
+        # 3) Asignar número único autoincremental si aún no existe
+        if self.numero_miembro is None:
+            ultimo = Miembro.objects.aggregate(Max("numero_miembro"))["numero_miembro__max"]
+            self.numero_miembro = (ultimo or 0) + 1
+
+        # 4) Generar el código final (TF-0001)
+        self.codigo_miembro = f"{prefijo}{self.numero_miembro:04d}"
+
         super().save(*args, **kwargs)
 
     @property
@@ -296,13 +331,13 @@ class Miembro(models.Model):
         """
         Un miembro oficial es:
         - Bautizado confirmado
-        - Y con 12 años o más
-        (Más adelante se puede hacer configurable).
+        - Y con edad >= edad mínima configurada
         """
         edad = self.calcular_edad()
         if edad is None:
             return False
-        return self.bautizado_confirmado and edad >= 12
+        edad_minima = get_edad_minima_miembro_oficial()
+        return self.bautizado_confirmado and edad >= edad_minima
 
     @property
     def edad(self):

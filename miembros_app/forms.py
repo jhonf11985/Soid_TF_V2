@@ -105,6 +105,10 @@ class MiembroForm(forms.ModelForm):
             "categoria_edad",
             "categoria_miembro", 
             "nuevo_creyente",
+            "numero_miembro",
+            "codigo_miembro",
+
+
         )
 
         labels = {
@@ -287,6 +291,7 @@ class MiembroForm(forms.ModelForm):
         )
         return edad
 
+
     def clean(self):
         cleaned_data = super().clean()
 
@@ -388,7 +393,19 @@ class MiembroForm(forms.ModelForm):
                     "La fecha de salida no puede ser anterior a la fecha de ingreso a la iglesia.",
                 )
 
+        # ---------------------------------------
+        # 4) ESTADO OBLIGATORIO SI ES MAYOR O IGUAL A LA EDAD MÍNIMA
+        # ---------------------------------------
+        if edad is not None and edad >= edad_minima:
+            # Si supera o iguala la edad mínima establecida, debe tener estado
+            if not estado_miembro:  # "", None, etc.
+                self.add_error(
+                    "estado_miembro",
+                    f"Debe seleccionar un estado porque este miembro tiene {edad} años y supera la edad mínima establecida ({edad_minima}).",
+                )
+
         return cleaned_data
+
 class NuevoCreyenteForm(forms.ModelForm):
     """
     Formulario sencillo para registrar nuevos creyentes.
