@@ -776,3 +776,8 @@ def kiosko_confirmacion(request):
         "candidato": candidato,
     }
     return render(request, "votacion_app/kiosko_confirmacion.html", contexto)
+
+@login_required
+def documentacion_sistemas_votacion(request):
+    return render(request, "votacion_app/documentacion_sistemas_votacion.html")
+

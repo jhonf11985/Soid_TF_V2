@@ -20,12 +20,18 @@ class Votacion(models.Model):
         ("CERRADA", "Cerrada"),
     ]
 
+    # -----------------------------
+    # Reglas de votación oficiales (La 1 a La 6)
+    # -----------------------------
     REGLA_GANADOR_CHOICES = [
-        ("MAYORIA_50_1", "Mayoría 50% + 1"),
-        ("MAS_VOTOS", "Más votos (simple)"),
-        ("TOP_N", "Top N más votados"),
-        ("TOP_1_Y_2", "1er y 2do lugar"),
+        ("LA1", "La 1 · Mayoría absoluta secuencial (50% + 1)"),
+        ("LA2", "La 2 · Mayoría adaptativa (umbral recalculado)"),
+        ("LA3", "La 3 · Mayoría 50%+1 y los demás por orden de votos"),
+        ("LA4", "La 4 · TOP N (los más votados)"),
+        ("LA5", "La 5 · Segunda vuelta (dos más votados)"),
+        ("LA6", "La 6 · Mayoría especial (2/3 o 3/4)"),
     ]
+
     numero_cargos = models.PositiveIntegerField(
         null=True,
         blank=True,

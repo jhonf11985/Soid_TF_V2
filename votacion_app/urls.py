@@ -29,5 +29,10 @@ urlpatterns = [
         views.gestionar_candidatos,
         name="gestionar_candidatos"
     ),
+    path(
+    "documentacion/",
+    views.documentacion_sistemas_votacion,
+   name="documentacion_sistemas_votacion",
+),
 
 ]
