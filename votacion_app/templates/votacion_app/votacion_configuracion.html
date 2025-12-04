@@ -173,6 +173,17 @@
             las siguientes se usan si nadie alcanza la regla definida (por ejemplo, 50% + 1).
         </p>
 
+        {# BOTÓN PARA AGREGAR NUEVA VUELTA #}
+        <div class="form-actions" style="justify-content: flex-end; margin-bottom: 10px;">
+            <form method="post" action="{% url 'votacion:agregar_ronda' votacion.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary">
+                    <span class="material-icons" style="font-size: 18px;">add</span>
+                    Nueva vuelta
+                </button>
+            </form>
+        </div>
+
         {% with votacion.rondas.all as rondas %}
             {% if rondas %}
                 <table class="table">
@@ -239,15 +250,18 @@
             {% endif %}
         {% endwith %}
 
+
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e5e7eb;">
 
         {# 2.2) CANDIDATOS #}
-        <h2>Candidatos</h2>
+        <h2 id="candidatos">Candidatos</h2>
         <p style="font-size: 13px; color: var(--color-text-muted);">
-            Selecciona los candidatos a partir de los miembros activos. Solo se muestran
-            miembros que aún no son candidatos de esta elección.
+            Selecciona los candidatos a partir de los miembros activos.
+            Solo se permiten miembros en estado <strong>ACTIVO</strong> y
+            que cumplan la edad mínima del sistema de membresía.
             {% if votacion.edad_minima_candidato %}
-                (Edad mínima: {{ votacion.edad_minima_candidato }} años)
+                (Para esta elección además se exige edad mínima:
+                {{ votacion.edad_minima_candidato }} años)
             {% endif %}
         </p>
 
@@ -258,7 +272,7 @@
                     <tr>
                         <th>Nombre del candidato</th>
                         <th>Nº miembro</th>
-                        <th>ID miembro</th>
+                        <th>Código</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -273,8 +287,8 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if c.miembro %}
-                                    {{ c.miembro.id }}
+                                {% if c.miembro and c.miembro.codigo_miembro %}
+                                    {{ c.miembro.codigo_miembro }}
                                 {% else %}
                                     —
                                 {% endif %}
@@ -285,34 +299,172 @@
             </table>
         {% else %}
             <p style="font-size: 13px; color: var(--color-text-muted);">
-                Aún no hay candidatos. Usa el buscador de abajo para agregarlos.
+                Aún no hay candidatos. Introduce el código del miembro para agregarlo.
             </p>
         {% endif %}
 
-        {# Buscador de miembros para agregar como candidatos #}
-        <h3>Buscar miembros para agregar</h3>
+        {# Formulario: introducir solo el número, prefijo TF- fijo #}
+        <h3>Agregar candidato por código</h3>
         <p style="font-size: 13px; color: var(--color-text-muted);">
-            Busca por número de miembro, código o nombres. Solo se muestran miembros
-            activos que todavía no son candidatos.
+            Solo introduce el <strong>número</strong> del código de miembro.
+            El sistema añadirá automáticamente el prefijo <strong>TF-</strong>.<br>
+            Ejemplo: si el código es <code>TF-0012</code>, solo escribe
+            <code>12</code> o <code>0012</code>.
         </p>
 
-        <form method="get">
+        <form method="post" style="margin-top: 8px;">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="previsualizar_candidato">
+
             <div class="form-grid">
                 <div class="form-field">
-                    <label>Texto de búsqueda</label>
-                    <input type="text"
-                           name="q"
-                           value="{{ q }}"
-                           placeholder="Número de miembro, código o nombre…">
+                    <label>Código de miembro</label>
+                    <div class="input-prefix-group">
+                        <span class="input-prefix">TF-</span>
+                        <input type="text"
+                               name="codigo_sufijo"
+                               placeholder="0001"
+                               autocomplete="off"
+                               inputmode="numeric">
+                    </div>
+                    <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">
+                        Escribe solo el número; el sistema completará el código como TF-0001.
+                    </div>
                 </div>
             </div>
-            <div class="form-actions" style="justify-content: flex-start; border-top: none; padding-top: 0;">
-                <button type="submit" class="btn-secondary">
+
+            <div class="form-actions"
+                 style="justify-content: flex-start; border-top: none; padding-top: 0;">
+                <button type="submit" class="btn-primary">
                     <span class="material-icons" style="font-size: 18px;">search</span>
-                    Buscar
+                    Buscar candidato
                 </button>
             </div>
         </form>
+
+         {# MODAL DE CONFIRMACIÓN DE CANDIDATO #}
+        {% if pre_candidato and codigo_pre_candidato %}
+            <div class="modal-backdrop">
+                <div class="modal-card">
+                    <h3 style="margin-top: 0;">Confirmar candidato</h3>
+                    <p>
+                        ¿Deseas agregar como candidato a:<br>
+                        <strong>{{ pre_candidato }}</strong><br>
+                        <small>Código: {{ codigo_pre_candidato }}</small>
+                    </p>
+
+                    <div style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">
+                        Verifica que el nombre y el código correspondan a la persona correcta
+                        antes de confirmar.
+                    </div>
+<div class="modal-actions">
+    <button type="button"
+            class="btn-secondary"
+            onclick="this.closest('.modal-backdrop').remove();">
+        Cerrar
+    </button>
+
+    <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="agregar_candidato_confirmado">
+        <input type="hidden" name="codigo_miembro" value="{{ codigo_pre_candidato }}">
+        <button type="submit" class="btn-primary">
+            <span class="material-icons" style="font-size: 18px;">person_add</span>
+            Confirmar y agregar
+        </button>
+    </form>
+</div>
+
+                </div>
+            </div>
+
+        {# MODAL DE ERROR DE CANDIDATO #}
+        {% elif candidato_error %}
+            <div class="modal-backdrop">
+                <div class="modal-card">
+                    <h3 style="margin-top: 0;">No se puede agregar este candidato</h3>
+                    <p>{{ candidato_error }}</p>
+
+                    <div style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">
+                        Verifica el código, el estado del miembro y la edad mínima
+                        establecida para la membresía y para esta elección.
+                    </div>
+
+<div class="modal-actions">
+    <button type="button"
+            class="btn-primary"
+            onclick="this.closest('.modal-backdrop').remove();">
+        Cerrar
+    </button>
+</div>
+
+                </div>
+            </div>
+        {% endif %}
+
+        {# Estilos locales para el prefijo y los modales (sin tocar el CSS general) #}
+        <style>
+            .input-prefix-group {
+                display: flex;
+                align-items: stretch;
+                max-width: 260px;
+            }
+
+            .input-prefix {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.45rem 0.75rem;
+                border: 1px solid var(--border);
+                border-right: none;
+                border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+                background: #f9fafb;
+                font-size: 0.9rem;
+                color: var(--text-muted);
+                white-space: nowrap;
+            }
+
+            .input-prefix-group input[type="text"] {
+                flex: 1;
+                min-width: 0;
+                padding: 0.45rem 0.75rem;
+                border: 1px solid var(--border);
+                border-left: none;
+                border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+            }
+
+            .input-prefix-group input[type="text"]:focus {
+                outline: none;
+                box-shadow: 0 0 0 1px var(--primary);
+                border-color: var(--primary);
+            }
+
+            .modal-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.35);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 999;
+            }
+
+            .modal-card {
+                background: #ffffff;
+                border-radius: var(--radius-lg);
+                padding: 18px 20px;
+                max-width: 420px;
+                width: 100%;
+                box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+            }
+
+            .modal-actions {
+                margin-top: 18px;
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+            }
+        </style>
+
 
         {% if miembros %}
             <table class="table">

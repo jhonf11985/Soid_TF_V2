@@ -1,12 +1,14 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Q, Max
+from django.urls import reverse
+from django.http import HttpResponseRedirect
 
 from miembros_app.models import Miembro
-
 from .models import Votacion, Ronda, Candidato
 from .forms import VotacionForm
+
 
 
 @login_required
@@ -77,53 +79,22 @@ def editar_votacion(request, pk):
             fecha_fin=votacion.fecha_fin,
         )
 
-    # ---- CANDIDATOS ACTUALES ----
+    # Candidatos actuales
     candidatos = (
         votacion.candidatos
         .select_related("miembro")
         .order_by("orden", "nombre")
     )
 
-    # ---- BÚSQUEDA DE MIEMBROS PARA AGREGAR COMO CANDIDATOS ----
-    q = request.GET.get("q", "").strip()
+    # Ya no usamos lista masiva de miembros
+    q = ""
+    miembros_qs = None
 
-    # Base: solo miembros activos (usamos el campo 'activo' que aparece en el error)
-    miembros_qs = Miembro.objects.filter(activo=True)
+    # Para el modal de confirmación / errores de candidato
+    pre_candidato = None
+    codigo_pre_candidato = None
+    candidato_error = None
 
-    # Edad mínima (si el modelo la tiene configurada)
-    from datetime import date
-
-    edad_minima = getattr(votacion, "edad_minima_candidato", None)
-    if edad_minima:
-        hoy = date.today()
-        # Calculamos una fecha aproximada: hoy - edad_minima años
-        try:
-            fecha_tope = hoy.replace(year=hoy.year - edad_minima)
-        except ValueError:
-            # Por si cae en 29 de febrero
-            fecha_tope = hoy.replace(
-                year=hoy.year - edad_minima,
-                month=2,
-                day=28,
-            )
-        miembros_qs = miembros_qs.filter(fecha_nacimiento__lte=fecha_tope)
-
-    # Búsqueda por texto: número, nombres, apellidos, código de miembro
-    if q:
-        miembros_qs = miembros_qs.filter(
-            Q(numero_miembro__icontains=q) |
-            Q(codigo_miembro__icontains=q) |
-            Q(nombres__icontains=q) |
-            Q(apellidos__icontains=q)
-        )
-
-    # Excluir miembros que ya SON candidatos en esta votación
-    miembros_qs = miembros_qs.exclude(candidaturas__votacion=votacion)
-
-    # Limitar la lista por rendimiento
-    miembros_qs = miembros_qs.order_by("numero_miembro", "id")[:50]
-
-    # ---- POST: saber qué acción se está haciendo ----
     if request.method == "POST":
         accion = request.POST.get("accion")
 
@@ -145,39 +116,186 @@ def editar_votacion(request, pk):
                 messages.success(request, "La votación se ha actualizado correctamente.")
                 return redirect("votacion:editar_votacion", pk=votacion.pk)
 
-        # 2) Agregar candidato desde la lista de miembros
-        elif accion == "agregar_candidato":
-            miembro_id = request.POST.get("miembro_id")
-            if miembro_id:
-                miembro = get_object_or_404(Miembro, pk=miembro_id)
+        # 2) PREVISUALIZAR candidato por código (mostrar modal o error)
+        elif accion == "previsualizar_candidato":
+            sufijo = request.POST.get("codigo_sufijo", "").strip()
 
-                ya_existe = Candidato.objects.filter(
-                    votacion=votacion,
-                    miembro=miembro,
-                ).exists()
+            if not sufijo:
+                candidato_error = (
+                    "Debes introducir el número del código de miembro. "
+                    "Ejemplo: 12 o 0012."
+                )
+            else:
+                # Normalizamos lo que escriban: 12, 0012, TF-0012, tf0012…
+                sufijo_upper = sufijo.upper()
+                if sufijo_upper.startswith("TF-"):
+                    codigo_busqueda = sufijo_upper
+                else:
+                    limpio = sufijo_upper.replace("TF", "").replace("-", "")
+                    limpio = limpio.zfill(4)   # 12 -> 0012
+                    codigo_busqueda = f"TF-{limpio}"
 
-                if ya_existe:
-                    messages.warning(
-                        request,
-                        "Este miembro ya está registrado como candidato en esta elección."
+                try:
+                    # Traemos el miembro por código
+                    miembro = Miembro.objects.get(codigo_miembro__iexact=codigo_busqueda)
+                except Miembro.DoesNotExist:
+                    candidato_error = (
+                        f"No se encontró ningún miembro con el código {codigo_busqueda}."
                     )
                 else:
-                    # Usamos el __str__ del miembro como nombre visible del candidato
-                    nombre_candidato = str(miembro)
-                    Candidato.objects.create(
-                        votacion=votacion,
-                        miembro=miembro,
-                        nombre=nombre_candidato,
-                    )
-                    messages.success(
+                    # REGLA 1: debe ser miembro oficial (tener estado_miembro)
+                    if not miembro.estado_miembro:
+                        candidato_error = (
+                            "Este miembro no puede ser elegido como candidato porque aún "
+                            "no es miembro oficial (menor de la edad mínima del sistema "
+                            "de membresía)."
+                        )
+                    # REGLA 2: estado_miembro debe ser ACTIVO
+                    elif miembro.estado_miembro != "activo":
+                        candidato_error = (
+                            "Este miembro no puede ser elegido como candidato porque su "
+                            "estado no es ACTIVO."
+                        )
+                    else:
+                        # REGLA 3 (opcional): edad mínima específica de esta votación
+                        edad_minima_vot = getattr(
+                            votacion,
+                            "edad_minima_candidato",
+                            None,
+                        )
+                        if edad_minima_vot:
+                            # Usamos el método calcular_edad del modelo Miembro
+                            edad = (
+                                miembro.calcular_edad()
+                                if hasattr(miembro, "calcular_edad")
+                                else None
+                            )
+                            if edad is None or edad < edad_minima_vot:
+                                candidato_error = (
+                                    "Este miembro no puede ser elegido como candidato "
+                                    f"porque no cumple la edad mínima de "
+                                    f"{edad_minima_vot} años para esta elección."
+                                )
+                            else:
+                                # Pasa reglas; verificamos duplicado
+                                ya_existe = Candidato.objects.filter(
+                                    votacion=votacion,
+                                    miembro=miembro,
+                                ).exists()
+                                if ya_existe:
+                                    candidato_error = (
+                                        f"El miembro con código {codigo_busqueda} ya "
+                                        "figura como candidato en esta elección."
+                                    )
+                                else:
+                                    pre_candidato = miembro
+                                    codigo_pre_candidato = codigo_busqueda
+                        else:
+                            # Sin edad mínima específica, solo estado_miembro
+                            ya_existe = Candidato.objects.filter(
+                                votacion=votacion,
+                                miembro=miembro,
+                            ).exists()
+                            if ya_existe:
+                                candidato_error = (
+                                    f"El miembro con código {codigo_busqueda} ya "
+                                    "figura como candidato en esta elección."
+                                )
+                            else:
+                                pre_candidato = miembro
+                                codigo_pre_candidato = codigo_busqueda
+
+            # Re-renderizamos la página (sin redirect) para que se vea el modal o el error
+            form = VotacionForm(instance=votacion)
+
+        # 3) CONFIRMAR y crear candidato (desde el modal)
+        elif accion == "agregar_candidato_confirmado":
+            codigo_confirmado = request.POST.get("codigo_miembro", "").strip()
+            if not codigo_confirmado:
+                messages.error(request, "No se recibió un código de miembro válido.")
+                return redirect("votacion:editar_votacion", pk=votacion.pk)
+
+            codigo_confirmado = codigo_confirmado.upper()
+
+            try:
+                miembro = Miembro.objects.get(codigo_miembro__iexact=codigo_confirmado)
+            except Miembro.DoesNotExist:
+                messages.error(
+                    request,
+                    f"No se encontró ningún miembro con el código {codigo_confirmado}.",
+                )
+                return redirect("votacion:editar_votacion", pk=votacion.pk)
+
+            # Validaciones de seguridad (por si cambió algo desde la previsualización)
+
+            # REGLA 1: miembro oficial
+            if not miembro.estado_miembro:
+                messages.error(
+                    request,
+                    "Este miembro no puede ser elegido como candidato porque aún no es "
+                    "miembro oficial.",
+                )
+                return redirect("votacion:editar_votacion", pk=votacion.pk)
+
+            # REGLA 2: estado activo
+            if miembro.estado_miembro != "activo":
+                messages.error(
+                    request,
+                    "Este miembro no puede ser elegido como candidato porque su estado "
+                    "no es ACTIVO.",
+                )
+                return redirect("votacion:editar_votacion", pk=votacion.pk)
+
+            # REGLA 3 (opcional): edad mínima de la votación
+            edad_minima_vot = getattr(votacion, "edad_minima_candidato", None)
+            if edad_minima_vot:
+                edad = (
+                    miembro.calcular_edad()
+                    if hasattr(miembro, "calcular_edad")
+                    else None
+                )
+                if edad is None or edad < edad_minima_vot:
+                    messages.error(
                         request,
-                        f"Se ha añadido a «{nombre_candidato}» como candidato."
+                        "Este miembro no puede ser elegido como candidato porque no "
+                        f"cumple la edad mínima de {edad_minima_vot} años para esta "
+                        "elección.",
                     )
+                    return redirect("votacion:editar_votacion", pk=votacion.pk)
 
-            return redirect("votacion:editar_votacion", pk=votacion.pk)
+            # Evitar duplicados
+            ya_existe = Candidato.objects.filter(
+                votacion=votacion,
+                miembro=miembro,
+            ).exists()
 
-        # Si no hay acción clara, tratamos como guardar votación por defecto
-        form = VotacionForm(request.POST, instance=votacion)
+            if ya_existe:
+                messages.warning(
+                    request,
+                    f"El miembro con código {codigo_confirmado} ya figura como candidato "
+                    "en esta elección.",
+                )
+            else:
+                nombre_candidato = str(miembro)
+                Candidato.objects.create(
+                    votacion=votacion,
+                    miembro=miembro,
+                    nombre=nombre_candidato,
+                )
+                messages.success(
+                    request,
+                    f"Se ha añadido a «{nombre_candidato}» (código {codigo_confirmado}) "
+                    "como candidato.",
+                )
+
+            url_candidatos = (
+                reverse("votacion:editar_votacion", args=[votacion.pk]) + "#candidatos"
+            )
+            return HttpResponseRedirect(url_candidatos)
+
+        else:
+            # Si no hay acción clara, tratamos como guardar votación por defecto
+            form = VotacionForm(request.POST, instance=votacion)
     else:
         form = VotacionForm(instance=votacion)
 
@@ -189,11 +307,11 @@ def editar_votacion(request, pk):
         "candidatos": candidatos,
         "miembros": miembros_qs,
         "q": q,
+        "pre_candidato": pre_candidato,
+        "codigo_pre_candidato": codigo_pre_candidato,
+        "candidato_error": candidato_error,
     }
     return render(request, "votacion_app/votacion_configuracion.html", contexto)
-
-
-
 
 @login_required
 def agregar_ronda(request, pk):
