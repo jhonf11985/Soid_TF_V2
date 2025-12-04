@@ -44,6 +44,7 @@
                 </thead>
                 <tbody>
                     {% for v in votaciones %}
+                        <!-- Fila principal de la elección -->
                         <tr>
                             <td>{{ v.nombre }}</td>
                             <td>{{ v.get_tipo_display }}</td>
@@ -114,6 +115,38 @@
                                 </div>
                             </td>
                         </tr>
+
+                        <!-- Fila secundaria: vueltas (rondas) de esta elección -->
+                        <tr class="row-rounds">
+                            <td colspan="7">
+                                <div class="rounds-inline">
+                                    {% with v.rondas.all as rondas %}
+                                        {% if rondas %}
+                                            <span class="rounds-label">Vueltas:</span>
+                                            {% for ronda in rondas %}
+                                                <span class="round-pill">
+                                                    {{ ronda.numero }}ª ·
+                                                    {% if ronda.estado == "ABIERTA" %}
+                                                        <span class="badge-soft badge-soft-success">Abierta</span>
+                                                    {% elif ronda.estado == "CERRADA" %}
+                                                        <span class="badge-soft badge-soft-muted">Cerrada</span>
+                                                    {% else %}
+                                                        <span class="badge-soft badge-soft-warning">Borrador</span>
+                                                    {% endif %}
+                                                    {% if ronda.fecha_inicio %}
+                                                        · {{ ronda.fecha_inicio|date:"d/m H:i" }}
+                                                    {% endif %}
+                                                </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="rounds-empty">
+                                                Esta elección aún no tiene vueltas configuradas.
+                                            </span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                            </td>
+                        </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -151,6 +184,43 @@
 
     .btn-icon-only .material-icons {
         font-size: 18px;
+    }
+
+    /* ---- FILA DE VUELTAS (RONDAS) ---- */
+
+    .row-rounds td {
+        background: #fafafa;
+        padding-top: 4px;
+        padding-bottom: 8px;
+    }
+
+    .rounds-inline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+
+    .rounds-label {
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-right: 4px;
+    }
+
+    .round-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: #ffffff;
+    }
+
+    .rounds-empty {
+        font-size: 0.8rem;
+        color: var(--text-muted);
     }
 </style>
 

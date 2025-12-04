@@ -62,6 +62,55 @@
     margin-top: 15px;
 }
 
+/* === LISTA DE VUELTAS === */
+
+.rounds-section {
+    margin-top: 24px;
+}
+
+.rounds-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.rounds-header h2 {
+    font-size: 1rem;
+    margin: 0;
+}
+
+.rounds-table-wrapper {
+    overflow-x: auto;
+}
+
+.rounds-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.rounds-table th,
+.rounds-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.rounds-table th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.rounds-actions {
+    margin-top: 10px;
+}
+
+.rounds-actions form {
+    display: inline-block;
+    margin: 0;
+}
+
 </style>
 {% endblock %}
 
@@ -197,6 +246,77 @@
         </div>
 
     </form>
+
+    {% if not es_nueva and votacion %}
+        <div class="rounds-section">
+            <div class="rounds-header">
+                <h2>Vueltas de esta elección</h2>
+            </div>
+
+            <div class="rounds-table-wrapper">
+                {% if votacion.rondas.all %}
+                    <table class="rounds-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nombre</th>
+                                <th>Estado</th>
+                                <th>Inicio</th>
+                                <th>Cierre</th>
+                                <th>Votos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ronda in votacion.rondas.all %}
+                                <tr>
+                                    <td>{{ ronda.numero }}</td>
+                                    <td>{{ ronda.nombre|default:"(sin nombre)" }}</td>
+                                    <td>
+                                        {% if ronda.estado == "ABIERTA" %}
+                                            <span class="badge-soft badge-soft-success">Abierta</span>
+                                        {% elif ronda.estado == "CERRADA" %}
+                                            <span class="badge-soft badge-soft-muted">Cerrada</span>
+                                        {% else %}
+                                            <span class="badge-soft badge-soft-warning">Borrador</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if ronda.fecha_inicio %}
+                                            {{ ronda.fecha_inicio|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if ronda.fecha_fin %}
+                                            {{ ronda.fecha_fin|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ ronda.votos.count }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="form-text">
+                        Esta elección aún no tiene vueltas configuradas. Se creará automáticamente una primera vuelta.
+                    </p>
+                {% endif %}
+            </div>
+
+            <div class="rounds-actions">
+                <form method="post" action="{% url 'votacion:agregar_ronda' votacion.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-secondary">
+                        <span class="material-icons" style="font-size: 18px;">add</span>
+                        Añadir nueva vuelta
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
 
 </div>
 

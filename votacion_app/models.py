@@ -82,17 +82,17 @@ class Votacion(models.Model):
     )
 
     # -----------------------------
-    # 4) Fechas y control
+    # 4) Fechas y control generales
     # -----------------------------
     fecha_inicio = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="Fecha/hora en la que se abre la votación (opcional).",
+        help_text="Fecha/hora de referencia para la votación (opcional).",
     )
     fecha_fin = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="Fecha/hora en la que se cierra la votación (opcional).",
+        help_text="Fecha/hora de referencia de cierre (opcional).",
     )
 
     # -----------------------------
@@ -137,6 +137,54 @@ class Votacion(models.Model):
         return self.total_votos_emitidos >= self.quorum_minimo
 
 
+class Ronda(models.Model):
+    """
+    Representa una 'vuelta' dentro de una votación.
+    Opción 1: se crea siempre una primera vuelta automática
+    y luego se pueden añadir segundas vueltas desde la configuración.
+    """
+    ESTADO_RONDA_CHOICES = Votacion.ESTADO_CHOICES
+
+    votacion = models.ForeignKey(
+        Votacion,
+        on_delete=models.CASCADE,
+        related_name="rondas",
+    )
+    numero = models.PositiveIntegerField(
+        default=1,
+        help_text="1 = primera vuelta, 2 = segunda vuelta, etc.",
+    )
+    nombre = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="Nombre opcional de la vuelta (ej.: 'Primera vuelta').",
+    )
+    estado = models.CharField(
+        max_length=10,
+        choices=ESTADO_RONDA_CHOICES,
+        default="BORRADOR",
+    )
+    fecha_inicio = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha/hora real de inicio de esta vuelta (opcional).",
+    )
+    fecha_fin = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha/hora real de cierre de esta vuelta (opcional).",
+    )
+
+    class Meta:
+        verbose_name = "Vuelta"
+        verbose_name_plural = "Vueltas"
+        ordering = ["numero"]
+
+    def __str__(self):
+        etiqueta = self.nombre or f"Vuelta {self.numero}"
+        return f"{etiqueta} - {self.votacion.nombre}"
+
+
 class Candidato(models.Model):
     votacion = models.ForeignKey(
         Votacion,
@@ -175,6 +223,14 @@ class Voto(models.Model):
         on_delete=models.CASCADE,
         related_name="votos",
     )
+    ronda = models.ForeignKey(
+        Ronda,
+        on_delete=models.PROTECT,
+        related_name="votos",
+        null=True,
+        blank=True,
+        help_text="Vuelta en la que se emitió este voto.",
+    )
     miembro = models.ForeignKey(
         "miembros_app.Miembro",
         on_delete=models.PROTECT,
@@ -198,10 +254,10 @@ class Voto(models.Model):
         verbose_name_plural = "Votos"
         ordering = ["-emitido_el"]
         constraints = [
-            # Un miembro solo puede votar una vez en cada votación
+            # Un miembro solo puede votar una vez en CADA VUELTA
             models.UniqueConstraint(
-                fields=["votacion", "miembro"],
-                name="un_voto_por_miembro_y_votacion",
+                fields=["ronda", "miembro"],
+                name="un_voto_por_miembro_y_ronda",
             )
         ]
 
