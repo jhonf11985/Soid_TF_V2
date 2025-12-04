@@ -1,38 +1,262 @@
-@login_required
-def kiosko_confirmacion(request):
-    votacion, ronda = obtener_votacion_y_ronda_activas()
-    miembro_id = request.session.get("kiosko_miembro_id")
-    candidato_id = request.session.get("kiosko_candidato_id")
+{% extends 'core/base.html' %}
 
-    if not votacion or not ronda or not miembro_id or not candidato_id:
-        return redirect("votacion:kiosko_ingreso_codigo")
+{% block title %}Modo kiosko · Confirmación{% endblock %}
 
-    miembro = Miembro.objects.get(id=miembro_id)
-    candidato = Candidato.objects.get(id=candidato_id)
+{% block content %}
+<div class="kiosk-wrapper">
+    <div class="kiosk-card">
 
-    if request.method == "POST":
-        # evitar doble voto
-        if Voto.objects.filter(ronda=ronda, miembro=miembro).exists():
-            messages.error(request, "Este miembro ya votó.")
-            return redirect("votacion:kiosko_ingreso_codigo")
+        <div class="kiosk-header">
+            <div class="kiosk-subtitle">
+                Sistema de votación · Torre Fuerte
+            </div>
+            <h1 class="kiosk-title">Confirmar voto</h1>
+            <p class="kiosk-text">
+                Revisa y confirma tu selección.
+            </p>
+        </div>
 
-        # registrar voto
-        Voto.objects.create(
-            votacion=votacion,
-            ronda=ronda,
-            miembro=miembro,
-            candidato=candidato,
-            tablet_id=request.META.get("REMOTE_ADDR")
-        )
+        <div class="kiosk-summary">
+            <div class="kiosk-summary-item">
+                <div class="kiosk-summary-label">Miembro</div>
+                <div class="kiosk-summary-value">{{ miembro }}</div>
+            </div>
 
-        # limpiar sesión
-        request.session.pop("kiosko_miembro_id", None)
-        request.session.pop("kiosko_candidato_id", None)
+            <div class="kiosk-summary-item">
+                <div class="kiosk-summary-label">Votación</div>
+                <div class="kiosk-summary-value">{{ votacion.nombre }}</div>
+            </div>
 
-        messages.success(request, "Voto registrado. Gracias.")
-        return redirect("votacion:kiosko_ingreso_codigo")
+            <div class="kiosk-summary-item">
+                <div class="kiosk-summary-label">Vuelta</div>
+                <div class="kiosk-summary-value">
+                    {{ ronda.nombre|default:"Vuelta " |add:ronda.numero }}
+                </div>
+            </div>
+        </div>
 
-    return render(request, "votacion_app/kiosko_confirmacion.html", {
-        "miembro": miembro,
-        "candidato": candidato,
-    })
+        <div class="kiosk-confirm-card">
+            <div class="kiosk-candidate-avatar">
+                {% if candidato.miembro and candidato.miembro.foto %}
+                    <img src="{{ candidato.miembro.foto.url }}" alt="{{ candidato.nombre }}">
+                {% else %}
+                    <span>{{ candidato.nombre|first }}</span>
+                {% endif %}
+            </div>
+            <div class="kiosk-candidate-info">
+                <div class="kiosk-candidate-name">
+                    {{ candidato.nombre }}
+                </div>
+                <div class="kiosk-candidate-meta">
+                    {% if candidato.miembro and candidato.miembro.codigo_miembro %}
+                        Código: {{ candidato.miembro.codigo_miembro }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <form method="post" class="kiosk-actions">
+            {% csrf_token %}
+            <button type="submit"
+                    name="accion"
+                    value="cambiar"
+                    class="kiosk-secondary-btn">
+                Cambiar candidato
+            </button>
+
+            <button type="submit"
+                    name="accion"
+                    value="confirmar"
+                    class="kiosk-submit">
+                Confirmar voto
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .kiosk-wrapper {
+        min-height: calc(100vh - 80px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: radial-gradient(circle at top, #f4faf6, #e9f3ee);
+    }
+
+    .kiosk-card {
+        width: 100%;
+        max-width: 560px;
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 24px 24px 20px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+        border: 1px solid #e5e7eb;
+    }
+
+    .kiosk-header {
+        margin-bottom: 12px;
+        text-align: center;
+    }
+
+    .kiosk-subtitle {
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted, #6b7280);
+        margin-bottom: 4px;
+    }
+
+    .kiosk-title {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-main, #111827);
+    }
+
+    .kiosk-text {
+        margin: 6px 0 0;
+        font-size: 14px;
+        color: var(--text-muted, #6b7280);
+    }
+
+    .kiosk-summary {
+        margin-top: 14px;
+        border-radius: 14px;
+        background: #f9fafb;
+        padding: 10px 12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px;
+    }
+
+    .kiosk-summary-item {
+        font-size: 13px;
+    }
+
+    .kiosk-summary-label {
+        color: var(--text-muted, #6b7280);
+    }
+
+    .kiosk-summary-value {
+        font-weight: 600;
+        color: var(--text-main, #111827);
+    }
+
+    .kiosk-confirm-card {
+        margin-top: 18px;
+        border-radius: 16px;
+        border: 1px solid #e5e7eb;
+        background: #f3faf6;
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+    }
+
+    .kiosk-candidate-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 999px;
+        overflow: hidden;
+        border: 1px solid #d1d5db;
+        background: #e5f3ec;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+        flex-shrink: 0;
+    }
+
+    .kiosk-candidate-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .kiosk-candidate-avatar span {
+        font-weight: 700;
+        font-size: 20px;
+        color: var(--primary-dark, #14532d);
+        text-transform: uppercase;
+    }
+
+    .kiosk-candidate-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .kiosk-candidate-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main, #111827);
+    }
+
+    .kiosk-candidate-meta {
+        font-size: 12px;
+        color: var(--text-muted, #6b7280);
+        margin-top: 2px;
+    }
+
+    .kiosk-actions {
+        margin-top: 18px;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .kiosk-submit {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--primary, #15803d);
+        color: #ffffff;
+        box-shadow: 0 10px 30px rgba(5, 150, 105, 0.3);
+        transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease;
+    }
+
+    .kiosk-submit:hover {
+        background: var(--primary-dark, #166534);
+        box-shadow: 0 14px 35px rgba(4, 120, 87, 0.35);
+        transform: translateY(-1px);
+    }
+
+    .kiosk-submit:active {
+        transform: translateY(0);
+        box-shadow: 0 6px 18px rgba(5, 150, 105, 0.25);
+    }
+
+    .kiosk-secondary-btn {
+        border-radius: 999px;
+        padding: 10px 16px;
+        font-size: 14px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        cursor: pointer;
+        color: var(--text-muted, #6b7280);
+    }
+
+    .kiosk-secondary-btn:hover {
+        background: #f3f4f6;
+    }
+
+    @media (max-width: 560px) {
+        .kiosk-card {
+            padding: 18px 16px 16px;
+            border-radius: 16px;
+        }
+
+        .kiosk-actions {
+            flex-direction: column-reverse;
+        }
+
+        .kiosk-submit,
+        .kiosk-secondary-btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
