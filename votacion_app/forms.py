@@ -10,14 +10,17 @@ class VotacionForm(forms.ModelForm):
             "descripcion",
             "tipo",
             "estado",
-            "total_habilitados",
-            "quorum_minimo",
             "regla_ganador",
             "numero_cargos",
             "edad_minima_candidato",
-            "permite_empates",
+            "total_habilitados",        # auto
+            "miembros_presentes",       # manual
+            "tipo_quorum",
+            "valor_quorum",
+            "votos_minimos_requeridos", # auto
             "fecha_inicio",
             "fecha_fin",
+            "permite_empates",
             "permite_voto_remoto",
             "observaciones_internas",
         ]
@@ -30,31 +33,29 @@ class VotacionForm(forms.ModelForm):
                 "rows": 3,
                 "placeholder": "Describa brevemente esta votación…"
             }),
-            "tipo": forms.Select(attrs={
-                "placeholder": "Seleccione el tipo de votación"
-            }),
-            "estado": forms.Select(attrs={
-                "placeholder": "Seleccione el estado"
-            }),
-            "total_habilitados": forms.NumberInput(attrs={
-                "placeholder": "Ej.: 120"
-            }),
-            "quorum_minimo": forms.NumberInput(attrs={
-                "placeholder": "Ej.: 80 (opcional)"
-            }),
-            "regla_ganador": forms.Select(attrs={
-                "placeholder": "Seleccione la regla de ganador"
-            }),
+            "tipo": forms.Select(),
+            "estado": forms.Select(),
+            "regla_ganador": forms.Select(),
             "numero_cargos": forms.NumberInput(attrs={
                 "placeholder": "Ej.: 3"
             }),
-            "permite_empates": forms.CheckboxInput(),
-            "permite_voto_remoto": forms.CheckboxInput(),
-
             "edad_minima_candidato": forms.NumberInput(attrs={
                 "placeholder": "Ej.: 18"
             }),
 
+            "total_habilitados": forms.NumberInput(attrs={
+                "placeholder": "Calculado automáticamente",
+            }),
+            "miembros_presentes": forms.NumberInput(attrs={
+                "placeholder": "Ej.: 80 presentes",
+            }),
+            "tipo_quorum": forms.Select(),
+            "valor_quorum": forms.NumberInput(attrs={
+                "placeholder": "Ej.: 50 (porcentaje) o 80 (cantidad fija)",
+            }),
+            "votos_minimos_requeridos": forms.NumberInput(attrs={
+                "placeholder": "Se calculará automáticamente",
+            }),
 
             # DATETIME
             "fecha_inicio": forms.DateTimeInput(
@@ -72,6 +73,9 @@ class VotacionForm(forms.ModelForm):
                 format="%Y-%m-%dT%H:%M"
             ),
 
+            "permite_empates": forms.CheckboxInput(),
+            "permite_voto_remoto": forms.CheckboxInput(),
+
             "observaciones_internas": forms.Textarea(attrs={
                 "rows": 3,
                 "placeholder": "Notas internas sobre esta votación…"
@@ -86,3 +90,9 @@ class VotacionForm(forms.ModelForm):
             valor = getattr(self.instance, campo)
             if valor:
                 self.initial[campo] = valor.strftime("%Y-%m-%dT%H:%M")
+
+        # Campos automáticos (solo lectura en el formulario)
+        if "total_habilitados" in self.fields:
+            self.fields["total_habilitados"].widget.attrs["readonly"] = "readonly"
+        if "votos_minimos_requeridos" in self.fields:
+            self.fields["votos_minimos_requeridos"].widget.attrs["readonly"] = "readonly"

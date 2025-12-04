@@ -1,6 +1,9 @@
 from django.db import models
 
 
+
+
+
 class Votacion(models.Model):
     # -----------------------------
     # 1) Datos básicos
@@ -32,19 +35,6 @@ class Votacion(models.Model):
         ("LA6", "La 6 · Mayoría especial (2/3 o 3/4)"),
     ]
 
-    numero_cargos = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="Cantidad de cargos a elegir (ej. 3 diáconos, 2 líderes, etc.).",
-    )
-
-    edad_minima_candidato = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="Edad mínima para ser candidato en esta elección (ej. 18 años).",
-    )
-
-
     nombre = models.CharField(
         max_length=150,
         help_text="Ejemplo: 'Elección de diáconos 2026'.",
@@ -66,18 +56,49 @@ class Votacion(models.Model):
         help_text="Controla si la votación está abierta en el modo kiosko.",
     )
 
-    # -----------------------------
-    # 2) Parámetros de quórum
-    # -----------------------------
+    # 2) Parámetros de quórum y asistencia
+
+    # Miembros con derecho a voto (snapshot automático)
     total_habilitados = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="Número total de personas con derecho a voto para esta elección.",
+        help_text="Miembros con derecho a voto para esta elección (calculado automáticamente).",
     )
-    quorum_minimo = models.PositiveIntegerField(
+
+    # Miembros presentes físicamente ese día
+    miembros_presentes = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="Número mínimo de votantes requeridos (quórum). Opcional.",
+        help_text="Número de miembros con derecho a voto que están presentes físicamente.",
+    )
+
+    TIPO_QUORUM_CHOICES = [
+        ("PORCENTAJE", "Porcentaje de presentes"),
+        ("CANTIDAD", "Cantidad fija de personas"),
+    ]
+
+    # Cómo se define el quórum: por porcentaje o por cantidad
+    tipo_quorum = models.CharField(
+        max_length=20,
+        choices=TIPO_QUORUM_CHOICES,
+        default="PORCENTAJE",
+        help_text="Define si el quórum se calcula por porcentaje o por cantidad fija.",
+    )
+
+    # Valor del quórum:
+    # - Si es porcentual: 50, 60, 75...
+    # - Si es cantidad: número de personas (ej. 80)
+    valor_quorum = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Si el quórum es porcentual, representa el porcentaje (ej. 50). Si es cantidad, el número de personas.",
+    )
+
+    # Votos mínimos requeridos para validar la votación (snapshot calculado)
+    votos_minimos_requeridos = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Número de votos mínimos requeridos para que la votación sea válida.",
     )
 
     # -----------------------------
@@ -86,14 +107,22 @@ class Votacion(models.Model):
     regla_ganador = models.CharField(
         max_length=20,
         choices=REGLA_GANADOR_CHOICES,
-        default="MAYORIA_50_1",
+        default="LA1",
         help_text="Regla que define cómo se escogen los ganadores.",
     )
+
     numero_cargos = models.PositiveIntegerField(
         null=True,
         blank=True,
         help_text="Cantidad de cargos a elegir (ej. 3 diáconos, 2 líderes, etc.).",
     )
+
+    edad_minima_candidato = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Edad mínima para ser candidato en esta elección (ej. 18 años).",
+    )
+
     permite_empates = models.BooleanField(
         default=True,
         help_text="Si está desmarcado, luego se deberá gestionar el desempate.",
@@ -150,9 +179,9 @@ class Votacion(models.Model):
         Devuelve True si se ha alcanzado el quórum definido.
         Si no hay quórum mínimo definido, devuelve None.
         """
-        if self.quorum_minimo is None:
+        if self.votos_minimos_requeridos is None:
             return None
-        return self.total_votos_emitidos >= self.quorum_minimo
+        return self.total_votos_emitidos >= (self.votos_minimos_requeridos or 0)
 
 
 class Ronda(models.Model):
