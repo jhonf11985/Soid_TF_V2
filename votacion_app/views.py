@@ -1,9 +1,11 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Max
+from django.db.models import Q
 
-from .models import Votacion, Ronda
+from miembros_app.models import Miembro
+
+from .models import Votacion, Ronda, Candidato
 from .forms import VotacionForm
 
 
@@ -54,16 +56,17 @@ def crear_votacion(request):
     }
     return render(request, "votacion_app/votacion_configuracion.html", contexto)
 
-
 @login_required
 def editar_votacion(request, pk):
     """
     Pantalla de configuración para editar una votación existente.
-    Muestra también las vueltas (rondas) asociadas.
+    - Configuración general (formulario VotacionForm)
+    - Vueltas (rondas)
+    - Selección de candidatos (misma pantalla)
     """
     votacion = get_object_or_404(Votacion, pk=pk)
 
-    # Seguridad: si por alguna razón no tiene ninguna vuelta, crear la primera
+    # Si por alguna razón no tiene ninguna vuelta, crear la primera
     if not votacion.rondas.exists():
         Ronda.objects.create(
             votacion=votacion,
@@ -74,22 +77,107 @@ def editar_votacion(request, pk):
             fecha_fin=votacion.fecha_fin,
         )
 
+    # ---- CANDIDATOS ACTUALES ----
+    candidatos = (
+        votacion.candidatos
+        .select_related("miembro")
+        .order_by("orden", "nombre")
+    )
+
+    # ---- BÚSQUEDA DE MIEMBROS PARA AGREGAR COMO CANDIDATOS ----
+    q = request.GET.get("q", "").strip()
+
+    # Base: solo miembros activos (usamos el campo 'activo' que aparece en el error)
+    miembros_qs = Miembro.objects.filter(activo=True)
+
+    # Edad mínima (si el modelo la tiene configurada)
+    from datetime import date
+
+    edad_minima = getattr(votacion, "edad_minima_candidato", None)
+    if edad_minima:
+        hoy = date.today()
+        # Calculamos una fecha aproximada: hoy - edad_minima años
+        try:
+            fecha_tope = hoy.replace(year=hoy.year - edad_minima)
+        except ValueError:
+            # Por si cae en 29 de febrero
+            fecha_tope = hoy.replace(
+                year=hoy.year - edad_minima,
+                month=2,
+                day=28,
+            )
+        miembros_qs = miembros_qs.filter(fecha_nacimiento__lte=fecha_tope)
+
+    # Búsqueda por texto: número, nombres, apellidos, código de miembro
+    if q:
+        miembros_qs = miembros_qs.filter(
+            Q(numero_miembro__icontains=q) |
+            Q(codigo_miembro__icontains=q) |
+            Q(nombres__icontains=q) |
+            Q(apellidos__icontains=q)
+        )
+
+    # Excluir miembros que ya SON candidatos en esta votación
+    miembros_qs = miembros_qs.exclude(candidaturas__votacion=votacion)
+
+    # Limitar la lista por rendimiento
+    miembros_qs = miembros_qs.order_by("numero_miembro", "id")[:50]
+
+    # ---- POST: saber qué acción se está haciendo ----
     if request.method == "POST":
-        form = VotacionForm(request.POST, instance=votacion)
-        if form.is_valid():
-            votacion = form.save()
+        accion = request.POST.get("accion")
 
-            # Opcional: sincronizar las fechas de la primera vuelta con la votación
-            primera_ronda = votacion.rondas.order_by("numero").first()
-            if primera_ronda:
-                if not primera_ronda.fecha_inicio:
-                    primera_ronda.fecha_inicio = votacion.fecha_inicio
-                if not primera_ronda.fecha_fin:
-                    primera_ronda.fecha_fin = votacion.fecha_fin
-                primera_ronda.save()
+        # 1) Guardar configuración de la votación
+        if accion == "guardar_votacion":
+            form = VotacionForm(request.POST, instance=votacion)
+            if form.is_valid():
+                votacion = form.save()
 
-            messages.success(request, "La votación se ha actualizado correctamente.")
+                # Opcional: sincronizar fechas de la primera vuelta
+                primera_ronda = votacion.rondas.order_by("numero").first()
+                if primera_ronda:
+                    if not primera_ronda.fecha_inicio:
+                        primera_ronda.fecha_inicio = votacion.fecha_inicio
+                    if not primera_ronda.fecha_fin:
+                        primera_ronda.fecha_fin = votacion.fecha_fin
+                    primera_ronda.save()
+
+                messages.success(request, "La votación se ha actualizado correctamente.")
+                return redirect("votacion:editar_votacion", pk=votacion.pk)
+
+        # 2) Agregar candidato desde la lista de miembros
+        elif accion == "agregar_candidato":
+            miembro_id = request.POST.get("miembro_id")
+            if miembro_id:
+                miembro = get_object_or_404(Miembro, pk=miembro_id)
+
+                ya_existe = Candidato.objects.filter(
+                    votacion=votacion,
+                    miembro=miembro,
+                ).exists()
+
+                if ya_existe:
+                    messages.warning(
+                        request,
+                        "Este miembro ya está registrado como candidato en esta elección."
+                    )
+                else:
+                    # Usamos el __str__ del miembro como nombre visible del candidato
+                    nombre_candidato = str(miembro)
+                    Candidato.objects.create(
+                        votacion=votacion,
+                        miembro=miembro,
+                        nombre=nombre_candidato,
+                    )
+                    messages.success(
+                        request,
+                        f"Se ha añadido a «{nombre_candidato}» como candidato."
+                    )
+
             return redirect("votacion:editar_votacion", pk=votacion.pk)
+
+        # Si no hay acción clara, tratamos como guardar votación por defecto
+        form = VotacionForm(request.POST, instance=votacion)
     else:
         form = VotacionForm(instance=votacion)
 
@@ -98,8 +186,13 @@ def editar_votacion(request, pk):
         "titulo": f"Configurar votación: {votacion.nombre}",
         "es_nueva": False,
         "votacion": votacion,
+        "candidatos": candidatos,
+        "miembros": miembros_qs,
+        "q": q,
     }
     return render(request, "votacion_app/votacion_configuracion.html", contexto)
+
+
 
 
 @login_required
@@ -234,3 +327,104 @@ def eliminar_votacion(request, pk):
 
     # Si entra por GET, lo llevamos a configuración
     return redirect("votacion:editar_votacion", pk=votacion.pk)
+
+@login_required
+def gestionar_candidatos(request, pk):
+    """
+    Pantalla para seleccionar candidatos de una votación.
+    - Muestra candidatos actuales.
+    - Permite buscar miembros (por código, nombre, etc.)
+      y agregarlos como candidatos.
+    - Solo muestra miembros activos y, si se define, mayores
+      o iguales a la edad mínima de la votación.
+    """
+    votacion = get_object_or_404(Votacion, pk=pk)
+
+    # ---- Candidatos actuales de esta elección ----
+    candidatos = (
+        votacion.candidatos
+        .select_related("miembro")
+        .order_by("orden", "nombre")
+    )
+
+    # ---- Búsqueda de miembros potenciales ----
+    q = request.GET.get("q", "").strip()
+    miembros_qs = Miembro.objects.all()
+
+    # 🟢 FILTRO: solo miembros activos (AJUSTA a tu modelo)
+    # Ejemplo si tienes un campo 'estado' o 'es_activo':
+    # miembros_qs = miembros_qs.filter(estado="ACTIVO")
+    # o:
+    # miembros_qs = miembros_qs.filter(activo=True)
+
+    # 🟢 FILTRO: edad mínima (AJUSTA a tus campos)
+    if votacion.edad_minima_candidato:
+        # Aquí depende de cómo tengas guardada la fecha de nacimiento.
+        # EJEMPLO si tienes 'fecha_nacimiento' en Miembro:
+        #
+        # from datetime import date, timedelta
+        # from dateutil.relativedelta import relativedelta
+        #
+        # hoy = date.today()
+        # fecha_tope = hoy - relativedelta(years=votacion.edad_minima_candidato)
+        # miembros_qs = miembros_qs.filter(fecha_nacimiento__lte=fecha_tope)
+        #
+        # Si ya tienes una propiedad 'edad' calculada,
+        # puedes filtrar en Python después (no en la BD).
+        pass
+
+    # 🟢 Búsqueda por texto (AJUSTA a tus campos):
+    if q:
+        miembros_qs = miembros_qs.filter(
+            Q(nombre__icontains=q) |
+            Q(apellidos__icontains=q) |
+            Q(id__icontains=q)  # o código de miembro si tienes un campo específico
+        )
+
+    # 🟢 Excluir miembros que ya son candidatos en esta votación
+    miembros_qs = miembros_qs.exclude(candidaturas__votacion=votacion)
+
+    # Limitar un poco la lista para no cargar demasiados
+    miembros_qs = miembros_qs.order_by("id")[:50]
+
+    # ---- POST: agregar candidato desde la lista ----
+    if request.method == "POST":
+        miembro_id = request.POST.get("miembro_id")
+        if miembro_id:
+            miembro = get_object_or_404(Miembro, pk=miembro_id)
+
+            # Evitar duplicados por seguridad
+            ya_existe = Candidato.objects.filter(
+                votacion=votacion,
+                miembro=miembro
+            ).exists()
+
+            if ya_existe:
+                messages.warning(
+                    request,
+                    "Este miembro ya está registrado como candidato en esta elección."
+                )
+            else:
+                # Aquí puedes ajustar cómo se construye el nombre visible del candidato
+                nombre_candidato = str(miembro)
+                # por ejemplo: nombre_candidato = miembro.nombre_completo
+
+                Candidato.objects.create(
+                    votacion=votacion,
+                    miembro=miembro,
+                    nombre=nombre_candidato,
+                )
+                messages.success(
+                    request,
+                    f"Se ha añadido a «{nombre_candidato}» como candidato."
+                )
+
+            return redirect("votacion:gestionar_candidatos", pk=votacion.pk)
+
+    contexto = {
+        "votacion": votacion,
+        "candidatos": candidatos,
+        "miembros": miembros_qs,
+        "q": q,
+    }
+    return render(request, "votacion_app/votacion_candidatos.html", contexto)

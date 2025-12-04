@@ -24,4 +24,10 @@ urlpatterns = [
 
     # Eliminar
     path("eliminar/<int:pk>/", views.eliminar_votacion, name="eliminar_votacion"),
+    path(
+        "configurar/<int:pk>/candidatos/",
+        views.gestionar_candidatos,
+        name="gestionar_candidatos"
+    ),
+
 ]

@@ -26,6 +26,18 @@ class Votacion(models.Model):
         ("TOP_N", "Top N más votados"),
         ("TOP_1_Y_2", "1er y 2do lugar"),
     ]
+    numero_cargos = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Cantidad de cargos a elegir (ej. 3 diáconos, 2 líderes, etc.).",
+    )
+
+    edad_minima_candidato = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Edad mínima para ser candidato en esta elección (ej. 18 años).",
+    )
+
 
     nombre = models.CharField(
         max_length=150,
@@ -184,16 +196,23 @@ class Ronda(models.Model):
         etiqueta = self.nombre or f"Vuelta {self.numero}"
         return f"{etiqueta} - {self.votacion.nombre}"
 
-
 class Candidato(models.Model):
     votacion = models.ForeignKey(
         Votacion,
         on_delete=models.CASCADE,
         related_name="candidatos",
     )
+    miembro = models.ForeignKey(
+        "miembros_app.Miembro",
+        on_delete=models.PROTECT,
+        related_name="candidaturas",
+        null=True,
+        blank=True,
+        help_text="Miembro que es candidato en esta elección.",
+    )
     nombre = models.CharField(
         max_length=150,
-        help_text="Nombre del candidato."
+        help_text="Nombre del candidato (se puede rellenar automáticamente desde el miembro)."
     )
     descripcion = models.TextField(
         blank=True,
@@ -214,6 +233,8 @@ class Candidato(models.Model):
         ordering = ["orden", "nombre"]
 
     def __str__(self):
+        if self.miembro:
+            return f"{self.nombre} (miembro #{self.miembro_id}) - {self.votacion.nombre}"
         return f"{self.nombre} - {self.votacion.nombre}"
 
 

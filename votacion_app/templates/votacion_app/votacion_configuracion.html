@@ -2,128 +2,17 @@
 
 {% block title %}{{ titulo }} · Soid_Tf_2{% endblock %}
 
-{% block extra_css %}
-<style>
-
-/* === CONFIGURAR ELECCIÓN === */
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 16px 20px;
-    margin-top: 12px;
-    margin-bottom: 20px;
-}
-
-.form-field-full {
-    grid-column: 1 / -1;
-}
-
-.form-field {
-    display: flex;
-    flex-direction: column;
-    font-size: 0.92rem;
-}
-
-.form-field label {
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.form-field input,
-.form-field select,
-.form-field textarea {
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    font-size: 0.95rem;
-}
-
-.form-field input:focus,
-.form-field select:focus,
-.form-field textarea:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(25,135,84,0.18);
-}
-
-.form-text {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-
-.text-danger.small {
-    font-size: 0.8rem;
-    margin-top: 4px;
-}
-
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 15px;
-}
-
-/* === LISTA DE VUELTAS === */
-
-.rounds-section {
-    margin-top: 24px;
-}
-
-.rounds-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.rounds-header h2 {
-    font-size: 1rem;
-    margin: 0;
-}
-
-.rounds-table-wrapper {
-    overflow-x: auto;
-}
-
-.rounds-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-}
-
-.rounds-table th,
-.rounds-table td {
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--border);
-}
-
-.rounds-table th {
-    text-align: left;
-    font-weight: 600;
-    color: var(--text-muted);
-}
-
-.rounds-actions {
-    margin-top: 10px;
-}
-
-.rounds-actions form {
-    display: inline-block;
-    margin: 0;
-}
-
-</style>
-{% endblock %}
-
 {% block content %}
 
 <div class="page-header">
     <div>
         <h1 class="page-title">{{ titulo }}</h1>
-        <p class="page-subtitle">Configura el tipo de elección, las reglas y el quórum.</p>
+        <p class="page-subtitle">
+            Configura el tipo de elección, las reglas, las vueltas y los candidatos.
+        </p>
     </div>
 
     <div class="page-header-actions">
-
         {% if not es_nueva and votacion %}
             <form method="post"
                   action="{% url 'votacion:duplicar_votacion' votacion.pk %}"
@@ -156,11 +45,20 @@
 
 <div class="page-section">
 
+    {# Mensajes de Django #}
     {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
+        <div class="messages-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
     {% endif %}
+
+    {# 1) CONFIGURACIÓN GENERAL #}
+    <h2>Configuración general</h2>
+    <p style="font-size: 13px; color: var(--color-text-muted);">
+        Define el nombre de la elección, su tipo, estado, quórum y otros parámetros.
+    </p>
 
     <form method="post" novalidate>
         {% csrf_token %}
@@ -185,7 +83,9 @@
             <div class="form-field">
                 <label>Estado</label>
                 {{ form.estado }}
-                <div class="form-text">Borrador · Abierta · Cerrada</div>
+                <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">
+                    Borrador · Abierta · Cerrada
+                </div>
             </div>
 
             <div class="form-field">
@@ -196,8 +96,20 @@
             <div class="form-field">
                 <label>Número de cargos</label>
                 {{ form.numero_cargos }}
-                <div class="form-text">Ej.: 3 diáconos, 2 líderes…</div>
+                <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">
+                    Ej.: 3 diáconos, 2 líderes…
+                </div>
             </div>
+
+            {% if form.edad_minima_candidato %}
+            <div class="form-field">
+                <label>Edad mínima del candidato</label>
+                {{ form.edad_minima_candidato }}
+                <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">
+                    Ej.: 18 (solo miembros con al menos esta edad).
+                </div>
+            </div>
+            {% endif %}
 
             <div class="form-field">
                 <label>Total habilitados</label>
@@ -239,83 +151,206 @@
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="btn-primary">
+            <button type="submit"
+                    name="accion"
+                    value="guardar_votacion"
+                    class="btn-primary">
                 <span class="material-icons" style="font-size: 18px;">save</span>
                 Guardar
             </button>
         </div>
-
     </form>
 
+    {# 2) SOLO MOSTRAR PROCESO (VUELTAS + CANDIDATOS) SI LA VOTACIÓN YA EXISTE #}
     {% if not es_nueva and votacion %}
-        <div class="rounds-section">
-            <div class="rounds-header">
-                <h2>Vueltas de esta elección</h2>
-            </div>
 
-            <div class="rounds-table-wrapper">
-                {% if votacion.rondas.all %}
-                    <table class="rounds-table">
-                        <thead>
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e5e7eb;">
+
+        {# 2.1) VUELTAS #}
+        <h2>Vueltas de esta elección</h2>
+        <p style="font-size: 13px; color: var(--color-text-muted);">
+            Cada vuelta representa una ronda de votación. La primera suele ser la principal;
+            las siguientes se usan si nadie alcanza la regla definida (por ejemplo, 50% + 1).
+        </p>
+
+        {% with votacion.rondas.all as rondas %}
+            {% if rondas %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                            <th>Votos</th>
+                            <th>Inicio</th>
+                            <th>Cierre</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ronda in rondas %}
                             <tr>
-                                <th>#</th>
-                                <th>Nombre</th>
-                                <th>Estado</th>
-                                <th>Inicio</th>
-                                <th>Cierre</th>
-                                <th>Votos</th>
+                                <td>{{ ronda.numero }}</td>
+                                <td>
+                                    {% if ronda.numero == 1 %}
+                                        Primera vuelta
+                                    {% elif ronda.numero == 2 %}
+                                        Segunda vuelta
+                                    {% elif ronda.numero == 3 %}
+                                        Tercera vuelta
+                                    {% else %}
+                                        Vuelta {{ ronda.numero }}
+                                    {% endif %}
+                                    {% if ronda.nombre %}
+                                        - {{ ronda.nombre }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if ronda.estado == "ABIERTA" %}
+                                        <span class="badge-soft badge-soft-success">Abierta</span>
+                                    {% elif ronda.estado == "CERRADA" %}
+                                        <span class="badge-soft badge-soft-muted">Cerrada</span>
+                                    {% else %}
+                                        <span class="badge-soft badge-soft-warning">Borrador</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ ronda.votos.count }}</td>
+                                <td>
+                                    {% if ronda.fecha_inicio %}
+                                        {{ ronda.fecha_inicio|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if ronda.fecha_fin %}
+                                        {{ ronda.fecha_fin|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for ronda in votacion.rondas.all %}
-                                <tr>
-                                    <td>{{ ronda.numero }}</td>
-                                    <td>{{ ronda.nombre|default:"(sin nombre)" }}</td>
-                                    <td>
-                                        {% if ronda.estado == "ABIERTA" %}
-                                            <span class="badge-soft badge-soft-success">Abierta</span>
-                                        {% elif ronda.estado == "CERRADA" %}
-                                            <span class="badge-soft badge-soft-muted">Cerrada</span>
-                                        {% else %}
-                                            <span class="badge-soft badge-soft-warning">Borrador</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if ronda.fecha_inicio %}
-                                            {{ ronda.fecha_inicio|date:"d/m/Y H:i" }}
-                                        {% else %}
-                                            —
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if ronda.fecha_fin %}
-                                            {{ ronda.fecha_fin|date:"d/m/Y H:i" }}
-                                        {% else %}
-                                            —
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ ronda.votos.count }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p class="form-text">
-                        Esta elección aún no tiene vueltas configuradas. Se creará automáticamente una primera vuelta.
-                    </p>
-                {% endif %}
-            </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="font-size: 13px; color: var(--color-text-muted);">
+                    Aún no hay vueltas registradas. El sistema puede crear la primera automáticamente.
+                </p>
+            {% endif %}
+        {% endwith %}
 
-            <div class="rounds-actions">
-                <form method="post" action="{% url 'votacion:agregar_ronda' votacion.pk %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-secondary">
-                        <span class="material-icons" style="font-size: 18px;">add</span>
-                        Añadir nueva vuelta
-                    </button>
-                </form>
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e5e7eb;">
+
+        {# 2.2) CANDIDATOS #}
+        <h2>Candidatos</h2>
+        <p style="font-size: 13px; color: var(--color-text-muted);">
+            Selecciona los candidatos a partir de los miembros activos. Solo se muestran
+            miembros que aún no son candidatos de esta elección.
+            {% if votacion.edad_minima_candidato %}
+                (Edad mínima: {{ votacion.edad_minima_candidato }} años)
+            {% endif %}
+        </p>
+
+        {# Lista de candidatos actuales #}
+        {% if candidatos %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nombre del candidato</th>
+                        <th>Nº miembro</th>
+                        <th>ID miembro</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in candidatos %}
+                        <tr>
+                            <td>{{ c.nombre }}</td>
+                            <td>
+                                {% if c.miembro %}
+                                    {{ c.miembro.numero_miembro }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if c.miembro %}
+                                    {{ c.miembro.id }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="font-size: 13px; color: var(--color-text-muted);">
+                Aún no hay candidatos. Usa el buscador de abajo para agregarlos.
+            </p>
+        {% endif %}
+
+        {# Buscador de miembros para agregar como candidatos #}
+        <h3>Buscar miembros para agregar</h3>
+        <p style="font-size: 13px; color: var(--color-text-muted);">
+            Busca por número de miembro, código o nombres. Solo se muestran miembros
+            activos que todavía no son candidatos.
+        </p>
+
+        <form method="get">
+            <div class="form-grid">
+                <div class="form-field">
+                    <label>Texto de búsqueda</label>
+                    <input type="text"
+                           name="q"
+                           value="{{ q }}"
+                           placeholder="Número de miembro, código o nombre…">
+                </div>
             </div>
-        </div>
+            <div class="form-actions" style="justify-content: flex-start; border-top: none; padding-top: 0;">
+                <button type="submit" class="btn-secondary">
+                    <span class="material-icons" style="font-size: 18px;">search</span>
+                    Buscar
+                </button>
+            </div>
+        </form>
+
+        {% if miembros %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nº miembro</th>
+                        <th>Nombre</th>
+                        <th style="width: 110px;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in miembros %}
+                        <tr>
+                            <td>{{ m.numero_miembro }}</td>
+                            <td>{{ m }}</td>
+                            <td>
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="agregar_candidato">
+                                    <input type="hidden" name="miembro_id" value="{{ m.id }}">
+                                    <button type="submit"
+                                            class="btn-primary"
+                                            style="padding: 4px 10px; font-size: 12px;">
+                                        Agregar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="font-size: 13px; color: var(--color-text-muted);">
+                No se encontraron miembros para esta búsqueda
+                o ya todos son candidatos.
+            </p>
+        {% endif %}
+
     {% endif %}
 
 </div>

@@ -14,6 +14,7 @@ class VotacionForm(forms.ModelForm):
             "quorum_minimo",
             "regla_ganador",
             "numero_cargos",
+            "edad_minima_candidato",
             "permite_empates",
             "fecha_inicio",
             "fecha_fin",
@@ -49,6 +50,11 @@ class VotacionForm(forms.ModelForm):
             }),
             "permite_empates": forms.CheckboxInput(),
             "permite_voto_remoto": forms.CheckboxInput(),
+
+            "edad_minima_candidato": forms.NumberInput(attrs={
+                "placeholder": "Ej.: 18"
+            }),
+
 
             # DATETIME
             "fecha_inicio": forms.DateTimeInput(
