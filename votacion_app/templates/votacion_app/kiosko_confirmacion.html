@@ -1,11 +1,38 @@
-{% extends 'core/base.html' %}
+@login_required
+def kiosko_confirmacion(request):
+    votacion, ronda = obtener_votacion_y_ronda_activas()
+    miembro_id = request.session.get("kiosko_miembro_id")
+    candidato_id = request.session.get("kiosko_candidato_id")
 
+    if not votacion or not ronda or not miembro_id or not candidato_id:
+        return redirect("votacion:kiosko_ingreso_codigo")
 
-{% block title %}Modo kiosko · Confirmación{% endblock %}
+    miembro = Miembro.objects.get(id=miembro_id)
+    candidato = Candidato.objects.get(id=candidato_id)
 
-{% block content %}
-<div class="container mt-4">
-    <h1 class="mb-3">Modo kiosko · Paso 3</h1>
-    <p>Aquí se mostrará la confirmación del voto.</p>
-</div>
-{% endblock %}
+    if request.method == "POST":
+        # evitar doble voto
+        if Voto.objects.filter(ronda=ronda, miembro=miembro).exists():
+            messages.error(request, "Este miembro ya votó.")
+            return redirect("votacion:kiosko_ingreso_codigo")
+
+        # registrar voto
+        Voto.objects.create(
+            votacion=votacion,
+            ronda=ronda,
+            miembro=miembro,
+            candidato=candidato,
+            tablet_id=request.META.get("REMOTE_ADDR")
+        )
+
+        # limpiar sesión
+        request.session.pop("kiosko_miembro_id", None)
+        request.session.pop("kiosko_candidato_id", None)
+
+        messages.success(request, "Voto registrado. Gracias.")
+        return redirect("votacion:kiosko_ingreso_codigo")
+
+    return render(request, "votacion_app/kiosko_confirmacion.html", {
+        "miembro": miembro,
+        "candidato": candidato,
+    })

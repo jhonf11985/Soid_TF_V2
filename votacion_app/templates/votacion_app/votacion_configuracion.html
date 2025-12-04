@@ -4,6 +4,9 @@
 
 {% block content %}
 
+<!-- ===========================
+     ENCABEZADO
+=========================== -->
 <div class="page-header">
     <div>
         <h1 class="page-title">{{ titulo }}</h1>
@@ -14,6 +17,7 @@
 
     <div class="page-header-actions">
         {% if not es_nueva and votacion %}
+            <!-- Duplicar -->
             <form method="post"
                   action="{% url 'votacion:duplicar_votacion' votacion.pk %}"
                   style="display:inline-block; margin-right: 8px;">
@@ -24,6 +28,7 @@
                 </button>
             </form>
 
+            <!-- Eliminar -->
             <form method="post"
                   action="{% url 'votacion:eliminar_votacion' votacion.pk %}"
                   onsubmit="return confirm('¿Seguro que deseas eliminar esta elección?')"
@@ -36,6 +41,7 @@
             </form>
         {% endif %}
 
+        <!-- Volver -->
         <a href="{% url 'votacion:lista_votaciones' %}" class="btn-secondary">
             <span class="material-icons" style="font-size: 18px;">arrow_back</span>
             Volver
@@ -45,466 +51,379 @@
 
 <div class="page-section">
 
-    {# Mensajes de Django #}
-    {% if messages %}
-        <div class="messages-container">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        </div>
-    {% endif %}
+<!-- ===========================
+     MENSAJES
+=========================== -->
+{% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+{% endif %}
 
-    {# 1) CONFIGURACIÓN GENERAL #}
-    <h2>Configuración general</h2>
-    <p style="font-size: 13px; color: var(--color-text-muted);">
-        Define el nombre de la elección, su tipo, estado, quórum y otros parámetros.
-    </p>
+<!-- ===========================
+     1) CONFIGURACIÓN GENERAL
+=========================== -->
+<h2>Configuración general</h2>
+<p class="section-help">
+    Define el nombre de la elección, su tipo, estado, quórum y otros parámetros.
+</p>
 
-    <form method="post" novalidate>
-        {% csrf_token %}
+<form method="post" novalidate>
+    {% csrf_token %}
 
-        <div class="form-grid">
+    <div class="form-grid">
 
-            <div class="form-field form-field-full">
-                <label>Nombre de la elección</label>
-                {{ form.nombre }}
-            </div>
-
-            <div class="form-field form-field-full">
-                <label>Descripción</label>
-                {{ form.descripcion }}
-            </div>
-
-            <div class="form-field">
-                <label>Tipo</label>
-                {{ form.tipo }}
-            </div>
-
-            <div class="form-field">
-                <label>Estado</label>
-                {{ form.estado }}
-                <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">
-                    Borrador · Abierta · Cerrada
-                </div>
-            </div>
-
-            <div class="form-field">
-                <label>Regla de ganador</label>
-                {{ form.regla_ganador }}
-            </div>
-
-            <div class="form-field">
-                <label>Número de cargos</label>
-                {{ form.numero_cargos }}
-                <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">
-                    Ej.: 3 diáconos, 2 líderes…
-                </div>
-            </div>
-
-            {% if form.edad_minima_candidato %}
-            <div class="form-field">
-                <label>Edad mínima del candidato</label>
-                {{ form.edad_minima_candidato }}
-                <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">
-                    Ej.: 18 (solo miembros con al menos esta edad).
-                </div>
-            </div>
-            {% endif %}
-
-            <div class="form-field">
-                <label>Total habilitados</label>
-                {{ form.total_habilitados }}
-            </div>
-
-            <div class="form-field">
-                <label>Quórum mínimo</label>
-                {{ form.quorum_minimo }}
-            </div>
-
-            <div class="form-field">
-                <label>Fecha inicio</label>
-                {{ form.fecha_inicio }}
-            </div>
-
-            <div class="form-field">
-                <label>Fecha cierre</label>
-                {{ form.fecha_fin }}
-            </div>
-
-            <div class="form-field">
-                <label>
-                    {{ form.permite_empates }} Permitir empates
-                </label>
-            </div>
-
-            <div class="form-field">
-                <label>
-                    {{ form.permite_voto_remoto }} Permitir voto remoto
-                </label>
-            </div>
-
-            <div class="form-field form-field-full">
-                <label>Observaciones internas</label>
-                {{ form.observaciones_internas }}
-            </div>
-
+        <div class="form-field form-field-full">
+            <label>Nombre de la elección</label>
+            {{ form.nombre }}
         </div>
 
-        <div class="form-actions">
-            <button type="submit"
-                    name="accion"
-                    value="guardar_votacion"
-                    class="btn-primary">
-                <span class="material-icons" style="font-size: 18px;">save</span>
-                Guardar
-            </button>
-        </div>
-    </form>
-
-    {# 2) SOLO MOSTRAR PROCESO (VUELTAS + CANDIDATOS) SI LA VOTACIÓN YA EXISTE #}
-    {% if not es_nueva and votacion %}
-
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e5e7eb;">
-
-        {# 2.1) VUELTAS #}
-        <h2>Vueltas de esta elección</h2>
-        <p style="font-size: 13px; color: var(--color-text-muted);">
-            Cada vuelta representa una ronda de votación. La primera suele ser la principal;
-            las siguientes se usan si nadie alcanza la regla definida (por ejemplo, 50% + 1).
-        </p>
-
-        {# BOTÓN PARA AGREGAR NUEVA VUELTA #}
-        <div class="form-actions" style="justify-content: flex-end; margin-bottom: 10px;">
-            <form method="post" action="{% url 'votacion:agregar_ronda' votacion.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn-secondary">
-                    <span class="material-icons" style="font-size: 18px;">add</span>
-                    Nueva vuelta
-                </button>
-            </form>
+        <div class="form-field form-field-full">
+            <label>Descripción</label>
+            {{ form.descripcion }}
         </div>
 
-        {% with votacion.rondas.all as rondas %}
-            {% if rondas %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Nombre</th>
-                            <th>Estado</th>
-                            <th>Votos</th>
-                            <th>Inicio</th>
-                            <th>Cierre</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ronda in rondas %}
-                            <tr>
-                                <td>{{ ronda.numero }}</td>
-                                <td>
-                                    {% if ronda.numero == 1 %}
-                                        Primera vuelta
-                                    {% elif ronda.numero == 2 %}
-                                        Segunda vuelta
-                                    {% elif ronda.numero == 3 %}
-                                        Tercera vuelta
-                                    {% else %}
-                                        Vuelta {{ ronda.numero }}
-                                    {% endif %}
-                                    {% if ronda.nombre %}
-                                        - {{ ronda.nombre }}
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if ronda.estado == "ABIERTA" %}
-                                        <span class="badge-soft badge-soft-success">Abierta</span>
-                                    {% elif ronda.estado == "CERRADA" %}
-                                        <span class="badge-soft badge-soft-muted">Cerrada</span>
-                                    {% else %}
-                                        <span class="badge-soft badge-soft-warning">Borrador</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ ronda.votos.count }}</td>
-                                <td>
-                                    {% if ronda.fecha_inicio %}
-                                        {{ ronda.fecha_inicio|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if ronda.fecha_fin %}
-                                        {{ ronda.fecha_fin|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p style="font-size: 13px; color: var(--color-text-muted);">
-                    Aún no hay vueltas registradas. El sistema puede crear la primera automáticamente.
-                </p>
-            {% endif %}
-        {% endwith %}
+        <div class="form-field">
+            <label>Tipo</label>
+            {{ form.tipo }}
+        </div>
 
+        <div class="form-field">
+            <label>Estado</label>
+            {{ form.estado }}
+            <div class="field-help">Borrador · Abierta · Cerrada</div>
+        </div>
 
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e5e7eb;">
+        <div class="form-field">
+            <label>Regla de ganador</label>
+            {{ form.regla_ganador }}
+        </div>
 
-        {# 2.2) CANDIDATOS #}
-        <h2 id="candidatos">Candidatos</h2>
-        <p style="font-size: 13px; color: var(--color-text-muted);">
-            Selecciona los candidatos a partir de los miembros activos.
-            Solo se permiten miembros en estado <strong>ACTIVO</strong> y
-            que cumplan la edad mínima del sistema de membresía.
-            {% if votacion.edad_minima_candidato %}
-                (Para esta elección además se exige edad mínima:
-                {{ votacion.edad_minima_candidato }} años)
-            {% endif %}
-        </p>
+        <div class="form-field">
+            <label>Número de cargos</label>
+            {{ form.numero_cargos }}
+            <div class="field-help">Ej.: 3 diáconos, 2 líderes…</div>
+        </div>
 
-        {# Lista de candidatos actuales #}
-        {% if candidatos %}
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Nombre del candidato</th>
-                        <th>Nº miembro</th>
-                        <th>Código</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in candidatos %}
-                        <tr>
-                            <td>{{ c.nombre }}</td>
-                            <td>
-                                {% if c.miembro %}
-                                    {{ c.miembro.numero_miembro }}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if c.miembro and c.miembro.codigo_miembro %}
-                                    {{ c.miembro.codigo_miembro }}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p style="font-size: 13px; color: var(--color-text-muted);">
-                Aún no hay candidatos. Introduce el código del miembro para agregarlo.
-            </p>
+        {% if form.edad_minima_candidato %}
+        <div class="form-field">
+            <label>Edad mínima del candidato</label>
+            {{ form.edad_minima_candidato }}
+            <div class="field-help">Ej.: 18 años</div>
+        </div>
         {% endif %}
 
-        {# Formulario: introducir solo el número, prefijo TF- fijo #}
-        <h3>Agregar candidato por código</h3>
-        <p style="font-size: 13px; color: var(--color-text-muted);">
-            Solo introduce el <strong>número</strong> del código de miembro.
-            El sistema añadirá automáticamente el prefijo <strong>TF-</strong>.<br>
-            Ejemplo: si el código es <code>TF-0012</code>, solo escribe
-            <code>12</code> o <code>0012</code>.
-        </p>
+        <div class="form-field">
+            <label>Total habilitados</label>
+            {{ form.total_habilitados }}
+        </div>
 
-        <form method="post" style="margin-top: 8px;">
-            {% csrf_token %}
-            <input type="hidden" name="accion" value="previsualizar_candidato">
+        <div class="form-field">
+            <label>Quórum mínimo</label>
+            {{ form.quorum_minimo }}
+        </div>
 
-            <div class="form-grid">
-                <div class="form-field">
-                    <label>Código de miembro</label>
-                    <div class="input-prefix-group">
-                        <span class="input-prefix">TF-</span>
-                        <input type="text"
-                               name="codigo_sufijo"
-                               placeholder="0001"
-                               autocomplete="off"
-                               inputmode="numeric">
-                    </div>
-                    <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">
-                        Escribe solo el número; el sistema completará el código como TF-0001.
-                    </div>
-                </div>
-            </div>
+        <div class="form-field">
+            <label>Fecha inicio</label>
+            {{ form.fecha_inicio }}
+        </div>
 
-            <div class="form-actions"
-                 style="justify-content: flex-start; border-top: none; padding-top: 0;">
-                <button type="submit" class="btn-primary">
-                    <span class="material-icons" style="font-size: 18px;">search</span>
-                    Buscar candidato
-                </button>
-            </div>
-        </form>
+        <div class="form-field">
+            <label>Fecha cierre</label>
+            {{ form.fecha_fin }}
+        </div>
 
-         {# MODAL DE CONFIRMACIÓN DE CANDIDATO #}
-        {% if pre_candidato and codigo_pre_candidato %}
-            <div class="modal-backdrop">
-                <div class="modal-card">
-                    <h3 style="margin-top: 0;">Confirmar candidato</h3>
-                    <p>
-                        ¿Deseas agregar como candidato a:<br>
-                        <strong>{{ pre_candidato }}</strong><br>
-                        <small>Código: {{ codigo_pre_candidato }}</small>
-                    </p>
+        <div class="form-field">
+            <label>{{ form.permite_empates }} Permitir empates</label>
+        </div>
 
-                    <div style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">
-                        Verifica que el nombre y el código correspondan a la persona correcta
-                        antes de confirmar.
-                    </div>
-<div class="modal-actions">
-    <button type="button"
-            class="btn-secondary"
-            onclick="this.closest('.modal-backdrop').remove();">
-        Cerrar
-    </button>
+        <div class="form-field">
+            <label>{{ form.permite_voto_remoto }} Permitir voto remoto</label>
+        </div>
 
-    <form method="post" style="display:inline;">
+        <div class="form-field form-field-full">
+            <label>Observaciones internas</label>
+            {{ form.observaciones_internas }}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" name="accion" value="guardar_votacion" class="btn-primary">
+            <span class="material-icons" style="font-size: 18px;">save</span>
+            Guardar
+        </button>
+    </div>
+</form>
+
+<!-- ===========================
+     PROCESO SOLO SI YA EXISTE
+=========================== -->
+{% if not es_nueva and votacion %}
+
+<hr>
+
+<!-- ===========================
+     2.1) VUELTAS
+=========================== -->
+<h2>Vueltas de esta elección</h2>
+<p class="section-help">
+    Cada vuelta representa una ronda de votación.
+</p>
+
+<div class="form-actions" style="justify-content:flex-end; margin-bottom:10px;">
+    <form method="post" action="{% url 'votacion:agregar_ronda' votacion.pk %}">
         {% csrf_token %}
-        <input type="hidden" name="accion" value="agregar_candidato_confirmado">
-        <input type="hidden" name="codigo_miembro" value="{{ codigo_pre_candidato }}">
-        <button type="submit" class="btn-primary">
-            <span class="material-icons" style="font-size: 18px;">person_add</span>
-            Confirmar y agregar
+        <button type="submit" class="btn-secondary">
+            <span class="material-icons" style="font-size:18px;">add</span>
+            Nueva vuelta
         </button>
     </form>
 </div>
 
-                </div>
+{% with votacion.rondas.all as rondas %}
+{% if rondas %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Estado</th>
+            <th>Votos</th>
+            <th>Inicio</th>
+            <th>Cierre</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ronda in rondas %}
+        <tr>
+            <td>{{ ronda.numero }}</td>
+            <td>
+                {% if ronda.numero == 1 %}Primera vuelta{% elif ronda.numero == 2 %}Segunda vuelta{% else %}Vuelta {{ ronda.numero }}{% endif %}
+                {% if ronda.nombre %} - {{ ronda.nombre }}{% endif %}
+            </td>
+            <td>
+                {% if ronda.estado == "ABIERTA" %}
+                    <span class="badge-soft badge-soft-success">Abierta</span>
+                {% elif ronda.estado == "CERRADA" %}
+                    <span class="badge-soft badge-soft-muted">Cerrada</span>
+                {% else %}
+                    <span class="badge-soft badge-soft-warning">Borrador</span>
+                {% endif %}
+            </td>
+            <td>{{ ronda.votos.count }}</td>
+            <td>{{ ronda.fecha_inicio|default:"—" }}</td>
+            <td>{{ ronda.fecha_fin|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="section-help">Aún no hay vueltas registradas.</p>
+{% endif %}
+{% endwith %}
+
+<hr>
+
+<!-- ===========================
+     2.2) CANDIDATOS
+=========================== -->
+<h2 id="candidatos">Candidatos</h2>
+<p class="section-help">
+    Selecciona los candidatos a partir de los miembros activos.
+</p>
+
+<!-- LISTA DE CANDIDATOS -->
+{% if candidatos %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Foto</th>
+            <th>Código</th>
+            <th>Nombre</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in candidatos %}
+        <tr>
+            <td>
+                {% if c.miembro.foto %}
+                    <img src="{{ c.miembro.foto.url }}" class="candidate-avatar">
+                {% else %}
+                    <div class="candidate-avatar candidate-avatar-placeholder">{{ c.nombre|first }}</div>
+                {% endif %}
+            </td>
+            <td>{{ c.miembro.codigo_miembro|default:"—" }}</td>
+            <td>{{ c.nombre }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="section-help">Aún no hay candidatos.</p>
+{% endif %}
+
+<!-- AGREGAR CANDIDATO -->
+<h3>Agregar candidato por código</h3>
+<p class="section-help">Introduce solo el número; el sistema añade TF- automaticamente.</p>
+
+<form method="post" style="margin-top:8px;">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="previsualizar_candidato">
+
+    <div class="form-grid">
+        <div class="form-field">
+            <label>Código de miembro</label>
+            <div class="input-prefix-group">
+                <span class="input-prefix">TF-</span>
+                <input type="text" name="codigo_sufijo" placeholder="0001" inputmode="numeric">
             </div>
+        </div>
+    </div>
 
-        {# MODAL DE ERROR DE CANDIDATO #}
-        {% elif candidato_error %}
-            <div class="modal-backdrop">
-                <div class="modal-card">
-                    <h3 style="margin-top: 0;">No se puede agregar este candidato</h3>
-                    <p>{{ candidato_error }}</p>
+    <div class="form-actions" style="padding-top:0;">
+        <button type="submit" class="btn-primary">
+            <span class="material-icons" style="font-size:18px;">search</span>
+            Buscar candidato
+        </button>
+    </div>
+</form>
 
-                    <div style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">
-                        Verifica el código, el estado del miembro y la edad mínima
-                        establecida para la membresía y para esta elección.
-                    </div>
+<!-- MODAL CONFIRMACIÓN -->
+{% if pre_candidato and codigo_pre_candidato %}
+<div class="modal-backdrop">
+    <div class="modal-card">
+        <h3>Confirmar candidato</h3>
+        <p>
+            ¿Deseas agregar como candidato a:<br>
+            <strong>{{ pre_candidato }}</strong><br>
+            <small>Código: {{ codigo_pre_candidato }}</small>
+        </p>
 
-<div class="modal-actions">
-    <button type="button"
-            class="btn-primary"
-            onclick="this.closest('.modal-backdrop').remove();">
-        Cerrar
-    </button>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="this.closest('.modal-backdrop').remove();">Cerrar</button>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="agregar_candidato_confirmado">
+                <input type="hidden" name="codigo_miembro" value="{{ codigo_pre_candidato }}">
+                <button type="submit" class="btn-primary">
+                    <span class="material-icons" style="font-size:18px;">person_add</span>
+                    Confirmar y agregar
+                </button>
+            </form>
+        </div>
+    </div>
 </div>
 
-                </div>
-            </div>
-        {% endif %}
+{% elif candidato_error %}
+<div class="modal-backdrop">
+    <div class="modal-card">
+        <h3>No se puede agregar este candidato</h3>
+        <p>{{ candidato_error }}</p>
 
-        {# Estilos locales para el prefijo y los modales (sin tocar el CSS general) #}
-        <style>
-            .input-prefix-group {
-                display: flex;
-                align-items: stretch;
-                max-width: 260px;
-            }
+        <div class="modal-actions">
+            <button class="btn-primary" onclick="this.closest('.modal-backdrop').remove();">Cerrar</button>
+        </div>
+    </div>
+</div>
+{% endif %}
 
-            .input-prefix {
-                display: inline-flex;
-                align-items: center;
-                padding: 0.45rem 0.75rem;
-                border: 1px solid var(--border);
-                border-right: none;
-                border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-                background: #f9fafb;
-                font-size: 0.9rem;
-                color: var(--text-muted);
-                white-space: nowrap;
-            }
-
-            .input-prefix-group input[type="text"] {
-                flex: 1;
-                min-width: 0;
-                padding: 0.45rem 0.75rem;
-                border: 1px solid var(--border);
-                border-left: none;
-                border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-            }
-
-            .input-prefix-group input[type="text"]:focus {
-                outline: none;
-                box-shadow: 0 0 0 1px var(--primary);
-                border-color: var(--primary);
-            }
-
-            .modal-backdrop {
-                position: fixed;
-                inset: 0;
-                background: rgba(15, 23, 42, 0.35);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 999;
-            }
-
-            .modal-card {
-                background: #ffffff;
-                border-radius: var(--radius-lg);
-                padding: 18px 20px;
-                max-width: 420px;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
-            }
-
-            .modal-actions {
-                margin-top: 18px;
-                display: flex;
-                justify-content: flex-end;
-                gap: 8px;
-            }
-        </style>
-
-
-        {% if miembros %}
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Nº miembro</th>
-                        <th>Nombre</th>
-                        <th style="width: 110px;">Acción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for m in miembros %}
-                        <tr>
-                            <td>{{ m.numero_miembro }}</td>
-                            <td>{{ m }}</td>
-                            <td>
-                                <form method="post" style="display:inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="accion" value="agregar_candidato">
-                                    <input type="hidden" name="miembro_id" value="{{ m.id }}">
-                                    <button type="submit"
-                                            class="btn-primary"
-                                            style="padding: 4px 10px; font-size: 12px;">
-                                        Agregar
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p style="font-size: 13px; color: var(--color-text-muted);">
-                No se encontraron miembros para esta búsqueda
-                o ya todos son candidatos.
-            </p>
-        {% endif %}
-
-    {% endif %}
+{% endif %}
 
 </div>
+<script>
+    // Evita que la página suba arriba al presionar ENTER dentro de un formulario
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+
+    // Mantiene la posición al recargar después del POST
+    window.addEventListener("beforeunload", function () {
+        localStorage.setItem("scrollPos", window.scrollY);
+    });
+
+    window.addEventListener("load", function () {
+        const pos = localStorage.getItem("scrollPos");
+        if (pos) window.scrollTo(0, parseInt(pos));
+    });
+</script>
+
+
+<!-- ===========================
+     ESTILOS LOCALES
+=========================== -->
+<style>
+.section-help {
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
+
+.field-help {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+/* Prefijo */
+.input-prefix-group {
+    display: flex;
+    align-items: stretch;
+    max-width: 260px;
+}
+.input-prefix {
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--border);
+    border-right: none;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    background: #f9fafb;
+    color: var(--text-muted);
+}
+.input-prefix-group input {
+    border-left: none;
+}
+
+/* Modales */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.35);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+.modal-card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    max-width: 420px;
+    width: 100%;
+}
+.modal-actions {
+    margin-top: 15px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Avatar */
+.candidate-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+}
+.candidate-avatar-placeholder {
+    background: #f9fafb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+</style>
 
 {% endblock %}

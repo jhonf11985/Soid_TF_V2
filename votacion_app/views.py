@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.http import HttpResponseRedirect
 
 from miembros_app.models import Miembro
-from .models import Votacion, Ronda, Candidato
+from .models import Votacion, Ronda, Candidato, Voto
 from .forms import VotacionForm
 
 
@@ -546,3 +546,69 @@ def gestionar_candidatos(request, pk):
         "q": q,
     }
     return render(request, "votacion_app/votacion_candidatos.html", contexto)
+
+
+def obtener_votacion_y_ronda_activas():
+    """
+    Devuelve la votación y la ronda activas (estado = ABIERTA).
+    Si no hay ninguna, devuelve (None, None).
+    """
+    votacion = Votacion.objects.filter(estado="ABIERTA").order_by("-creada_el").first()
+    if not votacion:
+        return None, None
+
+    ronda = votacion.rondas.filter(estado="ABIERTA").order_by("numero").first()
+    if not ronda:
+        return votacion, None
+
+    return votacion, ronda
+
+@login_required
+def kiosko_ingreso_codigo(request):
+    """
+    Paso 1 del modo kiosko:
+    - Comprueba que hay una votación y una ronda ABIERTO.
+    - Pide el código del miembro.
+    - Valida que esté ACTIVO y que no haya votado ya.
+    - Guarda el id del miembro en sesión y pasa al paso 2.
+    """
+    votacion, ronda = obtener_votacion_y_ronda_activas()
+
+    if not votacion or not ronda:
+        return render(request, "votacion_app/kiosko_ingreso_codigo.html", {
+            "error": "No hay una votación activa en este momento."
+        })
+
+    if request.method == "POST":
+        codigo = request.POST.get("codigo_miembro", "").strip().upper()
+
+        # Normalizar código: TF-0000
+        if not codigo.startswith("TF-"):
+            codigo = f"TF-{codigo.zfill(4)}"
+
+        # Buscar miembro
+        try:
+            miembro = Miembro.objects.get(codigo_miembro__iexact=codigo)
+        except Miembro.DoesNotExist:
+            return render(request, "votacion_app/kiosko_ingreso_codigo.html", {
+                "error": f"El código {codigo} no existe.",
+            })
+
+        # Validar estado
+        if miembro.estado_miembro != "activo":
+            return render(request, "votacion_app/kiosko_ingreso_codigo.html", {
+                "error": "Este miembro no está activo, no puede votar.",
+            })
+
+        # Validar si ya votó en esta ronda
+        if Voto.objects.filter(ronda=ronda, miembro=miembro).exists():
+            return render(request, "votacion_app/kiosko_ingreso_codigo.html", {
+                "error": "Este miembro ya votó en esta vuelta.",
+            })
+
+        # OK → Guardamos miembro en sesión y pasamos al paso 2
+        request.session["kiosko_miembro_id"] = miembro.id
+        return redirect("votacion:kiosko_seleccion_candidato")
+
+    # GET: mostrar formulario vacío
+    return render(request, "votacion_app/kiosko_ingreso_codigo.html")
