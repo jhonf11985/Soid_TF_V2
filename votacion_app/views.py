@@ -68,6 +68,10 @@ def editar_votacion(request, pk):
     - Selección de candidatos (misma pantalla)
     """
     votacion = get_object_or_404(Votacion, pk=pk)
+    
+    # Para controlar qué pestaña debe quedar activa al recargar
+    tab_activa = None
+
 
     # Si por alguna razón no tiene ninguna vuelta, crear la primera
     if not votacion.rondas.exists():
@@ -208,6 +212,7 @@ def editar_votacion(request, pk):
 
             # Re-renderizamos la página (sin redirect) para que se vea el modal o el error
             form = VotacionForm(instance=votacion)
+            tab_activa = "candidatos"
 
         # 3) CONFIRMAR y crear candidato (desde el modal)
         elif accion == "agregar_candidato_confirmado":
@@ -290,7 +295,8 @@ def editar_votacion(request, pk):
                 )
 
             url_candidatos = (
-                reverse("votacion:editar_votacion", args=[votacion.pk]) + "#candidatos"
+                reverse("votacion:editar_votacion", args=[votacion.pk])
+                + "?tab=candidatos#candidatos"
             )
             return HttpResponseRedirect(url_candidatos)
 
@@ -311,6 +317,7 @@ def editar_votacion(request, pk):
         "pre_candidato": pre_candidato,
         "codigo_pre_candidato": codigo_pre_candidato,
         "candidato_error": candidato_error,
+        "tab_activa": tab_activa,
     }
     return render(request, "votacion_app/votacion_configuracion.html", contexto)
 
