@@ -592,7 +592,6 @@
 
 
     // Permitir abrir una pestaña específica con ?tab=...
-    // Permitir abrir una pestaña específica con ?tab=...
     document.addEventListener('DOMContentLoaded', function () {
         const params = new URLSearchParams(window.location.search);
         const tabParam = params.get('tab');
@@ -605,13 +604,13 @@
             openVotacionTab('tab-quorum', null);
         } else if (tabParam === 'fechas') {
             openVotacionTab('tab-fechas', null);
-        }
+        } 
 
-        // Si no viene ?tab=..., pero Django indica una pestaña activa,
-        // la usamos (por ejemplo, después de "Buscar candidato").
-        {% if tab_activa %}
+        // 👇 Nuevo: si NO hay ?tab en la URL, pero venimos de buscar candidato
+        // (hay pre_candidato o candidato_error), forzamos la pestaña de candidatos.
+        {% if pre_candidato or candidato_error %}
         if (!tabParam) {
-            openVotacionTab('tab-{{ tab_activa }}', null);
+            openVotacionTab('tab-candidatos', null);
         }
         {% endif %}
     });

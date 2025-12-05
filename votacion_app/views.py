@@ -9,6 +9,39 @@ from django.http import HttpResponseRedirect
 from miembros_app.models import Miembro
 from .models import Votacion, Ronda, Candidato, Voto
 from .forms import VotacionForm
+from datetime import date
+from core.utils_config import get_edad_minima_miembro_oficial   
+
+
+def calcular_total_miembros_habilitados():
+    """
+    Devuelve la cantidad de miembros con derecho a voto base:
+    - siguen activos en el sistema (activo=True)
+    - estado_miembro ACTIVO o PASIVO
+    - y cumplen la edad mínima establecida en el sistema de membresía.
+    """
+    edad_minima = get_edad_minima_miembro_oficial()
+
+    # Tomamos solo los miembros activos en el sistema,
+    # con estado_miembro activo/pasivo y con fecha de nacimiento.
+    miembros = Miembro.objects.filter(
+        activo=True,
+        estado_miembro__in=["activo", "pasivo"],
+    ).exclude(fecha_nacimiento__isnull=True)
+
+    hoy = date.today()
+    total = 0
+
+    for m in miembros:
+        fn = m.fecha_nacimiento
+        edad = hoy.year - fn.year - (
+            (hoy.month, hoy.day) < (fn.month, fn.day)
+        )
+        if edad >= edad_minima:
+            total += 1
+
+    return total
+
 
 
 
@@ -24,7 +57,6 @@ def lista_votaciones(request):
         {"votaciones": votaciones},
     )
 
-
 @login_required
 def crear_votacion(request):
     """
@@ -34,7 +66,10 @@ def crear_votacion(request):
     if request.method == "POST":
         form = VotacionForm(request.POST)
         if form.is_valid():
-            votacion = form.save()
+            # Guardamos la votación pero forzando el total de habilitados
+            votacion = form.save(commit=False)
+            votacion.total_habilitados = calcular_total_miembros_habilitados()
+            votacion.save()
 
             # Crear PRIMERA VUELTA automática
             Ronda.objects.create(
@@ -46,10 +81,18 @@ def crear_votacion(request):
                 fecha_fin=votacion.fecha_fin,
             )
 
-            messages.success(request, "La votación se ha creado correctamente con su primera vuelta.")
+            messages.success(
+                request,
+                "La votación se ha creado correctamente con su primera vuelta.",
+            )
             return redirect("votacion:editar_votacion", pk=votacion.pk)
     else:
         form = VotacionForm()
+        # Inicializamos el campo con el total calculado
+        if "total_habilitados" in form.fields:
+            form.fields["total_habilitados"].initial = (
+                calcular_total_miembros_habilitados()
+            )
 
     contexto = {
         "form": form,
@@ -68,10 +111,6 @@ def editar_votacion(request, pk):
     - Selección de candidatos (misma pantalla)
     """
     votacion = get_object_or_404(Votacion, pk=pk)
-    
-    # Para controlar qué pestaña debe quedar activa al recargar
-    tab_activa = None
-
 
     # Si por alguna razón no tiene ninguna vuelta, crear la primera
     if not votacion.rondas.exists():
@@ -212,7 +251,6 @@ def editar_votacion(request, pk):
 
             # Re-renderizamos la página (sin redirect) para que se vea el modal o el error
             form = VotacionForm(instance=votacion)
-            tab_activa = "candidatos"
 
         # 3) CONFIRMAR y crear candidato (desde el modal)
         elif accion == "agregar_candidato_confirmado":
@@ -294,6 +332,8 @@ def editar_votacion(request, pk):
                     "como candidato.",
                 )
 
+            # 👉 AQUÍ ESTÁ EL CAMBIO IMPORTANTE:
+            # volvemos a la misma pantalla, pero con la pestaña de candidatos activa
             url_candidatos = (
                 reverse("votacion:editar_votacion", args=[votacion.pk])
                 + "?tab=candidatos#candidatos"
@@ -317,7 +357,6 @@ def editar_votacion(request, pk):
         "pre_candidato": pre_candidato,
         "codigo_pre_candidato": codigo_pre_candidato,
         "candidato_error": candidato_error,
-        "tab_activa": tab_activa,
     }
     return render(request, "votacion_app/votacion_configuracion.html", contexto)
 
