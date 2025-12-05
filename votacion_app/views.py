@@ -5,12 +5,43 @@ from django.db import IntegrityError
 from django.db.models import Q, Max
 from django.urls import reverse
 from django.http import HttpResponseRedirect
+import math
 
 from miembros_app.models import Miembro
 from .models import Votacion, Ronda, Candidato, Voto
 from .forms import VotacionForm
 from datetime import date
 from core.utils_config import get_edad_minima_miembro_oficial   
+
+def calcular_votos_minimos(votacion):
+    """
+    Calcula y rellena votacion.votos_minimos_requeridos según:
+    - votacion.base_quorum (HABILITADOS / PRESENTES)
+    - votacion.tipo_quorum (PORCENTAJE / CANTIDAD)
+    - votacion.valor_quorum
+    - votacion.total_habilitados / votacion.miembros_presentes
+    """
+    if votacion.tipo_quorum not in ("PORCENTAJE", "CANTIDAD"):
+        votacion.votos_minimos_requeridos = None
+        return
+
+    # Base de cálculo
+    if votacion.base_quorum == "HABILITADOS":
+        base = votacion.total_habilitados
+    else:
+        base = votacion.miembros_presentes
+
+    if not base or not votacion.valor_quorum:
+        votacion.votos_minimos_requeridos = None
+        return
+
+    if votacion.tipo_quorum == "PORCENTAJE":
+        votacion.votos_minimos_requeridos = math.ceil(
+            base * votacion.valor_quorum / 100
+        )
+    else:
+        # CANTIDAD fija
+        votacion.votos_minimos_requeridos = votacion.valor_quorum
 
 
 def calcular_total_miembros_habilitados():
@@ -69,6 +100,10 @@ def crear_votacion(request):
             # Guardamos la votación pero forzando el total de habilitados
             votacion = form.save(commit=False)
             votacion.total_habilitados = calcular_total_miembros_habilitados()
+
+            # Calculamos votos mínimos según la base y el tipo de quórum
+            calcular_votos_minimos(votacion)
+
             votacion.save()
 
             # Crear PRIMERA VUELTA automática
@@ -146,7 +181,12 @@ def editar_votacion(request, pk):
         if accion == "guardar_votacion":
             form = VotacionForm(request.POST, instance=votacion)
             if form.is_valid():
-                votacion = form.save()
+                votacion = form.save(commit=False)
+
+                # Recalcular votos mínimos con los nuevos datos de quórum
+                calcular_votos_minimos(votacion)
+
+                votacion.save()
 
                 # Opcional: sincronizar fechas de la primera vuelta
                 primera_ronda = votacion.rondas.order_by("numero").first()
@@ -159,6 +199,7 @@ def editar_votacion(request, pk):
 
                 messages.success(request, "La votación se ha actualizado correctamente.")
                 return redirect("votacion:editar_votacion", pk=votacion.pk)
+
 
         # 2) PREVISUALIZAR candidato por código (mostrar modal o error)
         elif accion == "previsualizar_candidato":
@@ -387,57 +428,56 @@ def agregar_ronda(request, pk):
     )
     return redirect("votacion:editar_votacion", pk=votacion.pk)
 
-
 @login_required
 def duplicar_votacion(request, pk):
-    """
-    Duplica una votación (sin votos), incluyendo sus candidatos.
-    Deja la nueva votación en estado BORRADOR.
-    """
     votacion_original = get_object_or_404(Votacion, pk=pk)
 
-    # Solo aceptamos POST para evitar duplicar desde un simple enlace GET
-    if request.method != "POST":
-        return redirect("votacion:editar_votacion", pk=votacion_original.pk)
+    if request.method == "POST":
+        try:
+            nueva_votacion = Votacion.objects.create(
+                nombre=f"{votacion_original.nombre} (copia)",
+                descripcion=votacion_original.descripcion,
+                tipo=votacion_original.tipo,
+                estado="BORRADOR",
+                total_habilitados=votacion_original.total_habilitados,
+                miembros_presentes=None,  # se contará de nuevo en el día
+                base_quorum=votacion_original.base_quorum,
+                tipo_quorum=votacion_original.tipo_quorum,
+                valor_quorum=votacion_original.valor_quorum,
+                votos_minimos_requeridos=votacion_original.votos_minimos_requeridos,
+                regla_ganador=votacion_original.regla_ganador,
+                numero_cargos=votacion_original.numero_cargos,
+                edad_minima_candidato=votacion_original.edad_minima_candidato,
+                fecha_inicio=votacion_original.fecha_inicio,
+                fecha_fin=votacion_original.fecha_fin,
+                permite_empates=votacion_original.permite_empates,
+                permite_voto_remoto=votacion_original.permite_voto_remoto,
+                observaciones_internas=votacion_original.observaciones_internas,
+            )
+        except IntegrityError:
+            messages.error(
+                request,
+                "Ocurrió un error al duplicar la votación. Inténtalo de nuevo.",
+            )
+            return redirect("votacion:editar_votacion", pk=pk)
 
-    # Crear la nueva votación copiando campos clave
-    nueva_votacion = Votacion.objects.create(
-        nombre=f"{votacion_original.nombre} (copia)",
-        descripcion=votacion_original.descripcion,
-        tipo=votacion_original.tipo,
-        estado="BORRADOR",  # siempre borrador al duplicar
-        total_habilitados=votacion_original.total_habilitados,
-        quorum_minimo=votacion_original.quorum_minimo,
-        regla_ganador=votacion_original.regla_ganador,
-        numero_cargos=votacion_original.numero_cargos,
-        permite_empates=votacion_original.permite_empates,
-        permite_voto_remoto=votacion_original.permite_voto_remoto,
-        observaciones_internas=votacion_original.observaciones_internas,
-        # No copiamos fechas de inicio/fin para evitar confusiones
-        fecha_inicio=None,
-        fecha_fin=None,
-    )
+        # Primera vuelta de la nueva votación
+        Ronda.objects.create(
+            votacion=nueva_votacion,
+            numero=1,
+            nombre="Primera vuelta",
+            estado=nueva_votacion.estado,
+            fecha_inicio=nueva_votacion.fecha_inicio,
+            fecha_fin=nueva_votacion.fecha_fin,
+        )
 
-    # Duplicar candidatos (sin votos)
-    for candidato in votacion_original.candidatos.all():
-        candidato.pk = None  # hace que se cree un nuevo registro
-        candidato.votacion = nueva_votacion
-        candidato.save()
+        messages.success(
+            request,
+            "Se ha creado una copia de la votación. Revisa los datos antes de abrirla.",
+        )
+        return redirect("votacion:editar_votacion", pk=nueva_votacion.pk)
 
-    # Crear primera vuelta para la nueva votación
-    Ronda.objects.create(
-        votacion=nueva_votacion,
-        numero=1,
-        nombre="Primera vuelta",
-        estado=nueva_votacion.estado,
-    )
-
-    messages.success(
-        request,
-        f"Se ha creado una copia de la votación «{votacion_original.nombre}»."
-    )
-    return redirect("votacion:editar_votacion", pk=nueva_votacion.pk)
-
+    return redirect("votacion:editar_votacion", pk=pk)
 
 @login_required
 def kiosko_ingreso_codigo(request):

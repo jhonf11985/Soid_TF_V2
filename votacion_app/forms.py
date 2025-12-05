@@ -2,6 +2,10 @@ from django import forms
 from .models import Votacion
 
 
+from django import forms
+from .models import Votacion
+
+
 class VotacionForm(forms.ModelForm):
     class Meta:
         model = Votacion
@@ -15,6 +19,7 @@ class VotacionForm(forms.ModelForm):
             "edad_minima_candidato",
             "total_habilitados",        # auto
             "miembros_presentes",       # manual
+            "base_quorum",              # NUEVO: base para el cálculo
             "tipo_quorum",
             "valor_quorum",
             "votos_minimos_requeridos", # auto
@@ -49,6 +54,9 @@ class VotacionForm(forms.ModelForm):
             "miembros_presentes": forms.NumberInput(attrs={
                 "placeholder": "Ej.: 80 presentes",
             }),
+           "base_quorum": forms.RadioSelect(),
+
+
             "tipo_quorum": forms.Select(),
             "valor_quorum": forms.NumberInput(attrs={
                 "placeholder": "Ej.: 50 (porcentaje) o 80 (cantidad fija)",
@@ -96,3 +104,4 @@ class VotacionForm(forms.ModelForm):
             self.fields["total_habilitados"].widget.attrs["readonly"] = "readonly"
         if "votos_minimos_requeridos" in self.fields:
             self.fields["votos_minimos_requeridos"].widget.attrs["readonly"] = "readonly"
+

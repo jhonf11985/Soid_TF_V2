@@ -240,6 +240,45 @@
                                 </div>
 
                                 <div class="form-field">
+                                    <label>Base para calcular el quórum</label>
+
+                                    <div class="radio-group">
+                                        {% for radio in form.base_quorum %}
+                                            <label class="radio-option">
+                                                {{ radio.tag }} {{ radio.choice_label }}
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+
+                                    <div class="field-help">
+                                        Seleccione si la base del quórum será el total de habilitados o los presentes.
+                                    </div>
+                                </div>
+
+                                <style>
+                                    .radio-group {
+                                        display: flex;
+                                        gap: 16px;
+                                        margin-top: 6px;
+                                    }
+                                    .radio-option {
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 6px;
+                                        padding: 6px 10px;
+                                        background: #f7f7f7;
+                                        border: 1px solid #ccc;
+                                        border-radius: 8px;
+                                        cursor: pointer;
+                                        transition: 0.2s;
+                                    }
+                                    .radio-option:hover {
+                                        background: #ececec;
+                                    }
+                                </style>
+
+
+                                <div class="form-field">
                                     <label>Tipo de quórum</label>
                                     {{ form.tipo_quorum }}
                                 </div>
@@ -257,12 +296,13 @@
                                     <label>Votos mínimos requeridos</label>
                                     {{ form.votos_minimos_requeridos }}
                                     <div class="field-help">
-                                        Se calculará automáticamente en base a los presentes y al tipo de quórum.
+                                        Se calculará automáticamente en base a la base elegida y al tipo de quórum.
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
 
                     <!-- ========== TAB: FECHAS Y OPCIONES ADICIONALES ========== -->
                     <div id="tab-fechas" class="votacion-tab-content" style="display:none;">
@@ -652,6 +692,73 @@ document.addEventListener("keydown", function (event) {
     }
 
 </script>
+<script>
+    // ...todo lo que ya tienes arriba en el <script>...
+
+    // ===== CÁLCULO PREVIO DEL QUÓRUM EN EL NAVEGADOR =====
+    function recalcularQuorumPreview() {
+        const baseField = document.getElementById("id_base_quorum");
+        const tipoField = document.getElementById("id_tipo_quorum");
+        const valorField = document.getElementById("id_valor_quorum");
+        const totalHabilitadosField = document.getElementById("id_total_habilitados");
+        const presentesField = document.getElementById("id_miembros_presentes");
+        const votosMinField = document.getElementById("id_votos_minimos_requeridos");
+
+        if (!baseField || !tipoField || !valorField || !votosMinField) {
+            return;
+        }
+
+        const base = baseField.value;
+        const tipo = tipoField.value;
+        const valor = parseFloat((valorField.value || "").replace(",", "."));
+
+        let baseNumero = 0;
+
+        if (base === "HABILITADOS" && totalHabilitadosField) {
+            baseNumero = parseInt(totalHabilitadosField.value || "0", 10);
+        } else if (base === "PRESENTES" && presentesField) {
+            baseNumero = parseInt(presentesField.value || "0", 10);
+        }
+
+        if (!tipo || tipo === "NINGUNO" || isNaN(valor) || baseNumero <= 0) {
+            votosMinField.value = "";
+            return;
+        }
+
+        let resultado = 0;
+
+        if (tipo === "PORCENTAJE") {
+            const porcentaje = Math.max(0, Math.min(valor, 100));
+            resultado = Math.ceil(baseNumero * (porcentaje / 100));
+        } else if (tipo === "CANTIDAD") {
+            resultado = Math.max(0, Math.floor(valor));
+        }
+
+        votosMinField.value = resultado;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const ids = [
+            "id_base_quorum",
+            "id_tipo_quorum",
+            "id_valor_quorum",
+            "id_total_habilitados",
+            "id_miembros_presentes"
+        ];
+
+        ids.forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener("change", recalcularQuorumPreview);
+                el.addEventListener("keyup", recalcularQuorumPreview);
+            }
+        });
+
+        // Calcula una primera vez al cargar la página
+        recalcularQuorumPreview();
+    });
+</script>
+
 
 <!-- ===========================
      ESTILOS LOCALES

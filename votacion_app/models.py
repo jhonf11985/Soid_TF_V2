@@ -77,12 +77,46 @@ class Votacion(models.Model):
         ("CANTIDAD", "Cantidad fija de personas"),
     ]
 
+    # 2) Parámetros de quórum y asistencia
+
+    # Miembros con derecho a voto (snapshot automático)
+    total_habilitados = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Miembros con derecho a voto para esta elección (calculado automáticamente).",
+    )
+
+    # Miembros presentes físicamente ese día
+    miembros_presentes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Número de miembros con derecho a voto que están presentes físicamente.",
+    )
+
+    # Sobre qué base se calcula el quórum
+    BASE_QUORUM_CHOICES = [
+        ("HABILITADOS", "Sobre total de habilitados"),
+        ("PRESENTES", "Sobre miembros presentes"),
+    ]
+
+    base_quorum = models.CharField(
+        max_length=20,
+        choices=BASE_QUORUM_CHOICES,
+        default="HABILITADOS",
+        help_text="Indica si el quórum se calcula usando el total de habilitados o solo los presentes.",
+    )
+
+    TIPO_QUORUM_CHOICES = [
+        ("PORCENTAJE", "Porcentaje sobre la base"),
+        ("CANTIDAD", "Cantidad fija de personas"),
+    ]
+
     # Cómo se define el quórum: por porcentaje o por cantidad
     tipo_quorum = models.CharField(
         max_length=20,
         choices=TIPO_QUORUM_CHOICES,
         default="PORCENTAJE",
-        help_text="Define si el quórum se calcula por porcentaje o por cantidad fija.",
+        help_text="Define si el quórum se calcula por porcentaje o por cantidad fija sobre la base elegida.",
     )
 
     # Valor del quórum:
@@ -100,6 +134,7 @@ class Votacion(models.Model):
         blank=True,
         help_text="Número de votos mínimos requeridos para que la votación sea válida.",
     )
+
 
     # -----------------------------
     # 3) Reglas para decidir ganadores
