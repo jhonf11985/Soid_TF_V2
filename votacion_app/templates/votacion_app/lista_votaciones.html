@@ -38,14 +38,14 @@
                         <th>Estado</th>
                         <th>Quórum</th>
                         <th>Regla</th>
-                        <th>Votos</th>
+                        <th class="col-center">Votos</th>
                         <th class="col-center" style="width: 220px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for v in votaciones %}
                         <!-- Fila principal de la elección -->
-                        <tr>
+                        <tr class="{% if v.estado == 'ABIERTA' %}row-election-open{% endif %}">
                             <td>{{ v.nombre }}</td>
                             <td>{{ v.get_tipo_display }}</td>
                             <td>
@@ -58,17 +58,28 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if v.quorum_minimo %}
-                                    {{ v.quorum_minimo }}
-                                    {% if v.total_habilitados %}
-                                        / {{ v.total_habilitados }}
-                                    {% endif %}
+                                {% if v.votos_minimos_requeridos %}
+                                    <div>
+                                        {{ v.votos_minimos_requeridos }}
+                                        {% if v.base_quorum == "HABILITADOS" and v.total_habilitados %}
+                                            / {{ v.total_habilitados }}
+                                        {% elif v.base_quorum == "PRESENTES" and v.miembros_presentes %}
+                                            / {{ v.miembros_presentes }}
+                                        {% endif %}
+                                    </div>
+                                    <div class="table-subtext">
+                                        {% if v.tipo_quorum == "PORCENTAJE" and v.valor_quorum %}
+                                            {{ v.valor_quorum }}% · Base: {{ v.get_base_quorum_display }}
+                                        {% else %}
+                                            {{ v.get_tipo_quorum_display }} · Base: {{ v.get_base_quorum_display }}
+                                        {% endif %}
+                                    </div>
                                 {% else %}
-                                    —
+                                    <span class="badge-soft badge-soft-warning">Sin definir</span>
                                 {% endif %}
                             </td>
                             <td>{{ v.get_regla_ganador_display }}</td>
-                            <td>{{ v.total_votos_emitidos }}</td>
+                            <td class="col-center">{{ v.total_votos_emitidos }}</td>
 
                             <!-- ACCIONES -->
                             <td class="col-center">
@@ -108,7 +119,7 @@
                                     {% if v.estado == "ABIERTA" %}
                                         <a href="{% url 'votacion:kiosko_ingreso_codigo' %}"
                                            class="btn-primary btn-icon-only"
-                                           title="Abrir modo kiosko">
+                                           title="Abrir modo kiosko (usa la última elección abierta)">
                                             <span class="material-icons">how_to_vote</span>
                                         </a>
                                     {% endif %}
@@ -221,6 +232,32 @@
     .rounds-empty {
         font-size: 0.8rem;
         color: var(--text-muted);
+    }
+
+    /* Fila de elección abierta destacada */
+    .row-election-open td {
+        background: #ecfdf3;
+        transition: background 0.15s ease-in-out;
+    }
+
+    .row-election-open:hover td {
+        background: #dcfce7;
+    }
+
+    /* Hover general sobre filas */
+    .table tbody tr:hover td {
+        background: #f9fafb;
+    }
+
+    /* Texto auxiliar pequeño en celdas (como detalle del quórum) */
+    .table-subtext {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* Centrado de columnas numéricas */
+    .col-center {
+        text-align: center;
     }
 </style>
 
