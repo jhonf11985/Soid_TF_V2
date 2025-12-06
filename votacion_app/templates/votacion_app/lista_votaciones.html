@@ -4,22 +4,49 @@
 
 {% block content %}
 
-<div class="page-header-actions">
+<!-- ===========================
+     ENCABEZADO
+=========================== -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Elecciones</h1>
+        <p class="page-subtitle">
+            Gestiona las votaciones de tu iglesia: configura reglas, vueltas y seguimiento.
+        </p>
+    </div>
 
-    <a href="{% url 'votacion:lista_candidatos_listado' %}" class="btn-secondary" style="margin-right: 8px;">
-        <span class="material-icons" style="font-size: 18px;">how_to_reg</span>
-        Listas de candidatos
-    </a>
+    <div class="page-header-actions">
 
+        <!-- Botón para ir a listas de candidatos -->
+        <a href="{% url 'votacion:lista_candidatos_listado' %}"
+           class="btn-secondary"
+           style="margin-right: 8px;">
+            <span class="material-icons" style="font-size: 18px;">how_to_reg</span>
+            Listado de los Candidatos
+        </a>
 
-    <!-- Botón ya existente para crear una votación -->
-    <a href="{% url 'votacion:crear_votacion' %}" class="btn-primary">
-        <span class="material-icons" style="font-size: 18px;">add</span>
-        Nueva elección
-    </a>
+        <!-- Selector de vista (lista / cuadrícula) -->
+        <div class="view-toggle" style="margin-right: 8px;">
+            <a href="?vista=lista"
+               class="view-toggle-btn {% if vista == 'lista' %}is-active{% endif %}"
+               title="Vista en lista">
+                <span class="material-icons">view_list</span>
+            </a>
+            <a href="?vista=grid"
+               class="view-toggle-btn {% if vista == 'grid' %}is-active{% endif %}"
+               title="Vista en tarjetas">
+                <span class="material-icons">grid_view</span>
+            </a>
+        </div>
 
+        <!-- Botón para crear nueva elección -->
+        <a href="{% url 'votacion:crear_votacion' %}" class="btn-primary">
+            <span class="material-icons" style="font-size: 18px;">add</span>
+            Nueva elección
+        </a>
+
+    </div>
 </div>
-
 
 <div class="page-section">
     {% if messages %}
@@ -31,26 +58,23 @@
     {% endif %}
 
     {% if votaciones %}
-        <div class="table-wrapper">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Tipo</th>
-                        <th>Estado</th>
-                        <th>Quórum</th>
-                        <th>Regla</th>
-                        <th class="col-center">Votos</th>
-                        <th class="col-center" style="width: 220px;">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for v in votaciones %}
-                        <!-- Fila principal de la elección -->
-                        <tr class="{% if v.estado == 'ABIERTA' %}row-election-open{% endif %}">
-                            <td>{{ v.nombre }}</td>
-                            <td>{{ v.get_tipo_display }}</td>
-                            <td>
+
+        {# ===========================
+           VISTA CUADRÍCULA (TARJETAS)
+        ============================ #}
+        {% if vista == "grid" %}
+            <div class="elections-grid">
+                {% for v in votaciones %}
+                    <article class="election-card {% if v.estado == 'ABIERTA' %}election-card--open{% endif %}">
+                        <header class="election-card__header">
+                            <div>
+                                <h2 class="election-card__title">{{ v.nombre }}</h2>
+                                <p class="election-card__subtitle">
+                                    {{ v.get_tipo_display }}
+                                </p>
+                            </div>
+
+                            <div class="election-card__status">
                                 {% if v.estado == "ABIERTA" %}
                                     <span class="badge-soft badge-soft-success">Abierta</span>
                                 {% elif v.estado == "CERRADA" %}
@@ -58,92 +82,53 @@
                                 {% else %}
                                     <span class="badge-soft badge-soft-warning">Borrador</span>
                                 {% endif %}
-                            </td>
-                            <td>
-                                {% if v.votos_minimos_requeridos %}
-                                    <div>
+                            </div>
+                        </header>
+
+                            <div class="election-card__body">
+
+                            <div class="election-card__row">
+                                <span class="election-card__label">Quórum:</span>
+                                <span class="election-card__value">
+                                    {% if v.votos_minimos_requeridos %}
                                         {{ v.votos_minimos_requeridos }}
                                         {% if v.base_quorum == "HABILITADOS" and v.total_habilitados %}
                                             / {{ v.total_habilitados }}
                                         {% elif v.base_quorum == "PRESENTES" and v.miembros_presentes %}
                                             / {{ v.miembros_presentes }}
                                         {% endif %}
-                                    </div>
-                                    <div class="table-subtext">
-                                        {% if v.tipo_quorum == "PORCENTAJE" and v.valor_quorum %}
-                                            {{ v.valor_quorum }}% · Base: {{ v.get_base_quorum_display }}
-                                        {% else %}
-                                            {{ v.get_tipo_quorum_display }} · Base: {{ v.get_base_quorum_display }}
-                                        {% endif %}
-                                    </div>
-                                {% else %}
-                                    <span class="badge-soft badge-soft-warning">Sin definir</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ v.get_regla_ganador_display }}</td>
-                            <td class="col-center">{{ v.total_votos_emitidos }}</td>
+                                        <span class="election-card__hint">
+                                            {% if v.tipo_quorum == "PORCENTAJE" and v.valor_quorum %}
+                                                · {{ v.valor_quorum }}% · Base: {{ v.get_base_quorum_display }}
+                                            {% else %}
+                                                · {{ v.get_tipo_quorum_display }} · Base: {{ v.get_base_quorum_display }}
+                                            {% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge-soft badge-soft-warning">Sin definir</span>
+                                    {% endif %}
+                                </span>
+                            </div>
 
-<!-- ACCIONES -->
-<td class="col-center">
-    <div class="elections-actions">
+                            <div class="election-card__row">
+                                <span class="election-card__label">Regla de ganador:</span>
+                                <span class="election-card__value">
+                                    {{ v.get_regla_ganador_display }}
+                                </span>
+                            </div>
 
-        <!-- Configurar -->
-        <a href="{% url 'votacion:editar_votacion' v.pk %}"
-           class="btn-secondary btn-icon-only"
-           title="Configurar elección">
-            <span class="material-icons">settings</span>
-        </a>
+                            <div class="election-card__row">
+                                <span class="election-card__label">Votos emitidos:</span>
+                                <span class="election-card__value">
+                                    {{ v.total_votos_emitidos }}
+                                </span>
+                            </div>
 
-        <!-- Duplicar -->
-        <form method="post"
-              action="{% url 'votacion:duplicar_votacion' v.pk %}">
-            {% csrf_token %}
-            <button type="submit"
-                    class="btn-secondary btn-icon-only"
-                    title="Duplicar elección">
-                <span class="material-icons">content_copy</span>
-            </button>
-        </form>
-
-        <!-- Eliminar -->
-        <form method="post"
-              action="{% url 'votacion:eliminar_votacion' v.pk %}"
-              onsubmit="return confirm('¿Seguro que deseas eliminar esta elección? No se puede deshacer.');">
-            {% csrf_token %}
-            <button type="submit"
-                    class="btn-danger btn-icon-only"
-                    title="Eliminar elección">
-                <span class="material-icons">delete</span>
-            </button>
-        </form>
-
-        <!-- Kiosko (solo si está ABIERTA) -->
-        {% if v.estado == "ABIERTA" %}
-            <a href="{% url 'votacion:kiosko_ingreso_codigo' %}"
-               class="btn-primary btn-icon-only"
-               title="Abrir modo kiosko (usa la última elección abierta)">
-                <span class="material-icons">how_to_vote</span>
-            </a>
-        {% endif %}
-
-        <!-- Pantalla pública (siempre disponible para esta elección) -->
-        <a href="{% url 'votacion:pantalla_votacion' v.pk %}"
-           class="btn-secondary btn-icon-only"
-           title="Abrir pantalla pública (proyección)">
-            <span class="material-icons">tv</span>
-        </a>
-
-    </div>
-</td>
-
-
-                        <!-- Fila secundaria: vueltas (rondas) de esta elección -->
-                        <tr class="row-rounds">
-                            <td colspan="7">
-                                <div class="rounds-inline">
-                                    {% with v.rondas.all as rondas %}
-                                        {% if rondas %}
-                                            <span class="rounds-label">Vueltas:</span>
+                            <div class="election-card__rounds">
+                                {% with v.rondas.all as rondas %}
+                                    {% if rondas %}
+                                        <span class="rounds-label">Vueltas:</span>
+                                        <span class="rounds-inline">
                                             {% for ronda in rondas %}
                                                 <span class="round-pill">
                                                     {{ ronda.numero }}ª ·
@@ -159,19 +144,216 @@
                                                     {% endif %}
                                                 </span>
                                             {% endfor %}
-                                        {% else %}
-                                            <span class="rounds-empty">
-                                                Esta elección aún no tiene vueltas configuradas.
-                                            </span>
-                                        {% endif %}
-                                    {% endwith %}
-                                </div>
-                            </td>
+                                        </span>
+                                    {% else %}
+                                        <span class="rounds-empty">
+                                            Esta elección aún no tiene vueltas configuradas.
+                                        </span>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+
+                        <footer class="election-card__footer">
+                            <div class="elections-actions">
+                                <!-- Configurar -->
+                                <a href="{% url 'votacion:editar_votacion' v.pk %}"
+                                   class="btn-secondary btn-icon-only"
+                                   title="Configurar elección">
+                                    <span class="material-icons">settings</span>
+                                </a>
+
+                                <!-- Duplicar -->
+                                <form method="post"
+                                      action="{% url 'votacion:duplicar_votacion' v.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="btn-secondary btn-icon-only"
+                                            title="Duplicar elección">
+                                        <span class="material-icons">content_copy</span>
+                                    </button>
+                                </form>
+
+                                <!-- Eliminar -->
+                                <form method="post"
+                                      action="{% url 'votacion:eliminar_votacion' v.pk %}"
+                                      onsubmit="return confirm('¿Seguro que deseas eliminar esta elección? No se puede deshacer.');">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="btn-danger btn-icon-only"
+                                            title="Eliminar elección">
+                                        <span class="material-icons">delete</span>
+                                    </button>
+                                </form>
+
+                                <!-- Kiosko (solo si está ABIERTA) -->
+                                {% if v.estado == "ABIERTA" %}
+                                    <a href="{% url 'votacion:kiosko_ingreso_codigo' %}"
+                                       class="btn-primary btn-icon-only"
+                                       title="Abrir modo kiosko (usa la última elección abierta)">
+                                        <span class="material-icons">how_to_vote</span>
+                                    </a>
+                                {% endif %}
+
+                                <!-- Pantalla pública -->
+                                <a href="{% url 'votacion:pantalla_votacion' v.pk %}"
+                                   class="btn-secondary btn-icon-only"
+                                   title="Abrir pantalla pública (proyección)">
+                                    <span class="material-icons">tv</span>
+                                </a>
+                            </div>
+                        </footer>
+                    </article>
+                {% endfor %}
+            </div>
+
+        {# ===========================
+           VISTA LISTA (TABLA CLÁSICA)
+        ============================ #}
+        {% else %}
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Quórum</th>
+                            <th>Regla</th>
+                            <th class="col-center">Votos</th>
+                            <th class="col-center" style="width: 220px;">Acciones</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        {% for v in votaciones %}
+                            <!-- Fila principal de la elección -->
+                            <tr class="{% if v.estado == 'ABIERTA' %}row-election-open{% endif %}">
+                                <td>{{ v.nombre }}</td>
+                                <td>{{ v.get_tipo_display }}</td>
+                                <td>
+                                    {% if v.estado == "ABIERTA" %}
+                                        <span class="badge-soft badge-soft-success">Abierta</span>
+                                    {% elif v.estado == "CERRADA" %}
+                                        <span class="badge-soft badge-soft-muted">Cerrada</span>
+                                    {% else %}
+                                        <span class="badge-soft badge-soft-warning">Borrador</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if v.votos_minimos_requeridos %}
+                                        <div>
+                                            {{ v.votos_minimos_requeridos }}
+                                            {% if v.base_quorum == "HABILITADOS" and v.total_habilitados %}
+                                                / {{ v.total_habilitados }}
+                                            {% elif v.base_quorum == "PRESENTES" and v.miembros_presentes %}
+                                                / {{ v.miembros_presentes }}
+                                            {% endif %}
+                                        </div>
+                                        <div class="table-subtext">
+                                            {% if v.tipo_quorum == "PORCENTAJE" and v.valor_quorum %}
+                                                {{ v.valor_quorum }}% · Base: {{ v.get_base_quorum_display }}
+                                            {% else %}
+                                                {{ v.get_tipo_quorum_display }} · Base: {{ v.get_base_quorum_display }}
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="badge-soft badge-soft-warning">Sin definir</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ v.get_regla_ganador_display }}</td>
+                                <td class="col-center">{{ v.total_votos_emitidos }}</td>
+
+                                <!-- ACCIONES -->
+                                <td class="col-center">
+                                    <div class="elections-actions">
+
+                                        <!-- Configurar -->
+                                        <a href="{% url 'votacion:editar_votacion' v.pk %}"
+                                           class="btn-secondary btn-icon-only"
+                                           title="Configurar elección">
+                                            <span class="material-icons">settings</span>
+                                        </a>
+
+                                        <!-- Duplicar -->
+                                        <form method="post"
+                                              action="{% url 'votacion:duplicar_votacion' v.pk %}">
+                                            {% csrf_token %}
+                                            <button type="submit"
+                                                    class="btn-secondary btn-icon-only"
+                                                    title="Duplicar elección">
+                                                <span class="material-icons">content_copy</span>
+                                            </button>
+                                        </form>
+
+                                        <!-- Eliminar -->
+                                        <form method="post"
+                                              action="{% url 'votacion:eliminar_votacion' v.pk %}"
+                                              onsubmit="return confirm('¿Seguro que deseas eliminar esta elección? No se puede deshacer.');">
+                                            {% csrf_token %}
+                                            <button type="submit"
+                                                    class="btn-danger btn-icon-only"
+                                                    title="Eliminar elección">
+                                                <span class="material-icons">delete</span>
+                                            </button>
+                                        </form>
+
+                                        <!-- Kiosko (solo si está ABIERTA) -->
+                                        {% if v.estado == "ABIERTA" %}
+                                            <a href="{% url 'votacion:kiosko_ingreso_codigo' %}"
+                                               class="btn-primary btn-icon-only"
+                                               title="Abrir modo kiosko (usa la última elección abierta)">
+                                                <span class="material-icons">how_to_vote</span>
+                                            </a>
+                                        {% endif %}
+
+                                        <!-- Pantalla pública -->
+                                        <a href="{% url 'votacion:pantalla_votacion' v.pk %}"
+                                           class="btn-secondary btn-icon-only"
+                                           title="Abrir pantalla pública (proyección)">
+                                            <span class="material-icons">tv</span>
+                                        </a>
+
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Fila secundaria: vueltas (rondas) de esta elección -->
+                            <tr class="row-rounds">
+                                <td colspan="7">
+                                    <div class="rounds-inline">
+                                        {% with v.rondas.all as rondas %}
+                                            {% if rondas %}
+                                                <span class="rounds-label">Vueltas:</span>
+                                                {% for ronda in rondas %}
+                                                    <span class="round-pill">
+                                                        {{ ronda.numero }}ª ·
+                                                        {% if ronda.estado == "ABIERTA" %}
+                                                            <span class="badge-soft badge-soft-success">Abierta</span>
+                                                        {% elif ronda.estado == "CERRADA" %}
+                                                            <span class="badge-soft badge-soft-muted">Cerrada</span>
+                                                        {% else %}
+                                                            <span class="badge-soft badge-soft-warning">Borrador</span>
+                                                        {% endif %}
+                                                        {% if ronda.fecha_inicio %}
+                                                            · {{ ronda.fecha_inicio|date:"d/m H:i" }}
+                                                        {% endif %}
+                                                    </span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="rounds-empty">
+                                                    Esta elección aún no tiene vueltas configuradas.
+                                                </span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
     {% else %}
         <div class="alert alert-info">
             Todavía no hay elecciones creadas.
@@ -180,8 +362,183 @@
     {% endif %}
 </div>
 
-<!-- CSS ESPECÍFICO PARA ESTA TABLA -->
+<!-- CSS ESPECÍFICO PARA ESTA PANTALLA -->
 <style>
+    /* Toggle vista */
+    .view-toggle {
+        display: inline-flex;
+        border-radius: 999px;
+        border: 1px solid var(--border, #e5e7eb);
+        overflow: hidden;
+    }
+
+    .view-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border: none;
+        background: #ffffff;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .view-toggle-btn .material-icons {
+        font-size: 18px;
+        color: var(--text-muted, #6b7280);
+    }
+
+    .view-toggle-btn.is-active {
+        background: #111827;
+    }
+
+    .view-toggle-btn.is-active .material-icons {
+        color: #ffffff;
+    }
+
+    /* Grid de elecciones */
+    .elections-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+    }
+.elections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 18px;
+}
+/* Grid de elecciones – versión compacta */
+.elections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 12px;
+}
+
+/* Tarjeta compacta */
+.election-card {
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    min-height: 0;          /* sin altura mínima extra */
+}
+
+.election-card--open {
+    border-color: #16a34a;
+    background: #f0fdf4;
+}
+
+/* Cabecera: título + estado en una sola línea */
+.election-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+
+.election-card__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.election-card__subtitle {
+    font-size: 0.72rem;
+    color: #6b7280;
+    margin: 1px 0 0;
+}
+
+/* Cuerpo compacto: dos columnas en escritorio, una en móvil */
+.election-card__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 6px 12px;
+    font-size: 0.78rem;
+}
+
+@media (max-width: 640px) {
+    .election-card__body {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Filas compactas */
+.election-card__row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.election-card__label {
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 0.7rem;
+}
+
+.election-card__value {
+    font-size: 0.8rem;
+    color: #111827;
+}
+
+.election-card__hint {
+    display: block;
+    font-size: 0.7rem;
+    color: #9ca3af;
+}
+
+/* Vueltas en una sola línea, muy compactas */
+.election-card__rounds {
+    margin-top: 2px;
+}
+
+.election-card__rounds .rounds-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 0.7rem;
+}
+
+.election-card__rounds .round-pill {
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+}
+
+/* Footer de acciones pegado y discreto */
+.election-card__footer {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.elections-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.btn-icon-only {
+    padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
+    border-radius: 999px;
+}
+
+.btn-icon-only .material-icons {
+    font-size: 16px;
+}
+
+
+    /* Acciones comunes */
     .elections-actions {
         display: inline-flex;
         align-items: center;
@@ -208,7 +565,6 @@
     }
 
     /* ---- FILA DE VUELTAS (RONDAS) ---- */
-
     .row-rounds td {
         background: #fafafa;
         padding-top: 4px;

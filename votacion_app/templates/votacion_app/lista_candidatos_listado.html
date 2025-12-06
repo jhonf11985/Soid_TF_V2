@@ -80,28 +80,45 @@
                                 {% endif %}
                             </td>
                             <td class="col-center">
-                                <div class="elections-actions">
-                                    <!-- Configurar / ver -->
-                                    <a href="{% url 'votacion:lista_candidatos_configurar' l.pk %}"
-                                       class="btn-secondary btn-icon-only"
-                                       title="Ver / editar lista">
-                                        <span class="material-icons">settings</span>
-                                    </a>
+    <div class="elections-actions">
+        <!-- Configurar / ver -->
+        <a href="{% url 'votacion:lista_candidatos_configurar' l.pk %}"
+           class="btn-secondary btn-icon-only"
+           title="Ver / editar lista">
+            <span class="material-icons">settings</span>
+        </a>
 
-                                    <!-- Eliminar -->
-                                    <form method="post"
-                                          action="{% url 'votacion:lista_candidatos_eliminar' l.pk %}"
-                                          onsubmit="return confirm('¿Seguro que deseas eliminar esta lista? No se puede deshacer.');"
-                                          style="display:inline;">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                                class="btn-danger btn-icon-only"
-                                                title="Eliminar lista">
-                                            <span class="material-icons">delete</span>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
+        <!-- Aprobar lista (solo si está en BORRADOR) -->
+        {% if l.estado == "BORRADOR" %}
+            <form method="post"
+                  action="{% url 'votacion:lista_candidatos_cambiar_estado' l.pk %}"
+                  style="display:inline;"
+                  onsubmit="return confirm('Al aprobar la lista ya no podrás añadir ni quitar miembros. ¿Quieres continuar?');">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="confirmar">
+                <button type="submit"
+                        class="btn-primary btn-icon-only"
+                        title="Aprobar lista">
+                    <span class="material-icons">check</span>
+                </button>
+            </form>
+        {% endif %}
+
+        <!-- Eliminar -->
+        <form method="post"
+              action="{% url 'votacion:lista_candidatos_eliminar' l.pk %}"
+              onsubmit="return confirm('¿Seguro que deseas eliminar esta lista? No se puede deshacer.');"
+              style="display:inline;">
+            {% csrf_token %}
+            <button type="submit"
+                    class="btn-danger btn-icon-only"
+                    title="Eliminar lista">
+                <span class="material-icons">delete</span>
+            </button>
+        </form>
+    </div>
+</td>
+
                         </tr>
                     {% endfor %}
                 </tbody>

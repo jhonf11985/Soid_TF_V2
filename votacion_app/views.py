@@ -86,13 +86,25 @@ def calcular_total_miembros_habilitados():
 def lista_votaciones(request):
     """
     Lista de todas las votaciones.
+    Permite cambiar entre vista tipo tabla ("lista")
+    y vista en tarjetas ("grid") usando ?vista=lista|grid.
     """
-    votaciones = Votacion.objects.all()
+    vista = request.GET.get("vista", "lista")
+    if vista not in ("lista", "grid"):
+        vista = "lista"
+
+    votaciones = Votacion.objects.all().order_by("-creada_el")
+
+    contexto = {
+        "votaciones": votaciones,
+        "vista": vista,
+    }
     return render(
         request,
         "votacion_app/lista_votaciones.html",
-        {"votaciones": votaciones},
+        contexto,
     )
+
 
 @login_required
 def crear_votacion(request):
@@ -1143,6 +1155,9 @@ def lista_candidatos_configurar(request, pk=None):
     - En estado BORRADOR se pueden añadir y quitar miembros.
     - En estado CONFIRMADA ya no se puede editar.
     Solo las listas CONFIRMADAS se podrán cargar en una votación.
+    Además:
+    - Si la lista es nueva (pk=None), se sugiere un código automático.
+    - Si al guardar el código está vacío, se genera uno automáticamente.
     """
     if pk:
         lista = get_object_or_404(ListaCandidatos, pk=pk)
@@ -1154,7 +1169,6 @@ def lista_candidatos_configurar(request, pk=None):
     else:
         titulo = "Nueva lista de candidatos"
 
-    # Formularios base
     if request.method == "POST":
         accion = request.POST.get("accion")
 
@@ -1165,17 +1179,20 @@ def lista_candidatos_configurar(request, pk=None):
 
             if form.is_valid():
                 lista = form.save(commit=False)
+
+                # Si no se ha puesto código, lo generamos
+                if not lista.codigo_lista:
+                    lista.codigo_lista = generar_codigo_lista("LD")
+
                 if not lista.estado:
                     lista.estado = ListaCandidatos.ESTADO_BORRADOR
+
                 lista.save()
 
                 messages.success(request, "Lista guardada correctamente.")
 
-                if accion == "guardar":
-                    # Podrías llevar a una lista general de listas
-                    return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
-                else:
-                    return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+                # De momento, en ambos casos volvemos a la misma pantalla
+                return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
 
         # 2) Agregar miembro por código (solo si ya existe la lista y está en BORRADOR)
         elif accion == "agregar_miembro" and lista:
@@ -1242,6 +1259,7 @@ def lista_candidatos_configurar(request, pk=None):
         elif accion == "eliminar_item" and lista:
             form = ListaCandidatosForm(instance=lista)
             agregar_form = ListaCandidatosAgregarMiembroForm()
+
             if lista.estado != ListaCandidatos.ESTADO_BORRADOR:
                 messages.error(
                     request,
@@ -1294,7 +1312,15 @@ def lista_candidatos_configurar(request, pk=None):
 
     else:
         # GET
-        form = ListaCandidatosForm(instance=lista)
+        if lista:
+            form = ListaCandidatosForm(instance=lista)
+        else:
+            # Lista nueva: sugerimos código automático
+            initial = {
+                "codigo_lista": generar_codigo_lista("LD"),
+            }
+            form = ListaCandidatosForm(initial=initial)
+
         agregar_form = ListaCandidatosAgregarMiembroForm()
 
     items = []
@@ -1313,6 +1339,7 @@ def lista_candidatos_configurar(request, pk=None):
         "items": items,
     }
     return render(request, "votacion_app/lista_candidatos_configuracion.html", contexto)
+
 
 @login_required
 def lista_candidatos_nueva(request):
@@ -1363,3 +1390,89 @@ def lista_candidatos_eliminar(request, pk):
 
     # Si entra por GET, lo mandamos a la configuración de la lista
     return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+from django.utils import timezone
+from .models import ListaCandidatos
+
+def generar_codigo_lista(prefix="LD"):
+    """
+    Genera un código automático para la lista de candidatos.
+    Formato: PREFIX-YYYY-XX  (ejemplo: LD-2025-01)
+    """
+    año = timezone.now().year
+    prefijo = f"{prefix}-{año}-"
+
+    # Buscar la última lista que empiece con ese prefijo
+    ultima_lista = (
+        ListaCandidatos.objects
+        .filter(codigo_lista__startswith=prefijo)
+        .order_by("codigo_lista")
+        .last()
+    )
+
+    if not ultima_lista or not ultima_lista.codigo_lista:
+        siguiente_numero = 1
+    else:
+        # Intentamos sacar la parte numérica final (XX)
+        try:
+            parte_final = ultima_lista.codigo_lista.split("-")[-1]
+            siguiente_numero = int(parte_final) + 1
+        except (ValueError, IndexError):
+            # Si algo raro pasa con el código anterior, empezamos en 1
+            siguiente_numero = 1
+
+    return f"{prefijo}{siguiente_numero:02d}"
+@login_required
+def lista_candidatos_cambiar_estado(request, pk):
+    """
+    Cambia el estado de una lista de candidatos desde el listado.
+    De momento solo usamos la acción 'confirmar' (aprobar lista).
+    """
+    lista = get_object_or_404(ListaCandidatos, pk=pk)
+
+    if request.method != "POST":
+        return redirect("votacion:lista_candidatos_listado")
+
+    accion = request.POST.get("accion")
+
+    if accion == "confirmar":
+        # No permitir confirmar listas vacías
+        if not lista.items.exists():
+            messages.error(
+                request,
+                "No puedes aprobar una lista vacía. Añade al menos un miembro."
+            )
+        else:
+            lista.estado = ListaCandidatos.ESTADO_CONFIRMADA
+            if not lista.fecha_confirmacion:
+                lista.fecha_confirmacion = timezone.now()
+            lista.save()
+            messages.success(
+                request,
+                f"La lista «{lista.nombre}» ha sido aprobada correctamente."
+            )
+
+    # Si en el futuro quieres volverla a borrador, aquí podríamos manejar 'borrador'
+
+    return redirect("votacion:lista_candidatos_listado")
+
+@login_required
+def lista_candidatos_detalle(request, pk):
+    """
+    Vista de detalle SOLO LECTURA de una lista de candidatos.
+    Muestra la lista de miembros (foto, código y nombre).
+    """
+    lista = get_object_or_404(ListaCandidatos, pk=pk)
+
+    items = (
+        ListaCandidatosItem.objects
+        .filter(lista=lista)
+        .select_related("miembro")
+        .order_by("orden", "miembro__apellidos", "miembro__nombres")
+    )
+
+    contexto = {
+        "titulo": f"Lista de candidatos: {lista.nombre}",
+        "lista": lista,
+        "items": items,
+    }
+    return render(request, "votacion_app/lista_candidatos_detalle.html", contexto)

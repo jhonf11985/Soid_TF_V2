@@ -1,0 +1,79 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ titulo }} · Soid_Tf_2{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ lista.nombre }}</h1>
+        <p class="page-subtitle">
+            Código: {{ lista.codigo_lista|default:"—" }} ·
+            Estado: {{ lista.get_estado_display }}
+        </p>
+    </div>
+
+    <div class="page-header-actions">
+        <a href="{% url 'votacion:lista_candidatos_listado' %}" class="btn-secondary">
+            <span class="material-icons" style="font-size:18px;">arrow_back</span>
+            Volver a las listas
+        </a>
+    </div>
+</div>
+
+<section class="page-section">
+    {% if messages %}
+        <div class="mb-2">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if items %}
+        <div class="table-wrapper">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th style="width:48px;">Foto</th>
+                        <th style="width:130px;">Código</th>
+                        <th>Nombre</th>
+                        <th>Observación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                        <tr>
+                            <td>
+                                {% if item.miembro.foto %}
+                                    <img src="{{ item.miembro.foto.url }}"
+                                         class="lc-avatar lc-avatar-sm"
+                                         alt="Foto de {{ item.miembro }}">
+                                {% else %}
+                                    <div class="lc-avatar lc-avatar-sm lc-avatar-placeholder">
+                                        {{ item.miembro.iniciales|default:"?" }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ item.miembro.codigo_miembro }}
+                            </td>
+                            <td>
+                                {{ item.miembro }}
+                            </td>
+                            <td>
+                                {{ item.observacion|default:"—" }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="lc-empty-text">
+            Esta lista no tiene miembros asignados todavía.
+        </p>
+    {% endif %}
+</section>
+
+{% endblock %}

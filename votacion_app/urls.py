@@ -68,4 +68,16 @@ urlpatterns = [
     ),
     # ⬇️ ESTA LÍNEA ES LA QUE FALTABA
 path("eliminar/<int:pk>/", views.eliminar_votacion, name="eliminar_votacion"),
+
+    # Cambiar estado (aprobar lista)
+    path(
+        "listas/<int:pk>/estado/",
+        views.lista_candidatos_cambiar_estado,
+        name="lista_candidatos_cambiar_estado",
+    ),
+    path(
+        "listas/<int:pk>/detalle/",
+        views.lista_candidatos_detalle,
+        name="lista_candidatos_detalle"
+    ),
 ]
