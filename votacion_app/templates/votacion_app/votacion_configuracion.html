@@ -214,94 +214,73 @@
                         </div>
                     </div>
 
-                    <!-- ========== TAB: QUÓRUM Y ASISTENCIA ========== -->
-                    <div id="tab-quorum" class="votacion-tab-content" style="display:none;">
-                        <h3 class="tab-title">Quórum y asistencia</h3>
-                        <p class="tab-description">
-                            Estos valores ayudan a calcular los votos válidos y el cumplimiento del quórum.
-                        </p>
+<!-- ========== TAB: QUÓRUM Y ASISTENCIA ========== -->
+<div id="tab-quorum" class="votacion-tab-content" style="display:none;">
+    <h3 class="tab-title">Quórum y asistencia</h3>
+    <p class="tab-description">
+        Estos valores ayudan a calcular los votos válidos y el cumplimiento del quórum.
+    </p>
 
-                        <div class="form-section">
-                            <div class="form-grid">
-                                <div class="form-field">
-                                    <label>Miembros con derecho a voto (automático)</label>
-                                    {{ form.total_habilitados }}
-                                    <div class="field-help">
-                                        Miembros activos que cumplen la edad mínima para votar.
-                                    </div>
-                                </div>
+    {# 👇 Resumen visual de miembros con derecho a voto #}
+    <div class="quorum-summary-card">
+        <div class="quorum-summary-header">
+            <span class="quorum-summary-title">Miembros con derecho a votar</span>
+            <span class="quorum-summary-badge">Calculado automáticamente</span>
+        </div>
+        <div class="quorum-summary-value">
+            {{ form.total_habilitados.value|default:"—" }}
+        </div>
+        <p class="quorum-summary-help">
+            Basado en miembros oficiales activos que cumplen la edad mínima del sistema.
+        </p>
+    </div>
 
-                                <div class="form-field">
-                                    <label>Miembros presentes (contados físicamente)</label>
-                                    {{ form.miembros_presentes }}
-                                    <div class="field-help">
-                                        Número de miembros habilitados que están presentes en el local.
-                                    </div>
-                                </div>
+    {# 👇 Campo oculto para que el valor viaje en el POST #}
+    {{ form.total_habilitados }}
 
-                                <div class="form-field">
-                                    <label>Base para calcular el quórum</label>
+    <div class="form-section">
+        <div class="form-grid">
+            <div class="form-field">
+                <label>Miembros presentes (contados físicamente)</label>
+                {{ form.miembros_presentes }}
+                <div class="field-help">
+                    Número de miembros habilitados que están presentes en el local.
+                </div>
+            </div>
 
-                                    <div class="radio-group">
-                                        {% for radio in form.base_quorum %}
-                                            <label class="radio-option">
-                                                {{ radio.tag }} {{ radio.choice_label }}
-                                            </label>
-                                        {% endfor %}
-                                    </div>
+            <div class="form-field">
+                <label>Base para calcular el quórum</label>
+                {{ form.base_quorum }}
+                <div class="field-help">
+                    Define si el quórum se calcula sobre el total de habilitados o solo los presentes.
+                </div>
+            </div>
 
-                                    <div class="field-help">
-                                        Seleccione si la base del quórum será el total de habilitados o los presentes.
-                                    </div>
-                                </div>
+            <div class="form-field">
+                <label>Tipo de quórum</label>
+                {{ form.tipo_quorum }}
+            </div>
 
-                                <style>
-                                    .radio-group {
-                                        display: flex;
-                                        gap: 16px;
-                                        margin-top: 6px;
-                                    }
-                                    .radio-option {
-                                        display: flex;
-                                        align-items: center;
-                                        gap: 6px;
-                                        padding: 6px 10px;
-                                        background: #f7f7f7;
-                                        border: 1px solid #ccc;
-                                        border-radius: 8px;
-                                        cursor: pointer;
-                                        transition: 0.2s;
-                                    }
-                                    .radio-option:hover {
-                                        background: #ececec;
-                                    }
-                                </style>
+            <div class="form-field">
+                <label>Valor de quórum</label>
+                {{ form.valor_quorum }}
+                <div class="field-help">
+                    Si es porcentaje, escribe un valor como 50 o 60.
+                    Si es cantidad fija, escribe el número de personas.
+                </div>
+            </div>
 
+            <div class="form-field">
+                <label>Votos mínimos requeridos</label>
+                {{ form.votos_minimos_requeridos }}
+                <div class="field-help">
+                    Se calcula automáticamente según la base y el tipo de quórum elegidos.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                                <div class="form-field">
-                                    <label>Tipo de quórum</label>
-                                    {{ form.tipo_quorum }}
-                                </div>
-
-                                <div class="form-field">
-                                    <label>Valor de quórum</label>
-                                    {{ form.valor_quorum }}
-                                    <div class="field-help">
-                                        Si es porcentaje, escribe un valor como 50 o 60.
-                                        Si es cantidad fija, escribe el número de personas.
-                                    </div>
-                                </div>
-
-                                <div class="form-field">
-                                    <label>Votos mínimos requeridos</label>
-                                    {{ form.votos_minimos_requeridos }}
-                                    <div class="field-help">
-                                        Se calculará automáticamente en base a la base elegida y al tipo de quórum.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
 
                     <!-- ========== TAB: FECHAS Y OPCIONES ADICIONALES ========== -->
@@ -1063,6 +1042,51 @@ document.addEventListener("keydown", function (event) {
             align-items: stretch;
         }
     }
+        .quorum-summary-card {
+        margin-bottom: 14px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+    }
+
+    .quorum-summary-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+
+    .quorum-summary-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .quorum-summary-badge {
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        white-space: nowrap;
+    }
+
+    .quorum-summary-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1.2;
+    }
+
+    .quorum-summary-help {
+        margin: 4px 0 0;
+        font-size: 11px;
+        color: #6b7280;
+    }
+
 </style>
 
 {% endblock %}

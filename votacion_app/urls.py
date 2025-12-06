@@ -34,5 +34,7 @@ urlpatterns = [
     views.documentacion_sistemas_votacion,
    name="documentacion_sistemas_votacion",
 ),
+    path("kiosko/confirmar/", views.kiosko_confirmacion_identidad, name="kiosko_confirmacion_identidad"),
+
 
 ]

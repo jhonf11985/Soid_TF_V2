@@ -479,14 +479,7 @@ def duplicar_votacion(request, pk):
 
     return redirect("votacion:editar_votacion", pk=pk)
 
-@login_required
-def kiosko_ingreso_codigo(request):
-    """
-    Primera pantalla del modo kiosko:
-    Ingreso del código de miembro (número de miembro).
-    (Más adelante se conectará con la votación y vuelta activa).
-    """
-    return render(request, "votacion_app/kiosko_ingreso_codigo.html")
+
 
 @login_required
 def kiosko_seleccion_candidato(request):
@@ -706,12 +699,11 @@ def obtener_votacion_y_ronda_activas():
         return None, None
 
     return votacion, ronda
-
 @login_required
 def kiosko_ingreso_codigo(request):
     """
     Paso 1 del modo kiosko:
-    - El miembro escribe su código (solo número o TF-0000).
+    - El miembro escribe su código (4 dígitos).
     - Validamos:
         * Que haya votación y ronda abiertas.
         * Que el miembro exista.
@@ -738,9 +730,9 @@ def kiosko_ingreso_codigo(request):
     }
 
     if request.method == "POST":
-        codigo = request.POST.get("codigo_miembro", "").strip().upper()
+        codigo_raw = request.POST.get("codigo_miembro", "").strip().upper()
 
-        if not codigo:
+        if not codigo_raw:
             contexto = {
                 **contexto_base,
                 "error": "Debes introducir tu código de miembro.",
@@ -751,17 +743,32 @@ def kiosko_ingreso_codigo(request):
                 contexto,
             )
 
-        # Normalizar código TF-0000
-        if not codigo.startswith("TF-"):
-            codigo = f"TF-{codigo.zfill(4)}"
+        # Tomamos SOLO los dígitos del código
+        # (por si alguien pone TF-0001 desde otro dispositivo)
+        solo_digitos = "".join(ch for ch in codigo_raw if ch.isdigit())
+
+        # 🔒 Seguridad: exigir EXACTAMENTE 4 dígitos (0001, 0123, etc.)
+        if len(solo_digitos) != 4:
+            contexto = {
+                **contexto_base,
+                "error": "Debes escribir tu código completo de 4 dígitos. Ejemplo: 0001.",
+            }
+            return render(
+                request,
+                "votacion_app/kiosko_ingreso_codigo.html",
+                contexto,
+            )
+
+        # Construimos el código completo TF-0000 sin rellenar con zfill
+        codigo_normalizado = f"TF-{solo_digitos}"
 
         # Buscar miembro
         try:
-            miembro = Miembro.objects.get(codigo_miembro__iexact=codigo)
+            miembro = Miembro.objects.get(codigo_miembro__iexact=codigo_normalizado)
         except Miembro.DoesNotExist:
             contexto = {
                 **contexto_base,
-                "error": f"El código {codigo} no existe.",
+                "error": f"El código {codigo_normalizado} no existe.",
             }
             return render(
                 request,
@@ -795,7 +802,8 @@ def kiosko_ingreso_codigo(request):
 
         # OK → Guardamos miembro en sesión y pasamos al paso 2
         request.session["kiosko_miembro_id"] = miembro.id
-        return redirect("votacion:kiosko_seleccion_candidato")
+        return redirect("votacion:kiosko_confirmacion_identidad")
+
 
     # GET: solo mostramos pantalla
     return render(
@@ -803,6 +811,7 @@ def kiosko_ingreso_codigo(request):
         "votacion_app/kiosko_ingreso_codigo.html",
         contexto_base,
     )
+
 @login_required
 def kiosko_confirmacion(request):
     """
@@ -867,3 +876,39 @@ def kiosko_confirmacion(request):
 def documentacion_sistemas_votacion(request):
     return render(request, "votacion_app/documentacion_sistemas_votacion.html")
 
+@login_required
+def kiosko_confirmacion_identidad(request):
+    """
+    Paso intermedio: mostrar el nombre del miembro y pedir confirmación.
+    """
+    votacion, ronda = obtener_votacion_y_ronda_activas()
+
+    miembro_id = request.session.get("kiosko_miembro_id")
+    if not votacion or not ronda or not miembro_id:
+        return redirect("votacion:kiosko_ingreso_codigo")
+
+    miembro = Miembro.objects.filter(id=miembro_id).first()
+    if not miembro:
+        return redirect("votacion:kiosko_ingreso_codigo")
+
+    if request.method == "POST":
+        accion = request.POST.get("accion")
+
+        if accion == "si":
+            # Ir al paso de seleccionar candidatos
+            return redirect("votacion:kiosko_seleccion_candidato")
+
+        if accion == "no":
+            # Borrar sesión y volver a pedir código
+            request.session.pop("kiosko_miembro_id", None)
+            return redirect("votacion:kiosko_ingreso_codigo")
+
+    return render(
+        request,
+        "votacion_app/kiosko_confirmacion_identidad.html",
+        {
+            "votacion": votacion,
+            "ronda": ronda,
+            "miembro": miembro,
+        }
+    )
