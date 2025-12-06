@@ -1,5 +1,5 @@
 from django import forms
-from .models import Votacion
+from .models import Votacion, ListaCandidatos
 
 
 class VotacionForm(forms.ModelForm):
@@ -159,3 +159,47 @@ class VotacionForm(forms.ModelForm):
                     )
 
         return cleaned
+
+class ListaCandidatosForm(forms.ModelForm):
+    class Meta:
+        model = ListaCandidatos
+        fields = ["nombre", "codigo_lista", "notas"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["nombre"].widget.attrs.update(
+            {
+                "class": "form-control",
+                "placeholder": "Ej. Propuesta diáconos 2026",
+            }
+        )
+        self.fields["codigo_lista"].widget.attrs.update(
+            {
+                "class": "form-control",
+                "placeholder": "Ej. LD-2026-01 (opcional)",
+            }
+        )
+        self.fields["notas"].widget.attrs.update(
+            {
+                "class": "form-control",
+                "rows": 3,
+            }
+        )
+
+
+class ListaCandidatosAgregarMiembroForm(forms.Form):
+    codigo_sufijo = forms.CharField(
+        label="Código de miembro",
+        required=False,
+        help_text="Escribe el número o el código completo (12, 0012, TF-0012...).",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["codigo_sufijo"].widget.attrs.update(
+            {
+                "class": "form-control",
+                "placeholder": "Ej. 12, 0012 o TF-0012",
+            }
+        )

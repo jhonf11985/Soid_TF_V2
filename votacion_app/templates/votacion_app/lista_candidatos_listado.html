@@ -1,0 +1,154 @@
+{% extends "core/base.html" %}
+
+{% block title %}Listas de candidatos · Soid_Tf_2{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ titulo }}</h1>
+        <p class="page-subtitle">
+            Gestiona las listas previas de candidatos que luego podrás usar en las votaciones.
+        </p>
+    </div>
+
+    <div class="page-header-actions">
+        <a href="{% url 'votacion:lista_votaciones' %}" class="btn-secondary" style="margin-right: 8px;">
+            <span class="material-icons" style="font-size: 18px;">arrow_back</span>
+            Volver a elecciones
+        </a>
+
+        <a href="{% url 'votacion:lista_candidatos_nueva' %}" class="btn-primary">
+            <span class="material-icons" style="font-size: 18px;">add</span>
+            Nueva lista
+        </a>
+    </div>
+</div>
+
+<div class="page-section">
+    {% if messages %}
+        <div class="mb-2">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if listas %}
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Código</th>
+                        <th class="col-center">Miembros</th>
+                        <th>Estado</th>
+                        <th>Última actualización</th>
+                        <th class="col-center" style="width: 180px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in listas %}
+                        <tr>
+                            <td>{{ l.nombre }}</td>
+                            <td class="lc-cell-code">
+                                {% if l.codigo_lista %}
+                                    {{ l.codigo_lista }}
+                                {% else %}
+                                    <span class="table-subtext">Sin código</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-center">
+                                {{ l.total_miembros|default:0 }}
+                            </td>
+                            <td>
+                                {% if l.estado == "CONFIRMADA" %}
+                                    <span class="badge-soft badge-soft-success">
+                                        {{ l.get_estado_display }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge-soft badge-soft-warning">
+                                        {{ l.get_estado_display }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if l.fecha_confirmacion %}
+                                    {{ l.fecha_confirmacion|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    <span class="table-subtext">Sin confirmar</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-center">
+                                <div class="elections-actions">
+                                    <!-- Configurar / ver -->
+                                    <a href="{% url 'votacion:lista_candidatos_configurar' l.pk %}"
+                                       class="btn-secondary btn-icon-only"
+                                       title="Ver / editar lista">
+                                        <span class="material-icons">settings</span>
+                                    </a>
+
+                                    <!-- Eliminar -->
+                                    <form method="post"
+                                          action="{% url 'votacion:lista_candidatos_eliminar' l.pk %}"
+                                          onsubmit="return confirm('¿Seguro que deseas eliminar esta lista? No se puede deshacer.');"
+                                          style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="btn-danger btn-icon-only"
+                                                title="Eliminar lista">
+                                            <span class="material-icons">delete</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            Todavía no hay listas creadas.
+            Usa el botón <strong>“Nueva lista”</strong> para crear la primera.
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .elections-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .elections-actions form {
+        margin: 0;
+    }
+
+    .btn-icon-only {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px;
+        min-width: 34px;
+        min-height: 34px;
+        border-radius: 999px;
+    }
+
+    .btn-icon-only .material-icons {
+        font-size: 18px;
+    }
+
+    .table-subtext {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .col-center {
+        text-align: center;
+    }
+</style>
+
+{% endblock %}

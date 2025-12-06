@@ -6,12 +6,18 @@ from django.db.models import Q, Max, Count
 from django.urls import reverse
 from django.http import HttpResponseRedirect
 import math
+from django.utils import timezone
 
 from miembros_app.models import Miembro
-from .models import Votacion, Ronda, Candidato, Voto
+from .models import Votacion, Ronda, Candidato, Voto,  ListaCandidatos, ListaCandidatosItem
 from .forms import VotacionForm
 from datetime import date
 from core.utils_config import get_edad_minima_miembro_oficial   
+from .forms import (
+    VotacionForm,
+    ListaCandidatosForm,
+    ListaCandidatosAgregarMiembroForm,
+)
 
 def calcular_votos_minimos(votacion):
     """
@@ -1130,3 +1136,230 @@ def pantalla_votacion(request, pk):
     }
     return render(request, "votacion_app/pantalla_votacion.html", contexto)
 
+@login_required
+def lista_candidatos_configurar(request, pk=None):
+    """
+    Crear o editar una lista previa de candidatos.
+    - En estado BORRADOR se pueden añadir y quitar miembros.
+    - En estado CONFIRMADA ya no se puede editar.
+    Solo las listas CONFIRMADAS se podrán cargar en una votación.
+    """
+    if pk:
+        lista = get_object_or_404(ListaCandidatos, pk=pk)
+    else:
+        lista = None
+
+    if lista:
+        titulo = f"Editar lista de candidatos: {lista.nombre}"
+    else:
+        titulo = "Nueva lista de candidatos"
+
+    # Formularios base
+    if request.method == "POST":
+        accion = request.POST.get("accion")
+
+        # 1) Guardar encabezado (nombre, código, notas)
+        if accion in ("guardar", "guardar_seguir"):
+            form = ListaCandidatosForm(request.POST, instance=lista)
+            agregar_form = ListaCandidatosAgregarMiembroForm()
+
+            if form.is_valid():
+                lista = form.save(commit=False)
+                if not lista.estado:
+                    lista.estado = ListaCandidatos.ESTADO_BORRADOR
+                lista.save()
+
+                messages.success(request, "Lista guardada correctamente.")
+
+                if accion == "guardar":
+                    # Podrías llevar a una lista general de listas
+                    return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+                else:
+                    return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+
+        # 2) Agregar miembro por código (solo si ya existe la lista y está en BORRADOR)
+        elif accion == "agregar_miembro" and lista:
+            form = ListaCandidatosForm(instance=lista)
+            agregar_form = ListaCandidatosAgregarMiembroForm(request.POST)
+
+            if lista.estado != ListaCandidatos.ESTADO_BORRADOR:
+                messages.error(
+                    request,
+                    "Esta lista ya está confirmada y no se puede modificar.",
+                )
+                return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+
+            if agregar_form.is_valid():
+                sufijo = agregar_form.cleaned_data.get("codigo_sufijo", "").strip()
+                if not sufijo:
+                    messages.error(
+                        request,
+                        "Debes introducir el número o el código del miembro.",
+                    )
+                else:
+                    # Normalizamos igual que en la selección de candidatos
+                    sufijo_upper = sufijo.upper()
+                    if sufijo_upper.startswith("TF-"):
+                        codigo_busqueda = sufijo_upper
+                    else:
+                        limpio = (
+                            sufijo_upper.replace("TF", "").replace("-", "").strip()
+                        )
+                        limpio = limpio.zfill(4)
+                        codigo_busqueda = f"TF-{limpio}"
+
+                    try:
+                        miembro = Miembro.objects.get(
+                            codigo_miembro__iexact=codigo_busqueda
+                        )
+                    except Miembro.DoesNotExist:
+                        messages.error(
+                            request,
+                            f"No se encontró ningún miembro con el código {codigo_busqueda}.",
+                        )
+                    else:
+                        # Evitar duplicados en la lista
+                        ya_existe = ListaCandidatosItem.objects.filter(
+                            lista=lista,
+                            miembro=miembro,
+                        ).exists()
+                        if ya_existe:
+                            messages.warning(
+                                request,
+                                f"El miembro {miembro} ya está en esta lista.",
+                            )
+                        else:
+                            ListaCandidatosItem.objects.create(
+                                lista=lista,
+                                miembro=miembro,
+                            )
+                            messages.success(
+                                request,
+                                f"Se ha añadido a «{miembro}» a la lista.",
+                            )
+
+        # 3) Eliminar un miembro de la lista
+        elif accion == "eliminar_item" and lista:
+            form = ListaCandidatosForm(instance=lista)
+            agregar_form = ListaCandidatosAgregarMiembroForm()
+            if lista.estado != ListaCandidatos.ESTADO_BORRADOR:
+                messages.error(
+                    request,
+                    "Esta lista ya está confirmada y no se puede modificar.",
+                )
+                return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+
+            item_id = request.POST.get("item_id")
+            if item_id:
+                try:
+                    item = ListaCandidatosItem.objects.get(
+                        pk=item_id,
+                        lista=lista,
+                    )
+                    item.delete()
+                    messages.success(request, "Se ha eliminado el candidato de la lista.")
+                except ListaCandidatosItem.DoesNotExist:
+                    messages.error(
+                        request,
+                        "No se encontró el registro a eliminar.",
+                    )
+
+        # 4) Confirmar la lista
+        elif accion == "confirmar_lista" and lista:
+            form = ListaCandidatosForm(instance=lista)
+            agregar_form = ListaCandidatosAgregarMiembroForm()
+
+            if lista.estado == ListaCandidatos.ESTADO_CONFIRMADA:
+                messages.info(request, "Esta lista ya estaba confirmada.")
+            else:
+                if not lista.items.exists():
+                    messages.error(
+                        request,
+                        "No puedes confirmar una lista vacía. Añade al menos un miembro.",
+                    )
+                else:
+                    lista.estado = ListaCandidatos.ESTADO_CONFIRMADA
+                    lista.fecha_confirmacion = timezone.now()
+                    lista.save()
+                    messages.success(
+                        request,
+                        "La lista ha sido confirmada. Ya se puede usar en las votaciones.",
+                    )
+                    return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+
+        else:
+            # Acción no reconocida: recargamos formularios
+            form = ListaCandidatosForm(instance=lista)
+            agregar_form = ListaCandidatosAgregarMiembroForm()
+
+    else:
+        # GET
+        form = ListaCandidatosForm(instance=lista)
+        agregar_form = ListaCandidatosAgregarMiembroForm()
+
+    items = []
+    if lista:
+        items = (
+            lista.items
+            .select_related("miembro")
+            .order_by("orden", "miembro__apellidos", "miembro__nombres")
+        )
+
+    contexto = {
+        "titulo": titulo,
+        "lista": lista,
+        "form": form,
+        "agregar_form": agregar_form,
+        "items": items,
+    }
+    return render(request, "votacion_app/lista_candidatos_configuracion.html", contexto)
+
+@login_required
+def lista_candidatos_nueva(request):
+    """
+    Crea automáticamente una nueva lista en BORRADOR
+    y redirige directamente a la pantalla de configuración completa,
+    evitando el paso intermedio.
+    """
+    lista = ListaCandidatos.objects.create(
+        nombre="Nueva lista de candidatos",
+        estado=ListaCandidatos.ESTADO_BORRADOR,
+    )
+    messages.success(request, "Se ha creado una nueva lista en borrador.")
+    return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+@login_required
+def lista_candidatos_listado(request):
+    """
+    Lista general de las listas de candidatos.
+    Muestra nombre, código, cantidad de miembros, estado, etc.
+    """
+    listas = (
+        ListaCandidatos.objects
+        .annotate(total_miembros=Count("items"))
+        .order_by("-fecha_confirmacion", "-id")
+    )
+
+    contexto = {
+        "titulo": "Listas de candidatos",
+        "listas": listas,
+    }
+    return render(request, "votacion_app/lista_candidatos_listado.html", contexto)
+@login_required
+def lista_candidatos_eliminar(request, pk):
+    """
+    Elimina una lista de candidatos.
+    Se usa POST para evitar eliminaciones accidentales.
+    """
+    lista = get_object_or_404(ListaCandidatos, pk=pk)
+
+    if request.method == "POST":
+        nombre = lista.nombre
+        lista.delete()
+        messages.success(
+            request,
+            f"La lista «{nombre}» se ha eliminado correctamente.",
+        )
+        return redirect("votacion:lista_candidatos_listado")
+
+    # Si entra por GET, lo mandamos a la configuración de la lista
+    return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)

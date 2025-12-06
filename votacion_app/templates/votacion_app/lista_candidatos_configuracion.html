@@ -1,0 +1,841 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ titulo }} · Soid_Tf_2{% endblock %}
+
+{% block content %}
+
+{# ========== HEADER ========== #}
+<a href="{% url 'votacion:lista_votaciones' %}" class="lc-mini-btn">
+    <span class="material-icons">arrow_back</span>
+    Volver
+</a>
+
+
+{# ========== MENSAJES ========== #}
+{% if messages %}
+    <div class="mb-2">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<section class="page-section">
+
+    {# ==================== PANEL 1: DATOS BÁSICOS ==================== #}
+    <div class="lc-panel">
+        <div class="lc-panel-header">
+            <div>
+                <h2 class="lc-panel-title">Datos de la lista</h2>
+                <p class="lc-panel-subtitle">
+                    Usa un nombre claro. El código es opcional pero útil para buscarla rápido.
+                </p>
+            </div>
+
+            {% if lista %}
+                <span class="lc-badge-estado {% if lista.estado == 'CONFIRMADA' %}lc-badge-estado--success{% else %}lc-badge-estado--warning{% endif %}">
+                    {{ lista.get_estado_display }}
+                </span>
+            {% endif %}
+        </div>
+
+        <form method="post" class="lc-form">
+            {% csrf_token %}
+
+            <div class="lc-form-row">
+                <div class="form-group lc-form-col">
+                    <label for="{{ form.nombre.id_for_label }}">Nombre de la lista</label>
+                    {{ form.nombre }}
+                    {% if form.nombre.errors %}
+                        <div class="lc-field-error">{{ form.nombre.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group lc-form-col">
+                    <label for="{{ form.codigo_lista.id_for_label }}">Código (opcional)</label>
+                    {{ form.codigo_lista }}
+                    <p class="lc-field-help">Ejemplo: <strong>LD-2026-01</strong>.</p>
+                    {% if form.codigo_lista.errors %}
+                        <div class="lc-field-error">{{ form.codigo_lista.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.notas.id_for_label }}">Notas internas</label>
+                {{ form.notas }}
+                <p class="lc-field-help">
+                    Solo visible en el sistema. Puedes anotar quién la propuso, observaciones, etc.
+                </p>
+            </div>
+
+            <div class="lc-form-actions">
+                <button type="submit" name="accion" value="guardar_seguir" class="btn-primary">
+                    Guardar cambios
+                </button>
+            </div>
+
+            {% if lista %}
+                {% if lista.estado == 'CONFIRMADA' %}
+                    <p class="lc-field-help" style="margin-top:6px;">
+                        Esta lista está <strong>confirmada</strong>. No se puede modificar su contenido
+                        desde aquí. Para permitir cambios de nuevo tendrás que ponerla en
+                        <strong>borrador</strong> desde la pantalla general de listas (cuando la tengamos).
+                    </p>
+                {% else %}
+                    <p class="lc-field-help" style="margin-top:6px;">
+                        La lista está en <strong>borrador</strong>. Puedes seguir añadiendo o quitando miembros.
+                    </p>
+                {% endif %}
+            {% endif %}
+        </form>
+    </div>
+
+    {# ==================== PANEL 2: MIEMBROS DE LA LISTA ==================== #}
+    <div class="lc-panel">
+        <div class="lc-panel-header">
+            <div>
+                <h2 class="lc-panel-title">
+                    Miembros de la lista
+                    {% if items %}
+                        <span class="lc-badge-count">{{ items|length }}</span>
+                    {% endif %}
+                </h2>
+                <p class="lc-panel-subtitle">
+                    Revisa los miembros que forman parte de esta lista previa.
+                </p>
+            </div>
+        </div>
+
+        {% if lista %}
+            {# Formulario añadir miembro (solo BORRADOR) #}
+            {% if lista.estado == 'BORRADOR' %}
+                <form method="post" class="lc-inline-form no-print">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="agregar_miembro">
+
+                    <div class="lc-inline-row">
+                        <div class="form-group lc-inline-grow">
+                            {{ agregar_form.codigo_sufijo.label_tag }}
+                            {{ agregar_form.codigo_sufijo }}
+                            {% if agregar_form.codigo_sufijo.help_text %}
+                                <p class="lc-field-help">{{ agregar_form.codigo_sufijo.help_text }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="lc-inline-actions">
+                            <button type="submit" class="btn-secondary">
+                                Añadir
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            {% else %}
+                <p class="lc-field-help">
+                    La lista está <strong>confirmada</strong>. No puedes añadir ni quitar miembros desde aquí.
+                </p>
+            {% endif %}
+
+            {# Tabla de miembros #}
+            <div class="table-wrapper">
+                <table class="table table-sm lc-table">
+                    <thead>
+                        <tr>
+                            <th style="width:48px;">Foto</th>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th class="no-print" style="width:60px; text-align:right;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if items %}
+                            {% for item in items %}
+                                <tr>
+                                    <td>
+                                        {% if item.miembro.foto %}
+                                            <img src="{{ item.miembro.foto.url }}"
+                                                 class="lc-avatar lc-avatar-sm"
+                                                 alt="Foto de {{ item.miembro }}">
+                                        {% else %}
+                                            <div class="lc-avatar lc-avatar-sm lc-avatar-placeholder">
+                                                {{ item.miembro.iniciales|default:"?" }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="lc-cell-code">
+                                        {{ item.miembro.codigo_miembro }}
+                                    </td>
+                                    <td>
+                                        <div class="lc-member-name">
+                                            {{ item.miembro }}
+                                        </div>
+                                        {% if item.observacion %}
+                                            <div class="lc-member-note">
+                                                {{ item.observacion }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="no-print" style="text-align:right;">
+                                        {% if lista.estado == 'BORRADOR' %}
+                                            <form method="post"
+                                                  style="display:inline;"
+                                                  onsubmit="return confirm('¿Quitar este miembro de la lista?');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="accion" value="eliminar_item">
+                                                <input type="hidden" name="item_id" value="{{ item.id }}">
+                                                <button type="submit"
+                                                        class="btn-link text-danger lc-btn-icon"
+                                                        title="Quitar de la lista">
+                                                    ✕
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="table-empty">
+                                    Aún no hay miembros en esta lista.
+                                    {% if lista.estado == 'BORRADOR' %}
+                                        Empieza añadiéndolos por su código de miembro.
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+        {% else %}
+            <p class="lc-empty-text">
+                Primero guarda la lista (nombre y, si quieres, código).
+                Después podrás añadir miembros y verlos aquí.
+            </p>
+        {% endif %}
+    </div>
+
+</section>
+
+<style>
+    /* ===================================
+       ESTILOS AISLADOS SOLO PARA ESTA PÁGINA
+       NO INTERFIEREN CON TOPBAR, NAV NI BOTONES GLOBALES
+       =================================== */
+
+    /* Variables locales solo para este template */
+    .page-section {
+        --lc-color-success: #10b981;
+        --lc-color-warning: #f59e0b;
+        --lc-color-danger: #ef4444;
+        --lc-gray-50: #f9fafb;
+        --lc-gray-100: #f3f4f6;
+        --lc-gray-200: #e5e7eb;
+        --lc-gray-300: #d1d5db;
+        --lc-gray-400: #9ca3af;
+        --lc-gray-500: #6b7280;
+        --lc-gray-600: #4b5563;
+        --lc-gray-700: #374151;
+        --lc-gray-800: #1f2937;
+        --lc-gray-900: #111827;
+    }
+
+    /* ===================================
+       PANELES
+       =================================== */
+    .page-section .lc-panel {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid var(--lc-gray-200);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.03);
+        padding: 12px 14px;
+        margin-bottom: 12px;
+    }
+
+    .page-section .lc-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 6px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--lc-gray-100);
+    }
+
+    .page-section .lc-panel-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--lc-gray-900);
+    }
+
+    .page-section .lc-panel-subtitle {
+        font-size: 0.78rem;
+        color: var(--lc-gray-500);
+        margin: 2px 0 0;
+    }
+
+    /* ===================================
+       BADGES
+       =================================== */
+    .page-section .lc-badge-estado {
+        font-size: 0.78rem;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--lc-gray-200);
+        background: var(--lc-gray-50);
+        color: var(--lc-gray-600);
+        white-space: nowrap;
+        font-weight: 500;
+    }
+
+    .page-section .lc-badge-estado--success {
+        background: #ecfdf3;
+        border-color: #bbf7d0;
+        color: #166534;
+    }
+
+    .page-section .lc-badge-estado--warning {
+        background: #fffbeb;
+        border-color: #fde68a;
+        color: #92400e;
+    }
+
+    .page-section .lc-badge-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 8px;
+        margin-left: 6px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* ===================================
+       FORMULARIOS
+       =================================== */
+    .page-section .lc-form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .page-section .lc-form-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .page-section .lc-form-col {
+        flex: 1 1 250px;
+    }
+
+    .page-section .lc-form-actions {
+        margin-top: 2px;
+    }
+
+    .page-section .lc-field-help {
+        margin-top: 3px;
+        font-size: 0.78rem;
+        color: var(--lc-gray-500);
+    }
+
+    .page-section .lc-field-error {
+        margin-top: 3px;
+        font-size: 0.78rem;
+        color: var(--lc-color-danger);
+    }
+
+    /* Inputs mejorados - SOLO dentro de lc-panel */
+    .page-section .lc-panel input[type="text"],
+    .page-section .lc-panel input[type="number"],
+    .page-section .lc-panel input[type="email"],
+    .page-section .lc-panel textarea,
+    .page-section .lc-panel select {
+        border-radius: 10px;
+        border: 1px solid var(--lc-gray-300);
+        padding: 7px 10px;
+        font-size: 0.9rem;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        background-color: var(--lc-gray-50);
+        width: 100%;
+    }
+
+    .page-section .lc-panel textarea {
+        min-height: 38px;
+        font-family: inherit;
+        resize: vertical;
+    }
+
+    .page-section .lc-panel input:focus,
+    .page-section .lc-panel textarea:focus,
+    .page-section .lc-panel select:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.15);
+        background-color: #ffffff;
+    }
+
+    /* ===================================
+       FORMULARIO INLINE (AÑADIR MIEMBRO)
+       =================================== */
+    .page-section .lc-inline-form {
+        margin-top: 4px;
+        margin-bottom: 12px;
+        padding: 12px;
+        background: var(--lc-gray-50);
+        border-radius: 10px;
+    }
+
+    .page-section .lc-inline-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .page-section .lc-inline-grow {
+        flex: 1 1 250px;
+    }
+
+    .page-section .lc-inline-actions {
+        flex: 0 0 auto;
+    }
+
+    /* ===================================
+       TABLA
+       =================================== */
+    .page-section .table-wrapper {
+        margin-top: 12px;
+        overflow-x: auto;
+    }
+
+    .page-section .lc-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .page-section .lc-table thead th {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--lc-gray-600);
+        border-bottom: 2px solid var(--lc-gray-200);
+        padding: 8px;
+        text-align: left;
+        background: var(--lc-gray-50);
+    }
+
+    .page-section .lc-table tbody td {
+        font-size: 0.88rem;
+        padding: 12px 8px;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--lc-gray-100);
+    }
+
+    .page-section .lc-table tbody tr:hover {
+        background: var(--lc-gray-50);
+    }
+
+    .page-section .lc-cell-code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.82rem;
+        color: #1e3a8a;
+        font-weight: 600;
+    }
+
+    .page-section .lc-member-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--lc-gray-900);
+    }
+
+    .page-section .lc-member-note {
+        font-size: 0.78rem;
+        color: var(--lc-gray-500);
+        margin-top: 2px;
+    }
+
+    .page-section .table-empty {
+        text-align: center;
+        padding: 32px !important;
+        color: var(--lc-gray-500);
+        font-size: 0.88rem;
+    }
+
+    .page-section .lc-empty-text {
+        font-size: 0.88rem;
+        color: var(--lc-gray-500);
+        margin: 12px 0;
+        padding: 16px;
+        background: var(--lc-gray-50);
+        border-radius: 8px;
+    }
+
+    /* ===================================
+       AVATARES
+       =================================== */
+    .page-section .lc-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: var(--lc-gray-200);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--lc-gray-600);
+        overflow: hidden;
+    }
+
+    .page-section .lc-avatar-sm {
+        width: 36px;
+        height: 36px;
+    }
+
+    .page-section .lc-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .page-section .lc-avatar-placeholder {
+        text-transform: uppercase;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    /* ===================================
+       BOTÓN ICONO (SOLO PARA ELIMINAR EN TABLA)
+       =================================== */
+    .page-section .lc-btn-icon {
+        padding: 4px;
+        border: none;
+        background: transparent;
+        font-size: 16px;
+        cursor: pointer;
+        color: var(--lc-color-danger);
+        transition: opacity 0.15s;
+    }
+
+    .page-section .lc-btn-icon:hover {
+        opacity: 0.7;
+    }
+
+    /* ===================================
+       RESPONSIVE
+       =================================== */
+    @media (max-width: 640px) {
+        .page-section .lc-panel {
+            padding: 12px;
+        }
+
+        .page-section .lc-panel-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .page-section .lc-form-row {
+            flex-direction: column;
+        }
+
+        .page-section .lc-inline-row {
+            flex-direction: column;
+        }
+
+        .page-section .lc-inline-actions {
+            width: 100%;
+        }
+
+        .page-section .lc-inline-actions .btn-secondary {
+            width: 100%;
+        }
+    }
+    .lc-panel {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid var(--gray-200);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.03);
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
+
+    .lc-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .lc-panel-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--gray-900);
+    }
+
+    .lc-panel-subtitle {
+        font-size: 0.82rem;
+        color: var(--gray-500);
+        margin: 4px 0 0;
+    }
+
+    /* ===================================
+       BADGES
+       =================================== */
+    .lc-badge-estado {
+        font-size: 0.78rem;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--gray-200);
+        background: var(--gray-50);
+        color: var(--gray-600);
+        white-space: nowrap;
+        font-weight: 500;
+    }
+
+    .lc-badge-estado--success {
+        background: #ecfdf3;
+        border-color: #bbf7d0;
+        color: #166534;
+    }
+
+    .lc-badge-estado--warning {
+        background: #fffbeb;
+        border-color: #fde68a;
+        color: #92400e;
+    }
+
+    .lc-badge-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 8px;
+        margin-left: 6px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* ===================================
+       FORMULARIOS
+       =================================== */
+    .lc-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .lc-form-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .lc-form-col {
+        flex: 1 1 250px;
+    }
+
+    .lc-form-actions {
+        margin-top: 4px;
+    }
+
+    .lc-field-help {
+        margin-top: 4px;
+        font-size: 0.78rem;
+        color: var(--gray-500);
+    }
+
+    .lc-field-error {
+        margin-top: 4px;
+        font-size: 0.78rem;
+        color: var(--color-danger);
+    }
+
+    /* Inputs mejorados */
+    .lc-panel input[type="text"],
+    .lc-panel input[type="number"],
+    .lc-panel input[type="email"],
+    .lc-panel textarea,
+    .lc-panel select {
+        border-radius: 10px;
+        border: 1px solid var(--gray-300);
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        background-color: var(--gray-50);
+        width: 100%;
+    }
+
+    .lc-panel textarea {
+        min-height: 80px;
+        font-family: inherit;
+        resize: vertical;
+    }
+
+    .lc-panel input:focus,
+    .lc-panel textarea:focus,
+    .lc-panel select:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        background-color: #ffffff;
+    }
+
+    /* ===================================
+       FORMULARIO INLINE (AÑADIR MIEMBRO)
+       =================================== */
+    .lc-inline-form {
+        margin-top: 4px;
+        margin-bottom: 12px;
+        padding: 12px;
+        background: var(--gray-50);
+        border-radius: 10px;
+    }
+
+    .lc-inline-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .lc-inline-grow {
+        flex: 1 1 250px;
+    }
+
+    .lc-inline-actions {
+        flex: 0 0 auto;
+    }
+
+    /* ===================================
+       TABLA
+       =================================== */
+    .table-wrapper {
+        margin-top: 12px;
+        overflow-x: auto;
+    }
+
+    .lc-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .lc-table thead th {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--gray-600);
+        border-bottom: 2px solid var(--gray-200);
+        padding: 8px;
+        text-align: left;
+        background: var(--gray-50);
+    }
+
+    .lc-table tbody td {
+        font-size: 0.88rem;
+        padding: 12px 8px;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .lc-table tbody tr:hover {
+        background: var(--gray-50);
+    }
+
+    .lc-cell-code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.82rem;
+        color: #1e3a8a;
+        font-weight: 600;
+    }
+
+    .lc-member-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--gray-900);
+    }
+
+    .lc-member-note {
+        font-size: 0.78rem;
+        color: var(--gray-500);
+        margin-top: 2px;
+    }
+
+    .table-empty {
+        text-align: center;
+        padding: 32px !important;
+        color: var(--gray-500);
+        font-size: 0.88rem;
+    }
+
+    .lc-empty-text {
+        font-size: 0.88rem;
+        color: var(--gray-500);
+        margin: 12px 0;
+        padding: 16px;
+        background: var(--gray-50);
+        border-radius: 8px;
+    }
+
+    /* ===================================
+       AVATARES
+       =================================== */
+    .lc-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: var(--gray-200);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--gray-600);
+        overflow: hidden;
+    }
+
+    .lc-avatar-sm {
+        width: 36px;
+        height: 36px;
+    }
+
+    .lc-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .lc-avatar-placeholder {
+        text-transform: uppercase;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    /* ===================================
+       BOTONES
+       =================================== */
+    .lc-btn-icon {
+        padding: 4px;
+        border: none;
+        background: transparent;
+        font-size: 16px;
+        cursor: pointer;
+        color: var(--color-danger);
+        transition: opacity 0.15s;
+    }
+
+    .lc-btn-icon:hover {
+        opacity: 0.7;
+    }
+
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+    }
+</style>
+
+{% endblock %}

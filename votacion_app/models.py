@@ -367,3 +367,75 @@ class Voto(models.Model):
 
     def __str__(self):
         return f"Voto de {self.miembro_id} en {self.votacion.nombre}"
+class ListaCandidatos(models.Model):
+    ESTADO_BORRADOR = "BORRADOR"
+    ESTADO_CONFIRMADA = "CONFIRMADA"
+
+    ESTADO_CHOICES = [
+        (ESTADO_BORRADOR, "Borrador"),
+        (ESTADO_CONFIRMADA, "Confirmada"),
+    ]
+
+    nombre = models.CharField(
+        max_length=150,
+        help_text="Nombre de la lista, por ejemplo: 'Propuesta diáconos 2026'.",
+    )
+    codigo_lista = models.CharField(
+        max_length=30,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text="Código opcional para identificar la lista (ej. LD-2026-01).",
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default=ESTADO_BORRADOR,
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_confirmacion = models.DateTimeField(blank=True, null=True)
+    notas = models.TextField(
+        blank=True,
+        help_text="Notas internas sobre esta lista (visible solo en el sistema).",
+    )
+
+    class Meta:
+        verbose_name = "Lista de candidatos"
+        verbose_name_plural = "Listas de candidatos"
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        if self.codigo_lista:
+            return f"{self.nombre} ({self.codigo_lista})"
+        return self.nombre
+
+
+class ListaCandidatosItem(models.Model):
+    lista = models.ForeignKey(
+        ListaCandidatos,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    miembro = models.ForeignKey(
+        "miembros_app.Miembro",
+        on_delete=models.PROTECT,
+        related_name="listas_candidatos",
+    )
+    orden = models.PositiveIntegerField(
+        default=0,
+        help_text="Orden opcional para mostrar esta lista.",
+    )
+    observacion = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Observación opcional sobre este candidato en esta lista.",
+    )
+
+    class Meta:
+        verbose_name = "Elemento de lista de candidatos"
+        verbose_name_plural = "Elementos de listas de candidatos"
+        ordering = ["orden", "miembro__apellidos", "miembro__nombres"]
+        unique_together = ("lista", "miembro")
+
+    def __str__(self):
+        return f"{self.miembro} en {self.lista}"
