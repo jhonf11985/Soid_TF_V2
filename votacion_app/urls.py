@@ -75,11 +75,7 @@ path("eliminar/<int:pk>/", views.eliminar_votacion, name="eliminar_votacion"),
         views.lista_candidatos_cambiar_estado,
         name="lista_candidatos_cambiar_estado",
     ),
-    path(
-        "listas/<int:pk>/detalle/",
-        views.lista_candidatos_detalle,
-        name="lista_candidatos_detalle"
-    ),
+ 
     # Reporte de lista de candidatos
 path(
     "listas/<int:pk>/reporte/",

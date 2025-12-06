@@ -1455,27 +1455,7 @@ def lista_candidatos_cambiar_estado(request, pk):
 
     return redirect("votacion:lista_candidatos_listado")
 
-@login_required
-def lista_candidatos_detalle(request, pk):
-    """
-    Vista de detalle SOLO LECTURA de una lista de candidatos.
-    Muestra la lista de miembros (foto, código y nombre).
-    """
-    lista = get_object_or_404(ListaCandidatos, pk=pk)
 
-    items = (
-        ListaCandidatosItem.objects
-        .filter(lista=lista)
-        .select_related("miembro")
-        .order_by("orden", "miembro__apellidos", "miembro__nombres")
-    )
-
-    contexto = {
-        "titulo": f"Lista de candidatos: {lista.nombre}",
-        "lista": lista,
-        "items": items,
-    }
-    return render(request, "votacion_app/lista_candidatos_detalle.html", contexto)
 
 @login_required
 def reporte_lista_candidatos(request, pk):
