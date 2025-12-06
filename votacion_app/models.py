@@ -56,6 +56,19 @@ class Votacion(models.Model):
         help_text="Controla si la votación está abierta en el modo kiosko.",
     )
 
+    
+    # ¿Se permite mostrar el conteo en vivo en la pantalla pública
+    # mientras la votación está ABIERTA?
+    mostrar_conteo_en_vivo = models.BooleanField(
+        default=False,
+        help_text=(
+            "Si está marcado, la pantalla pública mostrará el conteo de votos "
+            "en tiempo real mientras la votación esté ABIERTA. "
+            "Si no, solo se verán los candidatos y los resultados aparecerán "
+            "cuando la votación se cierre."
+        ),
+    )
+
     # 2) Parámetros de quórum y asistencia
 
     # Miembros con derecho a voto (snapshot automático)

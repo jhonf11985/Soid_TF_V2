@@ -15,21 +15,23 @@ class VotacionForm(forms.ModelForm):
             "edad_minima_candidato",
             "total_habilitados",        # auto
             "miembros_presentes",       # manual
-            "base_quorum",              # base para el cálculo
+            "base_quorum",
             "tipo_quorum",
             "valor_quorum",
             "votos_minimos_requeridos", # auto
             "fecha_inicio",
             "fecha_fin",
             "permite_empates",
-            "permite_voto_remoto",
+            "mostrar_conteo_en_vivo",   # 👈 NUEVO
             "observaciones_internas",
         ]
+
 
         widgets = {
             "nombre": forms.TextInput(attrs={
                 "placeholder": "Ej.: Elección de diáconos 2026"
             }),
+            "mostrar_conteo_en_vivo": forms.CheckboxInput(),  # 👈 NUEVO
             "descripcion": forms.Textarea(attrs={
                 "rows": 3,
                 "placeholder": "Describa brevemente esta votación…"

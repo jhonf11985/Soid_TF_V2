@@ -929,3 +929,95 @@ def kiosko_voto_exitoso(request):
         "ronda": ronda,
     }
     return render(request, "votacion_app/kiosko_voto_exitoso.html", contexto)
+
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q, Max, Count
+# ... (lo demás lo dejas como está)
+
+
+@login_required  # Si quieres que sea pública, puedes quitar este decorador.
+def pantalla_votacion_actual(request):
+    """
+    Pantalla pública para proyectar la votación:
+
+    - Si hay votación y ronda ABIERTAS:
+        modo = "proceso"  → se muestran SOLO los candidatos.
+        Si votacion.mostrar_conteo_en_vivo == True, se muestran también los votos en vivo.
+
+    - Si la votación o la ronda están CERRADAS:
+        modo = "resultados" → se muestran los votos y se marcan los ganadores.
+    """
+    from .models import Votacion, Ronda, Candidato, Voto  # por claridad local
+
+    votacion, ronda = obtener_votacion_y_ronda_activas()
+
+    # Si no hay votación abierta, mostramos un mensaje neutro
+    if not votacion:
+        contexto = {
+            "votacion": None,
+            "ronda": None,
+            "modo": "sin_votacion",
+            "resultados": [],
+            "total_votos": 0,
+        }
+        return render(request, "votacion_app/pantalla_votacion.html", contexto)
+
+    # Candidatos activos de esta votación (los que se van a mostrar)
+    candidatos_qs = (
+        Candidato.objects
+        .filter(votacion=votacion, activo=True)
+        .order_by("orden", "nombre")
+    )
+
+    # Votos de esta votación (y de la ronda actual si existe)
+    votos_qs = Voto.objects.filter(votacion=votacion)
+    if ronda:
+        votos_qs = votos_qs.filter(ronda=ronda)
+
+    # Conteo de votos por candidato
+    conteos = (
+        votos_qs
+        .values("candidato_id")
+        .annotate(total=Count("id"))
+    )
+    conteos_dict = {item["candidato_id"]: item["total"] for item in conteos}
+    total_votos = sum(conteos_dict.values())
+
+    # Construimos la lista de resultados por candidato
+    resultados = []
+    for c in candidatos_qs:
+        votos = conteos_dict.get(c.id, 0)
+        porcentaje = (votos / total_votos * 100) if total_votos > 0 else 0
+        resultados.append({
+            "candidato": c,
+            "votos": votos,
+            "porcentaje": porcentaje,
+            "es_ganador": False,
+        })
+
+    # Determinar modo: proceso vs resultados
+    modo = "proceso"
+    if votacion.estado == "CERRADA" or (ronda and ronda.estado == "CERRADA"):
+        modo = "resultados"
+
+    # Si estamos en resultados, ordenar y marcar ganadores
+    if modo == "resultados" and total_votos > 0:
+        # Ordenar por número de votos descendente
+        resultados.sort(key=lambda x: x["votos"], reverse=True)
+
+        numero_cargos = votacion.numero_cargos or 0
+
+        # ⚠️ Implementación base:
+        # Por ahora marcamos como ganadores a los primeros N.
+        # Más adelante puedes adaptar esto a La1, La2, La3, etc.
+        for item in resultados[:numero_cargos]:
+            item["es_ganador"] = True
+
+    contexto = {
+        "votacion": votacion,
+        "ronda": ronda,
+        "modo": modo,
+        "resultados": resultados,
+        "total_votos": total_votos,
+    }
+    return render(request, "votacion_app/pantalla_votacion.html", contexto)

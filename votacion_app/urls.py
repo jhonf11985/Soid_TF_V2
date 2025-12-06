@@ -40,7 +40,11 @@ urlpatterns = [
     views.kiosko_voto_exitoso,
     name="kiosko_voto_exitoso",
 ),
-
+    path(
+        "pantalla/",
+        views.pantalla_votacion_actual,
+        name="pantalla_votacion_actual",
+    ),
 
 
 ]

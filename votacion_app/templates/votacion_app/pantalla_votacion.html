@@ -1,0 +1,419 @@
+{% extends "core/base.html" %}
+
+{% block title %}
+Pantalla de votación · Soid_Tf_2
+{% endblock %}
+
+{% block content %}
+<div class="votacion-screen-wrapper">
+
+    {# CABECERA #}
+    <header class="votacion-screen-header">
+        {% if votacion %}
+            <div class="votacion-screen-header-main">
+                <h1 class="votacion-screen-title">
+                    {{ votacion.nombre }}
+                </h1>
+                <p class="votacion-screen-subtitle">
+                    {% if modo == "proceso" %}
+                        Votación en proceso
+                        {% if ronda %} · {{ ronda.nombre|default:"Vuelta actual" }}{% endif %}
+                    {% elif modo == "resultados" %}
+                        Resultados de la votación
+                        {% if ronda %} · {{ ronda.nombre|default:"Vuelta actual" }}{% endif %}
+                    {% else %}
+                        Estado de votación
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="votacion-screen-status">
+                {% if modo == "proceso" %}
+                    <span class="vs-pill vs-pill-live">
+                        <span class="vs-pill-dot"></span>
+                        En curso
+                    </span>
+                {% elif modo == "resultados" %}
+                    <span class="vs-pill vs-pill-results">
+                        Resultados oficiales
+                    </span>
+                {% else %}
+                    <span class="vs-pill vs-pill-muted">
+                        Sin actividad
+                    </span>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="votacion-screen-header-main">
+                <h1 class="votacion-screen-title">Votaciones</h1>
+                <p class="votacion-screen-subtitle">
+                    No hay ninguna votación activa en este momento.
+                </p>
+            </div>
+        {% endif %}
+    </header>
+
+    {% if not votacion %}
+        <div class="alert alert-info" style="margin-top: 12px;">
+            No hay ninguna votación abierta ni ronda activa para mostrar.
+        </div>
+    {% else %}
+
+        {# BLOQUE RESUMEN (solo en resultados) #}
+        {% if modo == "resultados" %}
+            <section class="votacion-screen-section">
+                <div class="votacion-resumen-grid">
+                    <div class="vr-card">
+                        <span class="vr-label">Miembros habilitados</span>
+                        <span class="vr-value">
+                            {{ votacion.total_habilitados|default:"—" }}
+                        </span>
+                    </div>
+                    <div class="vr-card">
+                        <span class="vr-label">Presentes</span>
+                        <span class="vr-value">
+                            {{ votacion.miembros_presentes|default:"—" }}
+                        </span>
+                    </div>
+                    <div class="vr-card">
+                        <span class="vr-label">Votos emitidos</span>
+                        <span class="vr-value">
+                            {{ total_votos }}
+                        </span>
+                    </div>
+                    <div class="vr-card">
+                        <span class="vr-label">Votos mínimos (quórum)</span>
+                        <span class="vr-value">
+                            {{ votacion.votos_minimos_requeridos|default:"—" }}
+                        </span>
+                    </div>
+                    <div class="vr-card vr-card-wide">
+                        <span class="vr-label">¿Quórum alcanzado?</span>
+                        <span class="vr-badge">
+                            {% if votacion.quorom_alcanzado == True %}
+                                <span class="badge badge-success">Sí</span>
+                            {% elif votacion.quorom_alcanzado == False %}
+                                <span class="badge badge-danger">No</span>
+                            {% else %}
+                                <span class="badge badge-secondary">No definido</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </section>
+        {% else %}
+            <section class="votacion-screen-section">
+                <div class="vs-info-banner">
+                    La votación está en proceso. Los resultados se mostrarán
+                    cuando se cierre la votación.
+                </div>
+            </section>
+        {% endif %}
+
+        {# GRID DE CANDIDATOS #}
+        <section class="votacion-screen-section">
+            {% if resultados %}
+                <div class="candidates-grid">
+                    {% for item in resultados %}
+                        <article class="candidate-card
+                                       {% if modo == 'resultados' and item.es_ganador %}
+                                           candidate-card--winner
+                                       {% endif %}">
+                            <div class="candidate-photo">
+                                {% if item.candidato.miembro.foto %}
+                                    <img src="{{ item.candidato.miembro.foto.url }}"
+                                         class="candidate-avatar-lg"
+                                         alt="{{ item.candidato.nombre }}">
+                                {% else %}
+                                    <div class="candidate-avatar-placeholder candidate-avatar-lg">
+                                        {{ item.candidato.nombre|first }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="candidate-info">
+                                <h2 class="candidate-name">
+                                    {{ item.candidato.nombre }}
+                                </h2>
+
+                                {# PROCESO: solo mostrar votos si el admin lo permitió #}
+                                {% if modo == "proceso" %}
+                                    {% if votacion.mostrar_conteo_en_vivo %}
+                                        <p class="candidate-votes candidate-votes--live">
+                                            {{ item.votos }} voto{{ item.votos|pluralize }}
+                                        </p>
+                                    {% endif %}
+                                {% else %}
+                                    <p class="candidate-votes">
+                                        {{ item.votos }} voto{{ item.votos|pluralize }}
+                                        {% if total_votos > 0 %}
+                                            · {{ item.porcentaje|floatformat:1 }}%
+                                        {% endif %}
+                                    </p>
+
+                                    {% if item.es_ganador %}
+                                        <div class="candidate-badge">
+                                            ELEGIDO
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="vs-empty-text">
+                    No hay candidatos activos configurados para esta votación.
+                </p>
+            {% endif %}
+        </section>
+
+        {# AUTO-REFRESH #}
+        <script>
+            setTimeout(function () {
+                window.location.reload();
+            }, 15000);
+        </script>
+
+        {# ESTILOS ESPECÍFICOS PARA ESTA PANTALLA #}
+        <style>
+            .votacion-screen-wrapper {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 8px 8px 18px;
+            }
+
+            .votacion-screen-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 16px;
+                background: linear-gradient(120deg, #0f172a, #111827);
+                color: #e5e7eb;
+                box-shadow: 0 12px 30px rgba(15,23,42,0.45);
+                margin-bottom: 14px;
+            }
+
+            .votacion-screen-header-main {
+                max-width: 80%;
+            }
+
+            .votacion-screen-title {
+                margin: 0;
+                font-size: 1.4rem;
+                font-weight: 700;
+                color: #f9fafb;
+            }
+
+            .votacion-screen-subtitle {
+                margin: 2px 0 0;
+                font-size: 0.9rem;
+                color: #e5e7eb;
+                opacity: 0.9;
+            }
+
+            .votacion-screen-status {
+                display: flex;
+                align-items: center;
+            }
+
+            .vs-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 10px;
+                border-radius: 999px;
+                font-size: 0.78rem;
+                font-weight: 600;
+                border: 1px solid transparent;
+                white-space: nowrap;
+            }
+
+            .vs-pill-live {
+                background: rgba(248, 250, 252, 0.06);
+                border-color: #22c55e;
+                color: #bbf7d0;
+            }
+
+            .vs-pill-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 999px;
+                background: #22c55e;
+                box-shadow: 0 0 0 4px rgba(34,197,94,0.35);
+            }
+
+            .vs-pill-results {
+                background: rgba(248, 250, 252, 0.08);
+                border-color: #60a5fa;
+                color: #bfdbfe;
+            }
+
+            .vs-pill-muted {
+                background: rgba(148, 163, 184, 0.2);
+                border-color: #9ca3af;
+                color: #e5e7eb;
+            }
+
+            .votacion-screen-section {
+                margin-top: 10px;
+            }
+
+            .vs-info-banner {
+                padding: 10px 12px;
+                border-radius: 12px;
+                background: #eff6ff;
+                border: 1px solid #bfdbfe;
+                color: #1d4ed8;
+                font-size: 0.9rem;
+            }
+
+            /* RESUMEN */
+            .votacion-resumen-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 10px;
+            }
+
+            .vr-card {
+                background: #f9fafb;
+                border-radius: 12px;
+                padding: 8px 10px;
+                border: 1px solid #e5e7eb;
+            }
+
+            .vr-card-wide {
+                grid-column: span 2;
+            }
+
+            .vr-label {
+                display: block;
+                font-size: 0.75rem;
+                color: #6b7280;
+                margin-bottom: 4px;
+            }
+
+            .vr-value {
+                font-size: 1.1rem;
+                font-weight: 700;
+                color: #111827;
+            }
+
+            .vr-badge .badge {
+                font-size: 0.78rem;
+            }
+
+            /* GRID CANDIDATOS */
+            .candidates-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 16px;
+            }
+
+            .candidate-card {
+                background: #ffffff;
+                padding: 14px 12px 12px;
+                border-radius: 16px;
+                text-align: center;
+                border: 1px solid #e5e7eb;
+                box-shadow: 0 8px 20px rgba(15,23,42,0.08);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .candidate-card--winner {
+                border-color: #22c55e;
+                box-shadow: 0 10px 28px rgba(22,163,74,0.28);
+                position: relative;
+            }
+
+            .candidate-photo {
+                margin-bottom: 4px;
+            }
+
+            .candidate-avatar-lg {
+                width: 72px;
+                height: 72px;
+                border-radius: 999px;
+                object-fit: cover;
+                border: 2px solid #e5e7eb;
+                display: block;
+                margin: 0 auto;
+            }
+
+            .candidate-avatar-placeholder {
+                width: 72px;
+                height: 72px;
+                border-radius: 999px;
+                background: #f3f4f6;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #6b7280;
+                font-size: 1.6rem;
+                font-weight: 600;
+                margin: 0 auto;
+            }
+
+            .candidate-info {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
+            }
+
+            .candidate-name {
+                margin: 0;
+                font-size: 1rem;
+                font-weight: 600;
+                color: #111827;
+            }
+
+            .candidate-votes {
+                margin: 0;
+                font-size: 0.85rem;
+                color: #4b5563;
+            }
+
+            .candidate-votes--live {
+                font-weight: 600;
+                color: #1d4ed8;
+            }
+
+            .candidate-badge {
+                margin-top: 4px;
+                padding: 2px 10px;
+                border-radius: 999px;
+                background: #dcfce7;
+                color: #166534;
+                font-size: 0.75rem;
+                font-weight: 600;
+            }
+
+            .vs-empty-text {
+                font-size: 0.9rem;
+                color: #6b7280;
+            }
+
+            @media (max-width: 768px) {
+                .votacion-screen-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+
+                .votacion-screen-header-main {
+                    max-width: 100%;
+                }
+
+                .vr-card-wide {
+                    grid-column: span 1;
+                }
+            }
+        </style>
+    {% endif %}
+</div>
+{% endblock %}
