@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Count
 from django.urls import reverse
 from django.http import HttpResponseRedirect
 import math
@@ -935,23 +935,24 @@ from django.db.models import Q, Max, Count
 # ... (lo demás lo dejas como está)
 
 
-@login_required  # Si quieres que sea pública, puedes quitar este decorador.
 def pantalla_votacion_actual(request):
     """
-    Pantalla pública para proyectar la votación:
+    Pantalla pública para proyectar la votación.
 
     - Si hay votación y ronda ABIERTAS:
-        modo = "proceso"  → se muestran SOLO los candidatos.
-        Si votacion.mostrar_conteo_en_vivo == True, se muestran también los votos en vivo.
+        modo = "proceso"  → se muestran TODOS los candidatos.
+        Si votacion.mostrar_conteo_en_vivo == True (si lo tienes añadido),
+        se muestran también los votos en vivo.
 
     - Si la votación o la ronda están CERRADAS:
-        modo = "resultados" → se muestran los votos y se marcan los ganadores.
+        modo = "resultados" → se muestran TODOS los candidatos,
+        con sus votos, % y marcados los ganadores.
     """
-    from .models import Votacion, Ronda, Candidato, Voto  # por claridad local
-
+    # Si ya tienes esta función en otro sitio, reutilízala;
+    # aquí asumimos que existe y devuelve (votacion, ronda_activa)
     votacion, ronda = obtener_votacion_y_ronda_activas()
 
-    # Si no hay votación abierta, mostramos un mensaje neutro
+    # Si no hay ninguna votación “activa” para la pantalla
     if not votacion:
         contexto = {
             "votacion": None,
@@ -962,28 +963,34 @@ def pantalla_votacion_actual(request):
         }
         return render(request, "votacion_app/pantalla_votacion.html", contexto)
 
-    # Candidatos activos de esta votación (los que se van a mostrar)
+    # ==============================
+    # 1) Candidatos de esta votación
+    # ==============================
     candidatos_qs = (
-        Candidato.objects
-        .filter(votacion=votacion, activo=True)
+        votacion.candidatos
+        .filter(activo=True)
+        .select_related("miembro")
         .order_by("orden", "nombre")
     )
 
-    # Votos de esta votación (y de la ronda actual si existe)
-    votos_qs = Voto.objects.filter(votacion=votacion)
+    # ==============================
+    # 2) Votos de esta votación/ronda
+    # ==============================
+    votos_qs = votacion.votos.all()
     if ronda:
         votos_qs = votos_qs.filter(ronda=ronda)
 
-    # Conteo de votos por candidato
     conteos = (
         votos_qs
         .values("candidato_id")
         .annotate(total=Count("id"))
     )
-    conteos_dict = {item["candidato_id"]: item["total"] for item in conteos}
+    conteos_dict = {row["candidato_id"]: row["total"] for row in conteos}
     total_votos = sum(conteos_dict.values())
 
-    # Construimos la lista de resultados por candidato
+    # ==============================
+    # 3) Construimos la lista COMPLETA de resultados
+    # ==============================
     resultados = []
     for c in candidatos_qs:
         votos = conteos_dict.get(c.id, 0)
@@ -992,32 +999,134 @@ def pantalla_votacion_actual(request):
             "candidato": c,
             "votos": votos,
             "porcentaje": porcentaje,
-            "es_ganador": False,
+            "es_ganador": False,   # de momento nadie marcado
         })
 
-    # Determinar modo: proceso vs resultados
+    # ==============================
+    # 4) Modo: proceso vs resultados
+    # ==============================
     modo = "proceso"
     if votacion.estado == "CERRADA" or (ronda and ronda.estado == "CERRADA"):
         modo = "resultados"
 
-    # Si estamos en resultados, ordenar y marcar ganadores
+    # ==============================
+    # 5) Marcar ganadores SIN cortar la lista
+    # ==============================
     if modo == "resultados" and total_votos > 0:
-        # Ordenar por número de votos descendente
+        # Ordenamos de mayor a menor votos
         resultados.sort(key=lambda x: x["votos"], reverse=True)
 
         numero_cargos = votacion.numero_cargos or 0
 
-        # ⚠️ Implementación base:
-        # Por ahora marcamos como ganadores a los primeros N.
-        # Más adelante puedes adaptar esto a La1, La2, La3, etc.
-        for item in resultados[:numero_cargos]:
-            item["es_ganador"] = True
+        # 👉 AQUÍ ESTÁ EL PUNTO CLAVE:
+        # NO hacemos resultados = resultados[:numero_cargos]
+        # Solo marcamos los primeros N como ganadores
+        for idx, item in enumerate(resultados):
+            if idx < numero_cargos:
+                item["es_ganador"] = True
 
     contexto = {
         "votacion": votacion,
         "ronda": ronda,
         "modo": modo,
-        "resultados": resultados,
+        "resultados": resultados,   # lista completa
         "total_votos": total_votos,
     }
     return render(request, "votacion_app/pantalla_votacion.html", contexto)
+@login_required
+def pantalla_votacion(request, pk):
+    """
+    Pantalla pública para una votación concreta (la del pk).
+
+    - Si la votación / ronda está ABIERTA:
+        modo = "proceso"  → muestra TODOS los candidatos.
+        Si tienes el campo 'mostrar_conteo_en_vivo' en el modelo,
+        la plantilla decide si muestra o no los votos.
+
+    - Si la votación o la ronda están CERRADAS:
+        modo = "resultados" → muestra TODOS los candidatos
+        con sus votos, porcentaje y marcados los ganadores.
+    """
+    votacion = get_object_or_404(Votacion, pk=pk)
+
+    # Buscar la ronda “actual” para esa votación:
+    # 1º: una ronda ABIERTA; si no hay, la última por número.
+    ronda = (
+        votacion.rondas
+        .filter(estado="ABIERTA")
+        .order_by("numero")
+        .first()
+    )
+    if not ronda:
+        ronda = votacion.rondas.order_by("-numero").first()
+
+    # ============================
+    # Candidatos de esta votación
+    # ============================
+    candidatos_qs = (
+        votacion.candidatos
+        .filter(activo=True)
+        .select_related("miembro")
+        .order_by("orden", "nombre")
+    )
+
+    # ============================
+    # Votos de esta votación/ronda
+    # ============================
+    votos_qs = Voto.objects.filter(votacion=votacion)
+    if ronda:
+        votos_qs = votos_qs.filter(ronda=ronda)
+
+    conteos = (
+        votos_qs
+        .values("candidato_id")
+        .annotate(total=Count("id"))
+    )
+    conteos_dict = {row["candidato_id"]: row["total"] for row in conteos}
+    total_votos = sum(conteos_dict.values())
+
+    # ============================
+    # Construir lista COMPLETA
+    # ============================
+    resultados = []
+    for c in candidatos_qs:
+        votos = conteos_dict.get(c.id, 0)
+        porcentaje = (votos / total_votos * 100) if total_votos > 0 else 0
+        resultados.append({
+            "candidato": c,
+            "votos": votos,
+            "porcentaje": porcentaje,
+            "es_ganador": False,  # luego marcamos
+        })
+
+    # ============================
+    # Determinar modo (proceso / resultados)
+    # ============================
+    modo = "proceso"
+    if votacion.estado == "CERRADA" or (ronda and ronda.estado == "CERRADA"):
+        modo = "resultados"
+
+    # ============================
+    # Marcar ganadores SIN cortar la lista
+    # ============================
+    if modo == "resultados" and total_votos > 0:
+        # Ordenar de mayor a menor votos
+        resultados.sort(key=lambda x: x["votos"], reverse=True)
+
+        numero_cargos = votacion.numero_cargos or 0
+
+        # OJO: NO hacemos resultados = resultados[:numero_cargos]
+        # Solo marcamos los primeros N como ganadores
+        for idx, item in enumerate(resultados):
+            if idx < numero_cargos:
+                item["es_ganador"] = True
+
+    contexto = {
+        "votacion": votacion,
+        "ronda": ronda,
+        "modo": modo,
+        "resultados": resultados,   # TODOS los candidatos
+        "total_votos": total_votos,
+    }
+    return render(request, "votacion_app/pantalla_votacion.html", contexto)
+

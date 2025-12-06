@@ -46,5 +46,11 @@ urlpatterns = [
         name="pantalla_votacion_actual",
     ),
 
+        path(
+        "pantalla/<int:pk>/",
+        views.pantalla_votacion,
+        name="pantalla_votacion",
+    ),
+
 
 ]
