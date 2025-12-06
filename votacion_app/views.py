@@ -818,7 +818,7 @@ def kiosko_confirmacion(request):
     Paso 3 del modo kiosko:
     - Muestra resumen: votación, vuelta, miembro, candidato.
     - Si 'accion' = cambiar -> vuelve a selección de candidato.
-    - Si 'accion' = confirmar -> registra el voto y vuelve al paso 1.
+    - Si 'accion' = confirmar -> registra el voto y pasa a pantalla de voto exitoso.
     """
     votacion, ronda = obtener_votacion_y_ronda_activas()
     miembro_id = request.session.get("kiosko_miembro_id")
@@ -858,10 +858,12 @@ def kiosko_confirmacion(request):
                 except IntegrityError:
                     messages.error(request, "Este miembro ya tiene un voto registrado.")
 
-            # Limpiamos todo el flujo del kiosko y volvemos al paso 1
+            # Limpiamos todo el flujo del kiosko
             request.session.pop("kiosko_miembro_id", None)
             request.session.pop("kiosko_candidato_id", None)
-            return redirect("votacion:kiosko_ingreso_codigo")
+
+            # 👉 Ahora vamos a la pantalla de "voto exitoso"
+            return redirect("votacion:kiosko_voto_exitoso")
 
     # GET: mostrar confirmación
     contexto = {
@@ -871,6 +873,7 @@ def kiosko_confirmacion(request):
         "candidato": candidato,
     }
     return render(request, "votacion_app/kiosko_confirmacion.html", contexto)
+
 
 @login_required
 def documentacion_sistemas_votacion(request):
@@ -912,3 +915,17 @@ def kiosko_confirmacion_identidad(request):
             "miembro": miembro,
         }
     )
+@login_required
+def kiosko_voto_exitoso(request):
+    """
+    Pantalla final del modo kiosko:
+    - Muestra un mensaje de confirmación de voto registrado.
+    - Después el usuario puede volver al inicio del kiosko.
+    """
+    votacion, ronda = obtener_votacion_y_ronda_activas()
+
+    contexto = {
+        "votacion": votacion,
+        "ronda": ronda,
+    }
+    return render(request, "votacion_app/kiosko_voto_exitoso.html", contexto)

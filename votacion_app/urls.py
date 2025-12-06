@@ -35,6 +35,12 @@ urlpatterns = [
    name="documentacion_sistemas_votacion",
 ),
     path("kiosko/confirmar/", views.kiosko_confirmacion_identidad, name="kiosko_confirmacion_identidad"),
+    path(
+    "kiosko/voto-exitoso/",
+    views.kiosko_voto_exitoso,
+    name="kiosko_voto_exitoso",
+),
+
 
 
 ]
