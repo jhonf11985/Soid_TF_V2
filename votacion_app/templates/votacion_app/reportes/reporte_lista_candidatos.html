@@ -1,0 +1,120 @@
+{% extends "core/reporte_base.html" %}
+
+{% block title %}Lista de Candidatos · {{ lista.nombre }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Estilos específicos del reporte de lista de candidatos */
+
+    /* Barra meta tipo “Reporte: … · Fecha: …” */
+    .report-meta {
+        font-size: 0.85rem;
+        color: #4b5563;
+        margin: 4px 0 12px;
+        padding: 4px 0;
+        border-top: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .report-meta span {
+        margin-right: 0;  /* ya usamos gap en el flex */
+    }
+
+    .candidates-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    .candidates-table th,
+    .candidates-table td {
+        border: 1px solid #d1d5db;
+        padding: 6px 8px;
+        font-size: 0.9rem;
+    }
+
+    .candidates-table th {
+        background: #f3f4f6;
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .candidate-photo {
+        width: 42px;
+        height: 42px;
+        border-radius: 6px;
+        object-fit: cover;
+    }
+
+    /* Botón imprimir arriba a la derecha (solo pantalla) */
+    .report-actions-bar {
+        text-align: right;
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+    <!-- Barra de acciones solo en pantalla -->
+    <div class="report-actions-bar no-print">
+        <button type="button"
+                class="btn-secondary small-btn"
+                onclick="window.print()">
+            <span class="material-icons" style="font-size:16px;">print</span>
+            Imprimir
+        </button>
+    </div>
+
+    <!-- Título del reporte (usa estilos de reporte_base) -->
+    <h1 class="report-title">Lista de candidatos</h1>
+
+    <!-- Subtítulo con nombre y código de la lista -->
+    <p class="report-subtitle">
+        {{ lista.nombre }}
+        {% if lista.codigo_lista %}
+            · Código: {{ lista.codigo_lista }}
+        {% endif %}
+    </p>
+
+    <!-- Línea tipo “Reporte: … · Fecha: … · Total: …” -->
+    <div class="report-meta">
+        <span>Reporte: Lista de candidatos</span>
+        <span>Fecha: {{ hoy|date:"d/m/Y" }}</span>
+        <span>Total de candidatos: {{ items|length }}</span>
+    </div>
+
+    <!-- Tabla de candidatos -->
+    <table class="candidates-table">
+        <thead>
+            <tr>
+                <th style="width:50px;">Foto</th>
+                <th style="width:120px;">Código</th>
+                <th>Nombre</th>
+                <th style="width:200px;">Observación</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+                <tr>
+                    <td>
+                        {% if item.miembro.foto %}
+                            <img src="{{ item.miembro.foto.url }}"
+                                 class="candidate-photo"
+                                 alt="Foto de {{ item.miembro }}">
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>{{ item.miembro.codigo_miembro }}</td>
+                    <td>{{ item.miembro }}</td>
+                    <td>{{ item.observacion|default:"—" }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}

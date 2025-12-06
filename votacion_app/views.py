@@ -1476,3 +1476,22 @@ def lista_candidatos_detalle(request, pk):
         "items": items,
     }
     return render(request, "votacion_app/lista_candidatos_detalle.html", contexto)
+
+@login_required
+def reporte_lista_candidatos(request, pk):
+    lista = get_object_or_404(ListaCandidatos, pk=pk)
+
+    items = (
+        ListaCandidatosItem.objects
+        .filter(lista=lista)
+        .select_related("miembro")
+        .order_by("miembro__apellidos", "miembro__nombres")
+    )
+
+    contexto = {
+        "lista": lista,
+        "items": items,
+        "hoy": timezone.now(),
+    }
+
+    return render(request, "votacion_app/reportes/reporte_lista_candidatos.html", contexto)

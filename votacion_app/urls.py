@@ -80,4 +80,11 @@ path("eliminar/<int:pk>/", views.eliminar_votacion, name="eliminar_votacion"),
         views.lista_candidatos_detalle,
         name="lista_candidatos_detalle"
     ),
+    # Reporte de lista de candidatos
+path(
+    "listas/<int:pk>/reporte/",
+    views.reporte_lista_candidatos,
+    name="lista_candidatos_reporte"
+),
+
 ]
