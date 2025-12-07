@@ -1147,7 +1147,6 @@ def pantalla_votacion(request, pk):
         "total_votos": total_votos,
     }
     return render(request, "votacion_app/pantalla_votacion.html", contexto)
-
 @login_required
 def lista_candidatos_configurar(request, pk=None):
     """
@@ -1169,30 +1168,49 @@ def lista_candidatos_configurar(request, pk=None):
     else:
         titulo = "Nueva lista de candidatos"
 
+    # Formularios por defecto (GET o si no se procesa ninguna acción)
+    if lista:
+        form = ListaCandidatosForm(instance=lista)
+    else:
+        # Sugerimos un código automático para la nueva lista
+        form = ListaCandidatosForm(
+            initial={"codigo_lista": generar_codigo_lista("LD")}
+        )
+    agregar_form = ListaCandidatosAgregarMiembroForm()
+
     if request.method == "POST":
         accion = request.POST.get("accion")
 
-        # 1) Guardar encabezado (nombre, código, notas)
+        # 1) Guardar datos de la lista (nombre, código, descripción, etc.)
         if accion in ("guardar", "guardar_seguir"):
             form = ListaCandidatosForm(request.POST, instance=lista)
-            agregar_form = ListaCandidatosAgregarMiembroForm()
 
             if form.is_valid():
                 lista = form.save(commit=False)
 
-                # Si no se ha puesto código, lo generamos
+                # Si es nueva lista o no tiene código, generamos uno
                 if not lista.codigo_lista:
                     lista.codigo_lista = generar_codigo_lista("LD")
 
+                # Por seguridad, si no tiene estado, lo dejamos en BORRADOR
                 if not lista.estado:
                     lista.estado = ListaCandidatos.ESTADO_BORRADOR
 
                 lista.save()
+                messages.success(
+                    request,
+                    "La lista de candidatos se ha guardado correctamente.",
+                )
 
-                messages.success(request, "Lista guardada correctamente.")
-
-                # De momento, en ambos casos volvemos a la misma pantalla
-                return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+                if accion == "guardar_seguir":
+                    # Volvemos a la misma pantalla para seguir añadiendo miembros
+                    return redirect(
+                        "votacion:lista_candidatos_configurar",
+                        pk=lista.pk,
+                    )
+                else:
+                    # Volvemos al listado general
+                    return redirect("votacion:lista_candidatos_listado")
 
         # 2) Agregar miembro por código (solo si ya existe la lista y está en BORRADOR)
         elif accion == "agregar_miembro" and lista:
@@ -1204,7 +1222,10 @@ def lista_candidatos_configurar(request, pk=None):
                     request,
                     "Esta lista ya está confirmada y no se puede modificar.",
                 )
-                return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+                return redirect(
+                    "votacion:lista_candidatos_configurar",
+                    pk=lista.pk,
+                )
 
             if agregar_form.is_valid():
                 sufijo = agregar_form.cleaned_data.get("codigo_sufijo", "").strip()
@@ -1235,25 +1256,72 @@ def lista_candidatos_configurar(request, pk=None):
                             f"No se encontró ningún miembro con el código {codigo_busqueda}.",
                         )
                     else:
-                        # Evitar duplicados en la lista
-                        ya_existe = ListaCandidatosItem.objects.filter(
-                            lista=lista,
-                            miembro=miembro,
-                        ).exists()
-                        if ya_existe:
-                            messages.warning(
+                        # ==========================
+                        # VALIDACIONES ESPECÍFICAS
+                        # ==========================
+
+                        # 1) Debe estar activo en el sistema (flag activo=True si existe)
+                        if hasattr(miembro, "activo") and not miembro.activo:
+                            messages.error(
                                 request,
-                                f"El miembro {miembro} ya está en esta lista.",
+                                "Este miembro está marcado como inactivo en el sistema "
+                                "y no puede añadirse a la lista.",
                             )
+
+                        # 2) Debe tener estado_miembro ACTIVO o PASIVO
+                        elif (
+                            not miembro.estado_miembro
+                            or miembro.estado_miembro not in ("activo", "pasivo")
+                        ):
+                            messages.error(
+                                request,
+                                "Solo se pueden añadir a la lista miembros con estado "
+                                "ACTIVO o PASIVO.",
+                            )
+
                         else:
-                            ListaCandidatosItem.objects.create(
-                                lista=lista,
-                                miembro=miembro,
-                            )
-                            messages.success(
-                                request,
-                                f"Se ha añadido a «{miembro}» a la lista.",
-                            )
+                            # 3) Debe cumplir la edad mínima configurada
+                            edad_minima = get_edad_minima_miembro_oficial()
+                            fn = getattr(miembro, "fecha_nacimiento", None)
+                            edad = None
+                            if fn:
+                                hoy = date.today()
+                                edad = hoy.year - fn.year - (
+                                    (hoy.month, hoy.day) < (fn.month, fn.day)
+                                )
+
+                            if edad is None:
+                                messages.error(
+                                    request,
+                                    "Este miembro no tiene registrada la fecha de nacimiento. "
+                                    "Actualiza sus datos antes de añadirlo a la lista.",
+                                )
+                            elif edad < edad_minima:
+                                messages.error(
+                                    request,
+                                    f"Este miembro no puede incluirse en la lista porque aún "
+                                    f"no alcanza la edad mínima de {edad_minima} años.",
+                                )
+                            else:
+                                # Evitar duplicados en la lista
+                                ya_existe = ListaCandidatosItem.objects.filter(
+                                    lista=lista,
+                                    miembro=miembro,
+                                ).exists()
+                                if ya_existe:
+                                    messages.warning(
+                                        request,
+                                        f"El miembro {miembro} ya está en esta lista.",
+                                    )
+                                else:
+                                    ListaCandidatosItem.objects.create(
+                                        lista=lista,
+                                        miembro=miembro,
+                                    )
+                                    messages.success(
+                                        request,
+                                        f"Se ha añadido a «{miembro}» a la lista.",
+                                    )
 
         # 3) Eliminar un miembro de la lista
         elif accion == "eliminar_item" and lista:
@@ -1265,71 +1333,71 @@ def lista_candidatos_configurar(request, pk=None):
                     request,
                     "Esta lista ya está confirmada y no se puede modificar.",
                 )
-                return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+                return redirect(
+                    "votacion:lista_candidatos_configurar",
+                    pk=lista.pk,
+                )
 
             item_id = request.POST.get("item_id")
             if item_id:
-                try:
-                    item = ListaCandidatosItem.objects.get(
-                        pk=item_id,
-                        lista=lista,
-                    )
-                    item.delete()
-                    messages.success(request, "Se ha eliminado el candidato de la lista.")
-                except ListaCandidatosItem.DoesNotExist:
-                    messages.error(
-                        request,
-                        "No se encontró el registro a eliminar.",
-                    )
+                ListaCandidatosItem.objects.filter(
+                    pk=item_id,
+                    lista=lista,
+                ).delete()
+                messages.success(
+                    request,
+                    "Se ha eliminado el miembro de la lista.",
+                )
+            else:
+                messages.error(
+                    request,
+                    "No se ha podido identificar el elemento a eliminar.",
+                )
 
-        # 4) Confirmar la lista
+        # 4) Confirmar la lista (pasar de BORRADOR a CONFIRMADA)
         elif accion == "confirmar_lista" and lista:
             form = ListaCandidatosForm(instance=lista)
             agregar_form = ListaCandidatosAgregarMiembroForm()
 
             if lista.estado == ListaCandidatos.ESTADO_CONFIRMADA:
-                messages.info(request, "Esta lista ya estaba confirmada.")
+                messages.info(
+                    request,
+                    "Esta lista ya estaba confirmada.",
+                )
+                return redirect(
+                    "votacion:lista_candidatos_configurar",
+                    pk=lista.pk,
+                )
+
+            if not lista.items.exists():
+                messages.error(
+                    request,
+                    "No puedes confirmar una lista vacía. "
+                    "Añade al menos un miembro.",
+                )
             else:
-                if not lista.items.exists():
-                    messages.error(
-                        request,
-                        "No puedes confirmar una lista vacía. Añade al menos un miembro.",
-                    )
-                else:
-                    lista.estado = ListaCandidatos.ESTADO_CONFIRMADA
-                    lista.fecha_confirmacion = timezone.now()
-                    lista.save()
-                    messages.success(
-                        request,
-                        "La lista ha sido confirmada. Ya se puede usar en las votaciones.",
-                    )
-                    return redirect("votacion:lista_candidatos_configurar", pk=lista.pk)
+                lista.estado = ListaCandidatos.ESTADO_CONFIRMADA
+                lista.fecha_confirmacion = timezone.now()
+                lista.save()
+                messages.success(
+                    request,
+                    "La lista ha sido confirmada correctamente.",
+                )
+                return redirect(
+                    "votacion:lista_candidatos_configurar",
+                    pk=lista.pk,
+                )
 
-        else:
-            # Acción no reconocida: recargamos formularios
-            form = ListaCandidatosForm(instance=lista)
-            agregar_form = ListaCandidatosAgregarMiembroForm()
-
-    else:
-        # GET
-        if lista:
-            form = ListaCandidatosForm(instance=lista)
-        else:
-            # Lista nueva: sugerimos código automático
-            initial = {
-                "codigo_lista": generar_codigo_lista("LD"),
-            }
-            form = ListaCandidatosForm(initial=initial)
-
-        agregar_form = ListaCandidatosAgregarMiembroForm()
-
-    items = []
+    # Siempre recargamos los items (tanto en GET como en POST con errores)
     if lista:
         items = (
-            lista.items
+            ListaCandidatosItem.objects
+            .filter(lista=lista)
             .select_related("miembro")
             .order_by("orden", "miembro__apellidos", "miembro__nombres")
         )
+    else:
+        items = ListaCandidatosItem.objects.none()
 
     contexto = {
         "titulo": titulo,
@@ -1338,8 +1406,11 @@ def lista_candidatos_configurar(request, pk=None):
         "agregar_form": agregar_form,
         "items": items,
     }
-    return render(request, "votacion_app/lista_candidatos_configuracion.html", contexto)
-
+    return render(
+        request,
+        "votacion_app/lista_candidatos_configuracion.html",
+        contexto,
+    )
 
 @login_required
 def lista_candidatos_nueva(request):
