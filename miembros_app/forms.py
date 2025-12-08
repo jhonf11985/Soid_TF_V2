@@ -115,7 +115,7 @@ class MiembroForm(forms.ModelForm):
 
     estado_miembro = forms.ChoiceField(
         choices=ESTADO_MIEMBRO_CHOICES,
-        required=False,
+        required=True,
         label="Estado del miembro",
     )
 
@@ -330,6 +330,10 @@ class MiembroForm(forms.ModelForm):
             siguiente = ultimo + 1
             self.fields["codigo_miembro_display"].initial = f"{prefijo}{siguiente:04d}"
 
+        # --- CAMPOS OBLIGATORIOS EXTRA ---
+        # Estos dos deben venir siempre rellenados
+        self.fields["fecha_nacimiento"].required = True
+        self.fields["estado_miembro"].required = True
 
     def _calcular_edad_desde_fecha(self, fecha):
         """Devuelve la edad en años a partir de una fecha de nacimiento."""
