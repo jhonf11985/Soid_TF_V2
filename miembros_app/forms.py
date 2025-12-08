@@ -333,7 +333,7 @@ class MiembroForm(forms.ModelForm):
         # --- CAMPOS OBLIGATORIOS EXTRA ---
         # Estos dos deben venir siempre rellenados
         self.fields["fecha_nacimiento"].required = True
-        self.fields["estado_miembro"].required = True
+        self.fields["estado_miembro"].required = False
 
     def _calcular_edad_desde_fecha(self, fecha):
         """Devuelve la edad en años a partir de una fecha de nacimiento."""
