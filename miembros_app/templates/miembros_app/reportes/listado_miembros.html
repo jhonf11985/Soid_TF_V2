@@ -129,159 +129,220 @@ Miembros / Reportes / Listado general
         <span style="margin-left:12px;">Fecha de generación: {{ hoy|date:"d/m/Y" }}</span>
     </div>
 
-    <!-- Filtros avanzados (NO se imprimen) -->
-    <form method="get" class="form-grid no-print" style="margin-bottom: 12px; align-items: flex-end;">
+    <!-- Filtros (versión profesional) -->
+    <form method="get" class="filters-card no-print">
 
-        {# Fila 1: Buscador (fila completa) #}
-        <div class="form-field form-field-full">
-            <label for="id_q">Buscar</label>
-            <input
-                id="id_q"
-                type="text"
-                name="q"
-                placeholder="Nombre, apellido, teléfono, cédula o correo…"
-                value="{{ query }}"
-            >
-        </div>
+        <!-- 🧩 Fila principal: búsqueda + filtros clave -->
+        <div class="filters-main-row">
+            <!-- Buscar -->
+            <div class="form-field form-field-grow">
+                <label for="id_q">Buscar</label>
+                <input
+                    id="id_q"
+                    type="text"
+                    name="q"
+                    placeholder="Nombre, apellido, teléfono, cédula o correo…"
+                    value="{{ query }}"
+                >
+            </div>
 
-        {# Fila 2: Estado / Género / Categoría / Bautismo #}
-        <div class="form-field form-field-full">
-            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+            <!-- Estado -->
+            <div class="form-field">
+                <label for="id_estado">Estado</label>
+                <select id="id_estado" name="estado">
+                    <option value="">Todos</option>
+                    {% for value, label in estados_choices %}
+                        <option value="{{ value }}" {% if value == estado %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-                <!-- Estado -->
-                <div style="flex:1; min-width:160px;">
-                    <label for="id_estado">Estado</label>
-                    <select id="id_estado" name="estado">
-                        <option value="">Todos</option>
-                        {% for value, label in estados_choices %}
-                            <option value="{{ value }}" {% if value == estado %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <!-- Categoría -->
+            <div class="form-field">
+                <label for="id_categoria_edad">Categoría</label>
+                <select id="id_categoria_edad" name="categoria_edad">
+                    <option value="">Todas</option>
+                    {% for value, label in categorias_choices %}
+                        <option value="{{ value }}" {% if value == categoria_edad_filtro %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-                <!-- Género -->
-                <div style="flex:1; min-width:160px;">
-                    <label for="id_genero">Género</label>
-                    <select id="id_genero" name="genero">
-                        <option value="">Todos</option>
-                        {% for value, label in generos_choices %}
-                            <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <!-- Género -->
+            <div class="form-field">
+                <label for="id_genero">Género</label>
+                <select id="id_genero" name="genero">
+                    <option value="">Todos</option>
+                    {% for value, label in generos_choices %}
+                        <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-                <!-- Categoría de edad -->
-                <div style="flex:1; min-width:160px;">
-                    <label for="id_categoria_edad">Categoría</label>
-                    <select id="id_categoria_edad" name="categoria_edad">
-                        <option value="">Todas</option>
-                        {% for value, label in categorias_choices %}
-                            <option value="{{ value }}" {% if value == categoria_edad_filtro %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <!-- Bautismo -->
+            <div class="form-field">
+                <label for="id_bautizado">Bautismo</label>
+                <select id="id_bautizado" name="bautizado">
+                    <option value="">Todos</option>
+                    <option value="1" {% if bautizado == "1" %}selected{% endif %}>Solo bautizados</option>
+                    <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
+                </select>
+            </div>
 
-                <!-- Bautismo -->
-                <div style="flex:1; min-width:160px;">
-                    <label for="id_bautizado">Bautismo</label>
-                    <select id="id_bautizado" name="bautizado">
-                        <option value="">Todos</option>
-                        <option value="1" {% if bautizado == "1" %}selected{% endif %}>Solo bautizados</option>
-                        <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
-                    </select>
-                </div>
-
+            <!-- Botón aplicar -->
+            <div class="filters-actions">
+                <button type="submit" class="btn-secondary">
+                    <span class="material-icons" style="font-size:16px;">search</span>
+                    Aplicar
+                </button>
             </div>
         </div>
 
-        {# Fila 3: Rango de edad + check para activarlo #}
-        <div class="form-field form-field-full">
-            <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
+        <!-- ⚙️ Filtros avanzados (plegable) -->
+        <details class="filters-advanced" {% if edad_min or edad_max or usar_rango_edad or tiene_contacto or mostrar_todos or incluir_ninos %}open{% endif %}>
+            <summary>
+                <span class="summary-icon">⚙️</span>
+                <span>Filtros avanzados</span>
+                <span class="summary-hint">Edad, contacto, niños…</span>
+            </summary>
 
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                    <label>Edad (años)</label>
-                    <div style="display:flex; gap:6px; align-items:center;">
+            <div class="filters-advanced-body">
+
+                <!-- Rango de edad -->
+                <div class="advanced-row">
+                    <div class="advanced-block">
+                        <label>Edad (años)</label>
+                        <div class="edad-range-row">
+                            <input
+                                type="number"
+                                name="edad_min"
+                                min="0"
+                                value="{{ edad_min }}"
+                                placeholder="Desde"
+                            >
+                            <span class="edad-sep">a</span>
+                            <input
+                                type="number"
+                                name="edad_max"
+                                min="0"
+                                value="{{ edad_max }}"
+                                placeholder="Hasta"
+                            >
+                        </div>
+                        <p class="hint-text">
+                            Si no marcas la casilla, el reporte ignora este rango.
+                        </p>
+                    </div>
+
+                    <label class="checkbox-inline">
                         <input
-                            type="number"
-                            name="edad_min"
-                            min="0"
-                            value="{{ edad_min }}"
-                            placeholder="Desde"
-                            style="width:80px;"
+                            type="checkbox"
+                            name="usar_rango_edad"
+                            value="1"
+                            {% if usar_rango_edad %}checked{% endif %}
                         >
-                        <span style="font-size:12px; color:#6b7280;">a</span>
-                        <input
-                            type="number"
-                            name="edad_max"
-                            min="0"
-                            value="{{ edad_max }}"
-                            placeholder="Hasta"
-                            style="width:80px;"
-                        >
+                        Aplicar este rango de edad
+                    </label>
+                </div>
+
+                <!-- Checkboxes especiales -->
+                <div class="advanced-row">
+                    <div class="checkbox-group">
+                        <label class="checkbox-inline">
+                            <input
+                                type="checkbox"
+                                name="tiene_contacto"
+                                value="1"
+                                {% if tiene_contacto %}checked{% endif %}
+                            >
+                            Solo con contacto
+                        </label>
+
+                        <label class="checkbox-inline">
+                            <input
+                                type="checkbox"
+                                name="mostrar_todos"
+                                value="1"
+                                {% if mostrar_todos %}checked{% endif %}
+                            >
+                            Mostrar todos (incluye inactivos)
+                        </label>
+
+                        <label class="checkbox-inline">
+                            <input
+                                type="checkbox"
+                                name="incluir_ninos"
+                                value="1"
+                                {% if incluir_ninos %}checked{% endif %}
+                            >
+                            Incluir niños (menores de 12 años)
+                        </label>
                     </div>
                 </div>
 
-                <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; margin-bottom:4px;">
-                    <input
-                        type="checkbox"
-                        name="usar_rango_edad"
-                        value="1"
-                        {% if usar_rango_edad %}checked{% endif %}
-                    >
-                    Aplicar este rango de edad a los resultados
-                </label>
             </div>
+        </details>
+    </form>
 
-            <p style="font-size:11px; color:#6b7280; margin-top:2px;">
-                Si el check no está marcado, el reporte ignora estos valores.
-            </p>
+    <!-- 🔵 Chips de filtros activos -->
+    {% if query or estado or genero_filtro or categoria_edad_filtro or bautizado or edad_min or edad_max or tiene_contacto or mostrar_todos or incluir_ninos %}
+        <div class="filters-tags no-print">
+            <span class="filters-tags-label">Filtros activos:</span>
+
+            {% if query %}
+                <span class="filter-chip">Búsqueda: “{{ query }}”</span>
+            {% endif %}
+
+            {% if estado %}
+                <span class="filter-chip">Estado: {{ estado }}</span>
+            {% endif %}
+
+            {% if genero_filtro %}
+                <span class="filter-chip">Género: {{ genero_filtro }}</span>
+            {% endif %}
+
+            {% if categoria_edad_filtro %}
+                <span class="filter-chip">Categoría: {{ categoria_edad_filtro }}</span>
+            {% endif %}
+
+            {% if bautizado == "1" %}
+                <span class="filter-chip">Solo bautizados</span>
+            {% elif bautizado == "0" %}
+                <span class="filter-chip">No bautizados</span>
+            {% endif %}
+
+            {# Edad: separamos la lógica para evitar paréntesis en el if #}
+            {% if usar_rango_edad %}
+                {% if edad_min or edad_max %}
+                    <span class="filter-chip">
+                        Edad:
+                        {% if edad_min %}desde {{ edad_min }}{% endif %}
+                        {% if edad_min and edad_max %} · {% endif %}
+                        {% if edad_max %}hasta {{ edad_max }}{% endif %}
+                    </span>
+                {% endif %}
+            {% endif %}
+
+            {% if tiene_contacto %}
+                <span class="filter-chip">Solo con contacto</span>
+            {% endif %}
+
+            {% if mostrar_todos %}
+                <span class="filter-chip">Incluye inactivos</span>
+            {% endif %}
+
+            {% if incluir_ninos %}
+                <span class="filter-chip">Incluye niños</span>
+            {% endif %}
         </div>
+    {% endif %}
 
-        {# Fila 4: Checkboxes especiales #}
-        <div class="form-field form-field-full" style="font-size:12px;">
-            <div style="display:flex; flex-wrap:wrap; gap:12px;">
-
-                <!-- Solo con contacto -->
-                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                    <input
-                        type="checkbox"
-                        name="tiene_contacto"
-                        value="1"
-                        {% if tiene_contacto %}checked{% endif %}
-                    >
-                    Solo con contacto
-                </label>
-
-                <!-- Mostrar todos (incluye inactivos) -->
-                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                    <input
-                        type="checkbox"
-                        name="mostrar_todos"
-                        value="1"
-                        {% if mostrar_todos %}checked{% endif %}
-                    >
-                    Mostrar todos (incluye inactivos)
-                </label>
-
-                <!-- Incluir niños -->
-                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                    <input
-                        type="checkbox"
-                        name="incluir_ninos"
-                        value="1"
-                        {% if incluir_ninos %}checked{% endif %}
-                    >
-                    Incluir niños (menores de 12 años)
-                </label>
-
-            </div>
-        </div>
 
         <!-- Acciones -->
         <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
@@ -578,6 +639,186 @@ Miembros / Reportes / Listado general
         z-index: 1;
     }
 }
+    /* ====== Filtros profesionales ====== */
+
+    .filters-card {
+        background: #f9fafb;
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .filters-main-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .form-field-grow {
+        flex: 2 1 220px;
+    }
+
+    .filters-main-row .form-field {
+        flex: 1 1 150px;
+        min-width: 140px;
+    }
+
+    .filters-main-row label {
+        font-size: 12px;
+        color: #4b5563;
+        margin-bottom: 2px;
+        display: block;
+    }
+
+    .filters-main-row input[type="text"],
+    .filters-main-row select {
+        width: 100%;
+        font-size: 13px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+    }
+
+    .filters-actions {
+        display: flex;
+        align-items: flex-end;
+        margin-left: auto;
+    }
+
+    .filters-actions .btn-secondary {
+        white-space: nowrap;
+    }
+
+    /* Filtros avanzados (details/summary) */
+    .filters-advanced {
+        margin-top: 8px;
+        border-top: 1px dashed #e5e7eb;
+        padding-top: 8px;
+        font-size: 13px;
+    }
+
+    .filters-advanced summary {
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        color: #4b5563;
+        font-weight: 500;
+    }
+
+    .filters-advanced summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .summary-icon {
+        font-size: 14px;
+    }
+
+    .summary-hint {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-left: 4px;
+    }
+
+    .filters-advanced-body {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .advanced-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .advanced-block {
+        min-width: 220px;
+    }
+
+    .edad-range-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .edad-range-row input[type="number"] {
+        width: 80px;
+        padding: 4px 6px;
+        font-size: 13px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+    }
+
+    .edad-sep {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .hint-text {
+        font-size: 11px;
+        color: #6b7280;
+        margin-top: 3px;
+    }
+
+    .checkbox-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #4b5563;
+        cursor: pointer;
+    }
+
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    /* Chips filtros activos */
+    .filters-tags {
+        margin-bottom: 10px;
+        font-size: 11px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .filters-tags-label {
+        font-weight: 600;
+        color: #4b5563;
+        margin-right: 4px;
+    }
+
+    .filter-chip {
+        background: #eef2ff;
+        color: #3730a3;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid #e0e7ff;
+    }
+
+    @media (max-width: 640px) {
+        .filters-main-row {
+            flex-direction: column;
+        }
+
+        .filters-actions {
+            margin-left: 0;
+            justify-content: flex-start;
+        }
+    }
 
 
 </style>
