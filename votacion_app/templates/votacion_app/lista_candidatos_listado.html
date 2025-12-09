@@ -64,6 +64,8 @@
                             <th class="th-status">Estado</th>
                             <th class="th-updated">Última actualización</th>
                             <th class="col-center th-actions">Acciones</th>
+
+
                         </tr>
                     </thead>
                     <tbody>
@@ -121,14 +123,19 @@
                                             <span class="cell-date-main">
                                                 {{ l.fecha_confirmacion|date:"d/m/Y H:i" }}
                                             </span>
-                                            <span class="table-subtext">
-                                                Última confirmación
-                                            </span>
+                                            <span class="table-subtext">Confirmada</span>
                                         </div>
                                     {% else %}
-                                        <span class="table-subtext">Sin confirmar</span>
+                                        <div class="cell-date">
+                                            <span class="cell-date-main">
+                                                {{ l.creada_el|date:"d/m/Y H:i" }}
+                                            </span>
+                                            <span class="table-subtext">Creada</span>
+                                        </div>
                                     {% endif %}
                                 </td>
+
+
 
                                 <!-- Acciones -->
                                 <td class="col-center">
@@ -149,6 +156,34 @@
                                                target="_blank">
                                                 <span class="material-icons" aria-hidden="true">print</span>
                                             </a>
+                                            <!-- Aprobar / confirmar lista -->
+                                            {% if l.estado != "CONFIRMADA" %}
+                                            <form method="post"
+                                                action="{% url 'votacion:lista_candidatos_cambiar_estado' l.pk %}"
+                                                style="display:inline-block;"
+                                                onsubmit="return confirm('¿Quieres aprobar esta lista? Después de confirmarla no se podrá editar (a menos que la vuelvas a borrador en el futuro).');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="accion" value="confirmar">
+                                                <button type="submit"
+                                                        class="btn-success btn-icon-only btn-icon-soft"
+                                                        title="Aprobar lista">
+                                                    <span class="material-icons" aria-hidden="true">task_alt</span>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+
+                                            <!-- Eliminar lista -->
+                                            <form method="post"
+                                                action="{% url 'votacion:lista_candidatos_eliminar' l.pk %}"
+                                                style="display:inline-block;"
+                                                onsubmit="return confirm('¿Seguro que deseas eliminar esta lista? Esta acción no se puede deshacer.');">
+                                                {% csrf_token %}
+                                                <button type="submit"
+                                                        class="btn-danger btn-icon-only btn-icon-soft"
+                                                        title="Eliminar lista">
+                                                    <span class="material-icons" aria-hidden="true">delete</span>
+                                                </button>
+                                            </form>
 
                                         </div>
                                     {% else %}
