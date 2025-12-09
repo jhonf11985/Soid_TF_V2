@@ -9,7 +9,7 @@ class VotacionForm(forms.ModelForm):
             "nombre",
             "descripcion",
             "tipo",
-            "estado",
+           
             "regla_ganador",
             "numero_cargos",
             "edad_minima_candidato",

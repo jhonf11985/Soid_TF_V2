@@ -64,22 +64,65 @@
     <div class="votacion-card">
 
         <!-- ENCABEZADO INTERNO -->
-        <div class="votacion-card-header">
-            <div>
-                <h2>Ficha de configuración</h2>
-                <p class="votacion-card-subtitle">
-                    Ajusta primero la configuración general. Luego revisa quórum, fechas y vueltas.
-                </p>
-            </div>
+<div class="votacion-card-header">
+    <div>
+        <h2>Ficha de configuración</h2>
+        <p class="votacion-card-subtitle">
+            Ajusta primero la configuración general. Luego revisa quórum, fechas y vueltas.
+        </p>
+    </div>
+
+    {% if votacion %}
+        <div class="estado-wrapper">
+            <!-- PILL SOLO LECTURA DEL ESTADO -->
             <div class="votacion-status-pill">
-                <span class="status-dot"></span>
-                {% if es_nueva %}
-                    Nueva elección
-                {% else %}
-                    Editando: {{ votacion.nombre|default:"Elección" }}
+                <span class="status-dot
+                    {% if votacion.estado == 'ABIERTA' %} status-open
+                    {% elif votacion.estado == 'CERRADA' %} status-closed
+                    {% else %} status-draft
+                    {% endif %}
+                "></span>
+                {{ votacion.get_estado_display }}
+            </div>
+
+            <!-- BOTONES DE CAMBIO DE ESTADO -->
+            <div class="estado-actions">
+                {% if votacion.estado == 'BORRADOR' %}
+                    <form method="post" action="{% url 'votacion:cambiar_estado' votacion.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="nuevo_estado" value="ABIERTA">
+                        <button type="submit" class="btn-secondary btn-xs">
+                            Abrir votación
+                        </button>
+                    </form>
+                {% elif votacion.estado == 'ABIERTA' %}
+                    <form method="post" action="{% url 'votacion:cambiar_estado' votacion.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="nuevo_estado" value="CERRADA">
+                        <button type="submit" class="btn-secondary btn-xs">
+                            Cerrar votación
+                        </button>
+                    </form>
+                {% elif votacion.estado == 'CERRADA' %}
+                    <form method="post" action="{% url 'votacion:cambiar_estado' votacion.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="nuevo_estado" value="BORRADOR">
+                        <button type="submit" class="btn-secondary btn-xs">
+                            Volver a borrador
+                        </button>
+                    </form>
                 {% endif %}
             </div>
         </div>
+    {% else %}
+        <!-- Cuando aún no existe (creación) -->
+        <div class="votacion-status-pill">
+            <span class="status-dot status-draft"></span>
+            Nueva (borrador)
+        </div>
+    {% endif %}
+</div>
+
 
         <!-- TABS -->
         <div class="votacion-tabs-bar">
@@ -152,26 +195,18 @@
                         <div class="form-section">
                             <h4 class="tab-subtitle">Datos básicos</h4>
                             <div class="form-grid">
-                                <div class="form-field form-field-full">
+                            <div class="form-grid grid-2">
+                                <div class="form-field">
                                     <label>Nombre de la elección</label>
                                     {{ form.nombre }}
                                 </div>
 
-                                <div class="form-field form-field-full">
-                                    <label>Descripción</label>
-                                    {{ form.descripcion }}
-                                </div>
-
                                 <div class="form-field">
-                                    <label>Tipo</label>
+                                    <label>Tipo de votación</label>
                                     {{ form.tipo }}
                                 </div>
+                            </div>
 
-                                <div class="form-field">
-                                    <label>Estado</label>
-                                    {{ form.estado }}
-                                    <div class="field-help">Borrador · Abierta · Cerrada</div>
-                                </div>
 
                                 <div class="form-field">
                                     <label for="id_regla_ganador" style="display:flex; align-items:center; gap:6px;">
@@ -208,108 +243,84 @@
                         </div>
                     </div>
 
-                    <!-- ========== TAB: QUÓRUM Y ASISTENCIA ========== -->
+                    <!-- ========== TAB: QUÓRUM Y ASISTENCIA (VERSIÓN SIMPLE) ========== -->
                     <div id="tab-quorum" class="votacion-tab-content" style="display:none;">
                         <h3 class="tab-title">Quórum y asistencia</h3>
                         <p class="tab-description">
-                            Aquí defines cuántas personas cuentan para la votación y qué mínimo de votos se necesita
-                            para que la elección sea válida.
+                            Indica cuántos pueden votar, cuántos están presentes y el mínimo de votos requeridos.
                         </p>
 
-                        <!-- PASOS VISUALES -->
-                        <ol class="quorum-steps">
-                            <li><strong>Paso 1:</strong> Revisa cuántos miembros tienen derecho a votar.</li>
-                            <li><strong>Paso 2:</strong> Escribe cuántos están presentes físicamente.</li>
-                            <li><strong>Paso 3:</strong> Elige la base, el tipo de quórum y su valor.</li>
-                        </ol>
+                        <div class="quorum-simple-grid">
 
-                        <div class="quorum-layout">
-                            <!-- COLUMNA IZQUIERDA: RESUMEN Y PRESENTES -->
-                            <div class="quorum-column">
-                                <div class="quorum-summary-card">
-                                    <div class="quorum-summary-header">
-                                        <span class="quorum-summary-title">Miembros con derecho a votar</span>
-                                        <span class="quorum-summary-badge">Calculado automáticamente</span>
-                                    </div>
-                                    <div class="quorum-summary-value">
-                                        {{ form.total_habilitados.value|default:"—" }}
-                                    </div>
-                                    <p class="quorum-summary-help">
-                                        Son los miembros oficiales activos que cumplen la edad mínima del sistema.
-                                        Este número no se edita aquí.
-                                    </p>
+                            <!-- TARJETA 1: HABILITADOS -->
+                            <div class="q-card q-card-highlight">
+                                <div class="q-card-label">Miembros con derecho a voto</div>
+                                <div class="q-card-value">
+                                    {{ form.total_habilitados.value|default:"—" }}
+                                </div>
+                                <div class="q-card-help">
+                                    Miembros oficiales activos que cumplen la edad mínima del sistema.
                                 </div>
 
                                 <!-- Campo real oculto para el POST -->
                                 <div style="display:none;">
                                     {{ form.total_habilitados }}
                                 </div>
+                            </div>
 
-                                <div class="form-section" style="margin-top: 16px;">
-                                    <h4 class="tab-subtitle">Asistencia del día</h4>
-                                    <div class="form-grid">
-                                        <div class="form-field">
-                                            <label>Miembros presentes (contados físicamente)</label>
-                                            {{ form.miembros_presentes }}
-                                            <div class="field-help">
-                                                Escribe cuántos de esos miembros habilitados están presentes hoy
-                                                en el local.
-                                            </div>
-                                        </div>
-                                    </div>
+                            <!-- TARJETA 2: PRESENTES -->
+                            <div class="q-card">
+                                <div class="q-card-label">Miembros presentes hoy</div>
+                                <div class="q-card-field">
+                                    {{ form.miembros_presentes }}
+                                </div>
+                                <div class="q-card-help">
+                                    Cuántos de los habilitados están físicamente presentes en el local.
                                 </div>
                             </div>
 
-                            <!-- COLUMNA DERECHA: CONFIGURACIÓN DE QUÓRUM -->
-                            <div class="quorum-column">
-                                <div class="form-section">
-                                    <h4 class="tab-subtitle">Cómo se calcula el quórum</h4>
-                                    <div class="form-grid">
-                                        <div class="form-field">
-                                            <label>Base para calcular el quórum</label>
-                                            {{ form.base_quorum }}
-                                            <div class="field-help">
-                                                <strong>Habilitados:</strong> usa a todos los que tienen derecho a voto.<br>
-                                                <strong>Presentes:</strong> usa sólo a los que están físicamente hoy.
-                                            </div>
-                                        </div>
+                            <!-- TARJETA 3: REGLA DE QUÓRUM -->
+                            <div class="q-card q-card-full">
+                                <div class="q-card-header-row">
+                                    <div class="q-card-title">Regla de quórum</div>
+                                    <div class="q-card-pill">Define la base y el mínimo requerido</div>
+                                </div>
 
-                                        <div class="form-field">
-                                            <label>Tipo de quórum</label>
-                                            {{ form.tipo_quorum }}
-                                            <div class="field-help" id="tipo-quorum-ayuda">
-                                                Si eliges <strong>Porcentaje</strong>, el valor se interpreta como %.
-                                                Si eliges <strong>Cantidad</strong>, el valor es número de personas.
-                                            </div>
-                                        </div>
-
-                                        <div class="form-field">
-                                            <label>Valor del quórum</label>
-                                            {{ form.valor_quorum }}
-                                            <div class="field-help" id="valor-quorum-ayuda">
-                                                Si el tipo es <strong>Porcentaje</strong>, escribe un número entre 1 y 100
-                                                (por ejemplo: 50 = 50%).<br>
-                                                Si el tipo es <strong>Cantidad</strong>, escribe cuántas personas como mínimo
-                                                deben votar (por ejemplo: 80).
-                                            </div>
-                                        </div>
-
-                                        <div class="form-field">
-                                            <label>Votos mínimos requeridos</label>
-                                            {{ form.votos_minimos_requeridos }}
-                                            <div class="field-help">
-                                                Este valor se calcula automáticamente al guardar, combinando la base,
-                                                el tipo y el valor de quórum. Indica cuántos votos mínimos se necesitan
-                                                para que la elección sea válida.
-                                            </div>
+                                <div class="q-card-grid">
+                                    <div class="form-field">
+                                        <label>Base</label>
+                                        {{ form.base_quorum }}
+                                        <div class="field-help">
+                                            Habilitados = todos los que pueden votar.  
+                                            Presentes = solo los que están hoy.
                                         </div>
                                     </div>
 
-                                    <div class="quorum-hint-box">
-                                        <strong>Ejemplo rápido:</strong><br>
-                                        Si tienes 100 miembros con derecho a voto, eliges base
-                                        <em>Habilitados</em>, tipo <em>Porcentaje</em> y valor <em>50</em>, el sistema
-                                        exigirá al menos <strong>50 votos</strong> para validar la elección.
+                                    <div class="form-field">
+                                        <label>Tipo</label>
+                                        {{ form.tipo_quorum }}
+                                        <div class="field-help">
+                                            Porcentaje o cantidad fija de personas.
+                                        </div>
+                                    </div>
+
+                                    <div class="form-field">
+                                        <label>Valor</label>
+                                        {{ form.valor_quorum }}
+                                        <div class="field-help">
+                                            Si es porcentaje, número entre 1 y 100.  
+                                            Si es cantidad, cuántas personas mínimo.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="q-card-result-row">
+                                    <div class="q-card-result-label">Votos mínimos requeridos</div>
+                                    <div class="q-card-result-field">
+                                        {{ form.votos_minimos_requeridos }}
+                                    </div>
+                                    <div class="q-card-result-help">
+                                        El sistema calculará aquí el mínimo de votos según la base y el valor configurados.
                                     </div>
                                 </div>
                             </div>
@@ -791,6 +802,116 @@
         font-weight: 600;
     }
 
+    /* --- QUÓRUM SIMPLE --- */
+    .quorum-simple-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
+        grid-auto-rows: 1fr;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .q-card {
+        background: #f9fafb;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        padding: 10px 12px;
+        font-size: 12px;
+        color: #4b5563;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .q-card-highlight {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .q-card-full {
+        grid-column: 1 / -1;
+    }
+
+    .q-card-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .q-card-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1.1;
+    }
+
+    .q-card-field input,
+    .q-card-field select,
+    .q-card-grid select,
+    .q-card-grid input {
+        width: 100%;
+    }
+
+    .q-card-help {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    .q-card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .q-card-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .q-card-pill {
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #4338ca;
+        border: 1px solid #e0e7ff;
+        white-space: nowrap;
+    }
+
+    .q-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 4px;
+    }
+
+    .q-card-result-row {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px dashed #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .q-card-result-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .q-card-result-field input {
+        width: 160px;
+        max-width: 100%;
+    }
+
+    .q-card-result-help {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
     /* Responsive */
     @media (max-width: 900px) {
         .votacion-layout {
@@ -814,52 +935,55 @@
             flex-direction: column;
             align-items: stretch;
         }
+
+        .quorum-simple-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .q-card-full {
+            grid-column: 1 / 2;
+        }
     }
 
-    .quorum-summary-card {
-        margin-bottom: 14px;
-        padding: 10px 12px;
-        border-radius: 12px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-    }
+    .estado-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
 
-    .quorum-summary-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 6px;
-    }
+.estado-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
 
-    .quorum-summary-title {
-        font-size: 12px;
-        font-weight: 600;
-        color: #111827;
-    }
+.btn-xs {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 999px;
+}
 
-    .quorum-summary-badge {
-        font-size: 10px;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: #eff6ff;
-        color: #1d4ed8;
-        border: 1px solid #bfdbfe;
-        white-space: nowrap;
-    }
+/* Colores según estado */
+.status-dot.status-open {
+    background: #22c55e; /* verde */
+}
 
-    .quorum-summary-value {
-        font-size: 22px;
-        font-weight: 700;
-        color: #111827;
-        line-height: 1.2;
-    }
+.status-dot.status-closed {
+    background: #6b7280; /* gris */
+}
 
-    .quorum-summary-help {
-        margin: 4px 0 0;
-        font-size: 11px;
-        color: #6b7280;
-    }
+.status-dot.status-draft {
+    background: #f59e0b; /* naranja */
+}
+.form-grid.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+
 </style>
 
 {% endblock %}

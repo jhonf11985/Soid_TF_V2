@@ -93,6 +93,9 @@ path(
     views.lista_candidatos_duplicar,
     name="lista_candidatos_duplicar",
 ),
+    path("votacion/<int:pk>/cambiar-estado/",
+     views.cambiar_estado_votacion,
+     name="cambiar_estado"),
 
 
 

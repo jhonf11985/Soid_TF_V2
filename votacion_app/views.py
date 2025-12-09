@@ -1658,3 +1658,48 @@ def lista_candidatos_duplicar(request, pk):
     )
 
     return redirect("votacion:lista_candidatos_configurar", pk=nueva_lista.pk)
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.http import require_POST
+
+@require_POST
+def cambiar_estado_votacion(request, pk):
+    votacion = get_object_or_404(Votacion, pk=pk)
+    nuevo_estado = request.POST.get("nuevo_estado")
+
+    # Opcional: reglas de negocio
+    # - No abrir si no tiene quórum configurado
+    # - No abrir si no hay rondas creadas
+    # - etc.
+
+    estados_validos = {"BORRADOR", "ABIERTA", "CERRADA"}
+    if nuevo_estado not in estados_validos:
+        messages.error(request, "Estado no válido.")
+        return redirect("votacion:configurar_votacion", pk=votacion.pk)
+
+    votacion.estado = nuevo_estado
+    votacion.save()
+    messages.success(request, f"Estado actualizado a {votacion.get_estado_display()}.")
+
+    return redirect("votacion:configurar_votacion", pk=votacion.pk)
+
+@require_POST
+def cambiar_estado_votacion(request, pk):
+    votacion = get_object_or_404(Votacion, pk=pk)
+    nuevo_estado = request.POST.get("nuevo_estado")
+
+    # Opcional: reglas de negocio
+    # - No abrir si no tiene quórum configurado
+    # - No abrir si no hay rondas creadas
+    # - etc.
+
+    estados_validos = {"BORRADOR", "ABIERTA", "CERRADA"}
+    if nuevo_estado not in estados_validos:
+        messages.error(request, "Estado no válido.")
+        return redirect("votacion:configurar_votacion", pk=votacion.pk)
+
+    votacion.estado = nuevo_estado
+    votacion.save()
+    messages.success(request, f"Estado actualizado a {votacion.get_estado_display()}.")
+
+    return redirect("votacion:configurar_votacion", pk=votacion.pk)
