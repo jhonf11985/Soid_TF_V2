@@ -148,7 +148,7 @@
             {% if lista %}
                 {% if lista.estado == 'BORRADOR' %}
                     <!-- Formulario para agregar miembro por código -->
-                    <form method="post" class="lcg-inline-form no-print">
+                    <form method="post" class="lcg-inline-form no-print" data-confirm-agregar="true">
                         {% csrf_token %}
                         <input type="hidden" name="accion" value="agregar_miembro">
 
@@ -671,5 +671,238 @@
         }
     }
 </style>
+
+
+<!-- Modal de confirmación para agregar candidato -->
+<div id="confirm-agregar-modal" class="lcg-modal-backdrop">
+  <div class="lcg-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-agregar-titulo">
+    <div class="lcg-modal-header">
+      <h3 id="confirm-agregar-titulo">Confirmar candidato</h3>
+      <button type="button" class="lcg-modal-close" id="confirm-agregar-cerrar" aria-label="Cerrar">
+        <span class="material-icons" aria-hidden="true">close</span>
+      </button>
+    </div>
+    <div class="lcg-modal-body">
+      <p class="lcg-modal-text">
+        ¿Deseas añadir a la lista al siguiente miembro?
+      </p>
+      <div class="lcg-modal-member">
+        <div class="lcg-modal-member-main">
+          <span class="lcg-modal-member-name" id="confirm-agregar-nombre"></span>
+          <span class="lcg-modal-member-code">
+            Código: <strong id="confirm-agregar-codigo"></strong>
+          </span>
+        </div>
+      </div>
+      <p class="lcg-modal-subtext" id="confirm-agregar-detalle">
+        Si confirmas, el sistema añadirá este miembro a la lista
+        si todavía cumple las condiciones (activo, edad mínima, etc.).
+      </p>
+    </div>
+    <div class="lcg-modal-footer">
+      <button type="button" class="btn-secondary btn-sm" id="confirm-agregar-cancelar">
+        Cancelar
+      </button>
+      <button type="button" class="btn-primary btn-sm" id="confirm-agregar-aceptar">
+        Sí, añadir
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.lcg-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.lcg-modal-backdrop.is-visible {
+  display: flex;
+}
+
+.lcg-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 14px 16px 12px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.lcg-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.lcg-modal-header h3 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.lcg-modal-close {
+  border: none;
+  background: transparent;
+  padding: 4px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lcg-modal-close .material-icons {
+  font-size: 18px;
+}
+
+.lcg-modal-body {
+  margin-bottom: 10px;
+}
+
+.lcg-modal-text {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+}
+
+.lcg-modal-subtext {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.lcg-modal-member {
+  margin-top: 6px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  background: var(--lcg-gray-50);
+  border: 1px solid var(--lcg-gray-100);
+}
+
+.lcg-modal-member-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lcg-modal-member-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--lcg-gray-800);
+}
+
+.lcg-modal-member-code {
+  font-size: 0.8rem;
+  color: var(--lcg-gray-500);
+}
+
+.lcg-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var modal = document.getElementById("confirm-agregar-modal");
+  if (!modal) return;
+
+  var spanCodigo  = document.getElementById("confirm-agregar-codigo");
+  var spanNombre  = document.getElementById("confirm-agregar-nombre");
+  var btnCancelar = document.getElementById("confirm-agregar-cancelar");
+  var btnAceptar  = document.getElementById("confirm-agregar-aceptar");
+  var btnCerrar   = document.getElementById("confirm-agregar-cerrar");
+  var pendingForm = null;
+
+  function cerrarModal() {
+    modal.classList.remove("is-visible");
+    pendingForm = null;
+  }
+
+  async function buscarMiembroPorCodigo(codigoRaw) {
+    var url = "{% url 'votacion:lista_candidatos_buscar_miembro' %}";
+    var params = new URLSearchParams({codigo: codigoRaw || ""});
+    var resp = await fetch(url + "?" + params.toString(), {
+      headers: {
+        "X-Requested-With": "XMLHttpRequest"
+      }
+    });
+    if (!resp.ok) {
+      throw new Error("Error de red al buscar el miembro");
+    }
+    return await resp.json();
+  }
+
+  document.addEventListener("submit", function (evt) {
+    var form = evt.target;
+    if (form.matches('[data-confirm-agregar="true"]')) {
+      evt.preventDefault();
+      var input = form.querySelector('input[name="codigo_sufijo"]');
+      var codigo = input && input.value ? input.value.trim() : "";
+
+      if (!codigo) {
+        alert("Debes introducir un código de miembro.");
+        return;
+      }
+
+      // Llamamos al endpoint AJAX para obtener nombre + código normalizado
+      buscarMiembroPorCodigo(codigo)
+        .then(function (data) {
+          if (!data.ok) {
+            alert(data.error || "No se pudo localizar el miembro.");
+            return;
+          }
+
+          // Rellenamos el modal con nombre + código
+          if (spanNombre) spanNombre.textContent = data.nombre || "";
+          if (spanCodigo) spanCodigo.textContent = data.codigo || codigo;
+
+          pendingForm = form;
+          modal.classList.add("is-visible");
+        })
+        .catch(function (err) {
+          console.error(err);
+          alert("Ocurrió un error al buscar el miembro.");
+        });
+    }
+  });
+
+  if (btnCancelar) {
+    btnCancelar.addEventListener("click", function () {
+      cerrarModal();
+    });
+  }
+  if (btnCerrar) {
+    btnCerrar.addEventListener("click", function () {
+      cerrarModal();
+    });
+  }
+  if (btnAceptar) {
+    btnAceptar.addEventListener("click", function () {
+      if (pendingForm) {
+        var form = pendingForm;
+        cerrarModal();
+        form.submit();   // aquí ya entra al view y lo agrega de verdad
+      }
+    });
+  }
+
+  modal.addEventListener("click", function (evt) {
+    if (evt.target === modal) {
+      cerrarModal();
+    }
+  });
+});
+</script>
+
 
 {% endblock %}

@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.http import HttpResponseRedirect
 import math
 from django.utils import timezone
+from django.http import JsonResponse
 
 from miembros_app.models import Miembro
 from .models import Votacion, Ronda, Candidato, Voto,  ListaCandidatos, ListaCandidatosItem
@@ -1147,17 +1148,19 @@ def pantalla_votacion(request, pk):
         "total_votos": total_votos,
     }
     return render(request, "votacion_app/pantalla_votacion.html", contexto)
+
+
 @login_required
 def lista_candidatos_configurar(request, pk=None):
     """
     Crear o editar una lista previa de candidatos.
-    - En estado BORRADOR se pueden añadir y quitar miembros.
-    - En estado CONFIRMADA ya no se puede editar.
-    Solo las listas CONFIRMADAS se podrán cargar en una votación.
-    Además:
-    - Si la lista es nueva (pk=None), se sugiere un código automático.
-    - Si al guardar el código está vacío, se genera uno automáticamente.
+    - En BORRADOR se pueden añadir y quitar miembros.
+    - En CONFIRMADA ya no se puede editar.
     """
+
+    # ============================
+    # Cargar lista (si existe)
+    # ============================
     if pk:
         lista = get_object_or_404(ListaCandidatos, pk=pk)
     else:
@@ -1168,31 +1171,33 @@ def lista_candidatos_configurar(request, pk=None):
     else:
         titulo = "Nueva lista de candidatos"
 
-    # Formularios por defecto (GET o si no se procesa ninguna acción)
+    # Formularios por defecto (GET)
     if lista:
         form = ListaCandidatosForm(instance=lista)
     else:
-        # Sugerimos un código automático para la nueva lista
+        # si usas otro helper de código, cámbialo aquí
         form = ListaCandidatosForm(
             initial={"codigo_lista": generar_codigo_lista("LD")}
         )
     agregar_form = ListaCandidatosAgregarMiembroForm()
 
+    # ============================
+    # POST: procesar acciones
+    # ============================
     if request.method == "POST":
         accion = request.POST.get("accion")
 
-        # 1) Guardar datos de la lista (nombre, código, descripción, etc.)
+        # 1) Guardar datos básicos de la lista
         if accion in ("guardar", "guardar_seguir"):
             form = ListaCandidatosForm(request.POST, instance=lista)
-
             if form.is_valid():
                 lista = form.save(commit=False)
 
-                # Si es nueva lista o no tiene código, generamos uno
+                # Si es nueva o no tiene código, generamos uno
                 if not lista.codigo_lista:
                     lista.codigo_lista = generar_codigo_lista("LD")
 
-                # Por seguridad, si no tiene estado, lo dejamos en BORRADOR
+                # Estado por defecto
                 if not lista.estado:
                     lista.estado = ListaCandidatos.ESTADO_BORRADOR
 
@@ -1203,16 +1208,13 @@ def lista_candidatos_configurar(request, pk=None):
                 )
 
                 if accion == "guardar_seguir":
-                    # Volvemos a la misma pantalla para seguir añadiendo miembros
                     return redirect(
                         "votacion:lista_candidatos_configurar",
                         pk=lista.pk,
                     )
-                else:
-                    # Volvemos al listado general
-                    return redirect("votacion:lista_candidatos_listado")
+                return redirect("votacion:lista_candidatos_listado")
 
-        # 2) Agregar miembro por código (solo si ya existe la lista y está en BORRADOR)
+        # 2) Agregar miembro (el modal solo confirma en el front)
         elif accion == "agregar_miembro" and lista:
             form = ListaCandidatosForm(instance=lista)
             agregar_form = ListaCandidatosAgregarMiembroForm(request.POST)
@@ -1235,52 +1237,38 @@ def lista_candidatos_configurar(request, pk=None):
                         "Debes introducir el número o el código del miembro.",
                     )
                 else:
-                    # Normalizamos igual que en la selección de candidatos
+                    # Normalizar código, ej: TF-0001
                     sufijo_upper = sufijo.upper()
                     if sufijo_upper.startswith("TF-"):
                         codigo_busqueda = sufijo_upper
                     else:
                         limpio = (
-                            sufijo_upper.replace("TF", "").replace("-", "").strip()
+                            sufijo_upper.replace("TF", "")
+                            .replace("-", "")
+                            .strip()
                         )
                         limpio = limpio.zfill(4)
                         codigo_busqueda = f"TF-{limpio}"
 
-                    try:
-                        miembro = Miembro.objects.get(
-                            codigo_miembro__iexact=codigo_busqueda
-                        )
-                    except Miembro.DoesNotExist:
+                    miembro = Miembro.objects.filter(
+                        codigo_miembro__iexact=codigo_busqueda
+                    ).first()
+
+                    if not miembro:
                         messages.error(
                             request,
                             f"No se encontró ningún miembro con el código {codigo_busqueda}.",
                         )
                     else:
-                        # ==========================
-                        # VALIDACIONES ESPECÍFICAS
-                        # ==========================
-
-                        # 1) Debe estar activo en el sistema (flag activo=True si existe)
-                        if hasattr(miembro, "activo") and not miembro.activo:
+                        # -------- VALIDACIONES ----------
+                        # Estado ACTIVO o PASIVO
+                        if miembro.estado_miembro not in ("activo", "pasivo"):
                             messages.error(
                                 request,
-                                "Este miembro está marcado como inactivo en el sistema "
-                                "y no puede añadirse a la lista.",
+                                "Solo se pueden añadir a la lista miembros con estado ACTIVO o PASIVO.",
                             )
-
-                        # 2) Debe tener estado_miembro ACTIVO o PASIVO
-                        elif (
-                            not miembro.estado_miembro
-                            or miembro.estado_miembro not in ("activo", "pasivo")
-                        ):
-                            messages.error(
-                                request,
-                                "Solo se pueden añadir a la lista miembros con estado "
-                                "ACTIVO o PASIVO.",
-                            )
-
                         else:
-                            # 3) Debe cumplir la edad mínima configurada
+                            # Edad mínima
                             edad_minima = get_edad_minima_miembro_oficial()
                             fn = getattr(miembro, "fecha_nacimiento", None)
                             edad = None
@@ -1303,7 +1291,7 @@ def lista_candidatos_configurar(request, pk=None):
                                     f"no alcanza la edad mínima de {edad_minima} años.",
                                 )
                             else:
-                                # Evitar duplicados en la lista
+                                # Duplicados
                                 ya_existe = ListaCandidatosItem.objects.filter(
                                     lista=lista,
                                     miembro=miembro,
@@ -1314,6 +1302,7 @@ def lista_candidatos_configurar(request, pk=None):
                                         f"El miembro {miembro} ya está en esta lista.",
                                     )
                                 else:
+                                    # ✅ AQUÍ SÍ SE AGREGA
                                     ListaCandidatosItem.objects.create(
                                         lista=lista,
                                         miembro=miembro,
@@ -1322,6 +1311,12 @@ def lista_candidatos_configurar(request, pk=None):
                                         request,
                                         f"Se ha añadido a «{miembro}» a la lista.",
                                     )
+
+            # Siempre volvemos a la misma pantalla
+            return redirect(
+                "votacion:lista_candidatos_configurar",
+                pk=lista.pk,
+            )
 
         # 3) Eliminar un miembro de la lista
         elif accion == "eliminar_item" and lista:
@@ -1353,8 +1348,12 @@ def lista_candidatos_configurar(request, pk=None):
                     request,
                     "No se ha podido identificar el elemento a eliminar.",
                 )
+            return redirect(
+                "votacion:lista_candidatos_configurar",
+                pk=lista.pk,
+            )
 
-        # 4) Confirmar la lista (pasar de BORRADOR a CONFIRMADA)
+        # 4) Confirmar la lista (BORRADOR → CONFIRMADA)
         elif accion == "confirmar_lista" and lista:
             form = ListaCandidatosForm(instance=lista)
             agregar_form = ListaCandidatosAgregarMiembroForm()
@@ -1372,8 +1371,7 @@ def lista_candidatos_configurar(request, pk=None):
             if not lista.items.exists():
                 messages.error(
                     request,
-                    "No puedes confirmar una lista vacía. "
-                    "Añade al menos un miembro.",
+                    "No puedes confirmar una lista vacía. Añade al menos un miembro.",
                 )
             else:
                 lista.estado = ListaCandidatos.ESTADO_CONFIRMADA
@@ -1383,16 +1381,17 @@ def lista_candidatos_configurar(request, pk=None):
                     request,
                     "La lista ha sido confirmada correctamente.",
                 )
-                return redirect(
-                    "votacion:lista_candidatos_configurar",
-                    pk=lista.pk,
-                )
+            return redirect(
+                "votacion:lista_candidatos_configurar",
+                pk=lista.pk,
+            )
 
-    # Siempre recargamos los items (tanto en GET como en POST con errores)
+    # ============================
+    # Cargar items para la tabla
+    # ============================
     if lista:
         items = (
-            ListaCandidatosItem.objects
-            .filter(lista=lista)
+            ListaCandidatosItem.objects.filter(lista=lista)
             .select_related("miembro")
             .order_by("orden", "miembro__apellidos", "miembro__nombres")
         )
@@ -1411,6 +1410,67 @@ def lista_candidatos_configurar(request, pk=None):
         "votacion_app/lista_candidatos_configuracion.html",
         contexto,
     )
+@login_required
+def lista_candidatos_buscar_miembro(request):
+    """
+    Endpoint AJAX para buscar un miembro por código, validar
+    y devolver nombre + código normalizado.
+    NO agrega nada, solo sirve para el modal.
+    """
+    codigo = request.GET.get("codigo", "").strip()
+
+    if not codigo:
+        return JsonResponse({"ok": False, "error": "Debes introducir un código."})
+
+    # Normalizar igual que en lista_candidatos_configurar
+    sufijo_upper = codigo.upper()
+    if sufijo_upper.startswith("TF-"):
+        codigo_busqueda = sufijo_upper
+    else:
+        limpio = sufijo_upper.replace("TF", "").replace("-", "").strip()
+        limpio = limpio.zfill(4)
+        codigo_busqueda = f"TF-{limpio}"
+
+    miembro = Miembro.objects.filter(codigo_miembro__iexact=codigo_busqueda).first()
+    if not miembro:
+        return JsonResponse({
+            "ok": False,
+            "error": f"No se encontró ningún miembro con el código {codigo_busqueda}."
+        })
+
+    # Validaciones básicas (las mismas que al agregar)
+    if miembro.estado_miembro not in ("activo", "pasivo"):
+        return JsonResponse({
+            "ok": False,
+            "error": "Solo se pueden añadir miembros con estado ACTIVO o PASIVO."
+        })
+
+    edad_minima = get_edad_minima_miembro_oficial()
+    fn = getattr(miembro, "fecha_nacimiento", None)
+    edad = None
+    if fn:
+        hoy = date.today()
+        edad = hoy.year - fn.year - ((hoy.month, hoy.day) < (fn.month, fn.day))
+
+    if edad is None:
+        return JsonResponse({
+            "ok": False,
+            "error": "El miembro no tiene fecha de nacimiento registrada."
+        })
+
+    if edad < edad_minima:
+        return JsonResponse({
+            "ok": False,
+            "error": f"Este miembro aún no alcanza la edad mínima de {edad_minima} años."
+        })
+
+    # Si todo está ok devolvemos nombre + código normalizado
+    return JsonResponse({
+        "ok": True,
+        "nombre": str(miembro),
+        "codigo": miembro.codigo_miembro,
+    })
+
 
 @login_required
 def lista_candidatos_nueva(request):

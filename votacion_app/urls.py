@@ -82,5 +82,9 @@ path(
     views.reporte_lista_candidatos,
     name="lista_candidatos_reporte"
 ),
-
+    path(
+        "listas/api/buscar-miembro/",
+        views.lista_candidatos_buscar_miembro,
+        name="lista_candidatos_buscar_miembro",
+    ),
 ]
