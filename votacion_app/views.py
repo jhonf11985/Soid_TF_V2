@@ -1414,19 +1414,17 @@ def lista_candidatos_configurar(request, pk=None):
 def lista_candidatos_buscar_miembro(request):
     """
     Endpoint AJAX para buscar un miembro por código, validar
-    y devolver nombre + código normalizado.
+    y devolver nombre + código normalizado + id.
     NO agrega nada, solo sirve para el modal.
     """
     codigo = request.GET.get("codigo", "").strip()
 
+    # Si no hay código, devolvemos error (el JS ya también valida esto)
     if not codigo:
         return JsonResponse({
-        "ok": True, 
-        "id": miembro.id,
-        "nombre": str(miembro),
-        "codigo": miembro.codigo_miembro,
-    })
-
+            "ok": False,
+            "error": "Debes introducir un código de miembro."
+        })
 
     # Normalizar igual que en lista_candidatos_configurar
     sufijo_upper = codigo.upper()
@@ -1437,7 +1435,10 @@ def lista_candidatos_buscar_miembro(request):
         limpio = limpio.zfill(4)
         codigo_busqueda = f"TF-{limpio}"
 
-    miembro = Miembro.objects.filter(codigo_miembro__iexact=codigo_busqueda).first()
+    miembro = Miembro.objects.filter(
+        codigo_miembro__iexact=codigo_busqueda
+    ).first()
+
     if not miembro:
         return JsonResponse({
             "ok": False,
@@ -1470,12 +1471,14 @@ def lista_candidatos_buscar_miembro(request):
             "error": f"Este miembro aún no alcanza la edad mínima de {edad_minima} años."
         })
 
-    # Si todo está ok devolvemos nombre + código normalizado
+    # Si todo está ok devolvemos nombre + código + id
     return JsonResponse({
         "ok": True,
+        "id": miembro.id,
         "nombre": str(miembro),
         "codigo": miembro.codigo_miembro,
     })
+
 
 
 @login_required
