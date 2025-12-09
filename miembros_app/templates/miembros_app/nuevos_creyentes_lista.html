@@ -11,171 +11,170 @@ Miembros / Nuevos creyentes / Lista
 <section class="page-header no-print">
     <div>
         <h1 class="page-title">Nuevos creyentes</h1>
-        <p class="page-subtitle">
-            
-        </p>
     </div>
-<div class="page-header-actions">
+    <div class="page-header-actions">
 
-    <!-- Imprimir -->
-    <button type="button" class="btn-secondary" onclick="window.print()">
-        <span class="material-icons" style="font-size:16px;">print</span>
-        Imprimir
-    </button>
+        <!-- Imprimir -->
+        <button type="button" class="btn-secondary" onclick="window.print()">
+            <span class="material-icons" style="font-size:16px;">print</span>
+            Imprimir
+        </button>
 
-    <!-- Enviar por correo (misma apariencia que imprimir) -->
-    <a href="{% url 'miembros_app:nuevos_creyentes_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-       class="btn-secondary"
-       style="display:inline-flex; align-items:center; gap:4px;">
-        <span class="material-icons" style="font-size:16px;">mail</span>
-        Enviar
-    </a>
+        <!-- Enviar por correo -->
+        <a href="{% url 'miembros_app:nuevos_creyentes_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+           class="btn-secondary"
+           style="display:inline-flex; align-items:center; gap:4px;">
+            <span class="material-icons" style="font-size:16px;">mail</span>
+            Enviar
+        </a>
 
+        <!-- Registrar nuevo creyente -->
         <a href="{% url 'miembros_app:nuevo_creyente_crear' %}" class="btn-primary btn-accion">
             <span class="material-icons">person_add</span>
             Registrar
         </a>
 
-</div>
-
+    </div>
 </section>
+
 
 <section class="page-section">
 
-    {# 🔹 Encabezado institucional SOLO para impresión (igual que el de miembros) #}
-    <div class="only-print" style="text-align:center; margin-bottom:12px;">
-        {% if CFG.logo %}
-            <img src="{{ CFG.logo.url }}"
-                 alt="{{ CFG.nombre_iglesia|default:'Logo iglesia' }}"
-                 style="max-height:70px; margin-bottom:6px;">
-        {% endif %}
+    <!-- ================================
+             FILTROS PROFESIONALES
+       ================================ -->
+    <form method="get" class="filters-card no-print">
 
-        <h2 style="margin:0; font-size:18px; font-weight:700; letter-spacing:0.04em;">
-            {% if CFG.nombre_iglesia %}
-                {{ CFG.nombre_iglesia|upper }}
-            {% else %}
-                IGLESIA TORRE FUERTE
-            {% endif %}
-        </h2>
+        <div class="filters-main-row">
 
-        {% if CFG.denominacion %}
-            <div style="font-size:12px; color:#4b5563; margin-top:2px;">
-                {{ CFG.denominacion }}
+            <!-- Buscar -->
+            <div class="form-field form-field-grow">
+                <label for="id_q">Buscar</label>
+                <input
+                    id="id_q"
+                    type="text"
+                    name="q"
+                    placeholder="Nombre, apellido, teléfono o correo…"
+                    value="{{ query }}"
+                >
             </div>
-        {% endif %}
 
-        {% if CFG.lema %}
-            <div style="font-size:12px; color:#6b7280; margin-top:4px; font-style:italic;">
-                “{{ CFG.lema }}”
+            <!-- Género -->
+            <div class="form-field">
+                <label for="id_genero">Género</label>
+                <select id="id_genero" name="genero">
+                    <option value="">Todos</option>
+                    {% for value, label in generos_choices %}
+                        <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
-        {% endif %}
 
-        {% if CFG.direccion %}
-            <div style="font-size:11px; color:#6b7280; margin-top:4px;">
-                {{ CFG.direccion }}
+            <!-- Desde -->
+            <div class="form-field">
+                <label for="id_fecha_desde">Conversión desde</label>
+                <input
+                    id="id_fecha_desde"
+                    type="date"
+                    name="fecha_desde"
+                    value="{{ fecha_desde }}"
+                >
             </div>
-        {% endif %}
 
-        <div style="font-size:11px; color:#6b7280; margin-top:6px;">
-            Reporte: Nuevos creyentes · Fecha: {{ hoy|date:"d/m/Y" }}
-        </div>
+            <!-- Hasta -->
+            <div class="form-field">
+                <label for="id_fecha_hasta">Conversión hasta</label>
+                <input
+                    id="id_fecha_hasta"
+                    type="date"
+                    name="fecha_hasta"
+                    value="{{ fecha_hasta }}"
+                >
+            </div>
 
-        <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
-    </div>
-
-    <!-- FILTROS -->
-    <form method="get" class="form-grid no-print" style="margin-bottom: 12px; align-items: flex-end;">
-
-        <!-- Buscar (fila completa) -->
-        <div class="form-field form-field-full">
-            <label for="id_q">Buscar</label>
-            <input
-                id="id_q"
-                type="text"
-                name="q"
-                placeholder="Nombre, apellido, teléfono o correo…"
-                value="{{ query }}"
-            >
-        </div>
-
-        <!-- Segunda fila: género + fechas + solo contacto -->
-        <div class="form-field form-field-full">
-            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-
-                <!-- Género -->
-                <div style="min-width:160px; flex:1;">
-                    <label for="id_genero">Género</label>
-                    <select id="id_genero" name="genero">
-                        <option value="">Todos</option>
-                        {% for value, label in generos_choices %}
-                            <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Fecha desde -->
-                <div style="min-width:160px;">
-                    <label for="id_fecha_desde">Conversión desde</label>
+            <!-- Solo contacto -->
+            <div class="form-field form-field-checkbox">
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; margin:0;">
                     <input
-                        id="id_fecha_desde"
-                        type="date"
-                        name="fecha_desde"
-                        value="{{ fecha_desde }}"
+                        type="checkbox"
+                        name="solo_contacto"
+                        value="1"
+                        {% if solo_contacto %}checked{% endif %}
                     >
-                </div>
-
-                <!-- Fecha hasta -->
-                <div style="min-width:160px;">
-                    <label for="id_fecha_hasta">Conversión hasta</label>
-                    <input
-                        id="id_fecha_hasta"
-                        type="date"
-                        name="fecha_hasta"
-                        value="{{ fecha_hasta }}"
-                    >
-                </div>
-
-                <!-- Solo con contacto -->
-                <div style="font-size:12px; margin-top:4px;">
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input
-                            type="checkbox"
-                            name="solo_contacto"
-                            value="1"
-                            {% if solo_contacto %}checked{% endif %}
-                        >
-                        Solo quienes tienen datos de contacto
-                    </label>
-                </div>
-
+                    <span>Solo con contacto</span>
+                </label>
             </div>
 
-            <p style="font-size:11px; color:#6b7280; margin-top:4px;">
-                Si no seleccionas fechas, se mostrarán todos los nuevos creyentes registrados.
-            </p>
+            <!-- Botones -->
+            <div class="filters-actions">
+                <button type="submit" class="btn-secondary">
+                    <span class="material-icons" style="font-size:16px;">search</span>
+                    Buscar / Filtrar
+                </button>
+
+                <a href="{{ request.path }}"
+                   class="btn-secondary clear-btn-mini"
+                   style="margin-left:6px;">
+                    <span class="material-icons" style="font-size:14px;">close</span>
+                    Borrar
+                </a>
+            </div>
+
         </div>
 
-        <!-- Botones -->
-        <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
-            <button type="submit" class="btn-secondary">
-                <span class="material-icons" style="font-size:16px;">search</span>
-                Buscar / Filtrar
-            </button>
-        </div>
+        <p class="filters-help-text">
+            Si no seleccionas fechas, se mostrarán todos los nuevos creyentes registrados.
+        </p>
 
-        <!-- Resumen -->
-        <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
-            {% if miembros %}
-                {{ miembros|length }} registro{{ miembros|length|pluralize:"s" }} encontrados
-            {% else %}
-                No hay nuevos creyentes registrados aún.
-            {% endif %}
-        </div>
     </form>
 
-    <!-- TABLA -->
+
+    <!-- Chips de filtros activos -->
+    {% if query or genero_filtro or fecha_desde or fecha_hasta or solo_contacto %}
+        <div class="filters-tags no-print">
+            <span class="filters-tags-label">Filtros activos:</span>
+
+            {% if query %}
+                <span class="filter-chip">Búsqueda: “{{ query }}”</span>
+            {% endif %}
+
+            {% if genero_filtro %}
+                <span class="filter-chip">Género: {{ genero_filtro }}</span>
+            {% endif %}
+
+            {% if fecha_desde or fecha_hasta %}
+                <span class="filter-chip">
+                    Conversión:
+                    {% if fecha_desde %} desde {{ fecha_desde }}{% endif %}
+                    {% if fecha_desde and fecha_hasta %} · {% endif %}
+                    {% if fecha_hasta %} hasta {{ fecha_hasta }}{% endif %}
+                </span>
+            {% endif %}
+
+            {% if solo_contacto %}
+                <span class="filter-chip">Solo con contacto</span>
+            {% endif %}
+        </div>
+    {% endif %}
+
+
+    <!-- Resumen -->
+    <div class="filters-summary no-print">
+        {% if miembros %}
+            {{ miembros|length }} registro{{ miembros|length|pluralize:"s" }} encontrados
+        {% else %}
+            No hay nuevos creyentes registrados aún.
+        {% endif %}
+    </div>
+
+
+
+    <!-- ================================
+             TABLA DE RESULTADOS
+       ================================ -->
+
     <div class="table-wrapper">
         <table class="table">
             <thead>
@@ -185,76 +184,83 @@ Miembros / Nuevos creyentes / Lista
                     <th>Contacto</th>
                     <th>Conversión</th>
                     <th>Edad</th>
-                    <th>Notas / Observaciones</th>
+                    <th>Notas</th>
                     <th class="col-center no-print">Acciones</th>
                 </tr>
             </thead>
             <tbody>
+
             {% if miembros %}
                 {% for m in miembros %}
+
                     <tr>
-                        <!-- # -->
                         <td>{{ forloop.counter }}</td>
 
-                        <!-- Nombre + género -->
+                        <!-- Nombre -->
                         <td>
                             <div style="font-weight:600; font-size:13px;">
                                 {{ m.nombres }} {{ m.apellidos }}
                             </div>
                             <div style="font-size:11px; color:#6b7280;">
-                                {% if m.genero %}
-                                    {{ m.get_genero_display }}
-                                {% else %}
-                                    —
-                                {% endif %}
+                                {% if m.genero %}{{ m.get_genero_display }}{% else %}—{% endif %}
                             </div>
                         </td>
 
-                        <!-- Contacto (teléfonos + email + dirección básica + icono WhatsApp) -->
+                        <!-- Contacto -->
                         <td>
-                            {% if m.telefono or m.telefono_secundario or m.email or m.direccion %}
-                                {% if m.telefono or m.telefono_secundario %}
-                                    <div style="font-size:12px;">
-                                        {% if m.telefono %}
-                                            {% with numero=m.telefono %}
-                                                {{ numero }}
-                                                <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
-                                                   target="_blank"
-                                                   title="Enviar WhatsApp"
-                                                   class="no-print-inline">
-                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                         width="13"
-                                                         height="13"
-                                                         viewBox="0 0 24 24"
-                                                         style="margin-left:6px; fill:#6b7280;">
-                                                        <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm0 18a7.93 7.93 0 0 1-4.062-1.129l-.289-.172-2.999.807.802-2.92-.188-.3A7.924 7.924 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8zm4.427-5.444c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
-                                                    </svg>
-                                                </a>
-                                            {% endwith %}
-                                        {% endif %}
+    {% if m.telefono or m.telefono_secundario or m.email or m.direccion %}
 
-                                        {% if m.telefono_secundario %}
-                                            {% if m.telefono %}<span> · </span>{% endif %}
-                                            Alt: {{ m.telefono_secundario }}
-                                        {% endif %}
-                                    </div>
-                                {% endif %}
+        <!-- Teléfonos + WhatsApp -->
+        {% if m.telefono or m.telefono_secundario %}
+            <div style="font-size:12px; display:flex; align-items:center; gap:6px;">
+                
+                {% if m.telefono %}
+                    {% with numero=m.telefono|cut:" "|cut:"-" %}
+                        <span>{{ m.telefono }}</span>
 
-                                {% if m.email %}
-                                    <div style="font-size:11px; color:#6b7280;">
-                                        {{ m.email }}
-                                    </div>
-                                {% endif %}
+                        <!-- Ícono WhatsApp -->
+                        <a href="https://wa.me/{{ numero }}"
+                           target="_blank"
+                           title="Enviar WhatsApp"
+                           class="no-print-inline">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 width="14"
+                                 height="14"
+                                 viewBox="0 0 24 24"
+                                 style="fill:#25D366;">
+                                <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm0 18a7.93 7.93 0 0 1-4.062-1.129l-.289-.172-2.999.807.802-2.92-.188-.3A7.924 7.924 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8zm4.427-5.444c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
+                            </svg>
+                        </a>
+                    {% endwith %}
+                {% endif %}
 
-                                {% if m.direccion %}
-                                    <div style="font-size:11px; color:#9ca3af; max-width:220px;">
-                                        {{ m.direccion|truncatechars:60 }}
-                                    </div>
-                                {% endif %}
-                            {% else %}
-                                <span style="font-size:11px; color:#9ca3af;">Sin datos</span>
-                            {% endif %}
-                        </td>
+                {% if m.telefono_secundario %}
+                    <span>·</span>
+                    <span>{{ m.telefono_secundario }}</span>
+                {% endif %}
+
+            </div>
+        {% endif %}
+
+        <!-- Email -->
+        {% if m.email %}
+            <div style="font-size:11px; color:#6b7280;">
+                {{ m.email }}
+            </div>
+        {% endif %}
+
+        <!-- Dirección -->
+        {% if m.direccion %}
+            <div style="font-size:11px; color:#9ca3af; max-width:220px;">
+                {{ m.direccion|truncatechars:60 }}
+            </div>
+        {% endif %}
+
+    {% else %}
+        <span style="font-size:11px; color:#9ca3af;">Sin datos</span>
+    {% endif %}
+</td>
+
 
                         <!-- Fecha conversión -->
                         <td>
@@ -290,19 +296,19 @@ Miembros / Nuevos creyentes / Lista
                             <div style="display:flex; justify-content:center; gap:4px;">
                                 <a href="{% url 'miembros_app:nuevo_creyente_editar' m.pk %}"
                                    class="btn-secondary"
-                                   style="padding:4px; min-width:auto;"
-                                   title="Editar ficha completa">
+                                   style="padding:4px; min-width:auto;">
                                     <span class="material-icons" style="font-size:18px;">edit</span>
                                 </a>
+
                                 <a href="{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}"
                                    class="btn-secondary"
-                                   style="padding:4px; min-width:auto;"
-                                   title="Ver ficha">
+                                   style="padding:4px; min-width:auto;">
                                     <span class="material-icons" style="font-size:18px;">visibility</span>
                                 </a>
                             </div>
                         </td>
                     </tr>
+
                 {% endfor %}
             {% else %}
                 <tr>
@@ -311,48 +317,128 @@ Miembros / Nuevos creyentes / Lista
                     </td>
                 </tr>
             {% endif %}
+
             </tbody>
         </table>
     </div>
 
 </section>
 
+
+<!-- ================================
+            ESTILOS FILTROS
+     ================================ -->
 <style>
-.only-print {
-    display: none;
+
+.filters-card {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
 }
 
-@media print {
-    .topbar,
-    .main-nav,
-    .footer,
-    .page-header,
-    .page-header-actions,
-    .no-print {
-        display: none !important;
+.filters-main-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.form-field-grow {
+    flex: 2 1 220px;
+}
+
+.filters-card .form-field {
+    flex: 1 1 150px;
+    min-width: 150px;
+}
+
+.filters-card .form-field label {
+    font-size: 12px;
+    color: #4b5563;
+    margin-bottom: 2px;
+    display: block;
+}
+
+.filters-card input[type="text"],
+.filters-card input[type="date"],
+.filters-card select {
+    width: 100%;
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+}
+
+.form-field-checkbox {
+    flex: 1 1 180px;
+    font-size: 12px;
+    color: #111827;
+}
+
+.filters-actions {
+    display: flex;
+    align-items: flex-end;
+    margin-left: auto;
+}
+
+/* Botón borrar filtros */
+.clear-btn-mini {
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Texto de ayuda debajo de los filtros */
+.filters-help-text {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 6px;
+}
+
+/* Chips de filtros activos */
+.filters-tags {
+    margin-bottom: 6px;
+    font-size: 11px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.filters-tags-label {
+    font-weight: 600;
+    color: #4b5563;
+    margin-right: 4px;
+}
+
+.filter-chip {
+    background: #eef2ff;
+    color: #111827;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #e0e7ff;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .filters-main-row {
+        flex-direction: column;
+        align-items: stretch;
     }
 
-    .layout {
-        margin: 0;
-        max-width: 100%;
-        padding: 0;
-    }
-
-    .page-section {
-        box-shadow: none;
-        border: none;
-        padding: 0;
-    }
-
-    .table th,
-    .table td {
-        font-size: 11px;
-        padding: 4px 4px;
-    }
-
-    /* Mostrar encabezado institucional solo en impresión */
-    .only-print {
-        display: block !important;
+    .filters-actions {
+        margin-left: 0;
+        justify-content: flex-start;
     }
 }
 </style>
