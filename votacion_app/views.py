@@ -1447,9 +1447,13 @@ def lista_candidatos_buscar_miembro(request):
 
     # Validaciones básicas (las mismas que al agregar)
     if miembro.estado_miembro not in ("activo", "pasivo"):
+
         return JsonResponse({
             "ok": False,
-            "error": "Solo se pueden añadir miembros con estado ACTIVO o PASIVO."
+            "id": miembro.id,
+            "nombre": str(miembro),
+            "codigo": miembro.codigo_miembro,
+            "error": "El miembro no cumple con las condiciones."
         })
 
     edad_minima = get_edad_minima_miembro_oficial()

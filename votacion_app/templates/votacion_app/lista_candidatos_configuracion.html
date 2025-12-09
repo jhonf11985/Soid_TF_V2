@@ -697,6 +697,10 @@
           </span>
         </div>
       </div>
+          <!-- 🔥 PEGAR ESTE BLOQUE DEBAJO DEL MIEMBRO -->
+    <div id="confirm-agregar-error" class="lcg-modal-error" style="display:none;">
+        <!-- JS pondrá aquí el error -->
+    </div>
       <p class="lcg-modal-subtext" id="confirm-agregar-detalle">
         Si confirmas, el sistema añadirá este miembro a la lista
         si todavía cumple las condiciones (activo, edad mínima, etc.).
@@ -714,6 +718,17 @@
 </div>
 
 <style>
+
+.lcg-modal-error {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    background-color: #fdecea; /* rojo suave */
+    color: #b3261e;
+    font-size: 0.9rem;
+    border: 1px solid #f5c6cb;
+}
+
 .lcg-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -818,11 +833,17 @@
 document.addEventListener("DOMContentLoaded", function () {
   console.log("JS lista_candidatos_configuracion inicializado");
 
-  var modal       = document.getElementById("confirm-agregar-modal");
+  var modal = document.getElementById("confirm-agregar-modal");
   if (!modal) {
     console.warn("No se encontró el modal 'confirm-agregar-modal'");
     return;
   }
+
+  var modalTitle     = document.getElementById("confirm-agregar-titulo");
+  var modalText      = modal.querySelector(".lcg-modal-text");
+  var modalSubtext   = document.getElementById("confirm-agregar-detalle");
+  var modalMemberBox = modal.querySelector(".lcg-modal-member");
+  var modalErrorBox  = document.getElementById("confirm-agregar-error");
 
   var spanCodigo  = document.getElementById("confirm-agregar-codigo");
   var spanNombre  = document.getElementById("confirm-agregar-nombre");
@@ -832,9 +853,111 @@ document.addEventListener("DOMContentLoaded", function () {
   var btnCerrar   = document.getElementById("confirm-agregar-cerrar");
   var pendingForm = null;
 
+  function resetContenidoModal() {
+    // Modo normal de confirmación
+    if (modalTitle) {
+      modalTitle.textContent = "Confirmar candidato";
+    }
+    if (modalText) {
+      modalText.textContent = "¿Deseas añadir a la lista al siguiente miembro?";
+    }
+    if (modalSubtext) {
+      modalSubtext.style.display = "block";
+      modalSubtext.textContent =
+        "Si confirmas, el sistema añadirá este miembro a la lista " +
+        "si todavía cumple las condiciones (activo, edad mínima, etc.).";
+    }
+    if (modalMemberBox) {
+      modalMemberBox.style.display = "block";
+    }
+    if (modalErrorBox) {
+      modalErrorBox.style.display = "none";
+      modalErrorBox.textContent = "";
+    }
+    if (btnAceptar) {
+      btnAceptar.style.display = "inline-flex";
+    }
+  }
+
+function ponerModalEnModoError(data) {
+
+    // Cambiamos título y texto
+    if (modalTitle) {
+        modalTitle.textContent = "Miembro encontrado, pero no cumple la condición";
+    }
+    if (modalText) {
+        modalText.textContent = "Puedes ver la ficha del miembro, pero no puede añadirse a la lista:";
+    }
+
+    // Mostrar nombre y código aunque NO pueda agregarse
+    if (modalMemberBox) {
+        modalMemberBox.style.display = "block";
+    }
+    if (spanNombre) {
+        spanNombre.textContent = data.nombre || "";
+    }
+    if (spanCodigo) {
+        spanCodigo.textContent = data.codigo || "";
+    }
+
+    // Hacer nombre clicable aún en error
+    if (linkNombre) {
+        if (data.id) {
+            var urlDetalle = "{% url 'miembros_app:detalle' 0 %}".replace("0", data.id);
+            linkNombre.href = urlDetalle;
+        } else {
+            linkNombre.href = "#";
+        }
+    }
+
+    // Mostrar el mensaje de error
+    if (modalErrorBox) {
+        modalErrorBox.textContent = data.error || "No se pudo añadir este miembro.";
+        modalErrorBox.style.display = "block";
+    }
+
+    // Ocultar botón de agregar
+    if (btnAceptar) {
+        btnAceptar.style.display = "none";
+    }
+
+    // Cancelar envío
+    pendingForm = null;
+}
+
+
+  function ponerModalEnModoConfirmacion(data, codigoIntroducido) {
+    resetContenidoModal();
+
+    if (spanNombre) {
+      spanNombre.textContent = data.nombre || "";
+    }
+    if (spanCodigo) {
+      spanCodigo.textContent = data.codigo || codigoIntroducido || "";
+    }
+
+    // Construir URL al detalle del miembro
+    if (linkNombre) {
+      if (data.id) {
+        try {
+          var urlDetalle = "{% url 'miembros_app:detalle' 0 %}".replace("0", data.id);
+          linkNombre.href = urlDetalle;
+          console.log("URL detalle miembro:", urlDetalle);
+        } catch (e) {
+          console.error("Error construyendo URL de detalle:", e);
+          linkNombre.href = "#";
+        }
+      } else {
+        linkNombre.href = "#";
+      }
+    }
+  }
+
   function cerrarModal() {
     modal.classList.remove("is-visible");
     pendingForm = null;
+    // Dejamos el modal listo para la próxima vez
+    resetContenidoModal();
   }
 
   async function buscarMiembroPorCodigo(codigoRaw) {
@@ -888,34 +1011,16 @@ document.addEventListener("DOMContentLoaded", function () {
       .then(function (data) {
         console.log("Respuesta AJAX:", data);
 
+        // Caso de error: el miembro no cumple o no se encontró
         if (!data.ok) {
-          alert(data.error || "No se pudo localizar el miembro.");
-          // Como al final el view de agregar volverá a validar,
-          // si quieres puedes dejar que se envíe el formulario igual:
-          // form.submit();
-          return;
+            ponerModalEnModoError(data);
+            modal.classList.add("is-visible");
+            return;
         }
 
-        if (spanNombre) {
-          spanNombre.textContent = data.nombre || "";
-        }
-        if (spanCodigo) {
-          spanCodigo.textContent = data.codigo || codigo;
-        }
 
-        // Construir URL al detalle del miembro
-        if (linkNombre && data.id) {
-          try {
-            var urlDetalle = "{% url 'miembros_app:detalle' 0 %}".replace("0", data.id);
-            linkNombre.href = urlDetalle;
-            console.log("URL detalle miembro:", urlDetalle);
-          } catch (e) {
-            console.error("Error construyendo URL de detalle:", e);
-            // Si algo raro pasa, limpia el href
-            linkNombre.href = "#";
-          }
-        }
-
+        // Caso OK: mostramos datos del miembro y dejamos el botón "Sí, añadir"
+        ponerModalEnModoConfirmacion(data, codigo);
         pendingForm = form;
         modal.classList.add("is-visible");
       })
@@ -972,6 +1077,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Cerrar modal al hacer click fuera de la tarjeta
   modal.addEventListener("click", function (evt) {
+    // modal es el backdrop (lcg-modal-backdrop). Solo cerramos si el click es sobre el fondo.
     if (evt.target === modal) {
       cerrarModal();
     }
