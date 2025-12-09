@@ -203,6 +203,15 @@ Miembros / Reportes / Listado general
                 <span class="summary-hint">Edad, contacto, niños…</span>
             </summary>
 
+            <!-- Botón borrar filtros alineado a la derecha -->
+            <div class="filters-advanced-actions">
+                <a href="{{ request.path }}"
+                   class="btn-secondary clear-btn-mini no-print">
+                    <span class="material-icons" style="font-size:14px;">close</span>
+                    Borrar filtros
+                </a>
+            </div>
+
             <div class="filters-advanced-body">
 
                 <!-- Rango de edad -->
@@ -334,221 +343,350 @@ Miembros / Reportes / Listado general
         </div>
     {% endif %}
 
-    <!-- Tabla -->
-    <div class="table-wrapper">
-        <table class="table table-members">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Miembro</th>
-                    <th>Edad</th>
-                    <th>Categoría</th>
-                    <th>Cédula</th>
-                    <th>Contacto</th>
-                    <th>Estado</th>
-                    <th>Bautismo</th>
-                    <th class="col-center no-print">Acciones</th>
-                </tr>
-            </thead>
+    <!-- 🔀 Conmutador de vista (lista / cuadrícula) -->
+    <div class="view-toggle no-print">
+        <span class="view-toggle-label">Vista:</span>
+        <button type="button" class="view-btn" data-view="lista">Lista</button>
+        <button type="button" class="view-btn" data-view="grid">Cuadrícula</button>
+    </div>
 
-            <tbody>
-            {% if miembros %}
-                {% for m in miembros %}
-                <tr class="{% if not m.activo %}row-inactive{% endif %}">
+    <!-- Vista LISTA (tabla clásica) -->
+    <div id="vista-lista">
+        <div class="table-wrapper">
+            <table class="table table-members">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Miembro</th>
+                        <th>Edad</th>
+                        <th>Categoría</th>
+                        <th>Cédula</th>
+                        <th>Contacto</th>
+                        <th>Estado</th>
+                        <th>Bautismo</th>
+                        <th class="col-center no-print">Acciones</th>
+                    </tr>
+                </thead>
 
-                    <!-- 🔵 Código del miembro -->
-                    <td>
-                        <span style="font-weight:600; color:#1e3a8a;">
-                            {{ m.codigo_miembro }}
-                        </span>
-                    </td>
+                <tbody>
+                {% if miembros %}
+                    {% for m in miembros %}
+                    <tr class="{% if not m.activo %}row-inactive{% endif %}">
 
-                    <!-- Miembro -->
-                    <td>
-                        <div style="font-weight:600; font-size:13px;">
-                            {% if m.pk %}
-                                <a href="{% url 'miembros_app:detalle' m.pk %}" class="no-print">
+                        <!-- 🔵 Código del miembro -->
+                        <td>
+                            <span style="font-weight:600; color:#1e3a8a;">
+                                {{ m.codigo_miembro }}
+                            </span>
+                        </td>
+
+                        <!-- Miembro -->
+                        <td>
+                            <div style="font-weight:600; font-size:13px;">
+                                {% if m.pk %}
+                                    <a href="{% url 'miembros_app:detalle' m.pk %}" class="no-print">
+                                        {{ m.nombres }} {{ m.apellidos }}
+                                    </a>
+                                    <span class="only-print">
+                                        {{ m.nombres }} {{ m.apellidos }}
+                                    </span>
+                                {% else %}
                                     {{ m.nombres }} {{ m.apellidos }}
-                                </a>
-                                <span class="only-print">
-                                    {{ m.nombres }} {{ m.apellidos }}
+                                {% endif %}
+                            </div>
+                            <div style="font-size:11px; color:#6b7280;">
+                                {{ m.profesion|default:"Sin profesión registrada" }}
+                            </div>
+                        </td>
+
+                        <!-- Edad -->
+                        <td>
+                            {% if m.calcular_edad %}
+                                {{ m.calcular_edad }} años
+                            {% else %}
+                                <span style="font-size:11px; color:#9ca3af;">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Categoría -->
+                        <td>
+                            {% if m.categoria_edad %}
+                                <span style="
+                                    font-size:11px;
+                                    padding:2px 6px;
+                                    border-radius:999px;
+                                    background:#eef2ff;
+                                    color:#3730a3;
+                                    font-weight:600;">
+                                    {{ m.get_categoria_edad_display }}
                                 </span>
                             {% else %}
-                                {{ m.nombres }} {{ m.apellidos }}
+                                <span style="font-size:11px; color:#9ca3af;">—</span>
                             {% endif %}
-                        </div>
-                        <div style="font-size:11px; color:#6b7280;">
-                            {{ m.profesion|default:"Sin profesión registrada" }}
-                        </div>
-                    </td>
+                        </td>
 
-                    <!-- Edad -->
-                    <td>
-                        {% if m.calcular_edad %}
-                            {{ m.calcular_edad }} años
-                        {% else %}
-                            <span style="font-size:11px; color:#9ca3af;">—</span>
-                        {% endif %}
-                    </td>
+                        <!-- Cédula -->
+                        <td>
+                            {% if m.cedula %}
+                                {{ m.cedula }}
+                            {% else %}
+                                <span style="font-size:11px; color:#9ca3af;">—</span>
+                            {% endif %}
+                        </td>
 
-                    <!-- Categoría -->
-                    <td>
-                        {% if m.categoria_edad %}
-                            <span style="
-                                font-size:11px;
-                                padding:2px 6px;
-                                border-radius:999px;
-                                background:#eef2ff;
-                                color:#3730a3;
-                                font-weight:600;">
-                                {{ m.get_categoria_edad_display }}
-                            </span>
-                        {% else %}
-                            <span style="font-size:11px; color:#9ca3af;">—</span>
-                        {% endif %}
-                    </td>
+                        <!-- Contacto -->
+                        <td>
+                            {% if m.telefono or m.whatsapp or m.email %}
+                                {% if m.telefono or m.whatsapp %}
+                                    <div style="font-size:12px;">
+                                        {% if m.telefono %}
+                                            {% with numero=m.telefono %}
+                                                {{ numero }}
+                                                <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
+                                                   target="_blank"
+                                                   title="Enviar WhatsApp"
+                                                   class="no-print-inline">
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                         width="13"
+                                                         height="13"
+                                                         viewBox="0 0 24 24"
+                                                         style="margin-left:6px; fill:#6b7280;">
+                                                        <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm0 18a7.93 7.93 0 0 1-4.062-1.129l-.289-.172-2.999.807.802-2.92-.188-.3A7.924 7.924 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8zm4.427-5.444c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
+                                                    </svg>
+                                                </a>
+                                            {% endwith %}
+                                        {% else %}
+                                            {% with numero=m.whatsapp %}
+                                                {{ numero }}
+                                                <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
+                                                   target="_blank"
+                                                   title="Enviar WhatsApp"
+                                                   class="no-print-inline">
+                                                    <i class="bi bi-whatsapp"
+                                                       style="font-size:1.25rem; margin-left:6px;">
+                                                    </i>
+                                                </a>
+                                            {% endwith %}
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
 
-                    <!-- Cédula -->
-                    <td>
-                        {% if m.cedula %}
-                            {{ m.cedula }}
-                        {% else %}
-                            <span style="font-size:11px; color:#9ca3af;">—</span>
-                        {% endif %}
-                    </td>
+                                {% if m.email %}
+                                    <div style="font-size:12px;">{{ m.email }}</div>
+                                {% endif %}
+                            {% else %}
+                                <span style="font-size:11px; color:#6b7280;">Sin datos</span>
+                            {% endif %}
+                        </td>
 
-                    <!-- Contacto -->
-                    <td>
-                        {% if m.telefono or m.whatsapp or m.email %}
-                            {% if m.telefono or m.whatsapp %}
-                                <div style="font-size:12px;">
-                                    {% if m.telefono %}
-                                        {% with numero=m.telefono %}
-                                            {{ numero }}
-                                            <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
-                                               target="_blank"
-                                               title="Enviar WhatsApp"
-                                               class="no-print-inline">
-                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                     width="13"
-                                                     height="13"
-                                                     viewBox="0 0 24 24"
-                                                     style="margin-left:6px; fill:#6b7280;">
-                                                    <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm0 18a7.93 7.93 0 0 1-4.062-1.129l-.289-.172-2.999.807.802-2.92-.188-.3A7.924 7.924 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8zm4.427-5.444c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
-                                                </svg>
-                                            </a>
-                                        {% endwith %}
-                                    {% else %}
-                                        {% with numero=m.whatsapp %}
-                                            {{ numero }}
-                                            <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
-                                               target="_blank"
-                                               title="Enviar WhatsApp"
-                                               class="no-print-inline">
-                                                <i class="bi bi-whatsapp"
-                                                   style="font-size:1.25rem; margin-left:6px;">
-                                                </i>
-                                            </a>
-                                        {% endwith %}
-                                    {% endif %}
+                        <!-- Estado -->
+                        <td>
+                            {% if not m.activo %}
+                                <div style="
+                                    display:inline-block;
+                                    padding:2px 6px;
+                                    border-radius:999px;
+                                    background:#fee2e2;
+                                    color:#b91c1c;
+                                    font-size:11px;
+                                    font-weight:600;">
+                                    Inactivo
                                 </div>
-                            {% endif %}
 
-                            {% if m.email %}
-                                <div style="font-size:12px;">{{ m.email }}</div>
-                            {% endif %}
-                        {% else %}
-                            <span style="font-size:11px; color:#6b7280;">Sin datos</span>
-                        {% endif %}
-                    </td>
+                                {% if m.razon_salida %}
+                                    <div style="font-size:11px; color:#6b7280;">
+                                        {{ m.razon_salida }}
+                                    </div>
+                                {% endif %}
 
-                    <!-- Estado -->
-                    <td>
-                        {% if not m.activo %}
-                            <div style="
-                                display:inline-block;
-                                padding:2px 6px;
-                                border-radius:999px;
-                                background:#fee2e2;
-                                color:#b91c1c;
-                                font-size:11px;
-                                font-weight:600;">
-                                Inactivo
-                            </div>
-
-                            {% if m.razon_salida %}
-                                <div style="font-size:11px; color:#6b7280;">
-                                    {{ m.razon_salida }}
-                                </div>
+                                {% if m.fecha_salida %}
+                                    <div style="font-size:11px; color:#6b7280;">
+                                        Salida: {{ m.fecha_salida|date:"d/m/Y" }}
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                {% if m.estado_miembro %}
+                                    <div style="font-size:12px; font-weight:600; color:#111827;">
+                                        {{ m.get_estado_miembro_display }}
+                                    </div>
+                                {% else %}
+                                    <div style="font-size:11px; color:#6b7280;">Sin estado</div>
+                                {% endif %}
                             {% endif %}
+                        </td>
 
-                            {% if m.fecha_salida %}
-                                <div style="font-size:11px; color:#6b7280;">
-                                    Salida: {{ m.fecha_salida|date:"d/m/Y" }}
-                                </div>
+                        <!-- Bautismo -->
+                        <td>
+                            {% if m.bautizado_confirmado %}
+                                <span class="pill pill-success">Sí</span>
+                                {% if m.fecha_bautismo %}
+                                    <div style="font-size:11px; color:#6b7280;">
+                                        {{ m.fecha_bautismo|date:"d/m/Y" }}
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <span class="pill pill-muted">No</span>
                             {% endif %}
-                        {% else %}
-                            {% if m.estado_miembro %}
-                                <div style="font-size:12px; font-weight:600; color:#111827;">
-                                    {{ m.get_estado_miembro_display }}
+                        </td>
+
+                        <!-- Acciones (solo pantalla) -->
+                        <td class="col-center no-print">
+                            {% if m.pk %}
+                                <div style="display:flex; justify-content:center; gap:4px;">
+                                    <!-- Ver detalle -->
+                                    <a href="{% url 'miembros_app:detalle' m.pk %}"
+                                       class="btn-secondary"
+                                       style="padding:4px; min-width:auto;">
+                                        <span class="material-icons" style="font-size:18px;">visibility</span>
+                                    </a>
+                                    <!-- Editar -->
+                                    <a href="{% url 'miembros_app:editar' m.pk %}"
+                                       class="btn-secondary"
+                                       style="padding:4px; min-width:auto;">
+                                        <span class="material-icons" style="font-size:18px;">edit</span>
+                                    </a>
                                 </div>
                             {% else %}
-                                <div style="font-size:11px; color:#6b7280;">Sin estado</div>
+                                <span style="font-size:11px; color:#9ca3af;">Sin acciones</span>
                             {% endif %}
-                        {% endif %}
-                    </td>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="table-empty">
+                            No se encontraron resultados.
+                        </td>
+                    </tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-                    <!-- Bautismo -->
-                    <td>
-                        {% if m.bautizado_confirmado %}
-                            <span class="pill pill-success">Sí</span>
-                            {% if m.fecha_bautismo %}
-                                <div style="font-size:11px; color:#6b7280;">
-                                    {{ m.fecha_bautismo|date:"d/m/Y" }}
-                                </div>
-                            {% endif %}
-                        {% else %}
-                            <span class="pill pill-muted">No</span>
-                        {% endif %}
-                    </td>
-
-                    <!-- Acciones (solo pantalla) -->
-                    <td class="col-center no-print">
-                        {% if m.pk %}
-                            <div style="display:flex; justify-content:center; gap:4px;">
-                                <!-- Ver detalle -->
-                                <a href="{% url 'miembros_app:detalle' m.pk %}"
-                                   class="btn-secondary"
-                                   style="padding:4px; min-width:auto;">
-                                    <span class="material-icons" style="font-size:18px;">visibility</span>
-                                </a>
-                                <!-- Editar -->
-                                <a href="{% url 'miembros_app:editar' m.pk %}"
-                                   class="btn-secondary"
-                                   style="padding:4px; min-width:auto;">
-                                    <span class="material-icons" style="font-size:18px;">edit</span>
-                                </a>
+    <!-- Vista CUADRÍCULA (tarjetas) -->
+    <div id="vista-cuadricula" class="no-print" style="display:none;">
+        {% if miembros %}
+            <div class="members-grid">
+                {% for m in miembros %}
+                    <article class="member-card {% if not m.activo %}member-card-inactive{% endif %}">
+                        <header class="member-card-header">
+                            <div class="member-avatar">
+                                <span class="material-icons" style="font-size:18px;">person</span>
                             </div>
-                        {% else %}
-                            <span style="font-size:11px; color:#9ca3af;">Sin acciones</span>
-                        {% endif %}
-                    </td>
-                </tr>
+                            <div class="member-header-text">
+                                <div class="member-name">
+                                    {% if m.pk %}
+                                        <a href="{% url 'miembros_app:detalle' m.pk %}">
+                                            {{ m.nombres }} {{ m.apellidos }}
+                                        </a>
+                                    {% else %}
+                                        {{ m.nombres }} {{ m.apellidos }}
+                                    {% endif %}
+                                </div>
+                                <div class="member-code">
+                                    {{ m.codigo_miembro }}
+                                </div>
+                            </div>
+                        </header>
+
+                        <div class="member-card-body">
+                            <div class="member-meta-row">
+                                <span class="meta-label">Edad</span>
+                                <span class="meta-value">
+                                    {% if m.calcular_edad %}
+                                        {{ m.calcular_edad }} años
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </span>
+                            </div>
+
+                            <div class="member-meta-row">
+                                <span class="meta-label">Categoría</span>
+                                <span class="meta-value">
+                                    {% if m.categoria_edad %}
+                                        {{ m.get_categoria_edad_display }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </span>
+                            </div>
+
+                            <div class="member-meta-row">
+                                <span class="meta-label">Estado</span>
+                                <span class="meta-value">
+                                    {% if not m.activo %}
+                                        Inactivo
+                                    {% else %}
+                                        {% if m.estado_miembro %}
+                                            {{ m.get_estado_miembro_display }}
+                                        {% else %}
+                                            Sin estado
+                                        {% endif %}
+                                    {% endif %}
+                                </span>
+                            </div>
+
+                            <div class="member-meta-row">
+                                <span class="meta-label">Bautismo</span>
+                                <span class="meta-value">
+                                    {% if m.bautizado_confirmado %}
+                                        Sí
+                                    {% else %}
+                                        No
+                                    {% endif %}
+                                </span>
+                            </div>
+
+                            <div class="member-meta-row">
+                                <span class="meta-label">Contacto</span>
+                                <span class="meta-value">
+                                    {% if m.telefono or m.whatsapp %}
+                                        {% if m.telefono %}
+                                            {{ m.telefono }}
+                                        {% else %}
+                                            {{ m.whatsapp }}
+                                        {% endif %}
+                                    {% elif m.email %}
+                                        {{ m.email }}
+                                    {% else %}
+                                        Sin datos
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        <footer class="member-card-footer">
+                            {% if m.pk %}
+                                <a href="{% url 'miembros_app:detalle' m.pk %}" class="btn-secondary member-card-btn">
+                                    <span class="material-icons" style="font-size:16px;">visibility</span>
+                                    Ver
+                                </a>
+                                <a href="{% url 'miembros_app:editar' m.pk %}" class="btn-secondary member-card-btn">
+                                    <span class="material-icons" style="font-size:16px;">edit</span>
+                                    Editar
+                                </a>
+                            {% else %}
+                                <span style="font-size:11px; color:#9ca3af;">Sin acciones</span>
+                            {% endif %}
+                        </footer>
+                    </article>
                 {% endfor %}
-            {% else %}
-                <tr>
-                    <td colspan="9" class="table-empty">
-                        No se encontraron resultados.
-                    </td>
-                </tr>
-            {% endif %}
-            </tbody>
-        </table>
+            </div>
+        {% else %}
+            <p style="font-size:13px; color:#6b7280; margin-top:8px;">
+                No se encontraron resultados.
+            </p>
+        {% endif %}
     </div>
 
 </section>
 
 <style>
+
+
+
 .only-print {
     display: none;
 }
@@ -689,29 +827,60 @@ Miembros / Reportes / Listado general
         font-size: 13px;
     }
 
-    .filters-advanced summary {
-        list-style: none;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        color: #4b5563;
-        font-weight: 500;
-    }
+.filters-advanced summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: var(--color-text-main);
+    font-weight: 600;
+    padding: 6px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px dashed rgba(148, 163, 184, 0.7);
+    backdrop-filter: blur(6px);
+}
 
-    .filters-advanced summary::-webkit-details-marker {
-        display: none;
-    }
+.summary-icon {
+    font-size: 16px;
+}
 
-    .summary-icon {
-        font-size: 14px;
-    }
+.summary-hint {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-left: 4px;
+}
 
-    .summary-hint {
-        font-size: 11px;
-        color: #9ca3af;
-        margin-left: 4px;
-    }
+/* Contenedor del botón borrar filtros */
+.filters-advanced-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+/* Botón mini borrar filtros */
+.clear-btn-mini {
+    background: rgba(248, 250, 252, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #374151;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(15, 23, 42, 0.08);
+}
+
+.clear-btn-mini:hover {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
 
     .filters-advanced-body {
         margin-top: 8px;
@@ -771,32 +940,58 @@ Miembros / Reportes / Listado general
         gap: 10px;
     }
 
-    /* Chips filtros activos */
-    .filters-tags {
-        margin-bottom: 10px;
-        font-size: 11px;
+    .filters-advanced-actions {
         display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        align-items: center;
+        justify-content: flex-end;
+        margin-top: 6px;
+        margin-bottom: 6px;
     }
 
-    .filters-tags-label {
-        font-weight: 600;
-        color: #4b5563;
-        margin-right: 4px;
-    }
+.filters-tags {
+    margin-bottom: 10px;
+    font-size: 11px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
 
-    .filter-chip {
-        background: #eef2ff;
-        color: #3730a3;
-        border-radius: 999px;
-        padding: 3px 8px;
-        font-size: 11px;
+.filters-tags-label {
+    font-weight: 600;
+    color: #0f172a;
+    margin-right: 4px;
+}
+
+.filter-chip {
+    background: linear-gradient(135deg, #e0f2fe, #ede9fe);
+    color: #111827;
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid rgba(129, 140, 248, 0.6);
+    box-shadow: 0 2px 4px rgba(148, 163, 184, 0.4);
+}
+
+
+    /* Botón mini borrar filtros */
+    .clear-btn-mini {
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 12px;
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        border: 1px solid #e0e7ff;
+        color: #374151;
+        cursor: pointer;
+    }
+
+    .clear-btn-mini:hover {
+        background: #e5e7eb;
     }
 
     @media (max-width: 640px) {
@@ -906,6 +1101,185 @@ Miembros / Reportes / Listado general
         }
     }
 
+    /* ====== Vista toggle (lista / cuadrícula) ====== */
+
+    .view-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: #4b5563;
+    }
+
+    .view-toggle-label {
+        font-weight: 500;
+    }
+
+    .view-btn {
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        padding: 4px 10px;
+        font-size: 12px;
+        background: #f9fafb;
+        cursor: pointer;
+    }
+
+    .view-btn.active {
+        background: #1d4ed8;
+        color: #ffffff;
+        border-color: #1d4ed8;
+    }
+
+    /* ====== Vista cuadrícula ====== */
+
+    .members-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 10px;
+        margin-top: 4px;
+    }
+
+    .member-card {
+        background: #ffffff;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .member-card-inactive {
+        background: #fef2f2;
+        border-color: #fecaca;
+    }
+
+    .member-card-header {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+
+    .member-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background: #eef2ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #3730a3;
+    }
+
+    .member-header-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .member-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .member-name a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .member-name a:hover {
+        text-decoration: underline;
+    }
+
+    .member-code {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    .member-card-body {
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .member-meta-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 4px;
+    }
+
+    .meta-label {
+        color: #6b7280;
+    }
+
+    .meta-value {
+        font-weight: 500;
+        color: #111827;
+        text-align: right;
+    }
+
+    .member-card-footer {
+        margin-top: 6px;
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+    }
+
+    .member-card-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        min-width: auto;
+        border-radius: 999px;
+    }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const btnLista = document.querySelector('.view-btn[data-view="lista"]');
+    const btnGrid  = document.querySelector('.view-btn[data-view="grid"]');
+    const vistaLista = document.getElementById('vista-lista');
+    const vistaGrid  = document.getElementById('vista-cuadricula');
+
+    if (!btnLista || !btnGrid || !vistaLista || !vistaGrid) return;
+
+    function setView(view) {
+        if (view === 'grid') {
+            vistaLista.style.display = 'none';
+            vistaGrid.style.display  = '';
+            btnGrid.classList.add('active');
+            btnLista.classList.remove('active');
+        } else {
+            vistaLista.style.display = '';
+            vistaGrid.style.display  = 'none';
+            btnLista.classList.add('active');
+            btnGrid.classList.remove('active');
+        }
+        try {
+            localStorage.setItem('miembros_vista', view);
+        } catch (e) {}
+    }
+
+    let saved = null;
+    try {
+        saved = localStorage.getItem('miembros_vista');
+    } catch (e) {}
+
+    setView(saved === 'grid' ? 'grid' : 'lista');
+
+    btnLista.addEventListener('click', function () {
+        setView('lista');
+    });
+
+    btnGrid.addEventListener('click', function () {
+        setView('grid');
+    });
+});
+</script>
 
 {% endblock %}
