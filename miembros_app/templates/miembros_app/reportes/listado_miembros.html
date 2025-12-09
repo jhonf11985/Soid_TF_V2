@@ -12,11 +12,6 @@ Miembros / Reportes / Listado general
         <h1 class="page-title">Listado general de miembros</h1>
         <p class="page-subtitle"></p>
     </div>
-<td>
-    <span style="font-weight:600; color:#1e3a8a;">
-        {{ m.codigo_miembro }}
-    </span>
-</td>
 
     <div class="page-header-actions">
 
@@ -69,10 +64,6 @@ Miembros / Reportes / Listado general
 
     </div>
 </section>
-
-
-
-
 
 <section class="page-section">
 
@@ -343,54 +334,48 @@ Miembros / Reportes / Listado general
         </div>
     {% endif %}
 
-
-        <!-- Acciones -->
-        <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
-            <button type="submit" class="btn-secondary">
-                <span class="material-icons" style="font-size:16px;">search</span>
-                Aplicar filtros
-            </button>
-        </div>
-    </form>
-
     <!-- Tabla -->
     <div class="table-wrapper">
-        <table class="table">
-        <thead>
-            <tr>
-                <th>Código</th>
-                <th>Miembro</th>
-                <th>Edad</th>
-                <th>Categoría</th>
-                <th>Cédula</th>
-                <th>Contacto</th>
-                <th>Estado</th>
-                <th>Bautismo</th>
-                <th class="col-center no-print">Acciones</th>
-            </tr>
-        </thead>
+        <table class="table table-members">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Miembro</th>
+                    <th>Edad</th>
+                    <th>Categoría</th>
+                    <th>Cédula</th>
+                    <th>Contacto</th>
+                    <th>Estado</th>
+                    <th>Bautismo</th>
+                    <th class="col-center no-print">Acciones</th>
+                </tr>
+            </thead>
 
-        <tbody>
-        {% if miembros %}
-            {% for m in miembros %}
-            <tr>
+            <tbody>
+            {% if miembros %}
+                {% for m in miembros %}
+                <tr class="{% if not m.activo %}row-inactive{% endif %}">
 
-                <!-- 🔵 Código del miembro -->
-                <td>
-                    <span style="font-weight:600; color:#1e3a8a;">
-                        {{ m.codigo_miembro }}
-                    </span>
-                </td>
+                    <!-- 🔵 Código del miembro -->
+                    <td>
+                        <span style="font-weight:600; color:#1e3a8a;">
+                            {{ m.codigo_miembro }}
+                        </span>
+                    </td>
 
                     <!-- Miembro -->
                     <td>
                         <div style="font-weight:600; font-size:13px;">
-                            <a href="{% url 'miembros_app:detalle' m.pk %}" class="no-print">
+                            {% if m.pk %}
+                                <a href="{% url 'miembros_app:detalle' m.pk %}" class="no-print">
+                                    {{ m.nombres }} {{ m.apellidos }}
+                                </a>
+                                <span class="only-print">
+                                    {{ m.nombres }} {{ m.apellidos }}
+                                </span>
+                            {% else %}
                                 {{ m.nombres }} {{ m.apellidos }}
-                            </a>
-                            <span class="only-print">
-                                {{ m.nombres }} {{ m.apellidos }}
-                            </span>
+                            {% endif %}
                         </div>
                         <div style="font-size:11px; color:#6b7280;">
                             {{ m.profesion|default:"Sin profesión registrada" }}
@@ -529,23 +514,26 @@ Miembros / Reportes / Listado general
 
                     <!-- Acciones (solo pantalla) -->
                     <td class="col-center no-print">
-                        <div style="display:flex; justify-content:center; gap:4px;">
-                            <!-- Ver detalle -->
-                            <a href="{% url 'miembros_app:detalle' m.pk %}"
-                               class="btn-secondary"
-                               style="padding:4px; min-width:auto;">
-                                <span class="material-icons" style="font-size:18px;">visibility</span>
-                            </a>
-                            <!-- Editar -->
-                            <a href="{% url 'miembros_app:editar' m.pk %}"
-                               class="btn-secondary"
-                               style="padding:4px; min-width:auto;">
-                                <span class="material-icons" style="font-size:18px;">edit</span>
-                            </a>
-                        </div>
+                        {% if m.pk %}
+                            <div style="display:flex; justify-content:center; gap:4px;">
+                                <!-- Ver detalle -->
+                                <a href="{% url 'miembros_app:detalle' m.pk %}"
+                                   class="btn-secondary"
+                                   style="padding:4px; min-width:auto;">
+                                    <span class="material-icons" style="font-size:18px;">visibility</span>
+                                </a>
+                                <!-- Editar -->
+                                <a href="{% url 'miembros_app:editar' m.pk %}"
+                                   class="btn-secondary"
+                                   style="padding:4px; min-width:auto;">
+                                    <span class="material-icons" style="font-size:18px;">edit</span>
+                                </a>
+                            </div>
+                        {% else %}
+                            <span style="font-size:11px; color:#9ca3af;">Sin acciones</span>
+                        {% endif %}
                     </td>
                 </tr>
-
                 {% endfor %}
             {% else %}
                 <tr>
@@ -621,6 +609,7 @@ Miembros / Reportes / Listado general
             font-size: 12px;
         }
     }
+
 @media (max-width: 640px) {
 
     .table th,
@@ -639,6 +628,7 @@ Miembros / Reportes / Listado general
         z-index: 1;
     }
 }
+
     /* ====== Filtros profesionales ====== */
 
     .filters-card {
@@ -820,6 +810,101 @@ Miembros / Reportes / Listado general
         }
     }
 
+    /* ====== Tabla de miembros más profesional ====== */
+
+    .table-members {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        background: #ffffff;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+    }
+
+    .table-members thead {
+        background: #f3f4f6;
+    }
+
+    .table-members thead th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 600;
+        color: #6b7280;
+        padding: 6px 8px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f3f4f6;
+    }
+
+    .table-members tbody td {
+        font-size: 13px;
+        padding: 6px 8px;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: top;
+    }
+
+    /* Filas tipo zebra + hover */
+    .table-members tbody tr:nth-child(odd) {
+        background: #fcfcfd;
+    }
+
+    .table-members tbody tr:nth-child(even) {
+        background: #ffffff;
+    }
+
+    .table-members tbody tr:hover {
+        background: #eff6ff;
+    }
+
+    /* Filas inactivas (clase aplicada en el <tr>) */
+    .table-members tbody tr.row-inactive {
+        background: #fef2f2;
+    }
+
+    .table-members tbody tr.row-inactive:hover {
+        background: #fee2e2;
+    }
+
+    /* Columna código más fuerte y compacta */
+    .table-members td:first-child span {
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.03em;
+    }
+
+    /* Nombre de miembro más protagonista */
+    .table-members td:nth-child(2) > div:first-child {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .table-members td:nth-child(2) > div:last-child {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    /* Centrar edad y estado visualmente */
+    .table-members td:nth-child(3),
+    .table-members td:nth-child(8),
+    .table-members td.col-center {
+        text-align: center;
+    }
+
+    /* Botones acciones más discretos */
+    .table-members td.col-center a.btn-secondary {
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+    }
+
+    /* Ajuste en móvil: fuente un poco menor y celdas más compactas */
+    @media (max-width: 640px) {
+        .table-members tbody td {
+            font-size: 11px;
+            padding: 4px 6px;
+        }
+    }
 
 </style>
 
