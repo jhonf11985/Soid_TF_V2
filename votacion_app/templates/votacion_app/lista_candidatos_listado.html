@@ -4,8 +4,11 @@
 
 {% block content %}
 
-<div class="page-header">
-    <div>
+<!-- ===========================
+     ENCABEZADO
+=========================== -->
+<div class="page-header page-header-compact">
+    <div class="page-header-main">
         <h1 class="page-title">{{ titulo }}</h1>
         <p class="page-subtitle">
             Gestiona las listas previas de candidatos que luego podrás usar en las votaciones.
@@ -13,19 +16,21 @@
     </div>
 
     <div class="page-header-actions">
-        <a href="{% url 'votacion:lista_votaciones' %}" class="btn-secondary" style="margin-right: 8px;">
-            <span class="material-icons" style="font-size: 18px;">arrow_back</span>
-            Volver a elecciones
+        <a href="{% url 'votacion:lista_votaciones' %}" class="btn-secondary btn-sm">
+            <span class="material-icons" aria-hidden="true">arrow_back</span>
+            <span class="btn-text">Volver a elecciones</span>
         </a>
 
-        <a href="{% url 'votacion:lista_candidatos_nueva' %}" class="btn-primary">
-            <span class="material-icons" style="font-size: 18px;">add</span>
-            Nueva lista
+        <a href="{% url 'votacion:lista_candidatos_nueva' %}" class="btn-primary btn-sm">
+            <span class="material-icons" aria-hidden="true">add</span>
+            <span class="btn-text">Nueva lista</span>
         </a>
     </div>
 </div>
 
 <div class="page-section">
+
+    <!-- Mensajes de sistema -->
     {% if messages %}
         <div class="mb-2">
             {% for message in messages %}
@@ -35,93 +40,334 @@
     {% endif %}
 
     {% if listas %}
-        <div class="table-wrapper">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Código</th>
-                        <th class="col-center">Miembros</th>
-                        <th>Estado</th>
-                        <th>Última actualización</th>
-                        <th class="col-center" style="width: 180px;">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for l in listas %}
+        <!-- Resumen rápido -->
+        <div class="list-summary">
+            <span class="material-icons summary-icon" aria-hidden="true">how_to_vote</span>
+            <div class="summary-text">
+                <div class="summary-title">Listas configuradas</div>
+                <div class="summary-subtitle">
+                    Tienes <strong>{{ listas|length }}</strong> lista{{ listas|length|pluralize }} creada{{ listas|length|pluralize }}.
+                    Usa el botón <strong>Nueva lista</strong> para preparar otras elecciones.
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de listas -->
+        <div class="table-card">
+            <div class="table-wrapper">
+                <table class="table table-elevated">
+                    <thead>
                         <tr>
-                            <td>{{ l.nombre }}</td>
-                            <td class="lc-cell-code">
-                                {% if l.codigo_lista %}
-                                    {{ l.codigo_lista }}
-                                {% else %}
-                                    <span class="table-subtext">Sin código</span>
-                                {% endif %}
-                            </td>
-                            <td class="col-center">
-                                {{ l.total_miembros|default:0 }}
-                            </td>
-                            <td>
-                                {% if l.estado == "CONFIRMADA" %}
-                                    <span class="badge-soft badge-soft-success">
-                                        {{ l.get_estado_display }}
-                                    </span>
-                                {% else %}
-                                    <span class="badge-soft badge-soft-warning">
-                                        {{ l.get_estado_display }}
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if l.fecha_confirmacion %}
-                                    {{ l.fecha_confirmacion|date:"d/m/Y H:i" }}
-                                {% else %}
-                                    <span class="table-subtext">Sin confirmar</span>
-                                {% endif %}
-                            </td>
-<td class="col-center">
-    {% if l.pk %}
-        <div class="elections-actions">
-
-            <!-- Configurar (editar miembros de la lista) -->
-            <a href="{% url 'votacion:lista_candidatos_configurar' l.pk %}"
-               class="btn-secondary btn-icon-only"
-               title="Configurar lista (editar miembros)">
-                <span class="material-icons">settings</span>
-            </a>
-
-            <!-- Reporte imprimible (directo a la última vista, listo para imprimir/guardar PDF) -->
-            <a href="{% url 'votacion:lista_candidatos_reporte' l.pk %}"
-               class="btn-secondary btn-icon-only"
-               title="Imprimir lista de candidatos"
-               target="_blank">
-                <span class="material-icons">print</span>
-            </a>
-
-        </div>
-    {% else %}
-        <!-- Por si acaso hubiera alguna fila sin pk válido -->
-        —
-    {% endif %}
-</td>
-
-
-
-
+                            <th>Nombre</th>
+                            <th class="th-code">Código</th>
+                            <th class="col-center th-members">Miembros</th>
+                            <th class="th-status">Estado</th>
+                            <th class="th-updated">Última actualización</th>
+                            <th class="col-center th-actions">Acciones</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for l in listas %}
+                            <tr>
+                                <!-- Nombre -->
+                                <td>
+                                    <div class="cell-main">
+                                        <span class="cell-title">{{ l.nombre }}</span>
+                                        <span class="cell-subtitle">
+                                            Lista de candidatos para tus procesos de elección.
+                                        </span>
+                                    </div>
+                                </td>
+
+                                <!-- Código -->
+                                <td class="lc-cell-code">
+                                    {% if l.codigo_lista %}
+                                        <span class="chip-code">
+                                            {{ l.codigo_lista }}
+                                        </span>
+                                    {% else %}
+                                        <span class="table-subtext">Sin código</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Miembros -->
+                                <td class="col-center">
+                                    {% if l.total_miembros %}
+                                        <span class="badge-count">
+                                            {{ l.total_miembros }}
+                                        </span>
+                                    {% else %}
+                                        <span class="table-subtext">Vacía</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Estado -->
+                                <td>
+                                    {% if l.estado == "CONFIRMADA" %}
+                                        <span class="badge-soft badge-soft-success">
+                                            {{ l.get_estado_display }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge-soft badge-soft-warning">
+                                            {{ l.get_estado_display }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Última actualización -->
+                                <td>
+                                    {% if l.fecha_confirmacion %}
+                                        <div class="cell-date">
+                                            <span class="cell-date-main">
+                                                {{ l.fecha_confirmacion|date:"d/m/Y H:i" }}
+                                            </span>
+                                            <span class="table-subtext">
+                                                Última confirmación
+                                            </span>
+                                        </div>
+                                    {% else %}
+                                        <span class="table-subtext">Sin confirmar</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Acciones -->
+                                <td class="col-center">
+                                    {% if l.pk %}
+                                        <div class="elections-actions">
+
+                                            <!-- Configurar (editar miembros de la lista) -->
+                                            <a href="{% url 'votacion:lista_candidatos_configurar' l.pk %}"
+                                               class="btn-secondary btn-icon-only btn-icon-soft"
+                                               title="Configurar lista (editar miembros)">
+                                                <span class="material-icons" aria-hidden="true">settings</span>
+                                            </a>
+
+                                            <!-- Reporte imprimible -->
+                                            <a href="{% url 'votacion:lista_candidatos_reporte' l.pk %}"
+                                               class="btn-secondary btn-icon-only btn-icon-soft"
+                                               title="Imprimir lista de candidatos"
+                                               target="_blank">
+                                                <span class="material-icons" aria-hidden="true">print</span>
+                                            </a>
+
+                                        </div>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
+
     {% else %}
-        <div class="alert alert-info">
-            Todavía no hay listas creadas.
-            Usa el botón <strong>“Nueva lista”</strong> para crear la primera.
+        <!-- Estado vacío -->
+        <div class="empty-state-card">
+            <span class="material-icons empty-icon" aria-hidden="true">folder_open</span>
+            <h2 class="empty-title">Todavía no hay listas creadas</h2>
+            <p class="empty-subtitle">
+                Crea tu primera lista de candidatos para empezar a organizar tus procesos de elección.
+            </p>
+            <a href="{% url 'votacion:lista_candidatos_nueva' %}" class="btn-primary btn-sm">
+                <span class="material-icons" aria-hidden="true">add</span>
+                <span class="btn-text">Nueva lista</span>
+            </a>
         </div>
     {% endif %}
 </div>
 
 <style>
+    /* ===== Header compacto ===== */
+    .page-header-compact {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .page-header-main .page-title {
+        margin-bottom: 2px;
+    }
+
+    .page-header-main .page-subtitle {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .page-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .btn-sm {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 999px;
+    }
+
+    .btn-sm .material-icons {
+        font-size: 18px;
+        line-height: 1;
+    }
+
+    .btn-text {
+        white-space: nowrap;
+    }
+
+    /* ===== Resumen ===== */
+    .list-summary {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+        background: var(--surface-soft, #f7f7f9);
+        border: 1px solid rgba(0, 0, 0, 0.03);
+    }
+
+    .summary-icon {
+        font-size: 24px;
+        color: var(--color-primary, #4a6cf7);
+    }
+
+    .summary-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .summary-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    /* ===== Tarjeta de tabla ===== */
+    .table-card {
+        border-radius: 12px;
+        background: var(--surface-card, #ffffff);
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+        border: 1px solid rgba(15, 23, 42, 0.04);
+        overflow: hidden;
+    }
+
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .table-elevated {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .table-elevated thead tr {
+        background: var(--table-header-bg, #f5f6fb);
+    }
+
+    .table-elevated th,
+    .table-elevated td {
+        padding: 10px 12px;
+        white-space: nowrap;
+    }
+
+    .table-elevated th {
+        text-align: left;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .table-elevated tbody tr {
+        border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+    }
+
+    .table-elevated tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .table-elevated tbody tr:hover {
+        background: rgba(74, 108, 247, 0.03);
+    }
+
+    .th-code { width: 120px; }
+    .th-members { width: 90px; }
+    .th-status { width: 120px; }
+    .th-updated { width: 170px; }
+    .th-actions { width: 160px; }
+
+    /* ===== Celdas ===== */
+    .cell-main {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .cell-title {
+        font-weight: 600;
+    }
+
+    .cell-subtitle {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        white-space: normal;
+    }
+
+    .cell-date-main {
+        font-size: 0.85rem;
+    }
+
+    .cell-date .table-subtext {
+        display: block;
+    }
+
+    .table-subtext {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .col-center {
+        text-align: center;
+    }
+
+    .lc-cell-code {
+        font-size: 0.85rem;
+    }
+
+    .chip-code {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        background: rgba(15, 23, 42, 0.03);
+        color: var(--text-muted);
+    }
+
+    .badge-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: rgba(74, 108, 247, 0.08);
+        color: var(--color-primary, #4a6cf7);
+    }
+
+    /* ===== Acciones ===== */
     .elections-actions {
         display: inline-flex;
         align-items: center;
@@ -143,17 +389,90 @@
         border-radius: 999px;
     }
 
-    .btn-icon-only .material-icons {
-        font-size: 18px;
+    .btn-icon-soft {
+        background: rgba(15, 23, 42, 0.02);
+        border: 1px solid rgba(15, 23, 42, 0.05);
     }
 
-    .table-subtext {
-        font-size: 0.75rem;
+    .btn-icon-soft .material-icons {
+        font-size: 18px;
         color: var(--text-muted);
     }
 
-    .col-center {
+    .btn-icon-soft:hover {
+        background: rgba(74, 108, 247, 0.06);
+        border-color: rgba(74, 108, 247, 0.3);
+    }
+
+    /* ===== Estado vacío ===== */
+    .empty-state-card {
+        border-radius: 12px;
+        background: var(--surface-card, #ffffff);
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+        border: 1px solid rgba(15, 23, 42, 0.04);
+        padding: 24px 20px;
         text-align: center;
+        max-width: 420px;
+        margin: 0 auto;
+    }
+
+    .empty-icon {
+        font-size: 40px;
+        color: var(--color-primary, #4a6cf7);
+        margin-bottom: 8px;
+    }
+
+    .empty-title {
+        font-size: 1.05rem;
+        margin-bottom: 4px;
+    }
+
+    .empty-subtitle {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 14px;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+        .page-header-compact {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .page-header-actions {
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .th-updated {
+            display: none;
+        }
+
+        .table-elevated td:nth-child(5),
+        .table-elevated th:nth-child(5) {
+            display: none;
+        }
+
+        .list-summary {
+            flex-direction: row;
+            align-items: flex-start;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .table-card {
+            border-radius: 10px;
+        }
+
+        .table-elevated th,
+        .table-elevated td {
+            padding: 8px 10px;
+        }
+
+        .cell-subtitle {
+            display: none;
+        }
     }
 </style>
 

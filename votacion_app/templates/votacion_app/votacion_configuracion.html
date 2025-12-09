@@ -213,73 +213,115 @@
                             </div>
                         </div>
                     </div>
-
 <!-- ========== TAB: QUÓRUM Y ASISTENCIA ========== -->
 <div id="tab-quorum" class="votacion-tab-content" style="display:none;">
     <h3 class="tab-title">Quórum y asistencia</h3>
     <p class="tab-description">
-        Estos valores ayudan a calcular los votos válidos y el cumplimiento del quórum.
+        Aquí defines cuántas personas cuentan para la votación y qué mínimo de votos se necesita
+        para que la elección sea válida.
     </p>
 
-    {# 👇 Resumen visual de miembros con derecho a voto #}
-    <div class="quorum-summary-card">
-        <div class="quorum-summary-header">
-            <span class="quorum-summary-title">Miembros con derecho a votar</span>
-            <span class="quorum-summary-badge">Calculado automáticamente</span>
+    <!-- PASOS VISUALES -->
+    <ol class="quorum-steps">
+        <li><strong>Paso 1:</strong> Revisa cuántos miembros tienen derecho a votar.</li>
+        <li><strong>Paso 2:</strong> Escribe cuántos están presentes físicamente.</li>
+        <li><strong>Paso 3:</strong> Elige la base, el tipo de quórum y su valor.</li>
+    </ol>
+
+    <!-- RESUMEN DE MIEMBROS HABILITADOS (solo lectura visible) -->
+    <div class="quorum-layout">
+        <div class="quorum-column">
+            <div class="quorum-summary-card">
+                <div class="quorum-summary-header">
+                    <span class="quorum-summary-title">Miembros con derecho a votar</span>
+                    <span class="quorum-summary-badge">Calculado automáticamente</span>
+                </div>
+                <div class="quorum-summary-value">
+                    {{ form.total_habilitados.value|default:"—" }}
+                </div>
+                <p class="quorum-summary-help">
+                    Son los miembros oficiales activos que cumplen la edad mínima del sistema.
+                    Este número no se edita aquí.
+                </p>
+            </div>
+
+            {# Campo real, pero oculto visualmente para que viaje en el POST #}
+            <div style="display:none;">
+                {{ form.total_habilitados }}
+            </div>
+
+            <div class="form-section" style="margin-top: 16px;">
+                <h4 class="tab-subtitle">Asistencia del día</h4>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label>Miembros presentes (contados físicamente)</label>
+                        {{ form.miembros_presentes }}
+                        <div class="field-help">
+                            Escribe cuántos de esos miembros habilitados están presentes hoy
+                            en el local.
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="quorum-summary-value">
-            {{ form.total_habilitados.value|default:"—" }}
-        </div>
-        <p class="quorum-summary-help">
-            Basado en miembros oficiales activos que cumplen la edad mínima del sistema.
-        </p>
-    </div>
 
-    {# 👇 Campo oculto para que el valor viaje en el POST #}
-    {{ form.total_habilitados }}
+        <!-- COLUMNA DERECHA: CONFIGURACIÓN DE QUÓRUM -->
+        <div class="quorum-column">
+            <div class="form-section">
+                <h4 class="tab-subtitle">Cómo se calcula el quórum</h4>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label>Base para calcular el quórum</label>
+                        {{ form.base_quorum }}
+                        <div class="field-help">
+                            <strong>Habilitados:</strong> usa a todos los que tienen derecho a voto.<br>
+                            <strong>Presentes:</strong> usa sólo a los que están físicamente hoy.
+                        </div>
+                    </div>
 
-    <div class="form-section">
-        <div class="form-grid">
-            <div class="form-field">
-                <label>Miembros presentes (contados físicamente)</label>
-                {{ form.miembros_presentes }}
-                <div class="field-help">
-                    Número de miembros habilitados que están presentes en el local.
+                    <div class="form-field">
+                        <label>Tipo de quórum</label>
+                        {{ form.tipo_quorum }}
+                        <div class="field-help" id="tipo-quorum-ayuda">
+                            <!-- Se rellena con texto genérico por defecto -->
+                            Si eliges <strong>Porcentaje</strong>, el valor se interpreta como %.
+                            Si eliges <strong>Cantidad</strong>, el valor es número de personas.
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label>Valor del quórum</label>
+                        {{ form.valor_quorum }}
+                        <div class="field-help" id="valor-quorum-ayuda">
+                            Si el tipo es <strong>Porcentaje</strong>, escribe un número entre 1 y 100
+                            (por ejemplo: 50 = 50%).<br>
+                            Si el tipo es <strong>Cantidad</strong>, escribe cuántas personas como mínimo
+                            deben votar (por ejemplo: 80).
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label>Votos mínimos requeridos</label>
+                        {{ form.votos_minimos_requeridos }}
+                        <div class="field-help">
+                            Este valor se calcula automáticamente al guardar, combinando la base,
+                            el tipo y el valor de quórum. Indica cuántos votos mínimos se necesitan
+                            para que la elección sea válida.
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="form-field">
-                <label>Base para calcular el quórum</label>
-                {{ form.base_quorum }}
-                <div class="field-help">
-                    Define si el quórum se calcula sobre el total de habilitados o solo los presentes.
-                </div>
-            </div>
-
-            <div class="form-field">
-                <label>Tipo de quórum</label>
-                {{ form.tipo_quorum }}
-            </div>
-
-            <div class="form-field">
-                <label>Valor de quórum</label>
-                {{ form.valor_quorum }}
-                <div class="field-help">
-                    Si es porcentaje, escribe un valor como 50 o 60.
-                    Si es cantidad fija, escribe el número de personas.
-                </div>
-            </div>
-
-            <div class="form-field">
-                <label>Votos mínimos requeridos</label>
-                {{ form.votos_minimos_requeridos }}
-                <div class="field-help">
-                    Se calcula automáticamente según la base y el tipo de quórum elegidos.
+                <div class="quorum-hint-box">
+                    <strong>Ejemplo rápido:</strong><br>
+                    Si tienes 100 miembros con derecho a voto, eliges base
+                    <em>Habilitados</em>, tipo <em>Porcentaje</em> y valor <em>50</em>, el sistema
+                    exigirá al menos <strong>50 votos</strong> para validar la elección.
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 
 
 
