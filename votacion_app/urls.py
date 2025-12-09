@@ -87,4 +87,13 @@ path(
         views.lista_candidatos_buscar_miembro,
         name="lista_candidatos_buscar_miembro",
     ),
+
+    path(
+    "listas/<int:pk>/duplicar/",
+    views.lista_candidatos_duplicar,
+    name="lista_candidatos_duplicar",
+),
+
+
+
 ]

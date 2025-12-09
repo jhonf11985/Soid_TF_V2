@@ -1619,3 +1619,42 @@ def reporte_lista_candidatos(request, pk):
     }
 
     return render(request, "votacion_app/reportes/reporte_lista_candidatos.html", contexto)
+
+@login_required
+def lista_candidatos_duplicar(request, pk):
+    """
+    Crea una copia en BORRADOR de una lista de candidatos (incluyendo sus miembros)
+    y redirige a la pantalla de configuración de la nueva lista.
+    """
+    lista = get_object_or_404(ListaCandidatos, pk=pk)
+
+    # Solo aceptamos POST para evitar duplicaciones accidentales por GET
+    if request.method != "POST":
+        return redirect("votacion:lista_candidatos_listado")
+
+    # Generar un nuevo código automático para la copia
+    nuevo_codigo = generar_codigo_lista("LD")
+
+    # Crear nueva lista en BORRADOR
+    nueva_lista = ListaCandidatos.objects.create(
+        nombre=f"{lista.nombre} (copia)",
+        codigo_lista=nuevo_codigo,
+        notas=lista.notas,
+        estado=ListaCandidatos.ESTADO_BORRADOR,
+    )
+
+    # Copiar todos los miembros de la lista original
+    for item in lista.items.all().order_by("orden", "miembro__apellidos", "miembro__nombres"):
+        ListaCandidatosItem.objects.create(
+            lista=nueva_lista,
+            miembro=item.miembro,
+            orden=item.orden,
+        )
+
+    messages.success(
+        request,
+        f"Se ha creado una copia en borrador de la lista «{lista.nombre}». "
+        f"Ahora puedes editarla y volver a confirmarla."
+    )
+
+    return redirect("votacion:lista_candidatos_configurar", pk=nueva_lista.pk)

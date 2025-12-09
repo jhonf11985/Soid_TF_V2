@@ -159,7 +159,6 @@ class VotacionForm(forms.ModelForm):
                     )
 
         return cleaned
-
 class ListaCandidatosForm(forms.ModelForm):
     class Meta:
         model = ListaCandidatos
@@ -168,6 +167,9 @@ class ListaCandidatosForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        lista = kwargs.get("instance", None)
+
+        # Estilos base
         self.fields["nombre"].widget.attrs.update(
             {
                 "class": "form-control",
@@ -186,6 +188,12 @@ class ListaCandidatosForm(forms.ModelForm):
                 "rows": 3,
             }
         )
+
+        # 🔒 BLOQUEAR EDICIÓN SI LA LISTA ESTÁ CONFIRMADA
+        if lista and lista.estado == ListaCandidatos.ESTADO_CONFIRMADA:
+            for field in self.fields.values():
+                field.disabled = True  # bloquea edición en el front-end
+
 
 
 class ListaCandidatosAgregarMiembroForm(forms.Form):
