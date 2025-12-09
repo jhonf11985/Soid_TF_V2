@@ -101,57 +101,84 @@
                             <td class="col-center">{{ v.total_votos_emitidos }}</td>
 
                             <!-- ACCIONES -->
-                            <td class="col-center">
-                                <div class="elections-actions">
+<td class="col-center">
+    <div class="action-menu-wrapper">
 
-                                    <!-- Configurar -->
-                                    <a href="{% url 'votacion:editar_votacion' v.pk %}"
-                                       class="btn-secondary btn-icon-only"
-                                       title="Configurar elección">
-                                        <span class="material-icons">settings</span>
-                                    </a>
+        <!-- Botón que abre el menú -->
+        <button type="button" class="action-menu-toggle" onclick="toggleActionMenu(this)">
+            <span class="material-symbols-rounded">more_vert</span>
+        </button>
 
-                                    <!-- Duplicar -->
-                                    <form method="post"
-                                          action="{% url 'votacion:duplicar_votacion' v.pk %}">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                                class="btn-secondary btn-icon-only"
-                                                title="Duplicar elección">
-                                            <span class="material-icons">content_copy</span>
-                                        </button>
-                                    </form>
+        <!-- MENÚ OCULTO -->
+        <div class="action-menu-dropdown">
 
-                                    <!-- Eliminar -->
-                                    <form method="post"
-                                          action="{% url 'votacion:eliminar_votacion' v.pk %}"
-                                          onsubmit="return confirm('¿Seguro que deseas eliminar esta elección? No se puede deshacer.');">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                                class="btn-danger btn-icon-only"
-                                                title="Eliminar elección">
-                                            <span class="material-icons">delete</span>
-                                        </button>
-                                    </form>
+            <!-- EDITAR -->
+            <a href="{% url 'votacion:editar_votacion' v.pk %}" class="action-menu-item action-edit">
+                <span class="material-symbols-rounded">edit</span>
+                Editar
+            </a>
 
-                                    <!-- Kiosko (solo si está ABIERTA) -->
-                                    {% if v.estado == "ABIERTA" %}
-                                        <a href="{% url 'votacion:kiosko_ingreso_codigo' %}"
-                                           class="btn-primary btn-icon-only"
-                                           title="Abrir modo kiosko (usa la última elección abierta)">
-                                            <span class="material-icons">how_to_vote</span>
-                                        </a>
-                                    {% endif %}
+            <!-- DUPLICAR -->
+            <a href="{% url 'votacion:duplicar_votacion' v.pk %}" class="action-menu-item action-duplicate">
+                <span class="material-symbols-rounded">content_copy</span>
+                Duplicar
+            </a>
 
-                                    <!-- Pantalla pública -->
-                                    <a href="{% url 'votacion:pantalla_votacion' v.pk %}"
-                                       class="btn-secondary btn-icon-only"
-                                       title="Abrir pantalla pública (proyección)">
-                                        <span class="material-icons">tv</span>
-                                    </a>
+            <!-- ESTADO (cambiar según estado actual) -->
+            {% if v.estado == "BORRADOR" %}
+            <form method="post" action="{% url 'votacion:cambiar_estado' v.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="nuevo_estado" value="ABIERTA">
+                <button class="action-menu-item action-approve">
+                    <span class="material-symbols-rounded">play_arrow</span>
+                    Abrir votación
+                </button>
+            </form>
 
-                                </div>
-                            </td>
+            {% elif v.estado == "ABIERTA" %}
+            <form method="post" action="{% url 'votacion:cambiar_estado' v.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="nuevo_estado" value="CERRADA">
+                <button class="action-menu-item action-approve">
+                    <span class="material-symbols-rounded">stop</span>
+                    Cerrar votación
+                </button>
+            </form>
+
+            {% else %}
+            <form method="post" action="{% url 'votacion:cambiar_estado' v.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="nuevo_estado" value="BORRADOR">
+                <button class="action-menu-item action-approve">
+                    <span class="material-symbols-rounded">restart_alt</span>
+                    Volver a borrador
+                </button>
+            </form>
+            {% endif %}
+
+            <!-- KIOSKO -->
+           <a href="{% url 'votacion:kiosko_ingreso_codigo' %}" class="action-menu-item action-edit">
+
+                <span class="material-symbols-rounded">how_to_vote</span>
+                Kiosko
+            </a>
+
+            <!-- PANTALLA PÚBLICA -->
+            <a href="{% url 'votacion:pantalla_votacion' v.pk %}" class="action-menu-item action-print">
+                <span class="material-symbols-rounded">monitor</span>
+                Pantalla pública
+            </a>
+
+            <!-- ELIMINAR -->
+            <a href="{% url 'votacion:eliminar_votacion' v.pk %}" class="action-menu-item action-delete">
+                <span class="material-symbols-rounded">delete</span>
+                Eliminar
+            </a>
+
+        </div>
+    </div>
+</td>
+
                         </tr>
 
                         <!-- Fila secundaria: vueltas (rondas) de esta elección -->
@@ -317,5 +344,21 @@
         font-size: 17px;
     }
 </style>
+
+<script>
+function toggleActionMenu(btn) {
+    const wrapper = btn.closest(".action-menu-wrapper");
+    wrapper.classList.toggle("open");
+    document.querySelectorAll(".action-menu-wrapper").forEach(w => {
+        if (w !== wrapper) w.classList.remove("open");
+    });
+}
+document.addEventListener("click", function(e) {
+    if (!e.target.closest(".action-menu-wrapper")) {
+        document.querySelectorAll(".action-menu-wrapper").forEach(w => w.classList.remove("open"));
+    }
+});
+</script>
+
 
 {% endblock %}

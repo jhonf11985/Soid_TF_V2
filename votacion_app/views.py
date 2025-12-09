@@ -1702,4 +1702,4 @@ def cambiar_estado_votacion(request, pk):
     votacion.save()
     messages.success(request, f"Estado actualizado a {votacion.get_estado_display()}.")
 
-    return redirect("votacion:configurar_votacion", pk=votacion.pk)
+    return redirect("votacion:editar_votacion", pk=votacion.pk)
