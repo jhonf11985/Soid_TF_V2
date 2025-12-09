@@ -1420,7 +1420,13 @@ def lista_candidatos_buscar_miembro(request):
     codigo = request.GET.get("codigo", "").strip()
 
     if not codigo:
-        return JsonResponse({"ok": False, "error": "Debes introducir un código."})
+        return JsonResponse({
+        "ok": True, 
+        "id": miembro.id,
+        "nombre": str(miembro),
+        "codigo": miembro.codigo_miembro,
+    })
+
 
     # Normalizar igual que en lista_candidatos_configurar
     sufijo_upper = codigo.upper()

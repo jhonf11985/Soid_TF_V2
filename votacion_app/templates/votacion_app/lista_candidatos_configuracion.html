@@ -688,7 +688,10 @@
       </p>
       <div class="lcg-modal-member">
         <div class="lcg-modal-member-main">
-          <span class="lcg-modal-member-name" id="confirm-agregar-nombre"></span>
+          <a href="#" id="confirm-agregar-link" class="lcg-modal-member-name" target="_blank">
+            <span id="confirm-agregar-nombre"></span>
+        </a>
+
           <span class="lcg-modal-member-code">
             Código: <strong id="confirm-agregar-codigo"></strong>
           </span>
@@ -813,11 +816,17 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  var modal = document.getElementById("confirm-agregar-modal");
-  if (!modal) return;
+  console.log("JS lista_candidatos_configuracion inicializado");
+
+  var modal       = document.getElementById("confirm-agregar-modal");
+  if (!modal) {
+    console.warn("No se encontró el modal 'confirm-agregar-modal'");
+    return;
+  }
 
   var spanCodigo  = document.getElementById("confirm-agregar-codigo");
   var spanNombre  = document.getElementById("confirm-agregar-nombre");
+  var linkNombre  = document.getElementById("confirm-agregar-link");
   var btnCancelar = document.getElementById("confirm-agregar-cancelar");
   var btnAceptar  = document.getElementById("confirm-agregar-aceptar");
   var btnCerrar   = document.getElementById("confirm-agregar-cerrar");
@@ -830,72 +839,138 @@ document.addEventListener("DOMContentLoaded", function () {
 
   async function buscarMiembroPorCodigo(codigoRaw) {
     var url = "{% url 'votacion:lista_candidatos_buscar_miembro' %}";
-    var params = new URLSearchParams({codigo: codigoRaw || ""});
+    var params = new URLSearchParams({ codigo: codigoRaw || "" });
+
+    console.log("Llamando a:", url, "con codigo:", codigoRaw);
+
     var resp = await fetch(url + "?" + params.toString(), {
       headers: {
         "X-Requested-With": "XMLHttpRequest"
       }
     });
+
     if (!resp.ok) {
+      console.error("Respuesta HTTP no OK:", resp.status);
       throw new Error("Error de red al buscar el miembro");
     }
     return await resp.json();
   }
 
+  // Interceptar el submit del formulario de "Añadir" para mostrar el modal
   document.addEventListener("submit", function (evt) {
     var form = evt.target;
-    if (form.matches('[data-confirm-agregar="true"]')) {
-      evt.preventDefault();
-      var input = form.querySelector('input[name="codigo_sufijo"]');
-      var codigo = input && input.value ? input.value.trim() : "";
 
-      if (!codigo) {
-        alert("Debes introducir un código de miembro.");
+    if (!form.matches('[data-confirm-agregar="true"]')) {
+      return;  // otros formularios no nos interesan
+    }
+
+    console.log("Interceptado submit del formulario de añadir miembro");
+
+    evt.preventDefault();
+
+    var input  = form.querySelector('input[name="codigo_sufijo"]');
+    var codigo = input && input.value ? input.value.trim() : "";
+
+    if (!codigo) {
+      alert("Debes introducir un código de miembro.");
+      return;
+    }
+
+    // Si fetch no existe (navegador muy viejo), hacemos submit normal
+    if (typeof fetch === "undefined") {
+      console.warn("fetch no está disponible, se envía el formulario normal.");
+      form.submit();
+      return;
+    }
+
+    // Llamada AJAX para obtener nombre + código normalizado + id
+    buscarMiembroPorCodigo(codigo)
+      .then(function (data) {
+        console.log("Respuesta AJAX:", data);
+
+        if (!data.ok) {
+          alert(data.error || "No se pudo localizar el miembro.");
+          // Como al final el view de agregar volverá a validar,
+          // si quieres puedes dejar que se envíe el formulario igual:
+          // form.submit();
+          return;
+        }
+
+        if (spanNombre) {
+          spanNombre.textContent = data.nombre || "";
+        }
+        if (spanCodigo) {
+          spanCodigo.textContent = data.codigo || codigo;
+        }
+
+        // Construir URL al detalle del miembro
+        if (linkNombre && data.id) {
+          try {
+            var urlDetalle = "{% url 'miembros_app:detalle' 0 %}".replace("0", data.id);
+            linkNombre.href = urlDetalle;
+            console.log("URL detalle miembro:", urlDetalle);
+          } catch (e) {
+            console.error("Error construyendo URL de detalle:", e);
+            // Si algo raro pasa, limpia el href
+            linkNombre.href = "#";
+          }
+        }
+
+        pendingForm = form;
+        modal.classList.add("is-visible");
+      })
+      .catch(function (err) {
+        console.error("Error en buscarMiembroPorCodigo:", err);
+        // Fallback: si el AJAX falla, hacemos submit normal
+        alert("Ocurrió un error al buscar el miembro. Se intentará añadir directamente.");
+        form.submit();
+      });
+  });
+
+  // Click en el nombre (enlace) para ir al detalle del miembro sin enviar el formulario
+  if (linkNombre) {
+    linkNombre.addEventListener("click", function (evt) {
+      var url = linkNombre.getAttribute("href");
+
+      // Si no hay URL válida, no hacemos nada especial
+      if (!url || url === "#") {
+        evt.preventDefault();
         return;
       }
 
-      // Llamamos al endpoint AJAX para obtener nombre + código normalizado
-      buscarMiembroPorCodigo(codigo)
-        .then(function (data) {
-          if (!data.ok) {
-            alert(data.error || "No se pudo localizar el miembro.");
-            return;
-          }
+      evt.preventDefault();
+      evt.stopPropagation();  // evita que el click afecte al formulario de fondo
+      window.open(url, "_blank");
+    });
+  }
 
-          // Rellenamos el modal con nombre + código
-          if (spanNombre) spanNombre.textContent = data.nombre || "";
-          if (spanCodigo) spanCodigo.textContent = data.codigo || codigo;
-
-          pendingForm = form;
-          modal.classList.add("is-visible");
-        })
-        .catch(function (err) {
-          console.error(err);
-          alert("Ocurrió un error al buscar el miembro.");
-        });
-    }
-  });
-
+  // Botón "Cancelar" del modal
   if (btnCancelar) {
     btnCancelar.addEventListener("click", function () {
       cerrarModal();
     });
   }
+
+  // Botón "X" de cerrar
   if (btnCerrar) {
     btnCerrar.addEventListener("click", function () {
       cerrarModal();
     });
   }
+
+  // Botón "Sí, añadir" → ahora sí enviamos el formulario original
   if (btnAceptar) {
     btnAceptar.addEventListener("click", function () {
       if (pendingForm) {
         var form = pendingForm;
         cerrarModal();
-        form.submit();   // aquí ya entra al view y lo agrega de verdad
+        console.log("Enviando formulario original para agregar miembro");
+        form.submit();   // aquí entra al view con accion="agregar_miembro"
       }
     });
   }
 
+  // Cerrar modal al hacer click fuera de la tarjeta
   modal.addEventListener("click", function (evt) {
     if (evt.target === modal) {
       cerrarModal();
@@ -903,6 +978,8 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 </script>
+
+
 
 
 {% endblock %}
