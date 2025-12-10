@@ -351,17 +351,64 @@
 <script>
 function toggleActionMenu(btn) {
     const wrapper = btn.closest(".action-menu-wrapper");
-    wrapper.classList.toggle("open");
-    document.querySelectorAll(".action-menu-wrapper").forEach(w => {
-        if (w !== wrapper) w.classList.remove("open");
+    const dropdown = wrapper.querySelector(".action-menu-dropdown");
+    const isOpen = wrapper.classList.contains("open");
+
+    // Cerrar todos los demÃ¡s menÃºs
+    document.querySelectorAll(".action-menu-wrapper.open").forEach(w => {
+        if (w !== wrapper) {
+            w.classList.remove("open");
+        }
+    });
+
+    if (isOpen) {
+        // Si ya estÃ¡ abierto, cerramos
+        wrapper.classList.remove("open");
+        return;
+    }
+
+    // Abrimos este menÃº
+    wrapper.classList.add("open");
+    
+    if (!dropdown) return;
+
+    // Esperamos un tick para que el navegador renderice
+    requestAnimationFrame(() => {
+        // Obtenemos la posiciÃ³n del botÃ³n
+        const rect = btn.getBoundingClientRect();
+        
+        // CalculÃ¡mos el ancho del dropdown
+        const dropdownWidth = dropdown.offsetWidth || 165; // 165 es el min-width por defecto
+        
+        // Posicionamos el dropdown
+        // Top: justo debajo del botÃ³n (rect.bottom) + un pequeno espaciado (4px)
+        dropdown.style.top = (rect.bottom + 4) + 'px';
+        
+        // Left: alineamos el borde derecho del dropdown con el borde derecho del botÃ³n
+        // rect.right - dropdownWidth hace que se alinee a la derecha
+        dropdown.style.left = (rect.right - dropdownWidth) + 'px';
+        
+        // Verificar si sale de la pantalla por abajo
+        const dropdownRect = dropdown.getBoundingClientRect();
+        const espacioAbajo = window.innerHeight - dropdownRect.bottom;
+        
+        // Si hay menos de 16px de espacio, lo movemos hacia arriba
+        if (espacioAbajo < 16) {
+            dropdown.style.top = (rect.top - dropdown.offsetHeight - 4) + 'px';
+        }
     });
 }
+
+// Cerrar si se hace clic fuera
 document.addEventListener("click", function(e) {
     if (!e.target.closest(".action-menu-wrapper")) {
-        document.querySelectorAll(".action-menu-wrapper").forEach(w => w.classList.remove("open"));
+        document.querySelectorAll(".action-menu-wrapper.open").forEach(w => {
+            w.classList.remove("open");
+        });
     }
 });
 </script>
+
 
 
 {% endblock %}
