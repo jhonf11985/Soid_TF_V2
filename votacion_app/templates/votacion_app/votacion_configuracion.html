@@ -125,32 +125,40 @@
 
 
         <!-- TABS -->
-        <div class="votacion-tabs-bar">
-            <button type="button"
-                    class="votacion-tab-btn active"
-                    onclick="openVotacionTab('tab-config', this)">
-                Configuración general
-            </button>
+<div class="votacion-tabs-bar">
+    <button type="button"
+            class="votacion-tab-btn active"
+            onclick="openVotacionTab('tab-config', this)">
+        Configuración general
+    </button>
 
-            <button type="button"
-                    class="votacion-tab-btn"
-                    onclick="openVotacionTab('tab-quorum', this)">
-                Quórum y asistencia
-            </button>
+    <button type="button"
+            class="votacion-tab-btn"
+            onclick="openVotacionTab('tab-quorum', this)">
+        Quórum y asistencia
+    </button>
 
-            <button type="button"
-                    class="votacion-tab-btn"
-                    onclick="openVotacionTab('tab-fechas', this)">
-                Fechas y opciones
-            </button>
+    <button type="button"
+            class="votacion-tab-btn"
+            onclick="openVotacionTab('tab-fechas', this)">
+        Fechas y opciones
+    </button>
 
-            <!-- Siempre visible -->
-            <button type="button"
-                    class="votacion-tab-btn"
-                    onclick="openVotacionTab('tab-vueltas', this)">
-                Vueltas
-            </button>
-        </div>
+    <button type="button"
+            class="votacion-tab-btn"
+            onclick="openVotacionTab('tab-cargar', this)">
+        Cargar candidatos
+    </button>
+
+    <button type="button"
+            class="votacion-tab-btn"
+            onclick="openVotacionTab('tab-vueltas', this)">
+        Vueltas
+    </button>   
+</div>
+
+
+        
 
         <div class="votacion-layout">
             <!-- CONTENIDO PRINCIPAL -->
@@ -358,6 +366,56 @@
                     </div>
                 </form>
 
+                <!-- ========== TAB: CARGAR CANDIDATOS ========== -->
+<div id="tab-cargar" class="votacion-tab-content" style="display:none;">
+
+    <h3 class="tab-title">Cargar candidatos desde una lista</h3>
+
+    <p class="tab-description">
+        Selecciona una lista de candidatos previamente creada y confirmada.
+        Todos los miembros de esa lista se cargarán como candidatos en esta elección.
+    </p>
+
+    {% if not votacion %}
+        <p class="section-help">
+            Guarda primero la votación para habilitar esta sección.
+        </p>
+    {% else %}
+
+        <form method="post" action="{% url 'votacion:cargar_candidatos_desde_lista' votacion.pk %}">
+            {% csrf_token %}
+
+            <div class="form-grid grid-2" style="margin-top:12px;">
+                <div class="form-field">
+                    <label for="id_lista_candidatos">Lista de candidatos</label>
+                    <select name="lista_candidatos_id" id="id_lista_candidatos">
+                        <option value="">Selecciona una lista…</option>
+                        {% for lista in listas_candidatos_disponibles %}
+                            <option value="{{ lista.pk }}">
+                                {{ lista.nombre }} — {{ lista.items.count }} miembros
+                            </option>
+                        {% empty %}
+                            <option value="">No hay listas confirmadas disponibles</option>
+                        {% endfor %}
+                    </select>
+                    <div class="field-help">
+                        Solo se muestran listas confirmadas.
+                    </div>
+                </div>
+
+                <div class="form-field" style="align-self:flex-end;">
+                    <button type="submit" class="btn-secondary">
+                        <span class="material-icons" style="font-size:18px;">download</span>
+                        Cargar lista
+                    </button>
+                </div>
+            </div>
+        </form>
+
+    {% endif %}
+</div>
+
+
                 <!-- ========== TAB: VUELTAS ========== -->
                 <div id="tab-vueltas" class="votacion-tab-content" style="display:none;">
                     <h3 class="tab-title">Vueltas de esta elección</h3>
@@ -431,6 +489,7 @@
                     {% endif %}
                 </div>
             </div>
+
 
             <!-- ASIDE / AYUDA -->
             <aside class="votacion-aside">
