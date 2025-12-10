@@ -1,0 +1,591 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard de Finanzas · Soid_Tf_2{% endblock %}
+
+{% block content %}
+
+<style>
+/* === ESTILOS SOLO PARA ESTE MÓDULO DE FINANZAS === */
+/* No tocamos nada global, solo clases que empiezan por .finance- */
+
+.layout {
+    background: #f6f5ff;
+}
+
+.finance-layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+
+/* SIDEBAR */
+
+.finance-sidebar {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 1.5rem 1.25rem;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    min-height: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.finance-user-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.finance-user-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ff9a9e, #fecfef);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 1.1rem;
+}
+
+.finance-user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.finance-user-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.finance-user-role {
+    font-size: 0.78rem;
+    color: #6b7280;
+}
+
+/* Menú lateral */
+
+.finance-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+}
+
+.finance-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 0.88rem;
+    color: #6b7280;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.1s;
+}
+
+.finance-menu-item .finance-menu-icon {
+    font-size: 1.2rem;
+}
+
+.finance-menu-item:hover {
+    background: #f3e8ff;
+    color: #7c3aed;
+    transform: translateX(1px);
+}
+
+.finance-menu-item.is-active {
+    background: linear-gradient(135deg, #6366f1, #ec4899);
+    color: #ffffff;
+    box-shadow: 0 12px 30px rgba(129, 140, 248, 0.45);
+}
+
+/* CONTENIDO PRINCIPAL */
+
+.finance-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Topbar interna del módulo */
+
+.finance-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.finance-title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.finance-subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.finance-topbar-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Botones */
+
+.finance-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 0.45rem 1.1rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.1s;
+}
+
+.finance-btn-primary {
+    background: linear-gradient(135deg, #6366f1, #ec4899);
+    color: #ffffff;
+    box-shadow: 0 10px 25px rgba(129, 140, 248, 0.45);
+}
+
+.finance-btn-primary:hover {
+    box-shadow: 0 14px 32px rgba(129, 140, 248, 0.6);
+    transform: translateY(-1px);
+}
+
+.finance-btn-ghost {
+    background: #ffffff;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+.finance-btn-ghost:hover {
+    background: #f9fafb;
+}
+
+/* Tarjetas superiores */
+
+.finance-cards-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.finance-card {
+    border-radius: 18px;
+    padding: 1.1rem 1.25rem;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+}
+
+.finance-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.15;
+    background: radial-gradient(circle at top right, #ffffff 0, transparent 55%);
+}
+
+.finance-card-label {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.finance-card-value {
+    margin-top: 0.55rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.finance-card-note {
+    margin-top: 0.3rem;
+    font-size: 0.78rem;
+}
+
+/* Degradados tipo imagen */
+
+.finance-card-pink {
+    background: linear-gradient(135deg, #ff9a9e, #fecfef);
+}
+
+.finance-card-blue {
+    background: linear-gradient(135deg, #60a5fa, #4f46e5);
+}
+
+.finance-card-green {
+    background: linear-gradient(135deg, #6ee7b7, #22c55e);
+}
+
+/* Paneles inferiores (gráficos y tabla) */
+
+.finance-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2.3fr) minmax(0, 1.4fr);
+    gap: 1rem;
+}
+
+.finance-panel {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.04);
+}
+
+.finance-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.finance-panel-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.finance-panel-legend {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.finance-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    display: inline-block;
+    margin-right: 0.25rem;
+}
+
+.finance-dot-income {
+    background: #4ade80;
+}
+
+.finance-dot-expense {
+    background: #f97373;
+}
+
+.finance-panel-body {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+/* Marcadores de lugar (hasta que tengamos gráficos reales) */
+
+.finance-panel-placeholder {
+    border-radius: 14px;
+    border: 1px dashed #e5e7eb;
+    padding: 1.5rem;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.85rem;
+}
+
+/* Tabla */
+
+.finance-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.finance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.finance-table thead {
+    background: #f9fafb;
+}
+
+.finance-table th,
+.finance-table td {
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.finance-table th {
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.finance-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.finance-table tbody tr:nth-child(2n) {
+    background: #faf5ff;
+}
+
+.finance-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.finance-status-ok {
+    background: #ecfdf3;
+    color: #16a34a;
+}
+
+.finance-status-warn {
+    background: #fef9c3;
+    color: #b45309;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1024px) {
+    .finance-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .finance-sidebar {
+        position: static;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        min-height: auto;
+    }
+
+    .finance-menu {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .finance-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .finance-cards-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .finance-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .finance-sidebar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .finance-menu {
+        justify-content: flex-start;
+    }
+}
+</style>
+
+<div class="finance-layout">
+
+    <!-- SIDEBAR INTERNA DEL MÓDULO -->
+    <aside class="finance-sidebar">
+        <div class="finance-user-card">
+            <div class="finance-user-avatar">
+                {{ user.first_name|default:user.username|first|upper }}
+            </div>
+            <div class="finance-user-info">
+                <div class="finance-user-name">
+                    {{ user.get_full_name|default:user.username }}
+                </div>
+                <div class="finance-user-role">
+                    Finanzas · Panel
+                </div>
+            </div>
+        </div>
+
+        <nav class="finance-menu">
+            <a href="{% url 'finanzas_app:dashboard' %}" class="finance-menu-item is-active">
+                <span class="material-icons finance-menu-icon">dashboard</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="finance-menu-item">
+                <span class="material-icons finance-menu-icon">account_balance_wallet</span>
+                <span>Ingresos</span>
+            </a>
+            <a href="#" class="finance-menu-item">
+                <span class="material-icons finance-menu-icon">receipt_long</span>
+                <span>Gastos</span>
+            </a>
+            <a href="#" class="finance-menu-item">
+                <span class="material-icons finance-menu-icon">assignment</span>
+                <span>Presupuestos</span>
+            </a>
+            <a href="#" class="finance-menu-item">
+                <span class="material-icons finance-menu-icon">bar_chart</span>
+                <span>Reportes</span>
+            </a>
+            <a href="#" class="finance-menu-item">
+                <span class="material-icons finance-menu-icon">settings</span>
+                <span>Configuración</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- ZONA PRINCIPAL -->
+    <section class="finance-main">
+
+        <!-- BARRA SUPERIOR -->
+        <header class="finance-topbar">
+            <div class="finance-topbar-text">
+                <h1 class="finance-title">Dashboard de Finanzas</h1>
+                <p class="finance-subtitle">
+                    Resumen general de ingresos, gastos y actividad financiera de la iglesia.
+                </p>
+            </div>
+            <div class="finance-topbar-actions">
+                <button type="button" class="finance-btn finance-btn-ghost">
+                    Descargar resumen
+                </button>
+                <button type="button" class="finance-btn finance-btn-primary">
+                    Nueva transacción
+                </button>
+            </div>
+        </header>
+
+        <!-- TARJETAS PRINCIPALES -->
+        <div class="finance-cards-row">
+            <article class="finance-card finance-card-pink">
+                <h3 class="finance-card-label">Ingresos de la semana</h3>
+                <div class="finance-card-value">
+                    $ {{ resumen.ventas_semanales|default:"15,000" }}
+                </div>
+                <p class="finance-card-note">
+                    Incremento del 60% respecto a la semana anterior.
+                </p>
+            </article>
+
+            <article class="finance-card finance-card-blue">
+                <h3 class="finance-card-label">Registros (movimientos)</h3>
+                <div class="finance-card-value">
+                    {{ resumen.ordenes_semanales|default:"45,633" }}
+                </div>
+                <p class="finance-card-note">
+                    Disminuyeron un 10% frente al periodo previo.
+                </p>
+            </article>
+
+            <article class="finance-card finance-card-green">
+                <h3 class="finance-card-label">Visitantes online</h3>
+                <div class="finance-card-value">
+                    {{ resumen.visitantes_online|default:"95,574" }}
+                </div>
+                <p class="finance-card-note">
+                    Aumentaron un 5% esta semana.
+                </p>
+            </article>
+        </div>
+
+        <!-- ZONA DE GRÁFICOS Y LISTADOS -->
+        <div class="finance-grid">
+            <section class="finance-panel">
+                <div class="finance-panel-header">
+                    <h3>Estadísticas de ingresos y gastos</h3>
+                    <div class="finance-panel-legend">
+                        <span class="finance-dot finance-dot-income"></span> Ingresos
+                        <span class="finance-dot finance-dot-expense"></span> Gastos
+                    </div>
+                </div>
+                <div class="finance-panel-body finance-panel-placeholder">
+                    Aquí irá el gráfico de barras (meses vs ingresos/gastos).
+                </div>
+            </section>
+
+            <section class="finance-panel">
+                <div class="finance-panel-header">
+                    <h3>Distribución de fuentes</h3>
+                </div>
+                <div class="finance-panel-body finance-panel-placeholder">
+                    Aquí irá el gráfico de dona (diezmos, ofrendas, eventos, otros).
+                </div>
+            </section>
+        </div>
+
+        <!-- TABLA DE MOVIMIENTOS RECIENTES -->
+        <section class="finance-panel">
+            <div class="finance-panel-header">
+                <h3>Movimientos recientes</h3>
+            </div>
+            <div class="finance-panel-body">
+                <div class="finance-table-wrapper">
+                    <table class="finance-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Descripción</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>05/12/2025</td>
+                                <td>Ingreso</td>
+                                <td>Diezmos y ofrendas</td>
+                                <td>$ 32,500</td>
+                                <td><span class="finance-status finance-status-ok">Confirmado</span></td>
+                            </tr>
+                            <tr>
+                                <td>04/12/2025</td>
+                                <td>Gasto</td>
+                                <td>Pago de renta del local</td>
+                                <td>$ 12,000</td>
+                                <td><span class="finance-status finance-status-warn">Pendiente</span></td>
+                            </tr>
+                            <tr>
+                                <td>02/12/2025</td>
+                                <td>Gasto</td>
+                                <td>Compra de equipo de sonido</td>
+                                <td>$ 18,900</td>
+                                <td><span class="finance-status finance-status-ok">Pagado</span></td>
+                            </tr>
+                            <tr>
+                                <td>30/11/2025</td>
+                                <td>Ingreso</td>
+                                <td>Actividad juvenil especial</td>
+                                <td>$ 7,800</td>
+                                <td><span class="finance-status finance-status-ok">Confirmado</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </section>
+</div>
+
+{% endblock %}

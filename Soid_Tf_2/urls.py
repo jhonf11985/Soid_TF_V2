@@ -19,10 +19,9 @@ urlpatterns = [
     path("accounts/", include("django.contrib.auth.urls")),
 
     path("notificaciones/", include("notificaciones_app.urls")),  # 👈 AÑADIDO
-    path("votacion/", include("votacion_app.urls"))
+    path("votacion/", include("votacion_app.urls")),  # 👈 FALTABA LA COMA AQUÍ
 
-
-
+    path("finanzas/", include("finanzas_app.urls")),  # 👈 NUEVA
 ]
 
 # Para servir fotos y archivos subidos

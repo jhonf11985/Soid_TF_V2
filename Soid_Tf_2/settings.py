@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'miembros_app',
     "notificaciones_app",
     'votacion_app',
+    'finanzas_app',
 
 ]
 
