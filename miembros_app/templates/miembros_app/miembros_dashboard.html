@@ -1,1016 +1,1304 @@
-{% extends 'core/base_modulo.html' %}
-
-{% block title %}Miembros · Panel{% endblock %}
-
-{% block breadcrumb %}
-Miembros / Panel
-{% endblock %}
-
-{% block content %}
-
-<section class="page-header">
-    <div>
-        <h1 class="page-title">Panel de miembros</h1>
-        <p class="page-subtitle">
-            Vista general de la membresía oficial (mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años) y datos pastorales clave.
-        </p>
-    </div>
-
-    <div class="page-header-actions">
-        <a href="{% url 'miembros_app:lista' %}" class="btn-secondary">
-            <span class="material-icons">group</span>
-            Ver lista
-        </a>
-        <a href="{% url 'miembros_app:crear' %}" class="btn-primary">
-            <span class="material-icons">person_add</span>
-            Nuevo miembro
-        </a>
-    </div>
-</section>
-
-<section class="dashboard-section">
-
-    <!-- ZONA 1 · RESUMEN PRINCIPAL -->
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label">Miembros registrados</div>
-            <div class="kpi-value">{{ total_miembros|default:"0" }}</div>
-            <div class="kpi-sub">Incluye niños, nuevos creyentes y registros sin estado.</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Miembros oficiales</div>
-            <div class="kpi-value">{{ total_oficiales|default:"0" }}</div>
-            <div class="kpi-sub">
-                Mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años que pueden votar y participar en la membresía.
-            </div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Nuevos creyentes (últimos 7 días)</div>
-            <div class="kpi-value">{{ nuevos_creyentes_semana|default:"0" }}</div>
-            <div class="kpi-sub">Personas marcadas como nuevos creyentes recientemente.</div>
-        </div>
-    </div>
-
-    <!-- ZONA 1b · ESTADOS + ACCIONES / ALERTAS -->
-    <div class="dashboard-grid">
-
-        <!-- Izquierda: Estados pastorales -->
-        <div>
-
-            <!-- TARJETAS DE ESTADO PASTORAL -->
-            <div class="dashboard-cards">
-                <!-- Activos -->
-                <div class="dash-card dash-card--activo">
-                    <div class="dash-card-label">Miembros activos</div>
-                    <div class="dash-card-value">{{ activos }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_activos }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
-                </div>
-
-                <!-- Catecúmenos -->
-                <div class="dash-card dash-card--catecumeno">
-                    <div class="dash-card-label">Catecúmenos (no bautizados)</div>
-                    <div class="dash-card-value">{{ catecumenos }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_catecumenos }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
-                </div>
-
-                <!-- Pasivos -->
-                <div class="dash-card dash-card--pasivo">
-                    <div class="dash-card-label">Miembros pasivos</div>
-                    <div class="dash-card-value">{{ pasivos }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_pasivos }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
-                </div>
-
-                <!-- Disciplina -->
-                <div class="dash-card dash-card--disciplina">
-                    <div class="dash-card-label">En disciplina</div>
-                    <div class="dash-card-value">{{ disciplina }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_disciplina }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
-                </div>
-
-                <!-- Observación -->
-                <div class="dash-card dash-card--observacion">
-                    <div class="dash-card-label">En observación</div>
-                    <div class="dash-card-value">{{ observacion }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_observacion }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
-                </div>
-
-                <!-- Descarriados -->
-                <div class="dash-card dash-card--descarriado">
-                    <div class="dash-card-label">Miembros descarriados</div>
-                    <div class="dash-card-value">{{ descarriados }}</div>
-                    <div class="dash-card-sub">
-                        Miembros inactivos con razón de salida “descarriado”.
-                    </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miembros · Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="user-card">
+                <div class="user-avatar">D</div>
+                <div class="user-info">
+                    <div class="user-name">David Grey</div>
+                    <div class="user-role">Miembros · Panel</div>
                 </div>
             </div>
 
-            <!-- GRÁFICO: DISTRIBUCIÓN POR ESTADO PASTORAL -->
-            <div class="dash-panel" style="margin-top: 12px;">
-                <div class="dash-panel-header">
-                    <h2>Distribución por estado pastoral</h2>
-                    <p>Solo cuenta miembros oficiales (mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años).</p>
+            <nav class="menu">
+                <a href="#" class="menu-item is-active">
+                    <span class="material-icons menu-icon">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="material-icons menu-icon">group</span>
+                    <span>Lista de Miembros</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="material-icons menu-icon">person_add</span>
+                    <span>Nuevo Miembro</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="material-icons menu-icon">hail</span>
+                    <span>Nuevos Creyentes</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="material-icons menu-icon">bar_chart</span>
+                    <span>Reportes</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="material-icons menu-icon">settings</span>
+                    <span>Configuración</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <section class="main">
+            <header class="topbar">
+                <div class="topbar-text">
+                    <h1 class="title">Panel de miembros</h1>
+                    <p class="subtitle">Vista general de la membresía oficial (mayores de 18 años) y datos pastorales clave.</p>
                 </div>
-
-                {% if total_oficiales %}
-                    <div class="estado-bar-wrapper">
-                        {% if pct_activos > 0 %}
-                            <div class="estado-bar estado-activo"
-                                 style="width: {{ pct_activos }}%;"
-                                 title="Activos: {{ activos }} ({{ pct_activos }}%)">
-                            </div>
-                        {% endif %}
-                        {% if pct_pasivos > 0 %}
-                            <div class="estado-bar estado-pasivo"
-                                 style="width: {{ pct_pasivos }}%;"
-                                 title="Pasivos: {{ pasivos }} ({{ pct_pasivos }}%)">
-                            </div>
-                        {% endif %}
-                        {% if pct_observacion > 0 %}
-                            <div class="estado-bar estado-observacion"
-                                 style="width: {{ pct_observacion }}%;"
-                                 title="En observación: {{ observacion }} ({{ pct_observacion }}%)">
-                            </div>
-                        {% endif %}
-                        {% if pct_catecumenos > 0 %}
-                            <div class="estado-bar estado-catecumeno"
-                                 style="width: {{ pct_catecumenos }}%;"
-                                 title="Catecúmenos: {{ catecumenos }} ({{ pct_catecumenos }}%)">
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <ul class="estado-legend">
-                        <li>
-                            <span class="estado-dot estado-activo"></span>
-                            <span class="estado-label">Activos</span>
-                            <span class="estado-percent">{{ pct_activos }}%</span>
-                        </li>
-                        <li>
-                            <span class="estado-dot estado-pasivo"></span>
-                            <span class="estado-label">Pasivos</span>
-                            <span class="estado-percent">{{ pct_pasivos }}%</span>
-                        </li>
-                        <li>
-                            <span class="estado-dot estado-observacion"></span>
-                            <span class="estado-label">En observación</span>
-                            <span class="estado-percent">{{ pct_observacion }}%</span>
-                        </li>
-                        <li>
-                            <span class="estado-dot estado-catecumeno"></span>
-                            <span class="estado-label">Catecúmenos</span>
-                            <span class="estado-percent">{{ pct_catecumenos }}%</span>
-                        </li>
-                    </ul>
-                {% else %}
-                    <p class="dash-empty">
-                        Aún no hay suficientes miembros oficiales para mostrar esta distribución.
-                    </p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Derecha: Acciones rápidas + alertas -->
-        <div>
-            <div class="dash-panel">
-                <div class="dash-panel-header">
-                    <h2>Acciones rápidas</h2>
-                    <p>Atajos frecuentes para el trabajo diario.</p>
-                </div>
-
-                <div class="quick-actions">
-                    <a href="{% url 'miembros_app:lista' %}" class="quick-action">
-                        <span class="material-icons">table_rows</span>
-                        <div>
-                            <div class="qa-title">Ver lista completa</div>
-                            <div class="qa-sub">Gestionar todos los registros de miembros.</div>
-                        </div>
-                    </a>
-
-                    <a href="{% url 'miembros_app:crear' %}" class="quick-action">
+                <div class="topbar-actions">
+                    <button type="button" class="btn btn-ghost">
+                        <span class="material-icons">group</span>
+                        Ver lista
+                    </button>
+                    <button type="button" class="btn btn-primary">
                         <span class="material-icons">person_add</span>
-                        <div>
-                            <div class="qa-title">Agregar nuevo miembro</div>
-                            <div class="qa-sub">Registrar una persona en la base de datos.</div>
-                        </div>
-                    </a>
+                        Nuevo miembro
+                    </button>
+                </div>
+            </header>
 
-                    <a href="{% url 'miembros_app:nuevo_creyente_crear' %}" class="quick-action">
-                        <span class="material-icons">hail</span>
-                        <div>
-                            <div class="qa-title">Registrar nuevo creyente</div>
-                            <div class="qa-sub">Decisión reciente en seguimiento.</div>
-                        </div>
-                    </a>
+            <div class="dashboard-section">
+                <!-- KPI CARDS PRINCIPALES -->
+                <div class="kpi-grid">
+                    <article class="kpi-card kpi-card-pink">
+                        <h3 class="kpi-label">Miembros registrados</h3>
+                        <div class="kpi-value">245</div>
+                        <p class="kpi-sub">Incluye niños, nuevos creyentes y registros sin estado.</p>
+                    </article>
 
-                    <a href="{% url 'miembros_app:lista' %}?estado=descarriado" class="quick-action">
-                        <span class="material-icons">heart_broken</span>
-                        <div>
-                            <div class="qa-title">Miembros descarriados</div>
-                            <div class="qa-sub">Orar, visitar y restaurar.</div>
-                        </div>
-                    </a>
+                    <article class="kpi-card kpi-card-blue">
+                        <h3 class="kpi-label">Miembros oficiales</h3>
+                        <div class="kpi-value">185</div>
+                        <p class="kpi-sub">Mayores de 18 años que pueden votar y participar en la membresía.</p>
+                    </article>
+
+                    <article class="kpi-card kpi-card-green">
+                        <h3 class="kpi-label">Nuevos creyentes (últimos 7 días)</h3>
+                        <div class="kpi-value">8</div>
+                        <p class="kpi-sub">Personas marcadas como nuevos creyentes recientemente.</p>
+                    </article>
                 </div>
 
-                <div class="dash-divider"></div>
+                <!-- GRID PRINCIPAL -->
+                <div class="dashboard-grid">
+                    <!-- COLUMNA IZQUIERDA -->
+                    <div>
+                        <!-- TARJETAS DE ESTADO PASTORAL -->
+                        <div class="status-cards">
+                            <div class="status-card status-activo">
+                                <div class="status-label">Miembros activos</div>
+                                <div class="status-value">120</div>
+                                <div class="status-sub">65% del total oficial (185)</div>
+                            </div>
 
-                <div class="dash-panel-header mt-2">
-                    <h2>Alertas de datos</h2>
-                    <p>Registros que necesitan completar información.</p>
-                </div>
+                            <div class="status-card status-catecumeno">
+                                <div class="status-label">Catecúmenos (no bautizados)</div>
+                                <div class="status-value">20</div>
+                                <div class="status-sub">11% del total oficial (185)</div>
+                            </div>
 
-                <div class="alerts-grid">
-                    <div class="alert-item">
-                        <div class="alert-label">Sin contacto</div>
-                        <div class="alert-value">{{ sin_contacto|default:"0" }}</div>
-                        <div class="alert-sub">Sin teléfono ni correo.</div>
+                            <div class="status-card status-pasivo">
+                                <div class="status-label">Miembros pasivos</div>
+                                <div class="status-value">35</div>
+                                <div class="status-sub">19% del total oficial (185)</div>
+                            </div>
+
+                            <div class="status-card status-disciplina">
+                                <div class="status-label">En disciplina</div>
+                                <div class="status-value">2</div>
+                                <div class="status-sub">1% del total oficial (185)</div>
+                            </div>
+
+                            <div class="status-card status-observacion">
+                                <div class="status-label">En observación</div>
+                                <div class="status-value">8</div>
+                                <div class="status-sub">4% del total oficial (185)</div>
+                            </div>
+
+                            <div class="status-card status-descarriado">
+                                <div class="status-label">Miembros descarriados</div>
+                                <div class="status-value">5</div>
+                                <div class="status-sub">Miembros inactivos con razón de salida "descarriado".</div>
+                            </div>
+                        </div>
+
+                        <!-- GRÁFICO DE DISTRIBUCIÓN -->
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h2>Distribución por estado pastoral</h2>
+                                <p>Solo cuenta miembros oficiales (mayores de 18 años).</p>
+                            </div>
+
+                            <div class="bar-wrapper">
+                                <div class="bar bar-activo" style="width: 65%;"></div>
+                                <div class="bar bar-pasivo" style="width: 19%;"></div>
+                                <div class="bar bar-observacion" style="width: 4%;"></div>
+                                <div class="bar bar-catecumeno" style="width: 11%;"></div>
+                            </div>
+
+                            <ul class="legend">
+                                <li>
+                                    <span class="dot dot-activo"></span>
+                                    <span class="legend-label">Activos</span>
+                                    <span class="legend-percent">65%</span>
+                                </li>
+                                <li>
+                                    <span class="dot dot-pasivo"></span>
+                                    <span class="legend-label">Pasivos</span>
+                                    <span class="legend-percent">19%</span>
+                                </li>
+                                <li>
+                                    <span class="dot dot-observacion"></span>
+                                    <span class="legend-label">En observación</span>
+                                    <span class="legend-percent">4%</span>
+                                </li>
+                                <li>
+                                    <span class="dot dot-catecumeno"></span>
+                                    <span class="legend-label">Catecúmenos</span>
+                                    <span class="legend-percent">11%</span>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
-                    <div class="alert-item">
-                        <div class="alert-label">Sin foto</div>
-                        <div class="alert-value">{{ sin_foto|default:"0" }}</div>
-                    </div>
-                    <div class="alert-item">
-                        <div class="alert-label">Sin fecha de nacimiento</div>
-                        <div class="alert-value">{{ sin_fecha_nacimiento|default:"0" }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- ZONA 2 · MOVIMIENTO (Nuevos creyentes / Salidas) -->
-    <div class="dashboard-grid">
-        <!-- Nuevos creyentes -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Nuevos creyentes recientes</h2>
-                <p>Personas en seguimiento inicial.</p>
-            </div>
+                    <!-- COLUMNA DERECHA -->
+                    <div>
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h2>Acciones rápidas</h2>
+                                <p>Atajos frecuentes para el trabajo diario.</p>
+                            </div>
 
-            {% if nuevos_creyentes_recientes %}
-                <ul class="recent-list">
-                    {% for m in nuevos_creyentes_recientes|slice:":3" %}
-                        <li>
-                            <div class="recent-main">
-                                <div class="recent-avatar">
-                                    {% if m.foto %}
-                                        <img src="{{ m.foto.url }}" alt="{{ m.nombres }} {{ m.apellidos }}">
-                                    {% else %}
-                                        <span>{{ m.nombres|default:""|first }}{{ m.apellidos|default:""|first }}</span>
-                                    {% endif %}
-                                </div>
-                                <div>
-                                    <div class="recent-name">
-                                        <a href="{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}">
-                                            {{ m.nombres }} {{ m.apellidos }}
-                                        </a>
+                            <div class="quick-actions">
+                                <a href="#" class="quick-action">
+                                    <span class="material-icons">table_rows</span>
+                                    <div>
+                                        <div class="qa-title">Ver lista completa</div>
+                                        <div class="qa-sub">Gestionar todos los registros de miembros.</div>
                                     </div>
-                                    <div class="recent-sub">
-                                        Registrado
-                                        {% if m.fecha_creacion %}
-                                            · {{ m.fecha_creacion|date:"d/m/Y H:i" }}
-                                        {% endif %}
+                                </a>
+
+                                <a href="#" class="quick-action">
+                                    <span class="material-icons">person_add</span>
+                                    <div>
+                                        <div class="qa-title">Agregar nuevo miembro</div>
+                                        <div class="qa-sub">Registrar una persona en la base de datos.</div>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="recent-tag">
-                                Nuevo creyente
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-                <div class="panel-footer-link">
-                    <a href="{% url 'miembros_app:reporte_nuevos_creyentes' %}">Ver todos los nuevos creyentes →</a>
-                </div>
-            {% else %}
-                <p class="dash-empty">
-                    Aún no hay nuevos creyentes registrados recientemente.
-                </p>
-            {% endif %}
-        </div>
+                                </a>
 
-        <!-- Salidas / traslados -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Últimas salidas / traslados</h2>
-                <p>Miembros que ya no pertenecen a Torre Fuerte.</p>
-            </div>
-
-            {% if ultimas_salidas %}
-                <ul class="recent-list">
-                    {% for m in ultimas_salidas|slice:":3" %}
-                        <li>
-                            <div class="recent-main">
-                                <div>
-                                    <div class="recent-name">
-                                        {{ m.nombres }} {{ m.apellidos }}
+                                <a href="#" class="quick-action">
+                                    <span class="material-icons">hail</span>
+                                    <div>
+                                        <div class="qa-title">Registrar nuevo creyente</div>
+                                        <div class="qa-sub">Decisión reciente en seguimiento.</div>
                                     </div>
-                                    <div class="recent-sub">
-                                        Salida: {{ m.fecha_salida|date:"d/m/Y" }}
-                                        {% if m.razon_salida %}
-                                            · {{ m.razon_salida.nombre }}
-                                        {% endif %}
+                                </a>
+
+                                <a href="#" class="quick-action">
+                                    <span class="material-icons">heart_broken</span>
+                                    <div>
+                                        <div class="qa-title">Miembros descarriados</div>
+                                        <div class="qa-sub">Orar, visitar y restaurar.</div>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="recent-tag recent-tag--inactive">
-                                Inactivo
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-                <div class="panel-footer-link">
-                    <a href="{% url 'miembros_app:reporte_miembros_salida' %}">Ver reporte completo de salidas →</a>
-                </div>
-            {% else %}
-                <p class="dash-empty">No hay registros recientes de salida.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- ZONA 3 · FOTO GENERAL (Etapas de vida + Cumpleaños) -->
-    <div class="dashboard-grid">
-        <!-- Distribución por etapas de vida -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Distribución por etapas de vida</h2>
-                <p>Cómo se reparte la iglesia por grupos de edad.</p>
-            </div>
-
-            {% if distribucion_etapa_vida and distribucion_etapa_vida|length > 0 %}
-                <div class="etapas-header-summary">
-                    <span class="etapas-total-label">Total miembros</span>
-                    <span class="etapas-total-value">{{ total_miembros }}</span>
-                </div>
-
-                <div class="etapas-list">
-                    {% for e in distribucion_etapa_vida %}
-                        {% if total_miembros %}
-                            {% widthratio e.cantidad total_miembros 100 as pct %}
-                        {% endif %}
-
-                        <div class="etapa-row">
-                            <div class="etapa-info">
-                                <div class="etapa-title">
-                                    {{ e.nombre }}
-                                </div>
-                                <div class="etapa-meta">
-                                    <span class="etapa-count-pill">
-                                        {{ e.cantidad }} persona{% if e.cantidad != 1 %}s{% endif %}
-                                    </span>
-                                    {% if total_miembros %}
-                                        <span class="etapa-percent-pill">
-                                            {{ pct }}%
-                                        </span>
-                                    {% endif %}
-                                </div>
+                                </a>
                             </div>
 
-                            <div class="etapa-bar-wrapper">
-                                <div class="etapa-bar"
-                                     style="width: {% if total_miembros %}{{ pct }}{% else %}0{% endif %}%;">
+                            <div class="divider"></div>
+
+                            <div class="panel-header">
+                                <h2>Alertas de datos</h2>
+                                <p>Registros que necesitan completar información.</p>
+                            </div>
+
+                            <div class="alerts-grid">
+                                <div class="alert-item">
+                                    <div class="alert-label">Sin contacto</div>
+                                    <div class="alert-value">12</div>
+                                    <div class="alert-sub">Sin teléfono ni correo.</div>
+                                </div>
+                                <div class="alert-item">
+                                    <div class="alert-label">Sin foto</div>
+                                    <div class="alert-value">8</div>
+                                </div>
+                                <div class="alert-item">
+                                    <div class="alert-label">Sin fecha nac.</div>
+                                    <div class="alert-value">5</div>
                                 </div>
                             </div>
                         </div>
-                    {% endfor %}
+                    </div>
                 </div>
-            {% else %}
-                <p class="dash-empty">Aún no hay datos suficientes para mostrar esta distribución.</p>
-            {% endif %}
-        </div>
 
-        <!-- Próximos cumpleaños -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Próximos cumpleaños</h2>
-                <p>En los próximos 30 días.</p>
+                <!-- NUEVOS CREYENTES Y SALIDAS -->
+                <div class="dashboard-grid">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Nuevos creyentes recientes</h2>
+                            <p>Personas en seguimiento inicial.</p>
+                        </div>
+
+                        <ul class="list">
+                            <li>
+                                <div class="list-main">
+                                    <div class="list-avatar">JD</div>
+                                    <div>
+                                        <div class="list-name">Juan Pérez</div>
+                                        <div class="list-sub">Registrado · 05/12/2025 14:30</div>
+                                    </div>
+                                </div>
+                                <div class="list-tag">Nuevo creyente</div>
+                            </li>
+                            <li>
+                                <div class="list-main">
+                                    <div class="list-avatar">MR</div>
+                                    <div>
+                                        <div class="list-name">María Rodríguez</div>
+                                        <div class="list-sub">Registrado · 03/12/2025 10:15</div>
+                                    </div>
+                                </div>
+                                <div class="list-tag">Nuevo creyente</div>
+                            </li>
+                            <li>
+                                <div class="list-main">
+                                    <div class="list-avatar">CG</div>
+                                    <div>
+                                        <div class="list-name">Carlos García</div>
+                                        <div class="list-sub">Registrado · 01/12/2025 16:45</div>
+                                    </div>
+                                </div>
+                                <div class="list-tag">Nuevo creyente</div>
+                            </li>
+                        </ul>
+
+                        <div class="panel-footer">
+                            <a href="#">Ver todos los nuevos creyentes →</a>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Últimas salidas / traslados</h2>
+                            <p>Miembros que ya no pertenecen a Torre Fuerte.</p>
+                        </div>
+
+                        <ul class="list">
+                            <li>
+                                <div class="list-main">
+                                    <div>
+                                        <div class="list-name">Ana López</div>
+                                        <div class="list-sub">Salida: 28/11/2025 · Traslado</div>
+                                    </div>
+                                </div>
+                                <div class="list-tag list-tag-inactive">Inactivo</div>
+                            </li>
+                            <li>
+                                <div class="list-main">
+                                    <div>
+                                        <div class="list-name">Pedro Martínez</div>
+                                        <div class="list-sub">Salida: 20/11/2025 · Mudanza</div>
+                                    </div>
+                                </div>
+                                <div class="list-tag list-tag-inactive">Inactivo</div>
+                            </li>
+                            <li>
+                                <div class="list-main">
+                                    <div>
+                                        <div class="list-name">Laura Sánchez</div>
+                                        <div class="list-sub">Salida: 15/11/2025 · Descarriado</div>
+                                    </div>
+                                </div>
+                                <div class="list-tag list-tag-inactive">Inactivo</div>
+                            </li>
+                        </ul>
+
+                        <div class="panel-footer">
+                            <a href="#">Ver reporte completo de salidas →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ETAPAS DE VIDA Y CUMPLEAÑOS -->
+                <div class="dashboard-grid">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Distribución por etapas de vida</h2>
+                            <p>Cómo se reparte la iglesia por grupos de edad.</p>
+                        </div>
+
+                        <div class="stages-header">
+                            <span class="stages-label">Total miembros</span>
+                            <span class="stages-value">245</span>
+                        </div>
+
+                        <div class="stages-list">
+                            <div class="stage-item">
+                                <div class="stage-info">
+                                    <div class="stage-name">Niños (0-12 años)</div>
+                                    <div class="stage-meta">
+                                        <span class="stage-count">45 personas</span>
+                                        <span class="stage-percent">18%</span>
+                                    </div>
+                                </div>
+                                <div class="stage-bar-wrap">
+                                    <div class="stage-bar" style="width: 18%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="stage-item">
+                                <div class="stage-info">
+                                    <div class="stage-name">Adolescentes (13-17 años)</div>
+                                    <div class="stage-meta">
+                                        <span class="stage-count">32 personas</span>
+                                        <span class="stage-percent">13%</span>
+                                    </div>
+                                </div>
+                                <div class="stage-bar-wrap">
+                                    <div class="stage-bar" style="width: 13%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="stage-item">
+                                <div class="stage-info">
+                                    <div class="stage-name">Jóvenes (18-35 años)</div>
+                                    <div class="stage-meta">
+                                        <span class="stage-count">78 personas</span>
+                                        <span class="stage-percent">32%</span>
+                                    </div>
+                                </div>
+                                <div class="stage-bar-wrap">
+                                    <div class="stage-bar" style="width: 32%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="stage-item">
+                                <div class="stage-info">
+                                    <div class="stage-name">Adultos (36-59 años)</div>
+                                    <div class="stage-meta">
+                                        <span class="stage-count">65 personas</span>
+                                        <span class="stage-percent">27%</span>
+                                    </div>
+                                </div>
+                                <div class="stage-bar-wrap">
+                                    <div class="stage-bar" style="width: 27%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="stage-item">
+                                <div class="stage-info">
+                                    <div class="stage-name">Adultos mayores (60+ años)</div>
+                                    <div class="stage-meta">
+                                        <span class="stage-count">25 personas</span>
+                                        <span class="stage-percent">10%</span>
+                                    </div>
+                                </div>
+                                <div class="stage-bar-wrap">
+                                    <div class="stage-bar" style="width: 10%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Próximos cumpleaños</h2>
+                            <p>En los próximos 30 días.</p>
+                        </div>
+
+                        <ul class="birthday-list">
+                            <li>
+                                <div class="birthday-date">12/12</div>
+                                <div class="birthday-info">
+                                    <div class="birthday-name">Roberto Jiménez</div>
+                                    <div class="birthday-sub">Cumple 45 años</div>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="birthday-date">15/12</div>
+                                <div class="birthday-info">
+                                    <div class="birthday-name">Carmen Flores</div>
+                                    <div class="birthday-sub">Cumple 32 años</div>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="birthday-date">18/12</div>
+                                <div class="birthday-info">
+                                    <div class="birthday-name">Miguel Ángel Torres</div>
+                                    <div class="birthday-sub">Cumple 28 años</div>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="birthday-date">22/12</div>
+                                <div class="birthday-info">
+                                    <div class="birthday-name">Sofia Ramírez</div>
+                                    <div class="birthday-sub">Cumple 19 años</div>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="birthday-date">25/12</div>
+                                <div class="birthday-info">
+                                    <div class="birthday-name">José Luis Morales</div>
+                                    <div class="birthday-sub">Cumple 67 años</div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
-
-            {% if proximos_cumpleanos %}
-                <ul class="birthday-list">
-                    {% for c in proximos_cumpleanos %}
-                        <li>
-                            <div class="birthday-date">
-                                {{ c.fecha|date:"d/m" }}
-                            </div>
-                            <div class="birthday-info">
-                                <div class="birthday-name">{{ c.nombre }}</div>
-                                {% if c.edad %}
-                                    <div class="birthday-sub">Cumple {{ c.edad }} años</div>
-                                {% endif %}
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="dash-empty">No hay cumpleaños registrados en los próximos 30 días.</p>
-            {% endif %}
-        </div>
+        </section>
     </div>
-
-</section>
-
+</body>
+</html>
 <style>
-    :root {
-        --accent: #0f766e;
-        --accent-soft: #ecfdf5;
-        --accent-strong: #0f766e;
-        --accent-alt: #2563eb;
-        --accent-warning: #f59e0b;
-        --accent-danger: #dc2626;
-        --panel-bg: #ffffff;
-        --panel-border: #e5e7eb;
-    }
-
-    .dashboard-section {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-        background: radial-gradient(circle at top left, #ecfdf5 0, #eff6ff 45%, #f9fafb 100%);
-        border-radius: 18px;
-        padding: 14px;
-        border: 1px solid #e5e7eb;
-    }
-
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 12px;
-    }
-
-    .kpi-card {
-        background: linear-gradient(135deg, #ffffff, #f4f4ff);
-        border-radius: 14px;
-        padding: 12px 14px;
-        border: 1px solid rgba(148, 163, 184, 0.4);
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .kpi-card::before {
-        content: "";
-        position: absolute;
-        inset-inline-start: -1px;
-        top: -1px;
-        bottom: -1px;
-        width: 4px;
-        background: linear-gradient(to bottom, var(--accent-strong), #22c55e);
-    }
-
-    .kpi-label {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #6b7280;
-    }
-
-    .kpi-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .kpi-sub {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(0, 2fr);
-        gap: 12px;
-    }
-
-    @media (max-width: 900px) {
-        .dashboard-grid {
-            grid-template-columns: minmax(0, 1fr);
-        }
-        .dashboard-section {
-            padding: 10px;
-        }
-    }
-
-    .dashboard-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        gap: 12px;
-    }
-
-    .dash-card {
-        border-radius: 14px;
-        padding: 12px 14px;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 8px 20px rgba(15,23,42,0.05);
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .dash-card-label {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #6b7280;
-    }
-
-    .dash-card-value {
-        font-size: 26px;
-        font-weight: 700;
-        color: #111827;
-    }
-
-    .dash-card-sub {
-        font-size: 12px;
-        color: #4b5563;
-    }
-
-    .dash-card--activo {
-        border-color: #bbf7d0;
-        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-    }
-
-    .dash-card--pasivo {
-        border-color: #fef3c7;
-        background: linear-gradient(135deg, #fffbeb, #fef9c3);
-    }
-
-    .dash-card--descarriado {
-        border-color: #fee2e2;
-        background: linear-gradient(135deg, #fef2f2, #fee2e2);
-    }
-
-    .dash-card--observacion {
-        border-color: #e0e7ff;
-        background: linear-gradient(135deg, #eef2ff, #e0f2fe);
-    }
-
-    .dash-card--disciplina {
-        border-color: #fde68a;
-        background: linear-gradient(135deg, #fefce8, #fef3c7);
-    }
-
-    .dash-card--catecumeno {
-        border-color: #bfdbfe;
-        background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    }
-
-    .dash-panel {
-        background: var(--panel-bg);
-        border-radius: 16px;
-        padding: 14px 16px;
-        border: 1px solid var(--panel-border);
-        box-shadow: 0 10px 24px rgba(15,23,42,0.05);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .dash-panel::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: -1px;
-        height: 3px;
-        background: linear-gradient(to right, var(--accent-strong), var(--accent-alt));
-        opacity: 0.5;
-    }
-
-    .dash-panel-header h2 {
+    * {
         margin: 0;
-        font-size: 15px;
-        color: #0f172a;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background: #f5f7fa;
+        color: #2d3748;
+    }
+
+    .layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    /* ========== SIDEBAR ========== */
+    .sidebar {
+        width: 260px;
+        background: white;
+        border-right: 1px solid #e2e8f0;
+        padding: 24px 0;
+        position: fixed;
+        height: 100vh;
+        overflow-y: auto;
+    }
+
+    .user-card {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 12px;
+        padding: 0 24px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 20px;
     }
 
-    .dash-panel-header h2::before {
-        content: "";
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: var(--accent-strong);
-        opacity: 0.75;
-    }
-
-    .dash-panel-header p {
-        margin: 2px 0 10px;
-        font-size: 12px;
-        color: #6b7280;
-    }
-
-    .dash-empty {
-        font-size: 12px;
-        color: #9ca3af;
-    }
-
-    .dash-divider {
-        margin: 10px 0;
-        border-top: 1px dashed #e5e7eb;
-    }
-
-    .mt-2 {
-        margin-top: 8px;
-    }
-
-    /* Etapas de vida */
-    .etapas-header-summary {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 8px;
-        font-size: 12px;
-    }
-
-    .etapas-total-label {
-        color: #6b7280;
-    }
-
-    .etapas-total-value {
-        font-weight: 700;
-        color: #111827;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: #e0f2fe;
-    }
-
-    .etapas-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-top: 4px;
-    }
-
-    .etapa-row {
+    .user-avatar {
+        width: 48px;
+        height: 48px;
         border-radius: 12px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        padding: 8px 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .etapa-info {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .etapa-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .etapa-meta {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .etapa-count-pill,
-    .etapa-percent-pill {
-        font-size: 11px;
-        padding: 2px 10px;
-        border-radius: 999px;
-        border: 1px solid #e5e7eb;
-        background: #ffffff;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        white-space: nowrap;
-    }
-
-    .etapa-count-pill {
-        color: #374151;
-    }
-
-    .etapa-percent-pill {
-        border-color: #bfdbfe;
-        background: #eff6ff;
-        color: #1d4ed8;
-        font-weight: 600;
-    }
-
-    .etapa-bar-wrapper {
-        background: #e5e7eb;
-        border-radius: 999px;
-        overflow: hidden;
-        height: 10px;
-        position: relative;
-    }
-
-    .etapa-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #0f766e, #22c55e);
-        box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
-        transition: width 0.4s ease;
-    }
-
-    /* Cumpleaños */
-    .birthday-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        font-size: 12px;
-    }
-
-    .birthday-list li {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 8px;
-        border-radius: 8px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-    }
-
-    .birthday-date {
-        font-weight: 700;
-        color: var(--accent-alt);
-        min-width: 48px;
-    }
-
-    .birthday-name {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .birthday-sub {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    /* Nuevos / salidas */
-    .recent-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        font-size: 12px;
-    }
-
-    .recent-list li {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 6px 8px;
-        border-radius: 10px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-    }
-
-    .recent-main {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .recent-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        background: #e0f2fe;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px;
+        color: white;
         font-weight: 600;
-        color: #0f172a;
-        overflow: hidden;
+        font-size: 18px;
     }
 
-    .recent-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+    .user-info {
+        flex: 1;
     }
 
-    .recent-name a {
-        font-size: 13px;
+    .user-name {
         font-weight: 600;
-        color: #111827;
-        text-decoration: none;
+        font-size: 14px;
+        color: #1a202c;
+        margin-bottom: 2px;
     }
 
-    .recent-name a:hover {
-        text-decoration: underline;
-    }
-
-    .recent-sub {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    .recent-tag {
-        font-size: 11px;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: #e5e7eb;
-        color: #374151;
-        white-space: nowrap;
-    }
-
-    .recent-tag--inactive {
-        background: #fee2e2;
-        color: var(--accent-danger);
-    }
-
-    .panel-footer-link {
-        margin-top: 8px;
+    .user-role {
         font-size: 12px;
+        color: #718096;
     }
 
-    .panel-footer-link a {
-        color: var(--accent-alt);
+    .menu {
+        padding: 0 12px;
+    }
+
+    .menu-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        color: #4a5568;
         text-decoration: none;
+        transition: all 0.2s;
+        margin-bottom: 4px;
+        font-size: 14px;
+    }
+
+    .menu-item:hover {
+        background: #f7fafc;
+        color: #2d3748;
+    }
+
+    .menu-item.is-active {
+        background: #edf2f7;
+        color: #5a67d8;
         font-weight: 500;
     }
 
-    .panel-footer-link a:hover {
-        text-decoration: underline;
+    .menu-icon {
+        font-size: 20px;
     }
 
-    /* Acciones rápidas */
-    .quick-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-bottom: 6px;
+    /* ========== MAIN CONTENT ========== */
+    .main {
+        margin-left: 260px;
+        flex: 1;
+        padding: 32px;
+        background: #f5f7fa;
+        min-height: 100vh;
     }
 
-    .quick-action {
+    .topbar {
         display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 32px;
+    }
+
+    .title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 8px;
+    }
+
+    .subtitle {
+        font-size: 14px;
+        color: #718096;
+    }
+
+    .topbar-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: #eff6ff;
-        text-decoration: none;
-        color: inherit;
-        font-size: 12px;
-        border: 1px solid #dbeafe;
     }
 
-    .quick-action:hover {
-        background: #dbeafe;
-    }
-
-    .quick-action .material-icons {
+    .btn .material-icons {
         font-size: 18px;
-        color: var(--accent-alt);
     }
 
-    .qa-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
+    .btn-ghost {
+        background: white;
+        color: #4a5568;
+        border: 1px solid #e2e8f0;
     }
 
-    .qa-sub {
-        font-size: 11px;
-        color: #6b7280;
+    .btn-ghost:hover {
+        background: #f7fafc;
     }
 
-    /* Alertas */
-    .alerts-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 8px;
-        margin-top: 6px;
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
     }
 
-    .alert-item {
-        border-radius: 10px;
-        background: #f9fafb;
-        padding: 8px 10px;
+    .btn-primary:hover {
+        opacity: 0.9;
+    }
+
+    /* ========== DASHBOARD SECTION ========== */
+    .dashboard-section {
         display: flex;
         flex-direction: column;
-        gap: 2px;
-        border: 1px solid #e5e7eb;
+        gap: 24px;
     }
 
-    .alert-label {
-        font-size: 11px;
-        color: #6b7280;
+    /* ========== KPI CARDS ========== */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
     }
 
-    .alert-value {
-        font-size: 18px;
+    .kpi-card {
+        position: relative;
+        border-radius: 16px;
+        padding: 28px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        opacity: 0.1;
+        border-radius: 16px;
+    }
+
+    .kpi-card-pink::before {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .kpi-card-blue::before {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .kpi-card-green::before {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    .kpi-label {
+        position: relative;
+        font-size: 14px;
+        font-weight: 500;
+        color: #718096;
+        margin-bottom: 12px;
+    }
+
+    .kpi-value {
+        position: relative;
+        font-size: 32px;
         font-weight: 700;
-        color: var(--accent-strong);
+        color: #1a202c;
+        margin-bottom: 12px;
     }
 
-    .alert-sub {
-        font-size: 10px;
-        color: #9ca3af;
+    .kpi-sub {
+        position: relative;
+        font-size: 13px;
+        color: #718096;
     }
 
-    /* Gráfico de estado pastoral */
-    .estado-bar-wrapper {
+    /* ========== DASHBOARD GRID ========== */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+    }
+
+    /* ========== STATUS CARDS ========== */
+    .status-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .status-card {
+        border-radius: 16px;
+        padding: 20px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        color: white;
+    }
+
+    .status-label {
+        position: relative;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 8px;
+    }
+
+    .status-value {
+        position: relative;
+        font-size: 32px;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 8px;
+    }
+
+    .status-sub {
+        position: relative;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .status-activo {
+        background: linear-gradient(135deg, #22c55e, #4ade80);
+    }
+
+    .status-pasivo {
+        background: linear-gradient(135deg, #f97316, #facc15);
+    }
+
+    .status-catecumeno {
+        background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+    }
+
+    .status-disciplina {
+        background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    }
+
+    .status-observacion {
+        background: linear-gradient(135deg, #6366f1, #a855f7);
+    }
+
+    .status-descarriado {
+        background: linear-gradient(135deg, #ef4444, #f97373);
+    }
+
+    /* ========== PANEL ========== */
+    .panel {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+
+    .panel-header h2 {
+        margin: 0;
+        font-size: 16px;
+        color: #1a202c;
+        font-weight: 600;
+    }
+
+    .panel-header p {
+        margin: 4px 0 16px;
+        font-size: 13px;
+        color: #718096;
+    }
+
+    /* ========== BAR CHART ========== */
+    .bar-wrapper {
         width: 100%;
         height: 18px;
         border-radius: 999px;
         overflow: hidden;
         background: #f3f4f6;
         display: flex;
-        margin-bottom: 8px;
-        border: 1px solid #e5e7eb;
+        margin-bottom: 16px;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
-    .estado-bar {
+    .bar {
         height: 100%;
+        transition: width 0.4s ease;
     }
 
-    .estado-activo {
-        background: linear-gradient(90deg, #16a34a, #22c55e);
+    .bar-activo {
+        background: linear-gradient(90deg, #22c55e, #4ade80);
     }
 
-    .estado-pasivo {
-        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    .bar-pasivo {
+        background: linear-gradient(90deg, #f97316, #facc15);
     }
 
-    .estado-descarriado {
-        background: linear-gradient(90deg, #ef4444, #f97373);
-    }
-
-    .estado-observacion {
-        background: linear-gradient(90deg, #6366f1, #a855f7);
-    }
-
-    .estado-catecumeno {
+    .bar-catecumeno {
         background: linear-gradient(90deg, #0ea5e9, #38bdf8);
     }
 
-    .estado-legend {
+    .bar-observacion {
+        background: linear-gradient(90deg, #6366f1, #a855f7);
+    }
+
+    /* ========== LEGEND ========== */
+    .legend {
         list-style: none;
         padding: 0;
         margin: 0;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-        gap: 4px 10px;
-        font-size: 11px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        font-size: 13px;
     }
 
-    .estado-legend li {
+    .legend li {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
         color: #4b5563;
     }
 
-    .estado-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
+    .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
         display: inline-block;
     }
 
-    .estado-dot.estado-activo { background: #16a34a; }
-    .estado-dot.estado-pasivo { background: #f59e0b; }
-    .estado-dot.estado-descarriado { background: #ef4444; }
-    .estado-dot.estado-observacion { background: #6366f1; }
-    .estado-dot.estado-catecumeno { background: #0ea5e9; }
+    .dot-activo { background: #22c55e; }
+    .dot-pasivo { background: #f97316; }
+    .dot-catecumeno { background: #0ea5e9; }
+    .dot-observacion { background: #6366f1; }
 
-    .estado-label {
+    .legend-label {
         flex: 1;
     }
 
-    .estado-percent {
+    .legend-percent {
         font-weight: 600;
         color: #111827;
     }
+
+    /* ========== QUICK ACTIONS ========== */
+    .quick-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .quick-action {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: #f7fafc;
+        text-decoration: none;
+        color: inherit;
+        font-size: 14px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s;
+    }
+
+    .quick-action:hover {
+        background: #edf2f7;
+        border-color: #cbd5e0;
+        transform: translateY(-1px);
+    }
+
+    .quick-action .material-icons {
+        font-size: 24px;
+        color: #5a67d8;
+    }
+
+    .qa-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 2px;
+    }
+
+    .qa-sub {
+        font-size: 12px;
+        color: #718096;
+    }
+
+    /* ========== ALERTS GRID ========== */
+    .alerts-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .alert-item {
+        border-radius: 8px;
+        background: #f7fafc;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .alert-label {
+        font-size: 12px;
+        color: #718096;
+        font-weight: 500;
+    }
+
+    .alert-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #5a67d8;
+    }
+
+    .alert-sub {
+        font-size: 11px;
+        color: #a0aec0;
+    }
+
+    /* ========== DIVIDER ========== */
+    .divider {
+        margin: 20px 0;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    /* ========== LIST ========== */
+    .list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .list li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 8px;
+        background: #f7fafc;
+        border: 1px solid #e2e8f0;
+    }
+
+    .list-main {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .list-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
+        color: white;
+    }
+
+    .list-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 2px;
+    }
+
+    .list-sub {
+        font-size: 12px;
+        color: #718096;
+    }
+
+    .list-tag {
+        font-size: 11px;
+        padding: 4px 12px;
+        border-radius: 12px;
+        background: #dbeafe;
+        color: #1e40af;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .list-tag-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* ========== PANEL FOOTER ========== */
+    .panel-footer {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .panel-footer a {
+        color: #5a67d8;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .panel-footer a:hover {
+        text-decoration: underline;
+    }
+
+    /* ========== STAGES ========== */
+    .stages-header {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        font-size: 13px;
+    }
+
+    .stages-label {
+        color: #718096;
+        font-weight: 500;
+    }
+
+    .stages-value {
+        font-weight: 700;
+        color: #1a202c;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: #dbeafe;
+    }
+
+    .stages-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .stage-item {
+        border-radius: 8px;
+        background: #f7fafc;
+        border: 1px solid #e2e8f0;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .stage-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .stage-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1a202c;
+    }
+
+    .stage-meta {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .stage-count {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: white;
+        color: #4b5563;
+        border: 1px solid #e2e8f0;
+        font-weight: 500;
+    }
+
+    .stage-percent {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1e40af;
+        font-weight: 600;
+    }
+
+    .stage-bar-wrap {
+        background: #e5e7eb;
+        border-radius: 999px;
+        overflow: hidden;
+        height: 8px;
+    }
+
+    .stage-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        transition: width 0.4s ease;
+    }
+
+    /* ========== BIRTHDAY LIST ========== */
+    .birthday-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .birthday-list li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 8px;
+        background: #f7fafc;
+        border: 1px solid #e2e8f0;
+    }
+
+    .birthday-date {
+        font-weight: 700;
+        color: #5a67d8;
+        min-width: 50px;
+        font-size: 14px;
+    }
+
+    .birthday-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 2px;
+    }
+
+    .birthday-sub {
+        font-size: 12px;
+        color: #718096;
+    }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 1200px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .sidebar {
+            display: none;
+        }
+        
+        .main {
+            margin-left: 0;
+            padding: 16px;
+        }
+
+        .kpi-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .status-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .topbar {
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .topbar-actions {
+            width: 100%;
+        }
+
+        .btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .alerts-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .legend {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
-{% endblock %}
+<script>
+    // Bar Chart - Gráfico de Barras para Ingresos y Gastos
+    const barCtx = document.getElementById('barChart').getContext('2d');
+    new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'],
+            datasets: [
+                {
+                    label: 'Ingresos',
+                    data: [32500, 28000, 35000, 30000, 38000, 42000, 39000, 45000],
+                    backgroundColor: '#667eea',
+                    borderRadius: 8
+                },
+                {
+                    label: 'Gastos',
+                    data: [22000, 18000, 25000, 20000, 28000, 32000, 29000, 35000],
+                    backgroundColor: '#f56565',
+                    borderRadius: 8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        borderDash: [5, 5],
+                        color: '#e5e7eb'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return '$ ' + value.toLocaleString();
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Doughnut Chart - Gráfico de Dona para Distribución de Fuentes
+    const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+    new Chart(doughnutCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Diezmos', 'Ofrendas', 'Eventos', 'Otros'],
+            datasets: [{
+                data: [45, 30, 15, 10],
+                backgroundColor: [
+                    '#667eea',
+                    '#43e97b',
+                    '#f5576c',
+                    '#facc15'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+</script>
