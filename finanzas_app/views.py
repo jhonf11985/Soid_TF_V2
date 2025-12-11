@@ -332,6 +332,7 @@ def ingreso_crear(request):
 
     context = {
         "form": form,
+        "modo": "crear",
     }
     return render(request, "finanzas_app/ingreso_form.html", context)
 
@@ -340,35 +341,36 @@ def ingreso_crear(request):
 def movimiento_editar(request, pk):
     """
     Editar un movimiento financiero existente.
-    Usa un formulario distinto según el tipo de movimiento.
-    De momento, tanto ingresos como egresos usan la misma plantilla ingreso_form.html.
+    - Si es ingreso: usa MovimientoIngresoForm + ingreso_form.html
+    - Si es egreso: usa MovimientoEgresoForm + egreso.html
     """
     movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
 
-    # Si es ingreso, usamos el formulario especializado de ingresos.
-    # Si es egreso, de momento seguimos usando el formulario general.
+    # Elegimos formulario y plantilla según el tipo
     if movimiento.tipo == "ingreso":
         FormClass = MovimientoIngresoForm
+        template_name = "finanzas_app/ingreso_form.html"
+        redirect_url = "/finanzas/movimientos/?tipo=ingreso"
     else:
-        FormClass = MovimientoFinancieroForm  # más adelante podrás crear un MovimientoEgresoForm
+        FormClass = MovimientoEgresoForm
+        template_name = "finanzas_app/egreso.html"
+        redirect_url = "/finanzas/movimientos/?tipo=egreso"
 
     if request.method == "POST":
         form = FormClass(request.POST, instance=movimiento)
         if form.is_valid():
             form.save()
             messages.success(request, "Movimiento actualizado correctamente.")
-            return redirect("finanzas_app:movimientos_listado")
+            return redirect(redirect_url)
     else:
         form = FormClass(instance=movimiento)
 
     context = {
         "form": form,
         "movimiento": movimiento,
+        "modo": "editar",
     }
-    # Por ahora, reutilizamos ingreso_form.html para ambos tipos
-    return render(request, "finanzas_app/ingreso_form.html", context)
-
-
+    return render(request, template_name, context)
 
 
 @login_required

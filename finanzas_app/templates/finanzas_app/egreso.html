@@ -16,11 +16,16 @@
             <div class="odoo-breadcrumb">
                 <span class="odoo-breadcrumb-parent">Egresos</span>
                 <span class="odoo-breadcrumb-separator">/</span>
-                <span class="odoo-breadcrumb-current">Nuevo</span>
+                <span class="odoo-breadcrumb-current">
+                    {% if modo == "editar" %}Editar{% else %}Nuevo{% endif %}
+                </span>
             </div>
         </div>
+
         <div class="odoo-topbar-right">
-            <span class="odoo-record-count">Nuevo</span>
+            <span class="odoo-record-count">
+                {% if modo == "editar" %}Editando egreso{% else %}Nuevo egreso{% endif %}
+            </span>
         </div>
     </div>
 
@@ -28,8 +33,9 @@
     <div class="odoo-actionbar">
         <div class="odoo-actionbar-left">
             <button type="submit" form="egreso-form" class="odoo-btn odoo-btn-primary">
-                Confirmar
+                {% if modo == "editar" %}Guardar cambios{% else %}Confirmar{% endif %}
             </button>
+
             <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=egreso" class="odoo-btn odoo-btn-secondary">
                 Cancelar
             </a>
@@ -43,9 +49,10 @@
 
             <!-- CONTENIDO EN DOS COLUMNAS -->
             <div class="odoo-form-content">
-                
+
                 <!-- COLUMNA IZQUIERDA -->
                 <div class="odoo-form-col">
+
                     <div class="odoo-field-row">
                         <label>Fecha</label>
                         <div class="odoo-field-value">
@@ -78,10 +85,12 @@
                             {% if form.persona_asociada.errors %}<span class="odoo-error">{{ form.persona_asociada.errors.0 }}</span>{% endif %}
                         </div>
                     </div>
+
                 </div>
 
                 <!-- COLUMNA DERECHA -->
                 <div class="odoo-form-col">
+
                     <div class="odoo-field-row">
                         <label>Cuenta</label>
                         <div class="odoo-field-value">
@@ -98,8 +107,8 @@
                         </div>
                     </div>
 
-                    <!-- Campo condicional: solo si forma de pago es transferencia o cheque -->
-                    <div class="odoo-field-row odoo-field-conditional" id="field-referencia" style="display: none;">
+                    <!-- Mostrar referencia solo para pagos que la requieren -->
+                    <div class="odoo-field-row" id="field-referencia" style="display:none;">
                         <label>Referencia</label>
                         <div class="odoo-field-value">
                             {{ form.referencia }}
@@ -110,7 +119,7 @@
 
             </div>
 
-            <!-- DESCRIPCIÓN - ANCHO COMPLETO -->
+            <!-- DESCRIPCIÓN (ANCHO COMPLETO) -->
             <div class="odoo-form-full">
                 <div class="odoo-field-row">
                     <label>Descripción</label>
@@ -128,10 +137,10 @@
 </div>
 
 <style>
-    /* =====================================
-       ODOO FORM - ESTILO EXACTO (IGUAL QUE INGRESOS)
-       ===================================== */
-    
+    /* =============================
+       ESTILO ODOO - IGUAL QUE INGRESOS
+       ============================= */
+
     :root {
         --odoo-purple: #714B67;
         --odoo-purple-dark: #5d3d54;
@@ -140,7 +149,6 @@
         --odoo-border: #dee2e6;
         --odoo-bg: #ffffff;
         --odoo-bg-gray: #f8f9fa;
-        --odoo-success: #28a745;
         --odoo-error: #dc3545;
     }
 
@@ -149,7 +157,6 @@
         min-height: 100vh;
     }
 
-    /* BARRA SUPERIOR - NAVEGACIÓN */
     .odoo-topbar {
         display: flex;
         justify-content: space-between;
@@ -159,297 +166,122 @@
         border-bottom: 1px solid var(--odoo-border);
     }
 
-    .odoo-topbar-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
+    .odoo-topbar-left { display: flex; align-items: center; gap: 12px; }
 
     .odoo-back-link {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
-        height: 32px;
+        width: 32px; height: 32px;
         color: var(--odoo-text-muted);
         border-radius: 4px;
-        transition: all 0.15s;
+        transition: .15s;
     }
+    .odoo-back-link:hover { background: var(--odoo-bg-gray); color: var(--odoo-text); }
 
-    .odoo-back-link:hover {
-        background: var(--odoo-bg-gray);
-        color: var(--odoo-text);
-    }
+    .odoo-breadcrumb { display: flex; gap: 8px; font-size: 14px; }
+    .odoo-breadcrumb-parent { color: var(--odoo-purple); font-weight: 500; }
 
-    .odoo-breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-    }
+    .odoo-record-count { color: var(--odoo-text-muted); font-size: 13px; }
 
-    .odoo-breadcrumb-parent {
-        color: var(--odoo-purple);
-        font-weight: 500;
-    }
-
-    .odoo-breadcrumb-separator {
-        color: var(--odoo-text-muted);
-    }
-
-    .odoo-breadcrumb-current {
-        color: var(--odoo-text);
-        font-weight: 600;
-    }
-
-    .odoo-record-count {
-        font-size: 13px;
-        color: var(--odoo-text-muted);
-    }
-
-    /* BARRA DE ACCIONES */
+    /* ACCIONES */
     .odoo-actionbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        display: flex; justify-content: space-between; align-items: center;
         padding: 8px 16px;
         background: var(--odoo-bg);
         border-bottom: 1px solid var(--odoo-border);
     }
+    .odoo-actionbar-left { display: flex; gap: 8px; }
 
-    .odoo-actionbar-left {
-        display: flex;
-        gap: 8px;
-    }
-
-    /* BOTONES */
     .odoo-btn {
+        padding: 6px 16px;
+        border-radius: 4px;
+        border: 1px solid var(--odoo-border);
+        font-size: 13px;
+        cursor: pointer;
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 16px;
-        font-size: 13px;
-        font-weight: 500;
-        border: 1px solid var(--odoo-border);
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.15s;
-        text-decoration: none;
-        font-family: inherit;
     }
 
     .odoo-btn-primary {
         background: var(--odoo-purple);
-        color: white;
         border-color: var(--odoo-purple);
+        color: white;
     }
 
-    .odoo-btn-primary:hover {
-        background: var(--odoo-purple-dark);
-        border-color: var(--odoo-purple-dark);
-    }
+    .odoo-btn-primary:hover { background: var(--odoo-purple-dark); }
 
     .odoo-btn-secondary {
-        background: var(--odoo-bg);
+        background: white;
         color: var(--odoo-text);
     }
 
-    .odoo-btn-secondary:hover {
-        background: var(--odoo-bg-gray);
-    }
+    .odoo-btn-secondary:hover { background: var(--odoo-bg-gray); }
 
-    /* HOJA DEL FORMULARIO */
+    /* FORMULARIO */
     .odoo-form-sheet {
-        background: var(--odoo-bg);
-        max-width: 1200px;
         margin: 24px auto;
+        max-width: 1200px;
+        background: white;
         border: 1px solid var(--odoo-border);
         border-radius: 4px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
 
-    /* CONTENIDO DEL FORMULARIO */
     .odoo-form-content {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 40px;
         padding: 20px 24px;
+        gap: 40px;
     }
 
-    .odoo-form-col {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    /* FILAS DE CAMPOS */
     .odoo-field-row {
         display: grid;
         grid-template-columns: 140px 1fr;
+        align-items: center;
         gap: 12px;
-        align-items: baseline;
-        min-height: 32px;
         padding: 4px 0;
     }
 
     .odoo-field-row label {
-        font-size: 14px;
-        color: var(--odoo-text);
         font-weight: 600;
+        color: var(--odoo-text);
         text-align: right;
-        white-space: nowrap;
     }
 
-    .odoo-field-value {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    /* INPUTS */
     .odoo-form-sheet input,
     .odoo-form-sheet select,
     .odoo-form-sheet textarea {
-        width: 100%;
         border: none;
         border-bottom: 1px solid transparent;
         background: transparent;
-        padding: 4px 0;
         font-size: 13px;
-        color: var(--odoo-text);
-        font-family: inherit;
-        transition: border-color 0.15s;
-    }
-
-    .odoo-form-sheet input:hover,
-    .odoo-form-sheet select:hover,
-    .odoo-form-sheet textarea:hover {
-        border-bottom-color: var(--odoo-border);
+        padding: 4px 0;
     }
 
     .odoo-form-sheet input:focus,
     .odoo-form-sheet select:focus,
     .odoo-form-sheet textarea:focus {
         outline: none;
-        border-bottom-color: var(--odoo-purple);
-        border-bottom-width: 2px;
+        border-bottom: 2px solid var(--odoo-purple);
         padding-bottom: 3px;
     }
 
-    .odoo-form-sheet select {
-        appearance: none;
-        cursor: pointer;
-        padding-right: 20px;
-        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right 0 center;
-        background-size: 16px;
-    }
-
-    .odoo-form-sheet textarea {
-        min-height: 60px;
-        resize: vertical;
-        line-height: 1.5;
-    }
-
-    /* CAMPO DE MONTO */
-    .odoo-field-amount .odoo-field-value {
-        flex-direction: row;
-        align-items: center;
-    }
-
-    .odoo-amount-value {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .odoo-currency {
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--odoo-text-muted);
-    }
-
-    .odoo-amount-value input {
-        font-weight: 600;
-        font-size: 15px;
-    }
-
-    /* CAMPOS DE ANCHO COMPLETO */
-    .odoo-form-full {
-        padding: 0 24px 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .odoo-form-full .odoo-field-row {
-        grid-template-columns: 140px 1fr;
-    }
-
-    /* ERRORES */
     .odoo-error {
         font-size: 11px;
         color: var(--odoo-error);
-        margin-top: 2px;
     }
+
+    /* ANCHO COMPLETO */
+    .odoo-form-full { padding: 0 24px 20px; }
+
+    .odoo-field-hint { font-size: 11px; color: #6c757d; font-style: italic; }
 
     /* RESPONSIVE */
     @media (max-width: 900px) {
-        .odoo-form-content {
-            grid-template-columns: 1fr;
-            gap: 16px;
-        }
-
-        .odoo-field-row {
-            grid-template-columns: 120px 1fr;
-        }
-
-        .odoo-form-full .odoo-field-row {
-            grid-template-columns: 120px 1fr;
-        }
-
-        .odoo-actionbar {
-            flex-direction: column;
-            gap: 12px;
-            align-items: stretch;
-        }
+        .odoo-form-content { grid-template-columns: 1fr; }
     }
 
-    @media (max-width: 600px) {
-        .odoo-field-row {
-            grid-template-columns: 1fr;
-            gap: 4px;
-        }
-
-        .odoo-field-row label {
-            text-align: left;
-            font-size: 11px;
-            color: var(--odoo-text-muted);
-        }
-
-        .odoo-form-full .odoo-field-row {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* HINT */
-    .odoo-field-hint {
-        font-size: 11px;
-        color: var(--odoo-text-muted);
-        font-style: italic;
-        margin-top: 4px;
-    }
-
-    /* CAMPOS CONDICIONALES */
-    .odoo-field-conditional {
-        animation: fadeIn 0.2s ease;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-4px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
 </style>
 
 {% endblock %}
@@ -457,22 +289,19 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const formaPagoSelect = document.querySelector('[name="forma_pago"]');
-    const fieldReferencia = document.getElementById('field-referencia');
+    const formaPago = document.querySelector('[name="forma_pago"]');
+    const refField = document.querySelector('#field-referencia');
 
-    // Formas de pago que requieren referencia
-    const pagosConReferencia = ['transferencia', 'cheque', 'deposito', 'depósito'];
+    const requiereReferencia = ["transferencia", "depósito", "deposito", "cheque"];
 
-    function toggleReferencia() {
-        if (!formaPagoSelect || !fieldReferencia) return;
-        const valor = formaPagoSelect.options[formaPagoSelect.selectedIndex]?.text.toLowerCase() || '';
-        const mostrar = pagosConReferencia.some(pago => valor.includes(pago));
-        fieldReferencia.style.display = mostrar ? '' : 'none';
+    function toggleRef() {
+        const seleccion = formaPago.options[formaPago.selectedIndex]?.text.toLowerCase();
+        refField.style.display = requiereReferencia.some(t => seleccion.includes(t)) ? "" : "none";
     }
 
-    if (formaPagoSelect) {
-        formaPagoSelect.addEventListener('change', toggleReferencia);
-        toggleReferencia();
+    if (formaPago) {
+        formaPago.addEventListener("change", toggleRef);
+        toggleRef();
     }
 });
 </script>
