@@ -1,0 +1,389 @@
+{% extends 'finanzas_app/base_finanzas.html' %}
+{% load static %}
+
+{% block title %}Detalle de ingreso · Soid_Tf_2{% endblock %}
+
+{% block finanzas_content %}
+
+<div class="ingreso-detalle">
+
+    <!-- ENCABEZADO SUPERIOR -->
+    <div class="page-header-flex">
+        <div>
+            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="btn-secondary btn-sm back-link">
+                <span class="material-icons">arrow_back</span>
+                Volver a ingresos
+            </a>
+
+            <h1 class="page-title">Detalle de ingreso</h1>
+            <p class="page-subtitle">
+                ID: {{ ingreso.id }} · Fecha: {{ ingreso.fecha|date:"d/m/Y" }}
+                {% if ingreso.estado %}
+                    · Estado:
+                    {% if ingreso.estado == "anulado" %}
+                        <span class="badge badge-danger">Anulado</span>
+                    {% else %}
+                        <span class="badge badge-success">Activo</span>
+                    {% endif %}
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="header-actions">
+            <a href="{% url 'finanzas_app:movimiento_editar' ingreso.id %}" class="btn-secondary">
+                <span class="material-icons">edit</span>
+                Editar
+            </a>
+            <a href="{% url 'finanzas_app:movimiento_anular' ingreso.id %}" class="btn-danger-outline">
+                <span class="material-icons">cancel</span>
+                Anular
+            </a>
+        </div>
+    </div>
+
+    <!-- TARJETA PRINCIPAL -->
+    <div class="detail-layout">
+
+        <!-- COLUMNA IZQUIERDA: MONTO Y RESUMEN -->
+        <div class="detail-main">
+
+            <div class="card highlight-card">
+                <div class="highlight-label">Monto del ingreso</div>
+                <div class="highlight-amount">
+                    RD$ {{ ingreso.monto|floatformat:2 }}
+                </div>
+                <div class="highlight-tag">
+                    <span class="badge badge-success">Ingreso</span>
+                    {% if ingreso.categoria %}
+                        <span class="chip">{{ ingreso.categoria.nombre }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Información principal</h2>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Fecha</span>
+                        <span class="detail-value">{{ ingreso.fecha|date:"d/m/Y" }}</span>
+                    </div>
+
+                    <div class="detail-item">
+                        <span class="detail-label">Cuenta</span>
+                        <span class="detail-value">
+                            {% if ingreso.cuenta %}
+                                {{ ingreso.cuenta.nombre }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="detail-item">
+                        <span class="detail-label">Forma de pago</span>
+                        <span class="detail-value">
+                            {{ ingreso.get_forma_pago_display|default:ingreso.forma_pago|default:"—" }}
+                        </span>
+                    </div>
+
+                    <div class="detail-item">
+                        <span class="detail-label">Referencia</span>
+                        <span class="detail-value">
+                            {{ ingreso.referencia|default:"—" }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Descripción</h2>
+                <p class="description-text">
+                    {{ ingreso.descripcion|default:"Sin descripción registrada." }}
+                </p>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: META / INFO ADICIONAL -->
+        <div class="detail-sidebar">
+
+            <div class="card">
+                <h2 class="card-title">Persona asociada</h2>
+                <p class="description-text">
+                    {{ ingreso.persona_asociada|default:"Sin persona asociada." }}
+                </p>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Registro</h2>
+                <div class="detail-meta">
+                    <div class="detail-meta-row">
+                        <span class="detail-label">Registrado por</span>
+                        <span class="detail-value">
+                            {% if ingreso.creado_por %}
+                                {{ ingreso.creado_por.get_full_name|default:ingreso.creado_por.username }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="detail-meta-row">
+                        <span class="detail-label">Creado</span>
+                        <span class="detail-value">
+                            {% if ingreso.creado_en %}
+                                {{ ingreso.creado_en|date:"d/m/Y H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="detail-meta-row">
+                        <span class="detail-label">Última actualización</span>
+                        <span class="detail-value">
+                            {% if ingreso.actualizado_en %}
+                                {{ ingreso.actualizado_en|date:"d/m/Y H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<style>
+.ingreso-detalle {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.page-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 8px 0 0;
+    color: #111827;
+}
+
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 4px 0 0;
+}
+
+.back-link {
+    margin-bottom: 4px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Layout columnas */
+.detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px 18px;
+}
+
+.card-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: #111827;
+}
+
+.highlight-card {
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #ecfdf5, #eff6ff);
+    border: 1px solid #bbf7d0;
+}
+
+.highlight-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #047857;
+    margin-bottom: 4px;
+}
+
+.highlight-amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: #022c22;
+    margin-bottom: 8px;
+}
+
+.highlight-tag {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Grid de detalles */
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-bottom: 2px;
+}
+
+.detail-value {
+    font-size: 14px;
+    color: #111827;
+}
+
+/* Meta */
+.detail-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.detail-meta-row {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Textos */
+.description-text {
+    font-size: 14px;
+    color: #374151;
+    margin: 0;
+    white-space: pre-line;
+}
+
+/* Chips / badges */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    font-size: 11px;
+    color: #374151;
+}
+
+/* Botones base (compatibles con los que ya usas) */
+.btn-primary,
+.btn-secondary,
+.btn-danger-outline,
+.btn-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.btn-primary {
+    background: var(--color-primary, #714B67);
+    color: #ffffff;
+    border-color: var(--color-primary, #714B67);
+}
+
+.btn-secondary {
+    background: #ffffff;
+    color: #374151;
+    border-color: #e5e7eb;
+}
+
+.btn-secondary:hover {
+    background: #f9fafb;
+}
+
+.btn-danger-outline {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.btn-danger-outline:hover {
+    background: #fee2e2;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .detail-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .page-header-flex {
+        align-items: flex-start;
+    }
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+</style>
+
+{% endblock %}

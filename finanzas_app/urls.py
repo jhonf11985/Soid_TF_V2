@@ -31,5 +31,7 @@ urlpatterns = [
     path("ingresos/nuevo/", views.ingreso_crear, name="ingreso_crear"),
     # Egresos (formulario especializado)
     path("egresos/nuevo/", views.egreso_crear, name="egreso_crear"),
+    # 👉 NUEVA RUTA PARA DETALLE DE INGRESO
+    path("ingresos/<int:pk>/detalle/", views.ingreso_detalle, name="ingreso_detalle"),
 
 ]

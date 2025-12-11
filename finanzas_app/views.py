@@ -635,3 +635,16 @@ def movimiento_anular(request, pk):
 
     messages.warning(request, f"Movimiento #{movimiento.pk} anulado.")
     return redirect("finanzas_app:movimientos_listado")
+
+@login_required
+def ingreso_detalle(request, pk):
+    """
+    Vista de detalle para un INGRESO.
+    Muestra el movimiento en formato de ficha/documento.
+    """
+    ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso")
+
+    context = {
+        "ingreso": ingreso,
+    }
+    return render(request, "finanzas_app/ingreso_detalle.html", context)
