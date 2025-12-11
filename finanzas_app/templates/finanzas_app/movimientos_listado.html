@@ -5,161 +5,626 @@
 
 {% block content %}
 
-<div class="page-section">
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Movimientos financieros</h1>
-            <p class="page-subtitle">
-                Listado de ingresos y egresos con filtros básicos.
-            </p>
-        </div>
-        <div class="page-header-actions">
-    {% if f_tipo == 'ingreso' %}
-        <a href="{% url 'finanzas_app:ingreso_crear' %}" class="btn-primary">
-            <span class="material-icons" style="font-size: 16px;">add</span>
-            Registrar ingreso
-        </a>
-    {% else %}
-        <a href="{% url 'finanzas_app:movimiento_crear' %}" class="btn-primary">
-            <span class="material-icons" style="font-size: 16px;">add</span>
-            Nuevo movimiento
-        </a>
-    {% endif %}
-</div>
+<div class="odoo-page">
 
-    </div>
-
-    <!-- Resumen rápido -->
-    <div class="resume-row" style="display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
-        <div style="padding: 8px 12px; border-radius: 999px; background: #ecfdf3; font-size: 12px;">
-            Ingresos: <strong>{{ total_ingresos|floatformat:2 }}</strong>
+    <!-- BARRA SUPERIOR -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-current">Movimientos financieros</span>
+            </div>
         </div>
-        <div style="padding: 8px 12px; border-radius: 999px; background: #fef2f2; font-size: 12px;">
-            Egresos: <strong>{{ total_egresos|floatformat:2 }}</strong>
-        </div>
-        <div style="padding: 8px 12px; border-radius: 999px; background: #eff6ff; font-size: 12px;">
-            Balance: <strong>{{ balance|floatformat:2 }}</strong>
+        <div class="odoo-topbar-right">
+            <span class="odoo-record-count">{{ movimientos|length }} registro{{ movimientos|length|pluralize:"s" }}</span>
         </div>
     </div>
 
-    <!-- FILTROS -->
-    <form method="get" style="margin-bottom: 16px;">
-        <div class="form-grid">
-
-            <div class="form-field">
-                <label for="id_q">Buscar</label>
-                <input type="text" id="id_q" name="q"
-                       value="{{ f_q }}"
-                       placeholder="Descripción o referencia...">
-            </div>
-
-            <div class="form-field">
-                <label for="id_tipo">Tipo</label>
-                <select id="id_tipo" name="tipo">
-                    <option value="">Todos</option>
-                    <option value="ingreso" {% if f_tipo == 'ingreso' %}selected{% endif %}>Ingresos</option>
-                    <option value="egreso" {% if f_tipo == 'egreso' %}selected{% endif %}>Egresos</option>
-                </select>
-            </div>
-
-            <div class="form-field">
-                <label for="id_cuenta">Cuenta</label>
-                <select id="id_cuenta" name="cuenta">
-                    <option value="">Todas</option>
-                    {% for c in cuentas %}
-                        <option value="{{ c.id }}" {% if f_cuenta|default:'' == c.id|stringformat:"s" %}selected{% endif %}>
-                            {{ c.nombre }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-field">
-                <label for="id_categoria">Categoría</label>
-                <select id="id_categoria" name="categoria">
-                    <option value="">Todas</option>
-                    {% for cat in categorias %}
-                        <option value="{{ cat.id }}" {% if f_categoria|default:'' == cat.id|stringformat:"s" %}selected{% endif %}>
-                            {{ cat.nombre }} ({{ cat.get_tipo_display }})
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-field">
-                <label for="id_fecha_desde">Desde</label>
-                <input type="date" id="id_fecha_desde" name="fecha_desde" value="{{ f_fecha_desde }}">
-            </div>
-
-            <div class="form-field">
-                <label for="id_fecha_hasta">Hasta</label>
-                <input type="date" id="id_fecha_hasta" name="fecha_hasta" value="{{ f_fecha_hasta }}">
-            </div>
-
+    <!-- BARRA DE ACCIONES -->
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            {% if f_tipo == 'ingreso' %}
+                <a href="{% url 'finanzas_app:ingreso_crear' %}" class="odoo-btn odoo-btn-primary">
+                    <span class="material-icons">add</span>
+                    Nuevo ingreso
+                </a>
+            {% elif f_tipo == 'egreso' %}
+                <a href="{% url 'finanzas_app:movimiento_crear' %}" class="odoo-btn odoo-btn-primary">
+                    <span class="material-icons">add</span>
+                    Nuevo egreso
+                </a>
+            {% else %}
+                <a href="{% url 'finanzas_app:ingreso_crear' %}" class="odoo-btn odoo-btn-primary">
+                    <span class="material-icons">add</span>
+                    Nuevo ingreso
+                </a>
+                <a href="{% url 'finanzas_app:movimiento_crear' %}" class="odoo-btn odoo-btn-secondary">
+                    <span class="material-icons">remove</span>
+                    Nuevo egreso
+                </a>
+            {% endif %}
         </div>
-
-        <div style="margin-top: 10px; display: flex; gap: 8px;">
-            <button type="submit" class="btn-secondary">
-                <span class="material-icons" style="font-size: 16px;">filter_alt</span>
-                Aplicar filtros
+        <div class="odoo-actionbar-right">
+            <button type="button" class="odoo-btn odoo-btn-icon" id="toggle-filters" title="Filtros">
+                <span class="material-icons">filter_list</span>
             </button>
-            <a href="{% url 'finanzas_app:movimientos_listado' %}" class="btn-secondary">
-                Limpiar
-            </a>
         </div>
-    </form>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="odoo-summary">
+        <div class="odoo-summary-item odoo-summary-income">
+            <span class="odoo-summary-label">Ingresos</span>
+            <span class="odoo-summary-value">RD$ {{ total_ingresos|floatformat:2 }}</span>
+        </div>
+        <div class="odoo-summary-item odoo-summary-expense">
+            <span class="odoo-summary-label">Egresos</span>
+            <span class="odoo-summary-value">RD$ {{ total_egresos|floatformat:2 }}</span>
+        </div>
+        <div class="odoo-summary-item {% if balance >= 0 %}odoo-summary-positive{% else %}odoo-summary-negative{% endif %}">
+            <span class="odoo-summary-label">Balance</span>
+            <span class="odoo-summary-value">RD$ {{ balance|floatformat:2 }}</span>
+        </div>
+    </div>
+
+    <!-- FILTROS (colapsables) -->
+    <div class="odoo-filters" id="filters-panel">
+        <form method="get" class="odoo-filters-form">
+            <div class="odoo-filters-grid">
+                <div class="odoo-filter-field">
+                    <label for="id_q">Buscar</label>
+                    <input type="text" id="id_q" name="q" value="{{ f_q }}" placeholder="Descripción o referencia...">
+                </div>
+
+                <div class="odoo-filter-field">
+                    <label for="id_tipo">Tipo</label>
+                    <select id="id_tipo" name="tipo">
+                        <option value="">Todos</option>
+                        <option value="ingreso" {% if f_tipo == 'ingreso' %}selected{% endif %}>Ingresos</option>
+                        <option value="egreso" {% if f_tipo == 'egreso' %}selected{% endif %}>Egresos</option>
+                    </select>
+                </div>
+
+                <div class="odoo-filter-field">
+                    <label for="id_cuenta">Cuenta</label>
+                    <select id="id_cuenta" name="cuenta">
+                        <option value="">Todas</option>
+                        {% for c in cuentas %}
+                            <option value="{{ c.id }}" {% if f_cuenta|default:'' == c.id|stringformat:"s" %}selected{% endif %}>
+                                {{ c.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="odoo-filter-field">
+                    <label for="id_categoria">Categoría</label>
+                    <select id="id_categoria" name="categoria">
+                        <option value="">Todas</option>
+                        {% for cat in categorias %}
+                            <option value="{{ cat.id }}" {% if f_categoria|default:'' == cat.id|stringformat:"s" %}selected{% endif %}>
+                                {{ cat.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="odoo-filter-field">
+                    <label for="id_fecha_desde">Desde</label>
+                    <input type="date" id="id_fecha_desde" name="fecha_desde" value="{{ f_fecha_desde }}">
+                </div>
+
+                <div class="odoo-filter-field">
+                    <label for="id_fecha_hasta">Hasta</label>
+                    <input type="date" id="id_fecha_hasta" name="fecha_hasta" value="{{ f_fecha_hasta }}">
+                </div>
+            </div>
+
+            <div class="odoo-filters-actions">
+                <button type="submit" class="odoo-btn odoo-btn-primary">
+                    Aplicar
+                </button>
+                <a href="{% url 'finanzas_app:movimientos_listado' %}" class="odoo-btn odoo-btn-secondary">
+                    Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
 
     <!-- TABLA -->
-    <div class="table-wrapper">
-        <table class="table">
+    <div class="odoo-table-container">
+        <table class="odoo-table">
             <thead>
                 <tr>
-                    <th>Fecha</th>
-                    <th class="col-center">Tipo</th>
-                    <th>Cuenta</th>
-                    <th>Categoría</th>
-                    <th>Descripción</th>
-                    <th class="col-center">Monto</th>
-                    <th>Registrado por</th>
+                    <th class="col-fecha">Fecha</th>
+                    <th class="col-tipo">Tipo</th>
+                    <th class="col-cuenta">Cuenta</th>
+                    <th class="col-categoria">Categoría</th>
+                    <th class="col-descripcion">Descripción</th>
+                    <th class="col-monto">Monto</th>
+                    <th class="col-acciones"></th>
                 </tr>
             </thead>
             <tbody>
                 {% if movimientos %}
                     {% for mov in movimientos %}
-                        <tr>
-                            <td>{{ mov.fecha }}</td>
-                            <td class="col-center">
+                        <tr class="odoo-row-clickable" data-href="{% url 'finanzas_app:movimiento_detalle' mov.id %}">
+                            <td class="col-fecha">{{ mov.fecha|date:"d M Y" }}</td>
+                            <td class="col-tipo">
                                 {% if mov.tipo == 'ingreso' %}
-                                    <span class="pill pill-success">Ingreso</span>
+                                    <span class="odoo-badge odoo-badge-success">Ingreso</span>
                                 {% else %}
-                                    <span class="pill pill-danger">Egreso</span>
+                                    <span class="odoo-badge odoo-badge-danger">Egreso</span>
                                 {% endif %}
                             </td>
-                            <td>{{ mov.cuenta.nombre }}</td>
-                            <td>{{ mov.categoria.nombre }}</td>
-                            <td>{{ mov.descripcion|default:"—" }}</td>
-                            <td class="col-center">
-                                {{ mov.monto|floatformat:2 }}
+                            <td class="col-cuenta">{{ mov.cuenta.nombre }}</td>
+                            <td class="col-categoria">{{ mov.categoria.nombre }}</td>
+                            <td class="col-descripcion">{{ mov.descripcion|default:"—"|truncatewords:8 }}</td>
+                            <td class="col-monto {% if mov.tipo == 'ingreso' %}monto-ingreso{% else %}monto-egreso{% endif %}">
+                                {% if mov.tipo == 'ingreso' %}+{% else %}-{% endif %}RD$ {{ mov.monto|floatformat:2 }}
                             </td>
-                            <td>
-                                {% if mov.creado_por %}
-                                    {{ mov.creado_por.get_full_name|default:mov.creado_por.username }}
-                                {% else %}
-                                    —
-                                {% endif %}
+                            <td class="col-acciones">
+                                <div class="odoo-row-actions">
+                                    <a href="{% url 'finanzas_app:movimiento_editar' mov.id %}" class="odoo-action-btn" title="Editar">
+                                        <span class="material-icons">edit</span>
+                                    </a>
+                                    <a href="{% url 'finanzas_app:movimiento_eliminar' mov.id %}" class="odoo-action-btn odoo-action-danger" title="Eliminar">
+                                        <span class="material-icons">delete</span>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="7" class="table-empty">
-                            No hay movimientos registrados con los filtros actuales.
+                        <td colspan="7" class="odoo-empty">
+                            <span class="material-icons">inbox</span>
+                            <p>No hay movimientos con los filtros actuales</p>
                         </td>
                     </tr>
                 {% endif %}
             </tbody>
         </table>
     </div>
+
 </div>
+
+<style>
+    /* =====================================
+       LISTADO ESTILO ODOO
+       ===================================== */
+    
+    :root {
+        --odoo-purple: #714B67;
+        --odoo-purple-dark: #5d3d54;
+        --odoo-text: #212529;
+        --odoo-text-muted: #6c757d;
+        --odoo-border: #dee2e6;
+        --odoo-bg: #ffffff;
+        --odoo-bg-gray: #f8f9fa;
+        --odoo-success: #28a745;
+        --odoo-danger: #dc3545;
+        --odoo-info: #17a2b8;
+    }
+
+    .odoo-page {
+        background: var(--odoo-bg-gray);
+        min-height: 100vh;
+    }
+
+    /* BARRA SUPERIOR */
+    .odoo-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .odoo-breadcrumb-current {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--odoo-text);
+    }
+
+    .odoo-record-count {
+        font-size: 13px;
+        color: var(--odoo-text-muted);
+    }
+
+    /* BARRA DE ACCIONES */
+    .odoo-actionbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-actionbar-left {
+        display: flex;
+        gap: 8px;
+    }
+
+    .odoo-actionbar-right {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* BOTONES */
+    .odoo-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid var(--odoo-border);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+        font-family: inherit;
+        background: var(--odoo-bg);
+        color: var(--odoo-text);
+    }
+
+    .odoo-btn .material-icons {
+        font-size: 18px;
+    }
+
+    .odoo-btn-primary {
+        background: var(--odoo-purple);
+        color: white;
+        border-color: var(--odoo-purple);
+    }
+
+    .odoo-btn-primary:hover {
+        background: var(--odoo-purple-dark);
+        border-color: var(--odoo-purple-dark);
+    }
+
+    .odoo-btn-secondary:hover {
+        background: var(--odoo-bg-gray);
+    }
+
+    .odoo-btn-icon {
+        padding: 7px 10px;
+    }
+
+    /* RESUMEN */
+    .odoo-summary {
+        display: flex;
+        gap: 16px;
+        padding: 16px 20px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+        flex-wrap: wrap;
+    }
+
+    .odoo-summary-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        min-width: 140px;
+    }
+
+    .odoo-summary-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
+    }
+
+    .odoo-summary-value {
+        font-size: 18px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .odoo-summary-income {
+        background: #ecfdf5;
+        color: #065f46;
+    }
+
+    .odoo-summary-expense {
+        background: #fef2f2;
+        color: #991b1b;
+    }
+
+    .odoo-summary-positive {
+        background: #eff6ff;
+        color: #1e40af;
+    }
+
+    .odoo-summary-negative {
+        background: #fef2f2;
+        color: #991b1b;
+    }
+
+    /* FILTROS */
+    .odoo-filters {
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+        padding: 16px 20px;
+        display: none;
+    }
+
+    .odoo-filters.active {
+        display: block;
+    }
+
+    .odoo-filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .odoo-filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .odoo-filter-field label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--odoo-text);
+    }
+
+    .odoo-filter-field input,
+    .odoo-filter-field select {
+        padding: 8px 10px;
+        font-size: 13px;
+        border: 1px solid var(--odoo-border);
+        border-radius: 4px;
+        font-family: inherit;
+        background: var(--odoo-bg);
+        color: var(--odoo-text);
+    }
+
+    .odoo-filter-field input:focus,
+    .odoo-filter-field select:focus {
+        outline: none;
+        border-color: var(--odoo-purple);
+        box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
+    }
+
+    .odoo-filters-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* TABLA */
+    .odoo-table-container {
+        background: var(--odoo-bg);
+        margin: 20px;
+        border-radius: 8px;
+        border: 1px solid var(--odoo-border);
+        overflow: hidden;
+    }
+
+    .odoo-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .odoo-table thead {
+        background: var(--odoo-bg-gray);
+    }
+
+    .odoo-table th {
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--odoo-text);
+        border-bottom: 1px solid var(--odoo-border);
+        white-space: nowrap;
+    }
+
+    .odoo-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--odoo-border);
+        color: var(--odoo-text);
+    }
+
+    .odoo-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .odoo-table tbody tr:hover {
+        background: #f8f4f7;
+    }
+
+    .odoo-row-clickable {
+        cursor: pointer;
+    }
+
+    /* COLUMNAS */
+    .col-fecha { width: 100px; }
+    .col-tipo { width: 90px; }
+    .col-cuenta { width: 140px; }
+    .col-categoria { width: 140px; }
+    .col-descripcion { }
+    .col-monto { width: 130px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .col-acciones { width: 80px; text-align: center; }
+
+    /* BADGES */
+    .odoo-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .odoo-badge-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .odoo-badge-danger {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* MONTOS */
+    .monto-ingreso {
+        color: var(--odoo-success);
+    }
+
+    .monto-egreso {
+        color: var(--odoo-danger);
+    }
+
+    /* ACCIONES DE FILA */
+    .odoo-row-actions {
+        display: flex;
+        gap: 4px;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    tr:hover .odoo-row-actions {
+        opacity: 1;
+    }
+
+    .odoo-action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        color: var(--odoo-text-muted);
+        transition: all 0.15s;
+    }
+
+    .odoo-action-btn:hover {
+        background: var(--odoo-bg-gray);
+        color: var(--odoo-purple);
+    }
+
+    .odoo-action-btn .material-icons {
+        font-size: 18px;
+    }
+
+    .odoo-action-danger:hover {
+        background: #fee2e2;
+        color: var(--odoo-danger);
+    }
+
+    /* EMPTY STATE */
+    .odoo-empty {
+        text-align: center;
+        padding: 48px 20px !important;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-empty .material-icons {
+        font-size: 48px;
+        opacity: 0.3;
+        margin-bottom: 8px;
+    }
+
+    .odoo-empty p {
+        margin: 0;
+        font-size: 14px;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+        .odoo-table-container {
+            margin: 12px;
+            border-radius: 0;
+        }
+
+        .odoo-table {
+            display: block;
+            overflow-x: auto;
+        }
+
+        .col-descripcion {
+            min-width: 150px;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .odoo-summary {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .odoo-summary-item {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .odoo-actionbar {
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .odoo-actionbar-left {
+            flex-direction: column;
+        }
+
+        .odoo-actionbar-right {
+            justify-content: flex-end;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle filtros
+    const toggleBtn = document.getElementById('toggle-filters');
+    const filtersPanel = document.getElementById('filters-panel');
+    
+    if (toggleBtn && filtersPanel) {
+        // Mostrar filtros si hay alguno activo
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasFilters = urlParams.has('q') || urlParams.has('tipo') || urlParams.has('cuenta') || 
+                          urlParams.has('categoria') || urlParams.has('fecha_desde') || urlParams.has('fecha_hasta');
+        
+        if (hasFilters) {
+            filtersPanel.classList.add('active');
+        }
+
+        toggleBtn.addEventListener('click', function() {
+            filtersPanel.classList.toggle('active');
+        });
+    }
+
+    // Filas clickeables
+    document.querySelectorAll('.odoo-row-clickable').forEach(row => {
+        row.addEventListener('click', function(e) {
+            // No navegar si se hizo clic en un botón de acción
+            if (e.target.closest('.odoo-row-actions')) return;
+            
+            const href = this.dataset.href;
+            if (href) window.location.href = href;
+        });
+    });
+});
+</script>
 
 {% endblock %}
