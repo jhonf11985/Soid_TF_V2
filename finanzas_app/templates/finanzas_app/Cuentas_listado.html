@@ -29,6 +29,9 @@
         <div style="padding: 8px 12px; border-radius: 999px; background: #fef2f2; font-size: 12px;">
             Inactivas: <strong>{{ total_inactivas }}</strong>
         </div>
+        <div style="padding: 8px 12px; border-radius: 999px; background: #f3e8ff; font-size: 12px; margin-left: auto;">
+            Saldo total: <strong style="color: #714B67;">RD$ {{ saldo_total_general|floatformat:2 }}</strong>
+        </div>
     </div>
 
     <!-- TABLA -->
@@ -40,28 +43,31 @@
                     <th class="col-center">Tipo</th>
                     <th class="col-center">Moneda</th>
                     <th class="col-center">Saldo inicial</th>
+                    <th class="col-center">Ingresos</th>
+                    <th class="col-center">Egresos</th>
+                    <th class="col-center">Saldo actual</th>
                     <th class="col-center">Estado</th>
                     <th class="col-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 {% if cuentas %}
-                    {% for cuenta in cuentas %}
+                    {% for item in cuentas %}
                         <tr>
                             <td>
-                                <strong>{{ cuenta.nombre }}</strong>
-                                {% if cuenta.descripcion %}
+                                <strong>{{ item.cuenta.nombre }}</strong>
+                                {% if item.cuenta.descripcion %}
                                     <br>
-                                    <small style="color: #6b7280;">{{ cuenta.descripcion|truncatechars:50 }}</small>
+                                    <small style="color: #6b7280;">{{ item.cuenta.descripcion|truncatechars:50 }}</small>
                                 {% endif %}
                             </td>
                             <td class="col-center">
-                                {% if cuenta.tipo == 'caja' %}
+                                {% if item.cuenta.tipo == 'caja' %}
                                     <span class="pill" style="background: #fef3c7; color: #92400e; border-color: #fcd34d;">
                                         <span class="material-icons" style="font-size: 14px; vertical-align: middle;">point_of_sale</span>
                                         Caja
                                     </span>
-                                {% elif cuenta.tipo == 'banco' %}
+                                {% elif item.cuenta.tipo == 'banco' %}
                                     <span class="pill" style="background: #dbeafe; color: #1e40af; border-color: #93c5fd;">
                                         <span class="material-icons" style="font-size: 14px; vertical-align: middle;">account_balance</span>
                                         Banco
@@ -73,13 +79,24 @@
                                 {% endif %}
                             </td>
                             <td class="col-center">
-                                <strong>{{ cuenta.moneda }}</strong>
+                                <strong>{{ item.cuenta.moneda }}</strong>
+                            </td>
+                            <td class="col-center" style="color: #6b7280;">
+                                {{ item.cuenta.saldo_inicial|floatformat:2 }}
+                            </td>
+                            <td class="col-center" style="color: #16a34a; font-weight: 500;">
+                                +{{ item.ingresos|floatformat:2 }}
+                            </td>
+                            <td class="col-center" style="color: #dc2626; font-weight: 500;">
+                                -{{ item.egresos|floatformat:2 }}
                             </td>
                             <td class="col-center">
-                                {{ cuenta.saldo_inicial|floatformat:2 }}
+                                <strong style="font-size: 14px; {% if item.saldo_actual >= 0 %}color: #714B67;{% else %}color: #dc2626;{% endif %}">
+                                    {{ item.cuenta.moneda }} {{ item.saldo_actual|floatformat:2 }}
+                                </strong>
                             </td>
                             <td class="col-center">
-                                {% if cuenta.esta_activa %}
+                                {% if item.cuenta.esta_activa %}
                                     <span class="pill pill-success">Activa</span>
                                 {% else %}
                                     <span class="pill pill-muted">Inactiva</span>
@@ -91,19 +108,23 @@
                                         <span class="material-symbols-rounded">more_horiz</span>
                                     </button>
                                     <div class="action-menu-dropdown">
-                                        <a href="{% url 'finanzas_app:cuenta_editar' cuenta.pk %}" class="action-menu-item action-edit">
+                                        <a href="{% url 'finanzas_app:cuenta_editar' item.cuenta.pk %}" class="action-menu-item action-edit">
                                             <span class="material-symbols-rounded">edit</span>
                                             <span>Editar</span>
                                         </a>
-                                        {% if cuenta.esta_activa %}
-                                            <a href="{% url 'finanzas_app:cuenta_toggle' cuenta.pk %}" 
+                                        <a href="{% url 'finanzas_app:movimientos_listado' %}?cuenta={{ item.cuenta.pk }}" class="action-menu-item">
+                                            <span class="material-symbols-rounded">receipt_long</span>
+                                            <span>Ver movimientos</span>
+                                        </a>
+                                        {% if item.cuenta.esta_activa %}
+                                            <a href="{% url 'finanzas_app:cuenta_toggle' item.cuenta.pk %}" 
                                                class="action-menu-item action-delete"
                                                onclick="return confirm('¿Desactivar esta cuenta?');">
                                                 <span class="material-symbols-rounded">block</span>
                                                 <span>Desactivar</span>
                                             </a>
                                         {% else %}
-                                            <a href="{% url 'finanzas_app:cuenta_toggle' cuenta.pk %}" 
+                                            <a href="{% url 'finanzas_app:cuenta_toggle' item.cuenta.pk %}" 
                                                class="action-menu-item action-approve">
                                                 <span class="material-symbols-rounded">check_circle</span>
                                                 <span>Activar</span>
@@ -116,7 +137,7 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="6" class="table-empty">
+                        <td colspan="9" class="table-empty">
                             No hay cuentas registradas. 
                             <a href="{% url 'finanzas_app:cuenta_crear' %}">Crear la primera cuenta</a>
                         </td>

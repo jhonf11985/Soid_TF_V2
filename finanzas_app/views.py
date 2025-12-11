@@ -229,17 +229,47 @@ def dashboard(request):
 @login_required
 def cuentas_listado(request):
     """
-    Listado de todas las cuentas financieras.
+    Listado de todas las cuentas financieras con saldo actual calculado.
     """
     cuentas = CuentaFinanciera.objects.all().order_by("-esta_activa", "nombre")
     
     total_activas = cuentas.filter(esta_activa=True).count()
     total_inactivas = cuentas.filter(esta_activa=False).count()
+    
+    # Calcular saldo actual para cada cuenta
+    cuentas_con_saldo = []
+    saldo_total_general = Decimal("0")
+    
+    for cuenta in cuentas:
+        # Obtener totales de movimientos de esta cuenta (excluyendo anulados)
+        totales = MovimientoFinanciero.objects.filter(
+            cuenta=cuenta
+        ).exclude(estado="anulado").aggregate(
+            ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+            egresos=Sum("monto", filter=Q(tipo="egreso")),
+        )
+        
+        ingresos = totales.get("ingresos") or Decimal("0")
+        egresos = totales.get("egresos") or Decimal("0")
+        saldo_actual = cuenta.saldo_inicial + ingresos - egresos
+        
+        # Agregar datos calculados
+        cuentas_con_saldo.append({
+            "cuenta": cuenta,
+            "ingresos": ingresos,
+            "egresos": egresos,
+            "saldo_actual": saldo_actual,
+        })
+        
+        # Sumar al total general (solo cuentas activas)
+        if cuenta.esta_activa:
+            saldo_total_general += saldo_actual
 
     context = {
-        "cuentas": cuentas,
+        "cuentas": cuentas_con_saldo,
         "total_activas": total_activas,
         "total_inactivas": total_inactivas,
+        "saldo_total_general": saldo_total_general,
     }
     return render(request, "finanzas_app/cuentas_listado.html", context)
 
