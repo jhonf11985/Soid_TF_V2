@@ -7,7 +7,6 @@
 
 <style>
 /* === ESTILOS SOLO PARA ESTE MÓDULO DE FINANZAS === */
-/* No tocamos nada global, solo clases que empiezan por .finance- */
 
 .layout {
     background: #f6f5ff;
@@ -75,6 +74,22 @@
     flex-direction: column;
     gap: 0.25rem;
     margin-top: 0.75rem;
+}
+
+.finance-menu-section {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.finance-menu-section-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 0.9rem;
+    margin-bottom: 0.5rem;
 }
 
 .finance-menu-item {
@@ -154,6 +169,7 @@
     align-items: center;
     justify-content: center;
     transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.1s;
+    text-decoration: none;
 }
 
 .finance-btn-primary {
@@ -382,6 +398,10 @@
         justify-content: flex-end;
     }
 
+    .finance-menu-section {
+        display: none;
+    }
+
     .finance-topbar {
         flex-direction: column;
         align-items: flex-start;
@@ -425,39 +445,48 @@
                 </div>
             </div>
         </div>
-<nav class="finance-menu">
-    <a href="{% url 'finanzas_app:dashboard' %}" class="finance-menu-item is-active">
-        <span class="material-icons finance-menu-icon">dashboard</span>
-        <span>Dashboard</span>
-    </a>
 
-    <!-- Ingresos: listado de movimientos filtrado por tipo=ingreso -->
-    <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="finance-menu-item">
-        <span class="material-icons finance-menu-icon">account_balance_wallet</span>
-        <span>Ingresos</span>
-    </a>
+        <nav class="finance-menu">
+            <a href="{% url 'finanzas_app:dashboard' %}" class="finance-menu-item is-active">
+                <span class="material-icons finance-menu-icon">dashboard</span>
+                <span>Dashboard</span>
+            </a>
 
-    <!-- Gastos: listado de movimientos filtrado por tipo=egreso -->
-    <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=egreso" class="finance-menu-item">
-        <span class="material-icons finance-menu-icon">receipt_long</span>
-        <span>Gastos</span>
-    </a>
+            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="finance-menu-item">
+                <span class="material-icons finance-menu-icon">account_balance_wallet</span>
+                <span>Ingresos</span>
+            </a>
 
-    <a href="#" class="finance-menu-item">
-        <span class="material-icons finance-menu-icon">assignment</span>
-        <span>Presupuestos</span>
-    </a>
+            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=egreso" class="finance-menu-item">
+                <span class="material-icons finance-menu-icon">receipt_long</span>
+                <span>Gastos</span>
+            </a>
 
-    <a href="#" class="finance-menu-item">
-        <span class="material-icons finance-menu-icon">bar_chart</span>
-        <span>Reportes</span>
-    </a>
+            <a href="#" class="finance-menu-item">
+                <span class="material-icons finance-menu-icon">bar_chart</span>
+                <span>Reportes</span>
+            </a>
 
-    <a href="#" class="finance-menu-item">
-        <span class="material-icons finance-menu-icon">settings</span>
-        <span>Configuración</span>
-    </a>
-</nav>
+            <!-- SECCIÓN: CONFIGURACIÓN -->
+            <div class="finance-menu-section">
+                <div class="finance-menu-section-title">Configuración</div>
+                
+                <a href="{% url 'finanzas_app:cuentas_listado' %}" class="finance-menu-item">
+                    <span class="material-icons finance-menu-icon">account_balance</span>
+                    <span>Cuentas</span>
+                </a>
+
+                <a href="#" class="finance-menu-item">
+                    <span class="material-icons finance-menu-icon">category</span>
+                    <span>Categorías</span>
+                </a>
+
+                <a href="#" class="finance-menu-item">
+                    <span class="material-icons finance-menu-icon">settings</span>
+                    <span>Ajustes</span>
+                </a>
+            </div>
+        </nav>
 
     </aside>
 
@@ -473,44 +502,42 @@
                 </p>
             </div>
             <div class="finance-topbar-actions">
-                <button type="button" class="finance-btn finance-btn-ghost">
-                    Descargar resumen
-                </button>
-                <button type="button" class="finance-btn finance-btn-primary">
-                    Nueva transacción
-                </button>
+                <a href="{% url 'finanzas_app:ingreso_crear' %}" class="finance-btn finance-btn-primary">
+                    <span class="material-icons" style="font-size: 16px; margin-right: 4px;">add</span>
+                    Nuevo ingreso
+                </a>
             </div>
         </header>
 
         <!-- TARJETAS PRINCIPALES -->
         <div class="finance-cards-row">
             <article class="finance-card finance-card-pink">
-                <h3 class="finance-card-label">Ingresos de la semana</h3>
+                <h3 class="finance-card-label">Ingresos del mes</h3>
                 <div class="finance-card-value">
-                    $ {{ resumen.ventas_semanales|default:"15,000" }}
+                    $ {{ resumen.ingresos_mes|default:"0.00" }}
                 </div>
                 <p class="finance-card-note">
-                    Incremento del 60% respecto a la semana anterior.
+                    Diciembre 2025
                 </p>
             </article>
 
             <article class="finance-card finance-card-blue">
-                <h3 class="finance-card-label">Registros (movimientos)</h3>
+                <h3 class="finance-card-label">Egresos del mes</h3>
                 <div class="finance-card-value">
-                    {{ resumen.ordenes_semanales|default:"45,633" }}
+                    $ {{ resumen.egresos_mes|default:"0.00" }}
                 </div>
                 <p class="finance-card-note">
-                    Disminuyeron un 10% frente al periodo previo.
+                    Diciembre 2025
                 </p>
             </article>
 
             <article class="finance-card finance-card-green">
-                <h3 class="finance-card-label">Visitantes online</h3>
+                <h3 class="finance-card-label">Balance</h3>
                 <div class="finance-card-value">
-                    {{ resumen.visitantes_online|default:"95,574" }}
+                    $ {{ resumen.balance|default:"0.00" }}
                 </div>
                 <p class="finance-card-note">
-                    Aumentaron un 5% esta semana.
+                    Ingresos - Egresos
                 </p>
             </article>
         </div>
@@ -544,6 +571,9 @@
         <section class="finance-panel">
             <div class="finance-panel-header">
                 <h3>Movimientos recientes</h3>
+                <a href="{% url 'finanzas_app:movimientos_listado' %}" style="font-size: 0.8rem; color: #6366f1;">
+                    Ver todos →
+                </a>
             </div>
             <div class="finance-panel-body">
                 <div class="finance-table-wrapper">
@@ -558,34 +588,33 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>05/12/2025</td>
-                                <td>Ingreso</td>
-                                <td>Diezmos y ofrendas</td>
-                                <td>$ 32,500</td>
-                                <td><span class="finance-status finance-status-ok">Confirmado</span></td>
-                            </tr>
-                            <tr>
-                                <td>04/12/2025</td>
-                                <td>Gasto</td>
-                                <td>Pago de renta del local</td>
-                                <td>$ 12,000</td>
-                                <td><span class="finance-status finance-status-warn">Pendiente</span></td>
-                            </tr>
-                            <tr>
-                                <td>02/12/2025</td>
-                                <td>Gasto</td>
-                                <td>Compra de equipo de sonido</td>
-                                <td>$ 18,900</td>
-                                <td><span class="finance-status finance-status-ok">Pagado</span></td>
-                            </tr>
-                            <tr>
-                                <td>30/11/2025</td>
-                                <td>Ingreso</td>
-                                <td>Actividad juvenil especial</td>
-                                <td>$ 7,800</td>
-                                <td><span class="finance-status finance-status-ok">Confirmado</span></td>
-                            </tr>
+                            {% if ultimos_movimientos %}
+                                {% for mov in ultimos_movimientos %}
+                                <tr>
+                                    <td>{{ mov.fecha|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {% if mov.tipo == 'ingreso' %}
+                                            <span style="color: #16a34a;">Ingreso</span>
+                                        {% else %}
+                                            <span style="color: #dc2626;">Egreso</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ mov.categoria.nombre }}{% if mov.descripcion %} - {{ mov.descripcion|truncatechars:30 }}{% endif %}</td>
+                                    <td>$ {{ mov.monto|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="finance-status finance-status-ok">
+                                            {{ mov.get_estado_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: #9ca3af; padding: 2rem;">
+                                        No hay movimientos registrados todavía.
+                                    </td>
+                                </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>

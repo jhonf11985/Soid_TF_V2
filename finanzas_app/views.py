@@ -1,12 +1,18 @@
-from django.shortcuts import render, redirect
+# finanzas_app/views.py
+
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Sum, Q
 from django.contrib.auth.decorators import login_required
-from .models import MovimientoFinanciero, CuentaFinanciera, CategoriaMovimiento
-from .forms import MovimientoFinancieroForm, MovimientoIngresoForm
 from django.utils import timezone
 
+from .models import MovimientoFinanciero, CuentaFinanciera, CategoriaMovimiento
+from .forms import MovimientoFinancieroForm, MovimientoIngresoForm, CuentaFinancieraForm
 
+
+# ============================================
+# DASHBOARD
+# ============================================
 
 @login_required
 def dashboard(request):
@@ -16,22 +22,110 @@ def dashboard(request):
     Más adelante conectaremos aquí los totales reales.
     """
     context = {}
-    # IMPORTANTE: usamos finanzas_app/dashboard.html porque así se llama la carpeta
     return render(request, "finanzas_app/dashboard.html", context)
 
+
+# ============================================
+# CUENTAS FINANCIERAS - CRUD
+# ============================================
+
+@login_required
+def cuentas_listado(request):
+    """
+    Listado de todas las cuentas financieras.
+    """
+    cuentas = CuentaFinanciera.objects.all().order_by("-esta_activa", "nombre")
+    
+    total_activas = cuentas.filter(esta_activa=True).count()
+    total_inactivas = cuentas.filter(esta_activa=False).count()
+
+    context = {
+        "cuentas": cuentas,
+        "total_activas": total_activas,
+        "total_inactivas": total_inactivas,
+    }
+    return render(request, "finanzas_app/cuentas_listado.html", context)
+
+
+@login_required
+def cuenta_crear(request):
+    """
+    Crear una nueva cuenta financiera.
+    """
+    if request.method == "POST":
+        form = CuentaFinancieraForm(request.POST)
+        if form.is_valid():
+            cuenta = form.save()
+            messages.success(request, f"Cuenta «{cuenta.nombre}» creada correctamente.")
+            return redirect("finanzas_app:cuentas_listado")
+    else:
+        form = CuentaFinancieraForm()
+
+    context = {
+        "form": form,
+        "cuenta": None,
+    }
+    return render(request, "finanzas_app/cuenta_form.html", context)
+
+
+@login_required
+def cuenta_editar(request, pk):
+    """
+    Editar una cuenta financiera existente.
+    """
+    cuenta = get_object_or_404(CuentaFinanciera, pk=pk)
+
+    if request.method == "POST":
+        form = CuentaFinancieraForm(request.POST, instance=cuenta)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Cuenta «{cuenta.nombre}» actualizada correctamente.")
+            return redirect("finanzas_app:cuentas_listado")
+    else:
+        form = CuentaFinancieraForm(instance=cuenta)
+
+    context = {
+        "form": form,
+        "cuenta": cuenta,
+    }
+    return render(request, "finanzas_app/cuenta_form.html", context)
+
+
+@login_required
+def cuenta_toggle(request, pk):
+    """
+    Activar o desactivar una cuenta financiera.
+    No eliminamos para mantener el historial de movimientos.
+    """
+    cuenta = get_object_or_404(CuentaFinanciera, pk=pk)
+    
+    # Toggle del estado
+    cuenta.esta_activa = not cuenta.esta_activa
+    cuenta.save()
+
+    if cuenta.esta_activa:
+        messages.success(request, f"Cuenta «{cuenta.nombre}» activada.")
+    else:
+        messages.warning(request, f"Cuenta «{cuenta.nombre}» desactivada.")
+
+    return redirect("finanzas_app:cuentas_listado")
+
+
+# ============================================
+# MOVIMIENTOS FINANCIEROS
+# ============================================
 
 @login_required
 def movimientos_listado(request):
     """
     Listado de movimientos financieros con filtros básicos y totales.
-    Solo accesible para usuarios autenticados.
     """
     movimientos = MovimientoFinanciero.objects.select_related(
         "cuenta", "categoria", "creado_por"
     ).order_by("-fecha", "-creado_en")
 
     # --------- FILTROS ----------
-    tipo = request.GET.get("tipo")  # ingreso / egreso
+    tipo = request.GET.get("tipo")
     cuenta_id = request.GET.get("cuenta")
     categoria_id = request.GET.get("categoria")
     q = request.GET.get("q")
@@ -79,7 +173,6 @@ def movimientos_listado(request):
         "total_ingresos": total_ingresos,
         "total_egresos": total_egresos,
         "balance": balance,
-        # valores de los filtros para mantener el estado en el formulario
         "f_tipo": tipo or "",
         "f_cuenta": cuenta_id or "",
         "f_categoria": categoria_id or "",
@@ -87,7 +180,6 @@ def movimientos_listado(request):
         "f_fecha_desde": fecha_desde or "",
         "f_fecha_hasta": fecha_hasta or "",
     }
-    # OJO: carpeta finanzas_app en templates
     return render(request, "finanzas_app/movimientos_listado.html", context)
 
 
@@ -95,14 +187,12 @@ def movimientos_listado(request):
 def movimiento_crear(request):
     """
     Formulario para registrar un nuevo movimiento (ingreso o egreso).
-    Solo accesible para usuarios autenticados.
     """
     if request.method == "POST":
         form = MovimientoFinancieroForm(request.POST)
         if form.is_valid():
             mov = form.save(commit=False)
-            if request.user.is_authenticated:
-                mov.creado_por = request.user
+            mov.creado_por = request.user
             mov.save()
             messages.success(request, "Movimiento registrado correctamente.")
             return redirect("finanzas_app:movimientos_listado")
@@ -112,26 +202,22 @@ def movimiento_crear(request):
     context = {
         "form": form,
     }
-    # OJO: carpeta finanzas_app en templates
     return render(request, "finanzas_app/movimiento_form.html", context)
+
 
 @login_required
 def ingreso_crear(request):
     """
     Formulario específico para registrar INGRESOS.
-    - Fija mov.tipo = 'ingreso'
-    - Filtra categorías a solo ingresos (hecho en el form)
     """
     if request.method == "POST":
         form = MovimientoIngresoForm(request.POST)
         if form.is_valid():
             mov = form.save(commit=False)
-            mov.tipo = "ingreso"  # aseguramos que siempre sea ingreso
-            if request.user.is_authenticated:
-                mov.creado_por = request.user
+            mov.tipo = "ingreso"
+            mov.creado_por = request.user
             mov.save()
             messages.success(request, "Ingreso registrado correctamente.")
-            # Volvemos al listado filtrado por ingresos
             return redirect("/finanzas/movimientos/?tipo=ingreso")
     else:
         form = MovimientoIngresoForm(

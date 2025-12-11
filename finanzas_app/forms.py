@@ -1,23 +1,42 @@
 # finanzas_app/forms.py
 from django import forms
-from .models import MovimientoFinanciero, CategoriaMovimiento
+from .models import MovimientoFinanciero, CategoriaMovimiento, CuentaFinanciera
 
 
-class MovimientoFinancieroForm(forms.ModelForm):
+# ============================================
+# FORMULARIO DE CUENTA FINANCIERA
+# ============================================
+
+class CuentaFinancieraForm(forms.ModelForm):
     class Meta:
-        model = MovimientoFinanciero
+        model = CuentaFinanciera
         fields = [
-            "fecha",
+            "nombre",
             "tipo",
-            "cuenta",
-            "categoria",
-            "monto",
+            "moneda",
+            "saldo_inicial",
             "descripcion",
-            "referencia",
+            "esta_activa",
         ]
         widgets = {
-            "fecha": forms.DateInput(attrs={"type": "date"}),
+            "nombre": forms.TextInput(attrs={
+                "placeholder": "Ej: Caja general, Banco Popular...",
+            }),
+            "descripcion": forms.Textarea(attrs={
+                "rows": 2,
+                "placeholder": "Descripción opcional de la cuenta...",
+            }),
+            "saldo_inicial": forms.NumberInput(attrs={
+                "step": "0.01",
+                "min": "0",
+                "placeholder": "0.00",
+            }),
         }
+
+
+# ============================================
+# FORMULARIOS DE MOVIMIENTOS
+# ============================================
 
 class MovimientoFinancieroForm(forms.ModelForm):
     class Meta:
@@ -49,11 +68,23 @@ class MovimientoIngresoForm(forms.ModelForm):
             "cuenta",
             "categoria",
             "monto",
+            "forma_pago",
+            "persona_asociada",
             "descripcion",
             "referencia",
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}),
+            "persona_asociada": forms.TextInput(attrs={
+                "placeholder": "Nombre de quien entrega (opcional)",
+            }),
+            "descripcion": forms.Textarea(attrs={
+                "rows": 2,
+                "placeholder": "Notas adicionales...",
+            }),
+            "referencia": forms.TextInput(attrs={
+                "placeholder": "Nº transferencia, cheque, etc.",
+            }),
         }
 
     def __init__(self, *args, **kwargs):
@@ -62,4 +93,9 @@ class MovimientoIngresoForm(forms.ModelForm):
         self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
             tipo="ingreso",
             activo=True
+        ).order_by("nombre")
+        
+        # Filtrar solo cuentas activas
+        self.fields["cuenta"].queryset = CuentaFinanciera.objects.filter(
+            esta_activa=True
         ).order_by("nombre")
