@@ -1,0 +1,165 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Movimientos financieros · Soid_Tf_2{% endblock %}
+
+{% block content %}
+
+<div class="page-section">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Movimientos financieros</h1>
+            <p class="page-subtitle">
+                Listado de ingresos y egresos con filtros básicos.
+            </p>
+        </div>
+        <div class="page-header-actions">
+    {% if f_tipo == 'ingreso' %}
+        <a href="{% url 'finanzas_app:ingreso_crear' %}" class="btn-primary">
+            <span class="material-icons" style="font-size: 16px;">add</span>
+            Registrar ingreso
+        </a>
+    {% else %}
+        <a href="{% url 'finanzas_app:movimiento_crear' %}" class="btn-primary">
+            <span class="material-icons" style="font-size: 16px;">add</span>
+            Nuevo movimiento
+        </a>
+    {% endif %}
+</div>
+
+    </div>
+
+    <!-- Resumen rápido -->
+    <div class="resume-row" style="display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
+        <div style="padding: 8px 12px; border-radius: 999px; background: #ecfdf3; font-size: 12px;">
+            Ingresos: <strong>{{ total_ingresos|floatformat:2 }}</strong>
+        </div>
+        <div style="padding: 8px 12px; border-radius: 999px; background: #fef2f2; font-size: 12px;">
+            Egresos: <strong>{{ total_egresos|floatformat:2 }}</strong>
+        </div>
+        <div style="padding: 8px 12px; border-radius: 999px; background: #eff6ff; font-size: 12px;">
+            Balance: <strong>{{ balance|floatformat:2 }}</strong>
+        </div>
+    </div>
+
+    <!-- FILTROS -->
+    <form method="get" style="margin-bottom: 16px;">
+        <div class="form-grid">
+
+            <div class="form-field">
+                <label for="id_q">Buscar</label>
+                <input type="text" id="id_q" name="q"
+                       value="{{ f_q }}"
+                       placeholder="Descripción o referencia...">
+            </div>
+
+            <div class="form-field">
+                <label for="id_tipo">Tipo</label>
+                <select id="id_tipo" name="tipo">
+                    <option value="">Todos</option>
+                    <option value="ingreso" {% if f_tipo == 'ingreso' %}selected{% endif %}>Ingresos</option>
+                    <option value="egreso" {% if f_tipo == 'egreso' %}selected{% endif %}>Egresos</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="id_cuenta">Cuenta</label>
+                <select id="id_cuenta" name="cuenta">
+                    <option value="">Todas</option>
+                    {% for c in cuentas %}
+                        <option value="{{ c.id }}" {% if f_cuenta|default:'' == c.id|stringformat:"s" %}selected{% endif %}>
+                            {{ c.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="id_categoria">Categoría</label>
+                <select id="id_categoria" name="categoria">
+                    <option value="">Todas</option>
+                    {% for cat in categorias %}
+                        <option value="{{ cat.id }}" {% if f_categoria|default:'' == cat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cat.nombre }} ({{ cat.get_tipo_display }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="id_fecha_desde">Desde</label>
+                <input type="date" id="id_fecha_desde" name="fecha_desde" value="{{ f_fecha_desde }}">
+            </div>
+
+            <div class="form-field">
+                <label for="id_fecha_hasta">Hasta</label>
+                <input type="date" id="id_fecha_hasta" name="fecha_hasta" value="{{ f_fecha_hasta }}">
+            </div>
+
+        </div>
+
+        <div style="margin-top: 10px; display: flex; gap: 8px;">
+            <button type="submit" class="btn-secondary">
+                <span class="material-icons" style="font-size: 16px;">filter_alt</span>
+                Aplicar filtros
+            </button>
+            <a href="{% url 'finanzas_app:movimientos_listado' %}" class="btn-secondary">
+                Limpiar
+            </a>
+        </div>
+    </form>
+
+    <!-- TABLA -->
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th class="col-center">Tipo</th>
+                    <th>Cuenta</th>
+                    <th>Categoría</th>
+                    <th>Descripción</th>
+                    <th class="col-center">Monto</th>
+                    <th>Registrado por</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if movimientos %}
+                    {% for mov in movimientos %}
+                        <tr>
+                            <td>{{ mov.fecha }}</td>
+                            <td class="col-center">
+                                {% if mov.tipo == 'ingreso' %}
+                                    <span class="pill pill-success">Ingreso</span>
+                                {% else %}
+                                    <span class="pill pill-danger">Egreso</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ mov.cuenta.nombre }}</td>
+                            <td>{{ mov.categoria.nombre }}</td>
+                            <td>{{ mov.descripcion|default:"—" }}</td>
+                            <td class="col-center">
+                                {{ mov.monto|floatformat:2 }}
+                            </td>
+                            <td>
+                                {% if mov.creado_por %}
+                                    {{ mov.creado_por.get_full_name|default:mov.creado_por.username }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="table-empty">
+                            No hay movimientos registrados con los filtros actuales.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
