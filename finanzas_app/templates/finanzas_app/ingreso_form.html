@@ -6,13 +6,26 @@
 {% block content %}
 
 <div class="page-section">
+
+    <!-- ENCABEZADO SUPERIOR -->
     <div class="page-header">
         <div>
             <h1 class="page-title">Registrar ingreso</h1>
             <p class="page-subtitle">
-                Registre un ingreso a una cuenta financiera de la iglesia.
+                Registra un nuevo ingreso en las cuentas de la iglesia. Más adelante este flujo alimentará el panel de estadísticas.
             </p>
+
+            <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <span class="pill pill-success">
+                    <span class="material-icons" style="font-size: 14px; margin-right: 4px;">north</span>
+                    Ingreso
+                </span>
+                <span class="pill pill-muted">
+                    Fecha, cuenta, categoría y monto son los campos clave.
+                </span>
+            </div>
         </div>
+
         <div class="page-header-actions">
             <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="btn-secondary">
                 Volver a ingresos
@@ -20,70 +33,255 @@
         </div>
     </div>
 
-    <form method="post" novalidate>
-        {% csrf_token %}
+    <!-- TARJETA DEL FORMULARIO -->
+    <div class="finance-form-card">
 
-        <div class="form-grid">
+        <form method="post" novalidate>
+            {% csrf_token %}
 
-            <div class="form-field">
-                <label for="{{ form.fecha.id_for_label }}">Fecha</label>
-                {{ form.fecha }}
-                {% if form.fecha.errors %}
-                    <div class="field-error">{{ form.fecha.errors.0 }}</div>
-                {% endif %}
+            <!-- BLOQUE: DATOS PRINCIPALES -->
+            <div class="finance-form-section">
+                <div class="finance-form-section-header">
+                    <div>
+                        <h2>Datos principales</h2>
+                        <p>Lo mínimo necesario para que el ingreso quede bien registrado.</p>
+                    </div>
+                    <span class="finance-chip">Obligatorio</span>
+                </div>
+
+                <div class="form-grid">
+
+                    <div class="form-field">
+                        <label for="{{ form.fecha.id_for_label }}">Fecha del ingreso</label>
+                        {{ form.fecha }}
+                        {% if form.fecha.errors %}
+                            <div class="field-error">{{ form.fecha.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-field">
+                        <label for="{{ form.cuenta.id_for_label }}">Cuenta de destino</label>
+                        {{ form.cuenta }}
+                        {% if form.cuenta.errors %}
+                            <div class="field-error">{{ form.cuenta.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-field">
+                        <label for="{{ form.categoria.id_for_label }}">Categoría</label>
+                        {{ form.categoria }}
+                        {% if form.categoria.errors %}
+                            <div class="field-error">{{ form.categoria.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-field">
+                        <label for="{{ form.monto.id_for_label }}">Monto</label>
+                        {{ form.monto }}
+                        {% if form.monto.errors %}
+                            <div class="field-error">{{ form.monto.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                </div>
             </div>
 
-            <div class="form-field">
-                <label for="{{ form.cuenta.id_for_label }}">Cuenta</label>
-                {{ form.cuenta }}
-                {% if form.cuenta.errors %}
-                    <div class="field-error">{{ form.cuenta.errors.0 }}</div>
-                {% endif %}
+            <!-- SEPARADOR VISUAL -->
+            <div class="finance-form-divider"></div>
+
+            <!-- BLOQUE: ORIGEN DEL INGRESO -->
+            <div class="finance-form-section">
+                <div class="finance-form-section-header">
+                    <div>
+                        <h2>Origen del ingreso</h2>
+                        <p>¿De dónde viene el ingreso? Esto servirá para reportes por cultos, eventos y ministerios.</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+
+                    <div class="form-field">
+                        <label for="{{ form.origen.id_for_label }}">Origen</label>
+                        {{ form.origen }}
+                        {% if form.origen.errors %}
+                            <div class="field-error">{{ form.origen.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-field">
+                        <label for="{{ form.servicio.id_for_label }}">Servicio / Culto</label>
+                        {{ form.servicio }}
+                        {% if form.servicio.errors %}
+                            <div class="field-error">{{ form.servicio.errors.0 }}</div>
+                        {% endif %}
+                        <p class="field-hint">Ej.: Domingo AM, Domingo PM, Martes oración.</p>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="{{ form.evento.id_for_label }}">Evento / Actividad</label>
+                        {{ form.evento }}
+                        {% if form.evento.errors %}
+                            <div class="field-error">{{ form.evento.errors.0 }}</div>
+                        {% endif %}
+                        <p class="field-hint">Ej.: Noche de tacos, Campamento juvenil, Venta especial.</p>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="{{ form.ministerio.id_for_label }}">Ministerio / Departamento</label>
+                        {{ form.ministerio }}
+                        {% if form.ministerio.errors %}
+                            <div class="field-error">{{ form.ministerio.errors.0 }}</div>
+                        {% endif %}
+                        <p class="field-hint">Ej.: Jóvenes, Adolescentes, Damas, Varones, etc.</p>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="{{ form.persona_asociada.id_for_label }}">Persona asociada</label>
+                        {{ form.persona_asociada }}
+                        {% if form.persona_asociada.errors %}
+                            <div class="field-error">{{ form.persona_asociada.errors.0 }}</div>
+                        {% endif %}
+                        <p class="field-hint">Nombre de la persona que hace la donación, si aplica.</p>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="{{ form.cantidad_sobres.id_for_label }}">Cantidad de sobres</label>
+                        {{ form.cantidad_sobres }}
+                        {% if form.cantidad_sobres.errors %}
+                            <div class="field-error">{{ form.cantidad_sobres.errors.0 }}</div>
+                        {% endif %}
+                        <p class="field-hint">Útil para resúmenes de cultos por sobres.</p>
+                    </div>
+
+                </div>
             </div>
 
-            <div class="form-field">
-                <label for="{{ form.categoria.id_for_label }}">Categoría</label>
-                {{ form.categoria }}
-                {% if form.categoria.errors %}
-                    <div class="field-error">{{ form.categoria.errors.0 }}</div>
-                {% endif %}
+            <!-- SEPARADOR VISUAL -->
+            <div class="finance-form-divider"></div>
+
+            <!-- BLOQUE: DETALLE Y CONTROL -->
+            <div class="finance-form-section">
+                <div class="finance-form-section-header">
+                    <div>
+                        <h2>Detalle y control</h2>
+                        <p>Información que ayuda a cuadrar caja y dejar todo bien documentado.</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+
+                    <div class="form-field">
+                        <label for="{{ form.forma_pago.id_for_label }}">Forma de pago</label>
+                        {{ form.forma_pago }}
+                        {% if form.forma_pago.errors %}
+                            <div class="field-error">{{ form.forma_pago.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-field" style="grid-column: 1 / -1;">
+                        <label for="{{ form.descripcion.id_for_label }}">Descripción</label>
+                        {{ form.descripcion }}
+                        {% if form.descripcion.errors %}
+                            <div class="field-error">{{ form.descripcion.errors.0 }}</div>
+                        {% endif %}
+                        <p class="field-hint">
+                            Ej.: “Ofrenda culto domingo noche”, “Donación para techo”, “Ingreso por venta de comida”.
+                        </p>
+                    </div>
+
+                    <div class="form-field" style="grid-column: 1 / -1;">
+                        <label for="{{ form.referencia.id_for_label }}">Referencia</label>
+                        {{ form.referencia }}
+                        {% if form.referencia.errors %}
+                            <div class="field-error">{{ form.referencia.errors.0 }}</div>
+                        {% endif %}
+                        <p class="field-hint">
+                            Nº de recibo, transferencia, depósito, número de sobre u otro código interno.
+                        </p>
+                    </div>
+
+                </div>
             </div>
 
-            <div class="form-field">
-                <label for="{{ form.monto.id_for_label }}">Monto</label>
-                {{ form.monto }}
-                {% if form.monto.errors %}
-                    <div class="field-error">{{ form.monto.errors.0 }}</div>
-                {% endif %}
+            <!-- PIE DE FORMULARIO -->
+            <div class="finance-form-footer">
+                <button type="submit" class="btn-primary">
+                    Guardar ingreso
+                </button>
+                <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="btn-secondary">
+                    Cancelar
+                </a>
             </div>
 
-            <div class="form-field" style="grid-column: 1 / -1;">
-                <label for="{{ form.descripcion.id_for_label }}">Descripción</label>
-                {{ form.descripcion }}
-                {% if form.descripcion.errors %}
-                    <div class="field-error">{{ form.descripcion.errors.0 }}</div>
-                {% endif %}
-            </div>
-
-            <div class="form-field" style="grid-column: 1 / -1;">
-                <label for="{{ form.referencia.id_for_label }}">Referencia</label>
-                {{ form.referencia }}
-                {% if form.referencia.errors %}
-                    <div class="field-error">{{ form.referencia.errors.0 }}</div>
-                {% endif %}
-            </div>
-
-        </div>
-
-        <div style="margin-top: 16px; display: flex; gap: 8px;">
-            <button type="submit" class="btn-primary">
-                Guardar ingreso
-            </button>
-            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="btn-secondary">
-                Cancelar
-            </a>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
+
+<style>
+    .finance-form-card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 1.25rem 1.5rem 1.2rem;
+        box-shadow: var(--shadow-soft);
+        border: 1px solid var(--color-border-subtle);
+    }
+
+    .finance-form-section {
+        margin-bottom: 14px;
+    }
+
+    .finance-form-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+        gap: 8px;
+    }
+
+    .finance-form-section-header h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .finance-form-section-header p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--color-text-muted);
+    }
+
+    .finance-form-divider {
+        height: 1px;
+        background: var(--color-border-subtle);
+        opacity: 0.9;
+        margin: 10px 0 12px;
+    }
+
+    .finance-chip {
+        font-size: 11px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        border: 1px solid #bbf7d0;
+        background: #ecfdf5;
+        color: #166534;
+        white-space: nowrap;
+    }
+
+    .field-hint {
+        margin-top: 2px;
+        font-size: 11px;
+        color: var(--color-text-muted);
+    }
+
+    .finance-form-footer {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--color-border-subtle);
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+</style>
 
 {% endblock %}
