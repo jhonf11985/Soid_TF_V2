@@ -35,6 +35,65 @@ class CuentaFinancieraForm(forms.ModelForm):
 
 
 # ============================================
+# FORMULARIO DE CATEGORÍA DE MOVIMIENTO
+# ============================================
+
+class CategoriaMovimientoForm(forms.ModelForm):
+    class Meta:
+        model = CategoriaMovimiento
+        fields = [
+            "nombre",
+            "tipo",
+            "descripcion",
+            "activo",
+        ]
+        widgets = {
+            "nombre": forms.TextInput(attrs={
+                "placeholder": "Ej: Diezmo, Ofrenda, Mantenimiento...",
+            }),
+            "descripcion": forms.Textarea(attrs={
+                "rows": 2,
+                "placeholder": "Descripción opcional...",
+            }),
+        }
+        labels = {
+            "tipo": "Tipo de categoría",
+            "activo": "Categoría activa",
+        }
+
+
+# ============================================
+# FORMULARIOS DE MOVIMIENTOS
+# ============================================
+
+class MovimientoFinancieroForm(forms.ModelForm):
+    class Meta:
+        model = CuentaFinanciera
+        fields = [
+            "nombre",
+            "tipo",
+            "moneda",
+            "saldo_inicial",
+            "descripcion",
+            "esta_activa",
+        ]
+        widgets = {
+            "nombre": forms.TextInput(attrs={
+                "placeholder": "Ej: Caja general, Banco Popular...",
+            }),
+            "descripcion": forms.Textarea(attrs={
+                "rows": 2,
+                "placeholder": "Descripción opcional de la cuenta...",
+            }),
+            "saldo_inicial": forms.NumberInput(attrs={
+                "step": "0.01",
+                "min": "0",
+                "placeholder": "0.00",
+            }),
+        }
+
+
+# ============================================
 # FORMULARIOS DE MOVIMIENTOS
 # ============================================
 

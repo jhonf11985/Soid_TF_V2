@@ -1,0 +1,180 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Categorías de movimiento · Soid_Tf_2{% endblock %}
+
+{% block content %}
+
+<div class="page-section">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Categorías de movimiento</h1>
+            <p class="page-subtitle">
+                Clasifica los ingresos y egresos de la iglesia por categoría.
+            </p>
+        </div>
+        <div class="page-header-actions">
+            <a href="{% url 'finanzas_app:categoria_crear' %}" class="btn-primary">
+                <span class="material-icons" style="font-size: 16px;">add</span>
+                Nueva categoría
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtro por tipo -->
+    <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+        <a href="{% url 'finanzas_app:categorias_listado' %}" 
+           class="pill {% if not filtro_tipo %}pill-success{% else %}pill-muted{% endif %}"
+           style="text-decoration: none; padding: 6px 12px;">
+            Todas ({{ total_todas }})
+        </a>
+        <a href="{% url 'finanzas_app:categorias_listado' %}?tipo=ingreso" 
+           class="pill {% if filtro_tipo == 'ingreso' %}pill-success{% else %}pill-muted{% endif %}"
+           style="text-decoration: none; padding: 6px 12px;">
+            <span class="material-icons" style="font-size: 14px; vertical-align: middle;">arrow_downward</span>
+            Ingresos ({{ total_ingresos }})
+        </a>
+        <a href="{% url 'finanzas_app:categorias_listado' %}?tipo=egreso" 
+           class="pill {% if filtro_tipo == 'egreso' %}pill-success{% else %}pill-muted{% endif %}"
+           style="text-decoration: none; padding: 6px 12px;">
+            <span class="material-icons" style="font-size: 14px; vertical-align: middle;">arrow_upward</span>
+            Egresos ({{ total_egresos }})
+        </a>
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th class="col-center">Tipo</th>
+                    <th class="col-center">Estado</th>
+                    <th class="col-center">Movimientos</th>
+                    <th class="col-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if categorias %}
+                    {% for cat in categorias %}
+                        <tr>
+                            <td>
+                                <strong>{{ cat.nombre }}</strong>
+                                {% if cat.descripcion %}
+                                    <br>
+                                    <small style="color: #6b7280;">{{ cat.descripcion|truncatechars:60 }}</small>
+                                {% endif %}
+                            </td>
+                            <td class="col-center">
+                                {% if cat.tipo == 'ingreso' %}
+                                    <span class="pill" style="background: #dcfce7; color: #166534; border-color: #86efac;">
+                                        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">arrow_downward</span>
+                                        Ingreso
+                                    </span>
+                                {% else %}
+                                    <span class="pill" style="background: #fee2e2; color: #991b1b; border-color: #fca5a5;">
+                                        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">arrow_upward</span>
+                                        Egreso
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="col-center">
+                                {% if cat.activo %}
+                                    <span class="pill pill-success">Activa</span>
+                                {% else %}
+                                    <span class="pill pill-muted">Inactiva</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-center">
+                                {{ cat.movimientos.count }}
+                            </td>
+                            <td class="col-center">
+                                <div class="action-menu-wrapper">
+                                    <button type="button" class="action-menu-toggle" aria-label="Menú de acciones">
+                                        <span class="material-symbols-rounded">more_horiz</span>
+                                    </button>
+                                    <div class="action-menu-dropdown">
+                                        <a href="{% url 'finanzas_app:categoria_editar' cat.pk %}" class="action-menu-item action-edit">
+                                            <span class="material-symbols-rounded">edit</span>
+                                            <span>Editar</span>
+                                        </a>
+                                        {% if cat.activo %}
+                                            <a href="{% url 'finanzas_app:categoria_toggle' cat.pk %}" 
+                                               class="action-menu-item action-delete"
+                                               onclick="return confirm('¿Desactivar esta categoría?');">
+                                                <span class="material-symbols-rounded">block</span>
+                                                <span>Desactivar</span>
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'finanzas_app:categoria_toggle' cat.pk %}" 
+                                               class="action-menu-item action-approve">
+                                                <span class="material-symbols-rounded">check_circle</span>
+                                                <span>Activar</span>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="table-empty">
+                            No hay categorías registradas. 
+                            <a href="{% url 'finanzas_app:categoria_crear' %}">Crear la primera categoría</a>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Script para menú de acciones -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.action-menu-wrapper').forEach(function (wrapper) {
+        const toggle = wrapper.querySelector('.action-menu-toggle');
+        const dropdown = wrapper.querySelector('.action-menu-dropdown');
+
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            
+            // Cerrar otros menús abiertos
+            document.querySelectorAll('.action-menu-wrapper.open').forEach(function (openWrapper) {
+                if (openWrapper !== wrapper) {
+                    openWrapper.classList.remove('open');
+                }
+            });
+
+            // Toggle este menú
+            wrapper.classList.toggle('open');
+
+            // Posicionar el dropdown
+            if (wrapper.classList.contains('open')) {
+                const rect = toggle.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                
+                dropdown.style.top = (rect.bottom + 4) + 'px';
+                dropdown.style.left = (rect.left - 120) + 'px';
+                
+                if (spaceBelow < 200) {
+                    dropdown.classList.add('dropup');
+                    dropdown.style.top = (rect.top - dropdown.offsetHeight - 4) + 'px';
+                } else {
+                    dropdown.classList.remove('dropup');
+                }
+            }
+        });
+    });
+
+    // Cerrar al hacer clic fuera
+    document.addEventListener('click', function () {
+        document.querySelectorAll('.action-menu-wrapper.open').forEach(function (wrapper) {
+            wrapper.classList.remove('open');
+        });
+    });
+});
+</script>
+
+{% endblock %}

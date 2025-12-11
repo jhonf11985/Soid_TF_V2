@@ -1,0 +1,262 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{% if movimiento %}Editar movimiento{% else %}Nuevo movimiento{% endif %} · Soid_Tf_2{% endblock %}
+
+{% block content %}
+
+<div class="odoo-page">
+
+    <!-- BARRA SUPERIOR -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a href="{% url 'finanzas_app:movimientos_listado' %}" class="odoo-back-link">
+                <span class="material-icons">arrow_back</span>
+            </a>
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-parent">Movimientos</span>
+                <span class="odoo-breadcrumb-separator">/</span>
+                <span class="odoo-breadcrumb-current">
+                    {% if movimiento %}Editar{% else %}Nuevo{% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="odoo-topbar-right">
+            {% if movimiento %}
+                <span class="odoo-record-count">ID: {{ movimiento.pk }}</span>
+            {% else %}
+                <span class="odoo-record-count">Nuevo</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- BARRA DE ACCIONES -->
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            <button type="submit" form="movimiento-form" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons" style="font-size: 16px;">save</span>
+                Guardar
+            </button>
+            <a href="{% url 'finanzas_app:movimientos_listado' %}" class="odoo-btn odoo-btn-secondary">
+                Cancelar
+            </a>
+        </div>
+    </div>
+
+    <!-- FORMULARIO PRINCIPAL -->
+    <div class="odoo-form-sheet">
+        <form method="post" novalidate id="movimiento-form">
+            {% csrf_token %}
+
+            <!-- TÍTULO DEL DOCUMENTO -->
+            <div class="odoo-doc-title">
+                <h1>
+                    {% if movimiento %}
+                        Movimiento #{{ movimiento.pk }}
+                    {% else %}
+                        Nuevo movimiento
+                    {% endif %}
+                </h1>
+            </div>
+
+            <!-- CONTENIDO EN DOS COLUMNAS -->
+            <div class="odoo-form-content">
+                
+                <!-- COLUMNA IZQUIERDA -->
+                <div class="odoo-form-col">
+                    <div class="odoo-field-row">
+                        <label>Fecha <span class="odoo-required">*</span></label>
+                        <div class="odoo-field-value">
+                            {{ form.fecha }}
+                            {% if form.fecha.errors %}
+                                <span class="odoo-error">{{ form.fecha.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Tipo <span class="odoo-required">*</span></label>
+                        <div class="odoo-field-value">
+                            {{ form.tipo }}
+                            {% if form.tipo.errors %}
+                                <span class="odoo-error">{{ form.tipo.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row odoo-field-amount">
+                        <label>Monto <span class="odoo-required">*</span></label>
+                        <div class="odoo-field-value odoo-amount-value">
+                            <span class="odoo-currency">$</span>
+                            {{ form.monto }}
+                            {% if form.monto.errors %}
+                                <span class="odoo-error">{{ form.monto.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Categoría <span class="odoo-required">*</span></label>
+                        <div class="odoo-field-value">
+                            {{ form.categoria }}
+                            {% if form.categoria.errors %}
+                                <span class="odoo-error">{{ form.categoria.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA -->
+                <div class="odoo-form-col">
+                    <div class="odoo-field-row">
+                        <label>Cuenta <span class="odoo-required">*</span></label>
+                        <div class="odoo-field-value">
+                            {{ form.cuenta }}
+                            {% if form.cuenta.errors %}
+                                <span class="odoo-error">{{ form.cuenta.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Referencia</label>
+                        <div class="odoo-field-value">
+                            {{ form.referencia }}
+                            {% if form.referencia.errors %}
+                                <span class="odoo-error">{{ form.referencia.errors.0 }}</span>
+                            {% endif %}
+                            <span class="odoo-field-hint">Nº recibo, factura, transferencia, etc.</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- DESCRIPCIÓN - ANCHO COMPLETO -->
+            <div class="odoo-form-full">
+                <div class="odoo-field-row">
+                    <label>Descripción</label>
+                    <div class="odoo-field-value">
+                        {{ form.descripcion }}
+                        {% if form.descripcion.errors %}
+                            <span class="odoo-error">{{ form.descripcion.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+<style>
+    :root {
+        --odoo-purple: #714B67;
+        --odoo-purple-dark: #5d3d54;
+        --odoo-text: #212529;
+        --odoo-text-muted: #6c757d;
+        --odoo-border: #dee2e6;
+        --odoo-bg: #ffffff;
+        --odoo-bg-gray: #f8f9fa;
+        --odoo-error: #dc3545;
+    }
+
+    .odoo-page { background: var(--odoo-bg-gray); min-height: 100vh; }
+
+    .odoo-topbar {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 8px 16px; background: var(--odoo-bg); border-bottom: 1px solid var(--odoo-border);
+    }
+    .odoo-topbar-left { display: flex; align-items: center; gap: 12px; }
+    .odoo-back-link {
+        display: flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; color: var(--odoo-text-muted);
+        border-radius: 4px; text-decoration: none; transition: all 0.15s;
+    }
+    .odoo-back-link:hover { background: var(--odoo-bg-gray); color: var(--odoo-text); }
+    .odoo-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .odoo-breadcrumb-parent { color: var(--odoo-purple); font-weight: 500; }
+    .odoo-breadcrumb-separator { color: var(--odoo-text-muted); }
+    .odoo-breadcrumb-current { color: var(--odoo-text); font-weight: 600; }
+    .odoo-record-count { font-size: 13px; color: var(--odoo-text-muted); }
+
+    .odoo-actionbar {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 8px 16px; background: var(--odoo-bg); border-bottom: 1px solid var(--odoo-border);
+    }
+    .odoo-actionbar-left { display: flex; gap: 8px; }
+
+    .odoo-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 16px; font-size: 13px; font-weight: 500;
+        border: 1px solid var(--odoo-border); border-radius: 4px;
+        cursor: pointer; text-decoration: none; font-family: inherit; transition: all 0.15s;
+    }
+    .odoo-btn-primary { background: var(--odoo-purple); color: white; border-color: var(--odoo-purple); }
+    .odoo-btn-primary:hover { background: var(--odoo-purple-dark); border-color: var(--odoo-purple-dark); }
+    .odoo-btn-secondary { background: var(--odoo-bg); color: var(--odoo-text); }
+    .odoo-btn-secondary:hover { background: var(--odoo-bg-gray); }
+
+    .odoo-form-sheet {
+        background: var(--odoo-bg); max-width: 900px; margin: 24px auto;
+        border: 1px solid var(--odoo-border); border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .odoo-doc-title {
+        padding: 20px 24px 16px; border-bottom: 1px solid var(--odoo-border);
+        display: flex; align-items: baseline; gap: 12px;
+    }
+    .odoo-doc-title h1 { font-size: 28px; font-weight: 400; color: var(--odoo-text); margin: 0; }
+
+    .odoo-form-content { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 20px 24px; }
+    .odoo-form-col { display: flex; flex-direction: column; gap: 4px; }
+
+    .odoo-field-row {
+        display: grid; grid-template-columns: 100px 1fr; gap: 12px;
+        align-items: baseline; min-height: 32px; padding: 4px 0;
+    }
+    .odoo-field-row label { font-size: 14px; color: var(--odoo-text); font-weight: 600; text-align: right; }
+    .odoo-required { color: var(--odoo-error); }
+    .odoo-field-value { display: flex; flex-direction: column; gap: 2px; }
+
+    .odoo-form-sheet input,
+    .odoo-form-sheet select,
+    .odoo-form-sheet textarea {
+        width: 100%; border: none; border-bottom: 1px solid transparent;
+        background: transparent; padding: 4px 0; font-size: 13px;
+        color: var(--odoo-text); font-family: inherit; transition: border-color 0.15s;
+    }
+    .odoo-form-sheet input:hover, .odoo-form-sheet select:hover, .odoo-form-sheet textarea:hover { border-bottom-color: var(--odoo-border); }
+    .odoo-form-sheet input:focus, .odoo-form-sheet select:focus, .odoo-form-sheet textarea:focus {
+        outline: none; border-bottom-color: var(--odoo-purple); border-bottom-width: 2px; padding-bottom: 3px;
+    }
+    .odoo-form-sheet select {
+        appearance: none; cursor: pointer; padding-right: 20px;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+        background-repeat: no-repeat; background-position: right 0 center; background-size: 16px;
+    }
+    .odoo-form-sheet textarea { min-height: 60px; resize: vertical; line-height: 1.5; }
+
+    .odoo-field-amount .odoo-field-value { flex-direction: row; align-items: center; }
+    .odoo-amount-value { display: flex; align-items: center; gap: 4px; }
+    .odoo-currency { font-size: 13px; font-weight: 500; color: var(--odoo-text-muted); }
+    .odoo-amount-value input { font-weight: 600; font-size: 15px; }
+
+    .odoo-form-full { padding: 0 24px 20px; display: flex; flex-direction: column; gap: 8px; }
+    .odoo-form-full .odoo-field-row { grid-template-columns: 100px 1fr; }
+
+    .odoo-error { font-size: 11px; color: var(--odoo-error); margin-top: 2px; }
+    .odoo-field-hint { font-size: 11px; color: var(--odoo-text-muted); font-style: italic; margin-top: 4px; }
+
+    @media (max-width: 768px) {
+        .odoo-form-content { grid-template-columns: 1fr; gap: 16px; }
+        .odoo-field-row { grid-template-columns: 1fr; gap: 4px; }
+        .odoo-field-row label { text-align: left; font-size: 11px; color: var(--odoo-text-muted); }
+        .odoo-form-full .odoo-field-row { grid-template-columns: 1fr; }
+        .odoo-doc-title h1 { font-size: 22px; }
+    }
+</style>
+
+{% endblock %}

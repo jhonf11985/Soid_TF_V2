@@ -7,7 +7,12 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
 from .models import MovimientoFinanciero, CuentaFinanciera, CategoriaMovimiento
-from .forms import MovimientoFinancieroForm, MovimientoIngresoForm, CuentaFinancieraForm
+from .forms import (
+    MovimientoFinancieroForm, 
+    MovimientoIngresoForm, 
+    CuentaFinancieraForm,
+    CategoriaMovimientoForm,
+)
 
 
 # ============================================
@@ -112,6 +117,104 @@ def cuenta_toggle(request, pk):
 
 
 # ============================================
+# CATEGORÍAS DE MOVIMIENTO - CRUD
+# ============================================
+
+@login_required
+def categorias_listado(request):
+    """
+    Listado de todas las categorías de movimiento.
+    Permite filtrar por tipo (ingreso/egreso).
+    """
+    categorias = CategoriaMovimiento.objects.all().order_by("tipo", "nombre")
+    
+    # Filtro por tipo
+    filtro_tipo = request.GET.get("tipo")
+    if filtro_tipo in ["ingreso", "egreso"]:
+        categorias = categorias.filter(tipo=filtro_tipo)
+    
+    # Contadores
+    total_todas = CategoriaMovimiento.objects.count()
+    total_ingresos = CategoriaMovimiento.objects.filter(tipo="ingreso").count()
+    total_egresos = CategoriaMovimiento.objects.filter(tipo="egreso").count()
+
+    context = {
+        "categorias": categorias,
+        "filtro_tipo": filtro_tipo,
+        "total_todas": total_todas,
+        "total_ingresos": total_ingresos,
+        "total_egresos": total_egresos,
+    }
+    return render(request, "finanzas_app/categorias_listado.html", context)
+
+
+@login_required
+def categoria_crear(request):
+    """
+    Crear una nueva categoría de movimiento.
+    """
+    if request.method == "POST":
+        form = CategoriaMovimientoForm(request.POST)
+        if form.is_valid():
+            categoria = form.save()
+            messages.success(request, f"Categoría «{categoria.nombre}» creada correctamente.")
+            return redirect("finanzas_app:categorias_listado")
+    else:
+        # Pre-seleccionar tipo si viene en la URL
+        tipo_inicial = request.GET.get("tipo", "ingreso")
+        form = CategoriaMovimientoForm(initial={"tipo": tipo_inicial})
+
+    context = {
+        "form": form,
+        "categoria": None,
+    }
+    return render(request, "finanzas_app/categoria_form.html", context)
+
+
+@login_required
+def categoria_editar(request, pk):
+    """
+    Editar una categoría de movimiento existente.
+    """
+    categoria = get_object_or_404(CategoriaMovimiento, pk=pk)
+
+    if request.method == "POST":
+        form = CategoriaMovimientoForm(request.POST, instance=categoria)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Categoría «{categoria.nombre}» actualizada correctamente.")
+            return redirect("finanzas_app:categorias_listado")
+    else:
+        form = CategoriaMovimientoForm(instance=categoria)
+
+    context = {
+        "form": form,
+        "categoria": categoria,
+    }
+    return render(request, "finanzas_app/categoria_form.html", context)
+
+
+@login_required
+def categoria_toggle(request, pk):
+    """
+    Activar o desactivar una categoría.
+    No eliminamos para mantener el historial de movimientos.
+    """
+    categoria = get_object_or_404(CategoriaMovimiento, pk=pk)
+    
+    # Toggle del estado
+    categoria.activo = not categoria.activo
+    categoria.save()
+
+    if categoria.activo:
+        messages.success(request, f"Categoría «{categoria.nombre}» activada.")
+    else:
+        messages.warning(request, f"Categoría «{categoria.nombre}» desactivada.")
+
+    return redirect("finanzas_app:categorias_listado")
+
+
+# ============================================
 # MOVIMIENTOS FINANCIEROS
 # ============================================
 
@@ -202,7 +305,8 @@ def movimiento_crear(request):
     context = {
         "form": form,
     }
-    return render(request, "finanzas_app/movimiento_form.html", context)
+    return render(request, "finanzas_app/ingreso_form.html", context)
+
 
 
 @login_required
@@ -230,3 +334,53 @@ def ingreso_crear(request):
         "form": form,
     }
     return render(request, "finanzas_app/ingreso_form.html", context)
+
+
+@login_required
+def movimiento_editar(request, pk):
+    """
+    Editar un movimiento financiero existente.
+    Usa un formulario distinto según el tipo de movimiento.
+    De momento, tanto ingresos como egresos usan la misma plantilla ingreso_form.html.
+    """
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
+
+    # Si es ingreso, usamos el formulario especializado de ingresos.
+    # Si es egreso, de momento seguimos usando el formulario general.
+    if movimiento.tipo == "ingreso":
+        FormClass = MovimientoIngresoForm
+    else:
+        FormClass = MovimientoFinancieroForm  # más adelante podrás crear un MovimientoEgresoForm
+
+    if request.method == "POST":
+        form = FormClass(request.POST, instance=movimiento)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Movimiento actualizado correctamente.")
+            return redirect("finanzas_app:movimientos_listado")
+    else:
+        form = FormClass(instance=movimiento)
+
+    context = {
+        "form": form,
+        "movimiento": movimiento,
+    }
+    # Por ahora, reutilizamos ingreso_form.html para ambos tipos
+    return render(request, "finanzas_app/ingreso_form.html", context)
+
+
+
+
+@login_required
+def movimiento_anular(request, pk):
+    """
+    Anular un movimiento (cambiar estado a 'anulado').
+    No eliminamos para mantener el historial.
+    """
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
+    
+    movimiento.estado = "anulado"
+    movimiento.save()
+
+    messages.warning(request, f"Movimiento #{movimiento.pk} anulado.")
+    return redirect("finanzas_app:movimientos_listado")
