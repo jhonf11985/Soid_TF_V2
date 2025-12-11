@@ -29,4 +29,7 @@ urlpatterns = [
     
     # Ingresos (formulario especializado)
     path("ingresos/nuevo/", views.ingreso_crear, name="ingreso_crear"),
+    # Egresos (formulario especializado)
+    path("egresos/nuevo/", views.egreso_crear, name="egreso_crear"),
+
 ]

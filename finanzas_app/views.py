@@ -10,7 +10,7 @@ from .models import MovimientoFinanciero, CuentaFinanciera, CategoriaMovimiento
 from .forms import (
     MovimientoFinancieroForm, 
     MovimientoIngresoForm, 
-    CuentaFinancieraForm,
+    CuentaFinancieraForm,MovimientoEgresoForm, 
     CategoriaMovimientoForm,
 )
 
@@ -384,3 +384,27 @@ def movimiento_anular(request, pk):
 
     messages.warning(request, f"Movimiento #{movimiento.pk} anulado.")
     return redirect("finanzas_app:movimientos_listado")
+from .forms import MovimientoEgresoForm
+
+@login_required
+def egreso_crear(request):
+    """
+    Formulario específico para registrar EGRESOS.
+    """
+    if request.method == "POST":
+        form = MovimientoEgresoForm(request.POST)
+        if form.is_valid():
+            mov = form.save(commit=False)
+            mov.tipo = "egreso"
+            mov.creado_por = request.user
+            mov.save()
+            messages.success(request, "Egreso registrado correctamente.")
+            return redirect("/finanzas/movimientos/?tipo=egreso")
+    else:
+        form = MovimientoEgresoForm(
+            initial={
+                "fecha": timezone.now().date(),
+            }
+        )
+
+    return render(request, "finanzas_app/egreso.html", {"form": form})
