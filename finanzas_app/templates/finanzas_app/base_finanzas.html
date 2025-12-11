@@ -1,0 +1,95 @@
+{% extends 'core/base_sidebar.html' %}
+{% load static %}
+
+{% block sidebar_role_label %}Finanzas{% endblock %}
+
+{% block sidebar_menu %}
+<nav class="sidebar-nav">
+    
+    <!-- Dashboard -->
+    <a href="{% url 'finanzas_app:dashboard' %}" 
+       class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <span class="material-icons">dashboard</span>
+        <span>Dashboard</span>
+    </a>
+
+    <!-- Sección: Movimientos -->
+    <div class="sidebar-section-title">Movimientos</div>
+    
+    <a href="{% url 'finanzas_app:movimientos_listado' %}" 
+       class="sidebar-link {% if 'movimientos' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="material-icons">swap_horiz</span>
+        <span>Todos los movimientos</span>
+    </a>
+    
+    <a href="{% url 'finanzas_app:ingreso_crear' %}" 
+       class="sidebar-link {% if request.resolver_match.url_name == 'ingreso_crear' %}active{% endif %}">
+        <span class="material-icons">arrow_downward</span>
+        <span>Nuevo ingreso</span>
+    </a>
+    
+    <a href="{% url 'finanzas_app:egreso_crear' %}" 
+       class="sidebar-link {% if request.resolver_match.url_name == 'egreso_crear' %}active{% endif %}">
+        <span class="material-icons">arrow_upward</span>
+        <span>Nuevo egreso</span>
+    </a>
+
+    <!-- Sección: Configuración -->
+    <div class="sidebar-section-title">Configuración</div>
+    
+    <a href="{% url 'finanzas_app:cuentas_listado' %}" 
+       class="sidebar-link {% if 'cuenta' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="material-icons">account_balance</span>
+        <span>Cuentas</span>
+    </a>
+    
+    <a href="{% url 'finanzas_app:categorias_listado' %}" 
+       class="sidebar-link {% if 'categoria' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="material-icons">category</span>
+        <span>Categorías</span>
+    </a>
+
+    <!-- Sección: Accesos rápidos -->
+    <div class="sidebar-section-title">Accesos rápidos</div>
+    
+    <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" 
+       class="sidebar-link sidebar-link-income">
+        <span class="material-icons">trending_up</span>
+        <span>Solo ingresos</span>
+    </a>
+    
+    <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=egreso" 
+       class="sidebar-link sidebar-link-expense">
+        <span class="material-icons">trending_down</span>
+        <span>Solo egresos</span>
+    </a>
+
+</nav>
+
+<!-- Resumen rápido en el sidebar -->
+<div class="sidebar-summary">
+    <div class="sidebar-summary-title">Este mes</div>
+    <div class="sidebar-summary-row">
+        <span>Ingresos</span>
+        <span class="text-success">+{{ resumen_sidebar.ingresos|floatformat:0|default:"0" }}</span>
+    </div>
+    <div class="sidebar-summary-row">
+        <span>Egresos</span>
+        <span class="text-danger">-{{ resumen_sidebar.egresos|floatformat:0|default:"0" }}</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_content %}
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% block finanzas_content %}{% endblock %}
+{% endblock %}

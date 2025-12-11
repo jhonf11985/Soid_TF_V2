@@ -1,50 +1,47 @@
-{% extends 'core/base.html' %}
+{% extends 'finanzas_app/base_finanzas.html' %}
 {% load static %}
 
 {% block title %}Categorías de movimiento · Soid_Tf_2{% endblock %}
 
-{% block content %}
+{% block finanzas_content %}
 
-<div class="page-section">
-    <div class="page-header">
+<div class="list-page">
+
+    <!-- ENCABEZADO -->
+    <div class="page-header-flex">
         <div>
             <h1 class="page-title">Categorías de movimiento</h1>
-            <p class="page-subtitle">
-                Clasifica los ingresos y egresos de la iglesia por categoría.
-            </p>
+            <p class="page-subtitle">Clasifica los ingresos y egresos de la iglesia por categoría.</p>
         </div>
-        <div class="page-header-actions">
+        <div class="header-actions">
             <a href="{% url 'finanzas_app:categoria_crear' %}" class="btn-primary">
-                <span class="material-icons" style="font-size: 16px;">add</span>
+                <span class="material-icons">add</span>
                 Nueva categoría
             </a>
         </div>
     </div>
 
-    <!-- Filtro por tipo -->
-    <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+    <!-- FILTROS POR TIPO -->
+    <div class="filter-tabs">
         <a href="{% url 'finanzas_app:categorias_listado' %}" 
-           class="pill {% if not filtro_tipo %}pill-success{% else %}pill-muted{% endif %}"
-           style="text-decoration: none; padding: 6px 12px;">
+           class="filter-tab {% if not filtro_tipo %}active{% endif %}">
             Todas ({{ total_todas }})
         </a>
         <a href="{% url 'finanzas_app:categorias_listado' %}?tipo=ingreso" 
-           class="pill {% if filtro_tipo == 'ingreso' %}pill-success{% else %}pill-muted{% endif %}"
-           style="text-decoration: none; padding: 6px 12px;">
-            <span class="material-icons" style="font-size: 14px; vertical-align: middle;">arrow_downward</span>
+           class="filter-tab filter-income {% if filtro_tipo == 'ingreso' %}active{% endif %}">
+            <span class="material-icons">arrow_downward</span>
             Ingresos ({{ total_ingresos }})
         </a>
         <a href="{% url 'finanzas_app:categorias_listado' %}?tipo=egreso" 
-           class="pill {% if filtro_tipo == 'egreso' %}pill-success{% else %}pill-muted{% endif %}"
-           style="text-decoration: none; padding: 6px 12px;">
-            <span class="material-icons" style="font-size: 14px; vertical-align: middle;">arrow_upward</span>
+           class="filter-tab filter-expense {% if filtro_tipo == 'egreso' %}active{% endif %}">
+            <span class="material-icons">arrow_upward</span>
             Egresos ({{ total_egresos }})
         </a>
     </div>
 
     <!-- TABLA -->
-    <div class="table-wrapper">
-        <table class="table">
+    <div class="table-card">
+        <table class="data-table">
             <thead>
                 <tr>
                     <th>Nombre</th>
@@ -62,53 +59,53 @@
                                 <strong>{{ cat.nombre }}</strong>
                                 {% if cat.descripcion %}
                                     <br>
-                                    <small style="color: #6b7280;">{{ cat.descripcion|truncatechars:60 }}</small>
+                                    <small class="text-muted">{{ cat.descripcion|truncatechars:60 }}</small>
                                 {% endif %}
                             </td>
                             <td class="col-center">
                                 {% if cat.tipo == 'ingreso' %}
-                                    <span class="pill" style="background: #dcfce7; color: #166534; border-color: #86efac;">
-                                        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">arrow_downward</span>
+                                    <span class="badge badge-success">
+                                        <span class="material-icons">arrow_downward</span>
                                         Ingreso
                                     </span>
                                 {% else %}
-                                    <span class="pill" style="background: #fee2e2; color: #991b1b; border-color: #fca5a5;">
-                                        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">arrow_upward</span>
+                                    <span class="badge badge-danger">
+                                        <span class="material-icons">arrow_upward</span>
                                         Egreso
                                     </span>
                                 {% endif %}
                             </td>
                             <td class="col-center">
                                 {% if cat.activo %}
-                                    <span class="pill pill-success">Activa</span>
+                                    <span class="status-badge status-success">Activa</span>
                                 {% else %}
-                                    <span class="pill pill-muted">Inactiva</span>
+                                    <span class="status-badge status-muted">Inactiva</span>
                                 {% endif %}
                             </td>
                             <td class="col-center">
-                                {{ cat.movimientos.count }}
+                                <span class="count-badge">{{ cat.movimientos.count }}</span>
                             </td>
                             <td class="col-center">
                                 <div class="action-menu-wrapper">
-                                    <button type="button" class="action-menu-toggle" aria-label="Menú de acciones">
-                                        <span class="material-symbols-rounded">more_horiz</span>
+                                    <button type="button" class="action-menu-toggle">
+                                        <span class="material-icons">more_horiz</span>
                                     </button>
                                     <div class="action-menu-dropdown">
-                                        <a href="{% url 'finanzas_app:categoria_editar' cat.pk %}" class="action-menu-item action-edit">
-                                            <span class="material-symbols-rounded">edit</span>
+                                        <a href="{% url 'finanzas_app:categoria_editar' cat.pk %}" class="action-menu-item">
+                                            <span class="material-icons">edit</span>
                                             <span>Editar</span>
                                         </a>
                                         {% if cat.activo %}
                                             <a href="{% url 'finanzas_app:categoria_toggle' cat.pk %}" 
-                                               class="action-menu-item action-delete"
+                                               class="action-menu-item action-danger"
                                                onclick="return confirm('¿Desactivar esta categoría?');">
-                                                <span class="material-symbols-rounded">block</span>
+                                                <span class="material-icons">block</span>
                                                 <span>Desactivar</span>
                                             </a>
                                         {% else %}
                                             <a href="{% url 'finanzas_app:categoria_toggle' cat.pk %}" 
-                                               class="action-menu-item action-approve">
-                                                <span class="material-symbols-rounded">check_circle</span>
+                                               class="action-menu-item action-success">
+                                                <span class="material-icons">check_circle</span>
                                                 <span>Activar</span>
                                             </a>
                                         {% endif %}
@@ -119,8 +116,9 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="5" class="table-empty">
-                            No hay categorías registradas. 
+                        <td colspan="5" class="empty-row">
+                            <span class="material-icons">category</span>
+                            <p>No hay categorías registradas</p>
                             <a href="{% url 'finanzas_app:categoria_crear' %}">Crear la primera categoría</a>
                         </td>
                     </tr>
@@ -128,47 +126,326 @@
             </tbody>
         </table>
     </div>
+
 </div>
 
-<!-- Script para menú de acciones -->
+<style>
+.list-page {
+    max-width: 100%;
+}
+
+.page-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.page-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+    color: #111827;
+}
+
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 4px 0 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Tabs de filtro */
+.filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    background: #f3f4f6;
+    color: #6b7280;
+    transition: all 0.15s;
+}
+
+.filter-tab:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.filter-tab.active {
+    background: var(--color-primary, #714B67);
+    color: white;
+}
+
+.filter-tab .material-icons {
+    font-size: 16px;
+}
+
+.filter-income.active {
+    background: #059669;
+}
+
+.filter-expense.active {
+    background: #dc2626;
+}
+
+/* Tabla */
+.table-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table thead {
+    background: #f9fafb;
+}
+
+.data-table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #111827;
+}
+
+.data-table tbody tr:hover {
+    background: #f8f4f7;
+}
+
+.col-center {
+    text-align: center;
+}
+
+.text-muted { color: #6b7280; }
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge .material-icons {
+    font-size: 14px;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-muted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Count badge */
+.count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    background: #f3f4f6;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+/* Menú de acciones */
+.action-menu-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.action-menu-toggle {
+    background: #f3f4f6;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.action-menu-toggle:hover {
+    background: #e5e7eb;
+}
+
+.action-menu-toggle .material-icons {
+    font-size: 20px;
+    color: #6b7280;
+}
+
+.action-menu-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 6px 0;
+    min-width: 150px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    display: none;
+    z-index: 100;
+}
+
+.action-menu-wrapper.open .action-menu-dropdown {
+    display: block;
+}
+
+.action-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    color: #374151;
+    text-decoration: none;
+    font-size: 13px;
+    transition: background 0.15s;
+}
+
+.action-menu-item:hover {
+    background: #f9fafb;
+}
+
+.action-menu-item .material-icons {
+    font-size: 18px;
+    color: #6b7280;
+}
+
+.action-danger:hover {
+    background: #fef2f2;
+}
+
+.action-danger:hover .material-icons {
+    color: #dc2626;
+}
+
+.action-success:hover {
+    background: #ecfdf5;
+}
+
+.action-success:hover .material-icons {
+    color: #059669;
+}
+
+/* Empty state */
+.empty-row {
+    text-align: center;
+    padding: 40px 20px !important;
+    color: #9ca3af;
+}
+
+.empty-row .material-icons {
+    font-size: 40px;
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.empty-row a {
+    color: var(--color-primary, #714B67);
+}
+
+/* Botones */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: var(--color-primary, #714B67);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+.btn-primary:hover {
+    background: #5d3d54;
+}
+
+.btn-primary .material-icons {
+    font-size: 18px;
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.action-menu-wrapper').forEach(function (wrapper) {
         const toggle = wrapper.querySelector('.action-menu-toggle');
-        const dropdown = wrapper.querySelector('.action-menu-dropdown');
 
         toggle.addEventListener('click', function (e) {
             e.stopPropagation();
             
-            // Cerrar otros menús abiertos
             document.querySelectorAll('.action-menu-wrapper.open').forEach(function (openWrapper) {
                 if (openWrapper !== wrapper) {
                     openWrapper.classList.remove('open');
                 }
             });
 
-            // Toggle este menú
             wrapper.classList.toggle('open');
-
-            // Posicionar el dropdown
-            if (wrapper.classList.contains('open')) {
-                const rect = toggle.getBoundingClientRect();
-                const spaceBelow = window.innerHeight - rect.bottom;
-                
-                dropdown.style.top = (rect.bottom + 4) + 'px';
-                dropdown.style.left = (rect.left - 120) + 'px';
-                
-                if (spaceBelow < 200) {
-                    dropdown.classList.add('dropup');
-                    dropdown.style.top = (rect.top - dropdown.offsetHeight - 4) + 'px';
-                } else {
-                    dropdown.classList.remove('dropup');
-                }
-            }
         });
     });
 
-    // Cerrar al hacer clic fuera
     document.addEventListener('click', function () {
         document.querySelectorAll('.action-menu-wrapper.open').forEach(function (wrapper) {
             wrapper.classList.remove('open');

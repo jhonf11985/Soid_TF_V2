@@ -1,83 +1,72 @@
-
-{% extends 'core/base.html' %}
+{% extends 'finanzas_app/base_finanzas.html' %}
 {% load static %}
 
 {% block title %}Movimientos financieros · Soid_Tf_2{% endblock %}
 
-{% block content %}
+{% block finanzas_content %}
 
-<div class="odoo-page">
+<div class="movimientos-content">
 
-    <!-- BARRA SUPERIOR -->
-    <div class="odoo-topbar">
-        <div class="odoo-topbar-left">
-            <div class="odoo-breadcrumb">
-                <span class="odoo-breadcrumb-current">Movimientos financieros</span>
-            </div>
+    <!-- ENCABEZADO -->
+    <div class="page-header-flex">
+        <div>
+            <h1 class="page-title">Movimientos financieros</h1>
+            <p class="page-subtitle">{{ movimientos|length }} registro{{ movimientos|length|pluralize:"s" }}</p>
         </div>
-        <div class="odoo-topbar-right">
-            <span class="odoo-record-count">{{ movimientos|length }} registro{{ movimientos|length|pluralize:"s" }}</span>
-        </div>
-    </div>
-
-    <!-- BARRA DE ACCIONES -->
-    <div class="odoo-actionbar">
-        <div class="odoo-actionbar-left">
-{% if f_tipo == 'ingreso' %}
-    <a href="{% url 'finanzas_app:ingreso_crear' %}" class="odoo-btn odoo-btn-primary">
-        <span class="material-icons">add</span>
-        Nuevo ingreso
-    </a>
-{% elif f_tipo == 'egreso' %}
-    <a href="{% url 'finanzas_app:egreso_crear' %}" class="odoo-btn odoo-btn-primary">
-        <span class="material-icons">add</span>
-        Nuevo egreso
-    </a>
-{% else %}
-    <a href="{% url 'finanzas_app:ingreso_crear' %}" class="odoo-btn odoo-btn-primary">
-        <span class="material-icons">add</span>
-        Nuevo ingreso
-    </a>
-    <a href="{% url 'finanzas_app:egreso_crear' %}" class="odoo-btn odoo-btn-secondary">
-        <span class="material-icons">remove</span>
-        Nuevo egreso
-    </a>
-{% endif %}
-
-        </div>
-        <div class="odoo-actionbar-right">
-            <button type="button" class="odoo-btn odoo-btn-icon" id="toggle-filters" title="Filtros">
-                <span class="material-icons">filter_list</span>
-            </button>
+        <div class="header-actions">
+            {% if f_tipo == 'ingreso' %}
+                <a href="{% url 'finanzas_app:ingreso_crear' %}" class="btn-primary">
+                    <span class="material-icons">add</span>
+                    Nuevo ingreso
+                </a>
+            {% elif f_tipo == 'egreso' %}
+                <a href="{% url 'finanzas_app:egreso_crear' %}" class="btn-primary">
+                    <span class="material-icons">add</span>
+                    Nuevo egreso
+                </a>
+            {% else %}
+                <a href="{% url 'finanzas_app:ingreso_crear' %}" class="btn-primary">
+                    <span class="material-icons">add</span>
+                    Nuevo ingreso
+                </a>
+                <a href="{% url 'finanzas_app:egreso_crear' %}" class="btn-secondary">
+                    <span class="material-icons">remove</span>
+                    Nuevo egreso
+                </a>
+            {% endif %}
         </div>
     </div>
 
     <!-- RESUMEN -->
-    <div class="odoo-summary">
-        <div class="odoo-summary-item odoo-summary-income">
-            <span class="odoo-summary-label">Ingresos</span>
-            <span class="odoo-summary-value">RD$ {{ total_ingresos|floatformat:2 }}</span>
+    <div class="summary-row">
+        <div class="summary-item summary-income">
+            <span class="summary-label">Ingresos</span>
+            <span class="summary-value">RD$ {{ total_ingresos|floatformat:2 }}</span>
         </div>
-        <div class="odoo-summary-item odoo-summary-expense">
-            <span class="odoo-summary-label">Egresos</span>
-            <span class="odoo-summary-value">RD$ {{ total_egresos|floatformat:2 }}</span>
+        <div class="summary-item summary-expense">
+            <span class="summary-label">Egresos</span>
+            <span class="summary-value">RD$ {{ total_egresos|floatformat:2 }}</span>
         </div>
-        <div class="odoo-summary-item {% if balance >= 0 %}odoo-summary-positive{% else %}odoo-summary-negative{% endif %}">
-            <span class="odoo-summary-label">Balance</span>
-            <span class="odoo-summary-value">RD$ {{ balance|floatformat:2 }}</span>
+        <div class="summary-item {% if balance >= 0 %}summary-positive{% else %}summary-negative{% endif %}">
+            <span class="summary-label">Balance</span>
+            <span class="summary-value">RD$ {{ balance|floatformat:2 }}</span>
         </div>
+        <button type="button" class="btn-filter" id="toggle-filters">
+            <span class="material-icons">filter_list</span>
+            Filtros
+        </button>
     </div>
 
-    <!-- FILTROS (colapsables) -->
-    <div class="odoo-filters" id="filters-panel">
-        <form method="get" class="odoo-filters-form">
-            <div class="odoo-filters-grid">
-                <div class="odoo-filter-field">
+    <!-- FILTROS -->
+    <div class="filters-panel" id="filters-panel">
+        <form method="get" class="filters-form">
+            <div class="filters-grid">
+                <div class="filter-field">
                     <label for="id_q">Buscar</label>
                     <input type="text" id="id_q" name="q" value="{{ f_q }}" placeholder="Descripción o referencia...">
                 </div>
 
-                <div class="odoo-filter-field">
+                <div class="filter-field">
                     <label for="id_tipo">Tipo</label>
                     <select id="id_tipo" name="tipo">
                         <option value="">Todos</option>
@@ -86,90 +75,86 @@
                     </select>
                 </div>
 
-                <div class="odoo-filter-field">
+                <div class="filter-field">
                     <label for="id_cuenta">Cuenta</label>
                     <select id="id_cuenta" name="cuenta">
                         <option value="">Todas</option>
                         {% for c in cuentas %}
-                            <option value="{{ c.id }}" {% if f_cuenta|default:'' == c.id|stringformat:"s" %}selected{% endif %}>
+                            <option value="{{ c.id }}" {% if f_cuenta == c.id|stringformat:"s" %}selected{% endif %}>
                                 {{ c.nombre }}
                             </option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <div class="odoo-filter-field">
+                <div class="filter-field">
                     <label for="id_categoria">Categoría</label>
                     <select id="id_categoria" name="categoria">
                         <option value="">Todas</option>
                         {% for cat in categorias %}
-                            <option value="{{ cat.id }}" {% if f_categoria|default:'' == cat.id|stringformat:"s" %}selected{% endif %}>
+                            <option value="{{ cat.id }}" {% if f_categoria == cat.id|stringformat:"s" %}selected{% endif %}>
                                 {{ cat.nombre }}
                             </option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <div class="odoo-filter-field">
+                <div class="filter-field">
                     <label for="id_fecha_desde">Desde</label>
                     <input type="date" id="id_fecha_desde" name="fecha_desde" value="{{ f_fecha_desde }}">
                 </div>
 
-                <div class="odoo-filter-field">
+                <div class="filter-field">
                     <label for="id_fecha_hasta">Hasta</label>
                     <input type="date" id="id_fecha_hasta" name="fecha_hasta" value="{{ f_fecha_hasta }}">
                 </div>
             </div>
 
-            <div class="odoo-filters-actions">
-                <button type="submit" class="odoo-btn odoo-btn-primary">
-                    Aplicar
-                </button>
-                <a href="{% url 'finanzas_app:movimientos_listado' %}" class="odoo-btn odoo-btn-secondary">
-                    Limpiar
-                </a>
+            <div class="filters-actions">
+                <button type="submit" class="btn-primary btn-sm">Aplicar</button>
+                <a href="{% url 'finanzas_app:movimientos_listado' %}" class="btn-secondary btn-sm">Limpiar</a>
             </div>
         </form>
     </div>
 
     <!-- TABLA -->
-    <div class="odoo-table-container">
-        <table class="odoo-table">
+    <div class="table-card">
+        <table class="data-table">
             <thead>
                 <tr>
-                    <th class="col-fecha">Fecha</th>
-                    <th class="col-tipo">Tipo</th>
-                    <th class="col-cuenta">Cuenta</th>
-                    <th class="col-categoria">Categoría</th>
-                    <th class="col-descripcion">Descripción</th>
-                    <th class="col-monto">Monto</th>
-                    <th class="col-acciones"></th>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Cuenta</th>
+                    <th>Categoría</th>
+                    <th>Descripción</th>
+                    <th class="text-right">Monto</th>
+                    <th class="col-actions"></th>
                 </tr>
             </thead>
             <tbody>
                 {% if movimientos %}
                     {% for mov in movimientos %}
-                        <tr class="odoo-row-clickable" data-href="{% url 'finanzas_app:movimiento_editar' mov.id %}">
-                            <td class="col-fecha">{{ mov.fecha|date:"d M Y" }}</td>
-                            <td class="col-tipo">
+                        <tr class="row-clickable" data-href="{% url 'finanzas_app:movimiento_editar' mov.id %}">
+                            <td>{{ mov.fecha|date:"d M Y" }}</td>
+                            <td>
                                 {% if mov.tipo == 'ingreso' %}
-                                    <span class="odoo-badge odoo-badge-success">Ingreso</span>
+                                    <span class="badge badge-success">Ingreso</span>
                                 {% else %}
-                                    <span class="odoo-badge odoo-badge-danger">Egreso</span>
+                                    <span class="badge badge-danger">Egreso</span>
                                 {% endif %}
                             </td>
-                            <td class="col-cuenta">{{ mov.cuenta.nombre }}</td>
-                            <td class="col-categoria">{{ mov.categoria.nombre }}</td>
-                            <td class="col-descripcion">{{ mov.descripcion|default:"—"|truncatewords:8 }}</td>
-                            <td class="col-monto {% if mov.tipo == 'ingreso' %}monto-ingreso{% else %}monto-egreso{% endif %}">
-                                {% if mov.tipo == 'ingreso' %}+{% else %}-{% endif %}RD$ {{ mov.monto|floatformat:2 }}
+                            <td>{{ mov.cuenta.nombre }}</td>
+                            <td>{{ mov.categoria.nombre }}</td>
+                            <td>{{ mov.descripcion|default:"—"|truncatewords:6 }}</td>
+                            <td class="text-right {% if mov.tipo == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
+                                <strong>{% if mov.tipo == 'ingreso' %}+{% else %}-{% endif %}{{ mov.monto|floatformat:2 }}</strong>
                             </td>
-                            <td class="col-acciones">
-                                <div class="odoo-row-actions">
-                                    <a href="{% url 'finanzas_app:movimiento_editar' mov.id %}" class="odoo-action-btn" title="Editar">
+                            <td class="col-actions">
+                                <div class="row-actions">
+                                    <a href="{% url 'finanzas_app:movimiento_editar' mov.id %}" class="action-btn" title="Editar">
                                         <span class="material-icons">edit</span>
                                     </a>
-                                    <a href="{% url 'finanzas_app:movimiento_anular' mov.id %}" class="odoo-action-btn odoo-action-danger" title="Anular">
+                                    <a href="{% url 'finanzas_app:movimiento_anular' mov.id %}" class="action-btn action-danger" title="Anular">
                                         <span class="material-icons">delete</span>
                                     </a>
                                 </div>
@@ -178,7 +163,7 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="7" class="odoo-empty">
+                        <td colspan="7" class="empty-row">
                             <span class="material-icons">inbox</span>
                             <p>No hay movimientos con los filtros actuales</p>
                         </td>
@@ -191,413 +176,292 @@
 </div>
 
 <style>
-    /* =====================================
-       LISTADO ESTILO ODOO
-       ===================================== */
+.movimientos-content {
+    max-width: 100%;
+}
+
+.page-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.page-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+    color: #111827;
+}
+
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 4px 0 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Resumen */
+.summary-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 16px;
+    border-radius: 8px;
+    min-width: 130px;
+}
+
+.summary-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+.summary-value {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.summary-income {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.summary-expense {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.summary-positive {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.summary-negative {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.btn-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.btn-filter:hover {
+    background: #f9fafb;
+}
+
+/* Filtros */
+.filters-panel {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: none;
+}
+
+.filters-panel.active {
+    display: block;
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.filter-field input,
+.filter-field select {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.filters-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+}
+
+/* Tabla */
+.table-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table thead {
+    background: #f9fafb;
+}
+
+.data-table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #111827;
+}
+
+.data-table tbody tr:hover {
+    background: #f8f4f7;
+}
+
+.row-clickable {
+    cursor: pointer;
+}
+
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.text-right { text-align: right; }
+.text-success { color: #059669 !important; }
+.text-danger { color: #dc2626 !important; }
+
+.col-actions {
+    width: 80px;
+    text-align: center;
+}
+
+.row-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+tr:hover .row-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    color: #6b7280;
+    transition: all 0.15s;
+}
+
+.action-btn:hover {
+    background: #f3f4f6;
+    color: var(--color-primary, #714B67);
+}
+
+.action-btn .material-icons {
+    font-size: 18px;
+}
+
+.action-danger:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.empty-row {
+    text-align: center;
+    padding: 40px 20px !important;
+    color: #9ca3af;
+}
+
+.empty-row .material-icons {
+    font-size: 40px;
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+    .summary-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
     
-    :root {
-        --odoo-purple: #714B67;
-        --odoo-purple-dark: #5d3d54;
-        --odoo-text: #212529;
-        --odoo-text-muted: #6c757d;
-        --odoo-border: #dee2e6;
-        --odoo-bg: #ffffff;
-        --odoo-bg-gray: #f8f9fa;
-        --odoo-success: #28a745;
-        --odoo-danger: #dc3545;
-        --odoo-info: #17a2b8;
-    }
-
-    .odoo-page {
-        background: var(--odoo-bg-gray);
-        min-height: 100vh;
-    }
-
-    /* BARRA SUPERIOR */
-    .odoo-topbar {
-        display: flex;
+    .summary-item {
+        flex-direction: row;
         justify-content: space-between;
-        align-items: center;
-        padding: 10px 20px;
-        background: var(--odoo-bg);
-        border-bottom: 1px solid var(--odoo-border);
     }
-
-    .odoo-topbar-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .odoo-breadcrumb-current {
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--odoo-text);
-    }
-
-    .odoo-record-count {
-        font-size: 13px;
-        color: var(--odoo-text-muted);
-    }
-
-    /* BARRA DE ACCIONES */
-    .odoo-actionbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 20px;
-        background: var(--odoo-bg);
-        border-bottom: 1px solid var(--odoo-border);
-    }
-
-    .odoo-actionbar-left {
-        display: flex;
-        gap: 8px;
-    }
-
-    .odoo-actionbar-right {
-        display: flex;
-        gap: 8px;
-    }
-
-    /* BOTONES */
-    .odoo-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 14px;
-        font-size: 13px;
-        font-weight: 500;
-        border: 1px solid var(--odoo-border);
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.15s;
-        text-decoration: none;
-        font-family: inherit;
-        background: var(--odoo-bg);
-        color: var(--odoo-text);
-    }
-
-    .odoo-btn .material-icons {
-        font-size: 18px;
-    }
-
-    .odoo-btn-primary {
-        background: var(--odoo-purple);
-        color: white;
-        border-color: var(--odoo-purple);
-    }
-
-    .odoo-btn-primary:hover {
-        background: var(--odoo-purple-dark);
-        border-color: var(--odoo-purple-dark);
-    }
-
-    .odoo-btn-secondary:hover {
-        background: var(--odoo-bg-gray);
-    }
-
-    .odoo-btn-icon {
-        padding: 7px 10px;
-    }
-
-    /* RESUMEN */
-    .odoo-summary {
-        display: flex;
-        gap: 16px;
-        padding: 16px 20px;
-        background: var(--odoo-bg);
-        border-bottom: 1px solid var(--odoo-border);
-        flex-wrap: wrap;
-    }
-
-    .odoo-summary-item {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: 10px 16px;
-        border-radius: 8px;
-        min-width: 140px;
-    }
-
-    .odoo-summary-label {
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        opacity: 0.8;
-    }
-
-    .odoo-summary-value {
-        font-size: 18px;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .odoo-summary-income {
-        background: #ecfdf5;
-        color: #065f46;
-    }
-
-    .odoo-summary-expense {
-        background: #fef2f2;
-        color: #991b1b;
-    }
-
-    .odoo-summary-positive {
-        background: #eff6ff;
-        color: #1e40af;
-    }
-
-    .odoo-summary-negative {
-        background: #fef2f2;
-        color: #991b1b;
-    }
-
-    /* FILTROS */
-    .odoo-filters {
-        background: var(--odoo-bg);
-        border-bottom: 1px solid var(--odoo-border);
-        padding: 16px 20px;
-        display: none;
-    }
-
-    .odoo-filters.active {
-        display: block;
-    }
-
-    .odoo-filters-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-
-    .odoo-filter-field {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .odoo-filter-field label {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--odoo-text);
-    }
-
-    .odoo-filter-field input,
-    .odoo-filter-field select {
-        padding: 8px 10px;
-        font-size: 13px;
-        border: 1px solid var(--odoo-border);
-        border-radius: 4px;
-        font-family: inherit;
-        background: var(--odoo-bg);
-        color: var(--odoo-text);
-    }
-
-    .odoo-filter-field input:focus,
-    .odoo-filter-field select:focus {
-        outline: none;
-        border-color: var(--odoo-purple);
-        box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
-    }
-
-    .odoo-filters-actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    /* TABLA */
-    .odoo-table-container {
-        background: var(--odoo-bg);
-        margin: 20px;
-        border-radius: 8px;
-        border: 1px solid var(--odoo-border);
-        overflow: hidden;
-    }
-
-    .odoo-table {
+    
+    .btn-filter {
+        margin-left: 0;
         width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-    }
-
-    .odoo-table thead {
-        background: var(--odoo-bg-gray);
-    }
-
-    .odoo-table th {
-        padding: 12px 16px;
-        text-align: left;
-        font-weight: 600;
-        color: var(--odoo-text);
-        border-bottom: 1px solid var(--odoo-border);
-        white-space: nowrap;
-    }
-
-    .odoo-table td {
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--odoo-border);
-        color: var(--odoo-text);
-    }
-
-    .odoo-table tbody tr:last-child td {
-        border-bottom: none;
-    }
-
-    .odoo-table tbody tr:hover {
-        background: #f8f4f7;
-    }
-
-    .odoo-row-clickable {
-        cursor: pointer;
-    }
-
-    /* COLUMNAS */
-    .col-fecha { width: 100px; }
-    .col-tipo { width: 90px; }
-    .col-cuenta { width: 140px; }
-    .col-categoria { width: 140px; }
-    .col-descripcion { }
-    .col-monto { width: 130px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .col-acciones { width: 80px; text-align: center; }
-
-    /* BADGES */
-    .odoo-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 3px 10px;
-        font-size: 11px;
-        font-weight: 600;
-        border-radius: 999px;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-    }
-
-    .odoo-badge-success {
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    .odoo-badge-danger {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    /* MONTOS */
-    .monto-ingreso {
-        color: var(--odoo-success);
-    }
-
-    .monto-egreso {
-        color: var(--odoo-danger);
-    }
-
-    /* ACCIONES DE FILA */
-    .odoo-row-actions {
-        display: flex;
-        gap: 4px;
         justify-content: center;
-        opacity: 0;
-        transition: opacity 0.15s;
     }
-
-    tr:hover .odoo-row-actions {
-        opacity: 1;
-    }
-
-    .odoo-action-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 4px;
-        color: var(--odoo-text-muted);
-        transition: all 0.15s;
-    }
-
-    .odoo-action-btn:hover {
-        background: var(--odoo-bg-gray);
-        color: var(--odoo-purple);
-    }
-
-    .odoo-action-btn .material-icons {
-        font-size: 18px;
-    }
-
-    .odoo-action-danger:hover {
-        background: #fee2e2;
-        color: var(--odoo-danger);
-    }
-
-    /* EMPTY STATE */
-    .odoo-empty {
-        text-align: center;
-        padding: 48px 20px !important;
-        color: var(--odoo-text-muted);
-    }
-
-    .odoo-empty .material-icons {
-        font-size: 48px;
-        opacity: 0.3;
-        margin-bottom: 8px;
-    }
-
-    .odoo-empty p {
-        margin: 0;
-        font-size: 14px;
-    }
-
-    /* RESPONSIVE */
-    @media (max-width: 900px) {
-        .odoo-table-container {
-            margin: 12px;
-            border-radius: 0;
-        }
-
-        .odoo-table {
-            display: block;
-            overflow-x: auto;
-        }
-
-        .col-descripcion {
-            min-width: 150px;
-        }
-    }
-
-    @media (max-width: 600px) {
-        .odoo-summary {
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .odoo-summary-item {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .odoo-actionbar {
-            flex-direction: column;
-            gap: 10px;
-            align-items: stretch;
-        }
-
-        .odoo-actionbar-left {
-            flex-direction: column;
-        }
-
-        .odoo-actionbar-right {
-            justify-content: flex-end;
-        }
-    }
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Toggle filtros
     const toggleBtn = document.getElementById('toggle-filters');
     const filtersPanel = document.getElementById('filters-panel');
     
@@ -617,11 +481,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Filas clickeables
-    document.querySelectorAll('.odoo-row-clickable').forEach(row => {
+    document.querySelectorAll('.row-clickable').forEach(row => {
         row.addEventListener('click', function(e) {
-            // No navegar si se hizo clic en un botón de acción
-            if (e.target.closest('.odoo-row-actions')) return;
-            
+            if (e.target.closest('.row-actions')) return;
             const href = this.dataset.href;
             if (href) window.location.href = href;
         });
