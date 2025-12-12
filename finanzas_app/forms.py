@@ -1,5 +1,6 @@
 from django import forms
 from .models import MovimientoFinanciero, CategoriaMovimiento, CuentaFinanciera
+from miembros_app.models import Miembro  # 👈 IMPORTAMOS MIEMBRO
 
 
 # ============================================
@@ -83,9 +84,6 @@ class MovimientoFinancieroForm(forms.ModelForm):
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}),
-            "persona_asociada": forms.TextInput(attrs={
-                "placeholder": "Persona asociada (opcional)",
-            }),
             "descripcion": forms.Textarea(attrs={
                 "rows": 2,
                 "placeholder": "Notas adicionales...",
@@ -94,6 +92,14 @@ class MovimientoFinancieroForm(forms.ModelForm):
                 "placeholder": "Nº recibo, factura, transferencia, etc.",
             }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Cargar miembros activos ordenados por nombre y apellidos
+        if "persona_asociada" in self.fields:
+            self.fields["persona_asociada"].queryset = Miembro.objects.filter(
+                activo=True
+            ).order_by("nombres", "apellidos")
 
 
 # ============================================
@@ -120,9 +126,6 @@ class MovimientoIngresoForm(forms.ModelForm):
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}),
-            "persona_asociada": forms.TextInput(attrs={
-                "placeholder": "Nombre de quien entrega (opcional)",
-            }),
             "descripcion": forms.Textarea(attrs={
                 "rows": 2,
                 "placeholder": "Notas adicionales...",
@@ -139,11 +142,18 @@ class MovimientoIngresoForm(forms.ModelForm):
             tipo="ingreso",
             activo=True
         ).order_by("nombre")
-        
+
         # Filtrar solo cuentas activas
         self.fields["cuenta"].queryset = CuentaFinanciera.objects.filter(
             esta_activa=True
         ).order_by("nombre")
+
+        # Cargar miembros activos para el select de persona_asociada
+        if "persona_asociada" in self.fields:
+            self.fields["persona_asociada"].queryset = Miembro.objects.filter(
+                activo=True
+            ).order_by("nombres", "apellidos")
+            self.fields["persona_asociada"].required = False
 
 
 # ============================================
@@ -169,9 +179,6 @@ class MovimientoEgresoForm(forms.ModelForm):
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}),
-            "persona_asociada": forms.TextInput(attrs={
-                "placeholder": "Proveedor o persona a quien se paga (opcional)",
-            }),
             "descripcion": forms.Textarea(attrs={
                 "rows": 2,
                 "placeholder": "Motivo del egreso, notas adicionales...",
@@ -190,3 +197,10 @@ class MovimientoEgresoForm(forms.ModelForm):
         self.fields["cuenta"].queryset = CuentaFinanciera.objects.filter(
             esta_activa=True
         ).order_by("nombre")
+
+        # Cargar miembros activos para el select de persona_asociada
+        if "persona_asociada" in self.fields:
+            self.fields["persona_asociada"].queryset = Miembro.objects.filter(
+                activo=True
+            ).order_by("nombres", "apellidos")
+            self.fields["persona_asociada"].required = False

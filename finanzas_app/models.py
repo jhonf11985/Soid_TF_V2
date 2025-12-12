@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from miembros_app.models import Miembro  # 👈 NUEVO IMPORT
 
 
 class CuentaFinanciera(models.Model):
@@ -50,6 +51,7 @@ class CuentaFinanciera(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.moneda})"
+
 
 class CategoriaMovimiento(models.Model):
     """
@@ -176,10 +178,13 @@ class MovimientoFinanciero(models.Model):
         blank=True,
         help_text="Nombre del evento o actividad. Ej: Noche de tacos, Campamento juvenil."
     )
-    persona_asociada = models.CharField(
-        max_length=150,
+    persona_asociada = models.ForeignKey(   # 👈 AHORA ES FOREIGNKEY
+        Miembro,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        help_text="Nombre de la persona asociada al ingreso (si aplica)."
+        related_name="movimientos_financieros",
+        help_text="Miembro asociado al movimiento."
     )
     ministerio = models.CharField(
         max_length=150,

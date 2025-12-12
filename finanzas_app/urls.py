@@ -33,5 +33,10 @@ urlpatterns = [
     path("egresos/nuevo/", views.egreso_crear, name="egreso_crear"),
     # 👉 NUEVA RUTA PARA DETALLE DE INGRESO
     path("ingresos/<int:pk>/detalle/", views.ingreso_detalle, name="ingreso_detalle"),
+        path(
+        "miembros/buscar/",
+        views.buscar_miembros_finanzas,
+        name="buscar_miembros_finanzas",
+    ),
 
 ]

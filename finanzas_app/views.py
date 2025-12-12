@@ -648,3 +648,40 @@ def ingreso_detalle(request, pk):
         "ingreso": ingreso,
     }
     return render(request, "finanzas_app/ingreso_detalle.html", context)
+
+from django.http import JsonResponse
+from django.db.models import Q
+
+from miembros_app.models import Miembro  # Ajusta si tu app se llama distinto
+
+
+@login_required
+def buscar_miembros_finanzas(request):
+    """
+    Devuelve un JSON con miembros activos para el modal de búsqueda.
+    Opcionalmente filtra por nombre/apellidos/código con ?q=.
+    """
+    q = request.GET.get("q", "").strip()
+
+    miembros = Miembro.objects.filter(estado="activo")
+
+    if q:
+        miembros = miembros.filter(
+            Q(nombres__icontains=q)
+            | Q(apellidos__icontains=q)
+            | Q(codigo_miembro__icontains=q)
+        )
+
+    miembros = miembros.order_by("nombres", "apellidos")[:50]
+
+    data = []
+    for m in miembros:
+        data.append(
+            {
+                "id": m.id,
+                "nombre": f"{m.nombres} {m.apellidos}".strip(),
+                "codigo": getattr(m, "codigo_miembro", "") or "",
+            }
+        )
+
+    return JsonResponse({"resultados": data})
