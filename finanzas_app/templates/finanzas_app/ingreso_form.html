@@ -1,7 +1,7 @@
 {% extends 'finanzas_app/base_finanzas.html' %}
 {% load static %}
 
-{% block title %}Registrar ingreso · Soid_Tf_2{% endblock %}
+{% block title %}Registrar egreso · Soid_Tf_2{% endblock %}
 
 {% block finanzas_content %}
 
@@ -11,11 +11,11 @@
     <!-- BARRA SUPERIOR -->
     <div class="odoo-topbar">
         <div class="odoo-topbar-left">
-            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="odoo-back-link">
+            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=egreso" class="odoo-back-link">
                 <span class="material-icons">arrow_back</span>
             </a>
             <div class="odoo-breadcrumb">
-                <span class="odoo-breadcrumb-parent">Ingresos</span>
+                <span class="odoo-breadcrumb-parent">Egresos</span>
                 <span class="odoo-breadcrumb-separator">/</span>
                 <span class="odoo-breadcrumb-current">Nuevo</span>
             </div>
@@ -28,10 +28,10 @@
     <!-- BARRA DE ACCIONES -->
     <div class="odoo-actionbar">
         <div class="odoo-actionbar-left">
-            <button type="submit" form="ingreso-form" class="odoo-btn odoo-btn-primary">
+            <button type="submit" form="egreso-form" class="odoo-btn odoo-btn-primary">
                 Confirmar
             </button>
-            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="odoo-btn odoo-btn-secondary">
+            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=egreso" class="odoo-btn odoo-btn-secondary">
                 Cancelar
             </a>
         </div>
@@ -39,7 +39,7 @@
 
     <!-- FORMULARIO PRINCIPAL -->
     <div class="odoo-form-sheet">
-        <form method="post" novalidate id="ingreso-form">
+        <form method="post" novalidate id="egreso-form">
             {% csrf_token %}
 
             <!-- CONTENIDO EN DOS COLUMNAS -->
@@ -72,9 +72,9 @@
                         </div>
                     </div>
 
-                    <!-- 👇 AUTOCOMPLETE DE MIEMBRO - ESTILO CHIP -->
+                    <!-- AUTOCOMPLETE DE MIEMBRO - ESTILO CHIP -->
                     <div class="odoo-field-row">
-                        <label>Persona (opcional)</label>
+                        <label>Beneficiario</label>
                         <div class="odoo-field-value autocomplete-wrapper" id="autocomplete-persona">
                             
                             <!-- Campo hidden para guardar el ID -->
@@ -167,7 +167,8 @@
         </form>
     </div>
 
-    <!-- ZONA DE ADJUNTOS - ESTILO ODOO ELEGANTE -->
+    <!-- ZONA DE ADJUNTOS - SOLO EN EDICIÓN -->
+    {% if movimiento %}
     <div class="odoo-attachments">
         <input type="file" id="attachment-input" multiple hidden>
         <button type="button" class="odoo-attach-icon" id="attach-btn" title="Adjuntar archivo">
@@ -177,6 +178,19 @@
             <!-- Los archivos adjuntos aparecerán aquí -->
         </div>
     </div>
+    {% endif %}
+    
+    <!-- MENSAJE PARA MODO CREACIÓN -->
+    {% if not movimiento %}
+    <div class="odoo-info-panel" style="max-width: 1200px; margin: 0 auto 24px;">
+        <div class="odoo-info-item">
+            <span class="material-icons">info</span>
+            <span>
+                Podrás adjuntar archivos (facturas, recibos, comprobantes) después de guardar el egreso.
+            </span>
+        </div>
+    </div>
+    {% endif %}
 
 </div>
 
@@ -868,6 +882,26 @@
     .odoo-attach-remove .material-icons {
         font-size: 14px;
     }
+
+    /* INFO PANEL */
+    .odoo-info-panel {
+        padding: 12px 16px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 4px;
+    }
+
+    .odoo-info-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #1e40af;
+    }
+
+    .odoo-info-item .material-icons {
+        font-size: 18px;
+    }
 </style>
 
 {% endblock finanzas_content %}
@@ -907,7 +941,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const hiddenInput = document.getElementById('id_persona_asociada');
     const fieldContainer = searchInput?.closest('.autocomplete-field');
     
-    // Elementos del chip
     const chip = document.getElementById('chip-persona');
     const chipAvatar = document.getElementById('chip-avatar');
     const chipName = document.getElementById('chip-name');
@@ -918,7 +951,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const DEBOUNCE_DELAY = 300;
     const MIN_CHARS = 2;
 
-    // Obtener iniciales del nombre
     function getInitials(nombre) {
         if (!nombre) return '?';
         const parts = nombre.trim().split(' ');
@@ -928,14 +960,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return nombre.substring(0, 2).toUpperCase();
     }
 
-    // Función para escapar HTML
     function escapeHtml(text) {
         if (!text) return '';
         const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
         return text.replace(/[&<>"']/g, m => map[m]);
     }
 
-    // Mostrar loading
     function showLoading() {
         listEl.innerHTML = '';
         listEl.style.display = 'none';
@@ -944,7 +974,6 @@ document.addEventListener('DOMContentLoaded', function() {
         dropdown.classList.add('open');
     }
 
-    // Mostrar vacío
     function showEmpty() {
         listEl.innerHTML = '';
         listEl.style.display = 'none';
@@ -952,14 +981,12 @@ document.addEventListener('DOMContentLoaded', function() {
         emptyEl.style.display = 'block';
     }
 
-    // Cerrar dropdown
     function closeDropdown() {
         dropdown.classList.remove('open');
         loadingEl.style.display = 'none';
         emptyEl.style.display = 'none';
     }
 
-    // Renderizar resultados
     function renderResults(resultados) {
         listEl.innerHTML = '';
 
@@ -995,27 +1022,18 @@ document.addEventListener('DOMContentLoaded', function() {
         listEl.style.display = 'block';
     }
 
-    // Seleccionar miembro - mostrar chip
     function selectMiembro(id, nombre, codigo) {
-        // Guardar valor
         hiddenInput.value = id;
-        
-        // Actualizar chip
         chipAvatar.textContent = getInitials(nombre);
         chipName.textContent = nombre;
         chipCode.textContent = codigo || 'Sin código';
-        
-        // Mostrar chip, ocultar input
         chip.style.display = 'inline-flex';
         searchInput.value = '';
         searchInput.style.display = 'none';
         fieldContainer.classList.add('has-selection');
-        
-        // Cerrar dropdown
         closeDropdown();
     }
 
-    // Limpiar selección
     function clearSelection() {
         hiddenInput.value = '';
         chip.style.display = 'none';
@@ -1027,7 +1045,6 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.focus();
     }
 
-    // Buscar miembros
     async function searchMiembros(query) {
         query = query.trim();
 
@@ -1066,9 +1083,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Event listeners
     if (searchInput) {
-        // Búsqueda con debounce
         searchInput.addEventListener('input', function(e) {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
@@ -1076,14 +1091,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }, DEBOUNCE_DELAY);
         });
 
-        // Focus abre dropdown si hay texto suficiente
         searchInput.addEventListener('focus', function() {
             if (this.value.length >= MIN_CHARS) {
                 dropdown.classList.add('open');
             }
         });
 
-        // Teclado
         searchInput.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeDropdown();
@@ -1101,7 +1114,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Botón quitar chip
     if (chipRemove) {
         chipRemove.addEventListener('click', function(e) {
             e.preventDefault();
@@ -1110,7 +1122,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Click fuera cierra dropdown
     document.addEventListener('click', function(e) {
         const wrapper = document.getElementById('autocomplete-persona');
         if (wrapper && !wrapper.contains(e.target)) {
@@ -1119,73 +1130,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ====================================
-    // MANEJO DE ARCHIVOS ADJUNTOS
+    // MANEJO DE ARCHIVOS ADJUNTOS (SOLO EN EDICIÓN)
     // ====================================
+    {% if movimiento %}
     const attachBtn = document.getElementById('attach-btn');
     const attachInput = document.getElementById('attachment-input');
-    const attachList = document.getElementById('attach-list');
     
-    let attachedFiles = [];
-
-    function formatFileSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    }
-
-    function getFileIcon(filename) {
-        const ext = filename.split('.').pop().toLowerCase();
-        const icons = {
-            'pdf': 'picture_as_pdf',
-            'doc': 'description',
-            'docx': 'description',
-            'xls': 'table_chart',
-            'xlsx': 'table_chart',
-            'jpg': 'image',
-            'jpeg': 'image',
-            'png': 'image',
-            'gif': 'image',
-        };
-        return icons[ext] || 'insert_drive_file';
-    }
-
-    function renderAttachments() {
-        attachList.innerHTML = '';
-        
-        attachedFiles.forEach((file, index) => {
-            const item = document.createElement('div');
-            item.className = 'odoo-attach-item';
-            item.innerHTML = `
-                <span class="material-icons">${getFileIcon(file.name)}</span>
-                <span class="odoo-attach-item-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
-                <span class="odoo-attach-item-size">${formatFileSize(file.size)}</span>
-                <button type="button" class="odoo-attach-remove" data-index="${index}" title="Quitar">
-                    <span class="material-icons">close</span>
-                </button>
-            `;
-            attachList.appendChild(item);
-        });
-
-        // Event listeners para botones de quitar
-        attachList.querySelectorAll('.odoo-attach-remove').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const idx = parseInt(this.dataset.index);
-                attachedFiles.splice(idx, 1);
-                renderAttachments();
-            });
-        });
-    }
-
+    const movimientoId = {{ movimiento.id }};
+    const adjuntosManager = new AdjuntosManager(movimientoId);
+    
     if (attachBtn && attachInput) {
         attachBtn.addEventListener('click', () => attachInput.click());
-        
-        attachInput.addEventListener('change', function() {
-            const newFiles = Array.from(this.files);
-            attachedFiles = [...attachedFiles, ...newFiles];
-            renderAttachments();
-            this.value = ''; // Reset para permitir seleccionar el mismo archivo
-        });
     }
+    {% endif %}
 
 });
 </script>

@@ -252,3 +252,111 @@ class MovimientoFinanciero(models.Model):
         return MovimientoFinanciero.objects.filter(
             transferencia_id=self.transferencia_id
         ).exclude(pk=self.pk).first()
+class AdjuntoMovimiento(models.Model):
+    """
+    Archivos adjuntos a movimientos financieros.
+    Permite almacenar comprobantes, facturas, recibos, etc.
+    """
+    
+    movimiento = models.ForeignKey(
+        MovimientoFinanciero,
+        on_delete=models.CASCADE,
+        related_name="adjuntos",
+        help_text="Movimiento al que pertenece este adjunto."
+    )
+    
+    archivo = models.FileField(
+        upload_to="finanzas/adjuntos/%Y/%m/",
+        help_text="Archivo adjunto."
+    )
+    
+    nombre_original = models.CharField(
+        max_length=255,
+        help_text="Nombre original del archivo."
+    )
+    
+    tamaño = models.PositiveIntegerField(
+        help_text="Tamaño del archivo en bytes."
+    )
+    
+    tipo_mime = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Tipo MIME del archivo (image/jpeg, application/pdf, etc.)."
+    )
+    
+    subido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="adjuntos_subidos",
+        help_text="Usuario que subió el archivo."
+    )
+    
+    subido_en = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Fecha y hora de subida."
+    )
+    
+    class Meta:
+        verbose_name = "Adjunto de movimiento"
+        verbose_name_plural = "Adjuntos de movimientos"
+        ordering = ["-subido_en"]
+    
+    def __str__(self):
+        return f"{self.nombre_original} - {self.movimiento}"
+    
+    def get_icono(self):
+        """
+        Retorna el icono de Material Icons según el tipo de archivo.
+        """
+        extension = self.nombre_original.split('.')[-1].lower()
+        
+        iconos = {
+            'pdf': 'picture_as_pdf',
+            'doc': 'description',
+            'docx': 'description',
+            'xls': 'table_chart',
+            'xlsx': 'table_chart',
+            'csv': 'table_chart',
+            'jpg': 'image',
+            'jpeg': 'image',
+            'png': 'image',
+            'gif': 'image',
+            'webp': 'image',
+        }
+        
+        return iconos.get(extension, 'insert_drive_file')
+    
+    def es_imagen(self):
+        """
+        Retorna True si el archivo es una imagen.
+        """
+        extension = self.nombre_original.split('.')[-1].lower()
+        return extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']
+    
+    def tamaño_formateado(self):
+        """
+        Retorna el tamaño del archivo en formato legible.
+        """
+        if self.tamaño < 1024:
+            return f"{self.tamaño} B"
+        elif self.tamaño < 1024 * 1024:
+            return f"{self.tamaño / 1024:.1f} KB"
+        else:
+            return f"{self.tamaño / (1024 * 1024):.1f} MB"
+    
+    def puede_eliminar(self, usuario):
+        """
+        Verifica si un usuario puede eliminar este adjunto.
+        """
+        # Administradores pueden eliminar cualquiera
+        if usuario.is_staff or usuario.is_superuser:
+            return True
+        
+        # El usuario que lo subió puede eliminarlo
+        if self.subido_por == usuario:
+            return True
+        
+        return False

@@ -815,3 +815,172 @@ def transferencia_anular(request, pk):
         "movimiento_par": movimiento_par,
     }
     return render(request, "finanzas_app/transferencia_confirmar_anular.html", context)
+
+# ============================================
+# ADJUNTOS DE MOVIMIENTOS
+# ============================================
+
+from django.http import JsonResponse, FileResponse, Http404
+from .models import AdjuntoMovimiento
+from .validators import validar_archivo, validar_tamaño_total
+import os
+
+
+@login_required
+def subir_adjunto(request, movimiento_id):
+    """
+    Sube un archivo adjunto a un movimiento financiero.
+    Retorna JSON para manejar con AJAX.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)
+    
+    # Verificar que el movimiento existe
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=movimiento_id)
+    
+    # Verificar que se subió un archivo
+    if 'archivo' not in request.FILES:
+        return JsonResponse({"success": False, "error": "No se recibió ningún archivo"}, status=400)
+    
+    archivo = request.FILES['archivo']
+    
+    try:
+        # Validar el archivo
+        validar_archivo(archivo)
+        
+        # Validar tamaño total
+        validar_tamaño_total(movimiento, archivo.size)
+        
+        # Crear el adjunto
+        adjunto = AdjuntoMovimiento.objects.create(
+            movimiento=movimiento,
+            archivo=archivo,
+            nombre_original=archivo.name,
+            tamaño=archivo.size,
+            tipo_mime=archivo.content_type,
+            subido_por=request.user
+        )
+        
+        return JsonResponse({
+            "success": True,
+            "adjunto": {
+                "id": adjunto.id,
+                "nombre": adjunto.nombre_original,
+                "tamaño": adjunto.tamaño_formateado(),
+                "icono": adjunto.get_icono(),
+                "url_descarga": f"/finanzas/adjuntos/{adjunto.id}/descargar/",
+                "url_eliminar": f"/finanzas/adjuntos/{adjunto.id}/eliminar/",
+                "puede_eliminar": adjunto.puede_eliminar(request.user),
+                "es_imagen": adjunto.es_imagen(),
+                "url_imagen": adjunto.archivo.url if adjunto.es_imagen() else None,
+            }
+        })
+    
+    except ValidationError as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+    
+    except Exception as e:
+        return JsonResponse({"success": False, "error": f"Error al subir archivo: {str(e)}"}, status=500)
+
+
+@login_required
+def eliminar_adjunto(request, adjunto_id):
+    """
+    Elimina un adjunto de movimiento.
+    Solo el usuario que lo subió o administradores pueden eliminarlo.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)
+    
+    adjunto = get_object_or_404(AdjuntoMovimiento, pk=adjunto_id)
+    
+    # Verificar permisos
+    if not adjunto.puede_eliminar(request.user):
+        return JsonResponse({
+            "success": False, 
+            "error": "No tienes permiso para eliminar este archivo"
+        }, status=403)
+    
+    try:
+        # Guardar info antes de eliminar
+        nombre = adjunto.nombre_original
+        
+        # Eliminar archivo físico
+        if adjunto.archivo:
+            if os.path.isfile(adjunto.archivo.path):
+                os.remove(adjunto.archivo.path)
+        
+        # Eliminar registro
+        adjunto.delete()
+        
+        return JsonResponse({
+            "success": True,
+            "mensaje": f"Archivo '{nombre}' eliminado correctamente"
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": f"Error al eliminar archivo: {str(e)}"
+        }, status=500)
+
+
+@login_required
+def descargar_adjunto(request, adjunto_id):
+    """
+    Descarga un archivo adjunto.
+    """
+    adjunto = get_object_or_404(AdjuntoMovimiento, pk=adjunto_id)
+    
+    # Verificar que el archivo existe
+    if not adjunto.archivo:
+        raise Http404("Archivo no encontrado")
+    
+    try:
+        # Abrir el archivo
+        archivo = open(adjunto.archivo.path, 'rb')
+        response = FileResponse(archivo)
+        
+        # Configurar headers para descarga
+        response['Content-Type'] = adjunto.tipo_mime or 'application/octet-stream'
+        response['Content-Disposition'] = f'attachment; filename="{adjunto.nombre_original}"'
+        response['Content-Length'] = adjunto.tamaño
+        
+        return response
+    
+    except FileNotFoundError:
+        raise Http404("Archivo no encontrado en el servidor")
+    except Exception as e:
+        raise Http404(f"Error al descargar archivo: {str(e)}")
+
+
+@login_required
+def listar_adjuntos(request, movimiento_id):
+    """
+    Lista todos los adjuntos de un movimiento (JSON para AJAX).
+    """
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=movimiento_id)
+    
+    adjuntos = AdjuntoMovimiento.objects.filter(movimiento=movimiento)
+    
+    data = {
+        "success": True,
+        "adjuntos": [
+            {
+                "id": adj.id,
+                "nombre": adj.nombre_original,
+                "tamaño": adj.tamaño_formateado(),
+                "icono": adj.get_icono(),
+                "url_descarga": f"/finanzas/adjuntos/{adj.id}/descargar/",
+                "url_eliminar": f"/finanzas/adjuntos/{adj.id}/eliminar/",
+                "puede_eliminar": adj.puede_eliminar(request.user),
+                "es_imagen": adj.es_imagen(),
+                "url_imagen": adj.archivo.url if adj.es_imagen() else None,
+                "subido_por": adj.subido_por.get_full_name() if adj.subido_por else "Sistema",
+                "subido_en": adj.subido_en.strftime("%d/%m/%Y %H:%M"),
+            }
+            for adj in adjuntos
+        ]
+    }
+    
+    return JsonResponse(data)

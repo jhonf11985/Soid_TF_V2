@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import CuentaFinanciera, CategoriaMovimiento, MovimientoFinanciero
-
+from .models import CuentaFinanciera, CategoriaMovimiento, MovimientoFinanciero, AdjuntoMovimiento
 
 @admin.register(CuentaFinanciera)
 class CuentaFinancieraAdmin(admin.ModelAdmin):
@@ -29,3 +28,11 @@ class MovimientoFinancieroAdmin(admin.ModelAdmin):
     list_filter = ("tipo", "cuenta", "categoria", "fecha")
     search_fields = ("descripcion", "referencia")
     date_hierarchy = "fecha"
+
+@admin.register(AdjuntoMovimiento)
+class AdjuntoMovimientoAdmin(admin.ModelAdmin):
+    list_display = ("nombre_original", "movimiento", "tamaño_formateado", "subido_por", "subido_en")
+    list_filter = ("subido_en", "tipo_mime")
+    search_fields = ("nombre_original", "movimiento__descripcion")
+    date_hierarchy = "subido_en"
+    readonly_fields = ("tamaño", "tipo_mime", "subido_por", "subido_en")

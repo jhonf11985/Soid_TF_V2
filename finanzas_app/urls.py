@@ -42,5 +42,10 @@ urlpatterns = [
     path("transferencias/nueva/", views.transferencia_crear, name="transferencia_crear"),
     path("transferencias/<int:pk>/detalle/", views.transferencia_detalle, name="transferencia_detalle"),
     path("transferencias/<int:pk>/anular/", views.transferencia_anular, name="transferencia_anular"),
+    # Adjuntos
+    path("adjuntos/movimiento/<int:movimiento_id>/subir/", views.subir_adjunto, name="subir_adjunto"),
+    path("adjuntos/<int:adjunto_id>/eliminar/", views.eliminar_adjunto, name="eliminar_adjunto"),
+    path("adjuntos/<int:adjunto_id>/descargar/", views.descargar_adjunto, name="descargar_adjunto"),
+    path("adjuntos/movimiento/<int:movimiento_id>/listar/", views.listar_adjuntos, name="listar_adjuntos"),
 
 ]
