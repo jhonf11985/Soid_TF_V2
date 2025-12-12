@@ -190,17 +190,19 @@ class MovimientoEgresoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Filtrar categorías a solo tipo ingreso y activas
         self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
-            tipo="egreso",
+            tipo="ingreso",
             activo=True
         ).order_by("nombre")
+
+        # Filtrar solo cuentas activas
         self.fields["cuenta"].queryset = CuentaFinanciera.objects.filter(
             esta_activa=True
         ).order_by("nombre")
 
-        # Cargar miembros activos para el select de persona_asociada
+        # IMPORTANTE: El campo persona_asociada ahora se maneja con autocomplete
+        # Ocultamos el widget por defecto y lo manejamos con JS
         if "persona_asociada" in self.fields:
-            self.fields["persona_asociada"].queryset = Miembro.objects.filter(
-                activo=True
-            ).order_by("nombres", "apellidos")
+            self.fields["persona_asociada"].widget = forms.HiddenInput()
             self.fields["persona_asociada"].required = False

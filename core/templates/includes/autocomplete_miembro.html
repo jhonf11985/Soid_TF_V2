@@ -1,0 +1,309 @@
+{# core/templates/includes/autocomplete_miembro.html #}
+{# 
+  Componente de autocomplete reutilizable para buscar y seleccionar miembros.
+  
+  Uso:
+    {% include "includes/autocomplete_miembro.html" with 
+       campo_id="id_persona_asociada"
+       campo_label="Persona asociada"
+       es_requerido=False
+       filtro="activos"
+    %}
+  
+  Parámetros:
+    - campo_id: ID del campo hidden que guarda el ID del miembro (obligatorio)
+    - campo_label: Etiqueta del campo (default: "Buscar miembro")
+    - es_requerido: Si el campo es obligatorio (default: False)
+    - filtro: 'activos' | 'bautizados' | 'todos' (default: 'activos')
+    - valor_inicial_id: ID del miembro preseleccionado (opcional)
+#}
+
+<div class="autocomplete-wrapper" data-autocomplete-id="{{ campo_id }}">
+    <label for="search-{{ campo_id }}" class="autocomplete-label">
+        {{ campo_label|default:"Buscar miembro" }}
+        {% if es_requerido %}<span class="required">*</span>{% endif %}
+    </label>
+    
+    <!-- Input de búsqueda visible -->
+    <div class="autocomplete-input-group">
+        <input 
+            type="text" 
+            id="search-{{ campo_id }}" 
+            class="autocomplete-search" 
+            placeholder="Escribe nombre, apellido o código..."
+            autocomplete="off"
+            data-filtro="{{ filtro|default:'activos' }}"
+        >
+        <button type="button" class="autocomplete-clear-btn" title="Limpiar">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
+    
+    <!-- Dropdown de resultados -->
+    <div class="autocomplete-dropdown" id="dropdown-{{ campo_id }}">
+        <ul class="autocomplete-list"></ul>
+        <div class="autocomplete-empty" style="display: none;">
+            <span class="material-icons">search</span>
+            <p>No se encontraron miembros</p>
+        </div>
+        <div class="autocomplete-loading" style="display: none;">
+            <span class="material-icons spinner">refresh</span>
+            <p>Buscando...</p>
+        </div>
+    </div>
+    
+    <!-- Campo hidden para guardar el ID -->
+    <input 
+        type="hidden" 
+        id="{{ campo_id }}" 
+        name="{{ campo_id }}" 
+        value=""
+    >
+    
+    <!-- Mostrar confirmación de selección -->
+    <div class="autocomplete-selected" style="display: none;">
+        <div class="selected-card">
+            <div class="selected-info">
+                <span class="selected-name"></span>
+                <span class="selected-codigo"></span>
+            </div>
+            <button type="button" class="selected-remove" title="Quitar selección">
+                <span class="material-icons">clear</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .autocomplete-wrapper {
+        position: relative;
+        width: 100%;
+    }
+
+    .autocomplete-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+
+    .required {
+        color: #dc3545;
+    }
+
+    .autocomplete-input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .autocomplete-search {
+        width: 100%;
+        padding: 10px 36px 10px 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .autocomplete-search:focus {
+        outline: none;
+        border-color: var(--color-primary, #714B67);
+        box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
+    }
+
+    .autocomplete-search:disabled {
+        background: #f3f4f6;
+        cursor: not-allowed;
+    }
+
+    .autocomplete-clear-btn {
+        position: absolute;
+        right: 8px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        color: #9ca3af;
+        display: none;
+        transition: color 0.15s;
+    }
+
+    .autocomplete-clear-btn:hover {
+        color: #6b7280;
+    }
+
+    .autocomplete-search:not(:placeholder-shown) ~ .autocomplete-clear-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .autocomplete-clear-btn .material-icons {
+        font-size: 18px;
+    }
+
+    /* Dropdown */
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 4px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        display: none;
+        z-index: 1000;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .autocomplete-dropdown.open {
+        display: block;
+    }
+
+    .autocomplete-list {
+        list-style: none;
+        margin: 0;
+        padding: 4px 0;
+    }
+
+    .autocomplete-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        transition: background 0.15s;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+
+    .autocomplete-item:hover {
+        background: #f9fafb;
+    }
+
+    .autocomplete-item-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 4px;
+    }
+
+    .autocomplete-item-nombre {
+        font-size: 14px;
+        font-weight: 500;
+        color: #111827;
+    }
+
+    .autocomplete-item-codigo {
+        font-size: 12px;
+        color: #9ca3af;
+        background: #f3f4f6;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+
+    .autocomplete-item-meta {
+        display: flex;
+        gap: 16px;
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .autocomplete-item-meta span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .autocomplete-empty,
+    .autocomplete-loading {
+        padding: 24px 16px;
+        text-align: center;
+        color: #9ca3af;
+        font-size: 13px;
+    }
+
+    .autocomplete-empty .material-icons,
+    .autocomplete-loading .material-icons {
+        font-size: 32px;
+        opacity: 0.3;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .autocomplete-loading .spinner {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Card de selección */
+    .autocomplete-selected {
+        margin-top: 12px;
+    }
+
+    .selected-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        background: #ecfdf5;
+        border: 1px solid #86efac;
+        border-radius: 8px;
+    }
+
+    .selected-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .selected-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #065f46;
+    }
+
+    .selected-codigo {
+        font-size: 12px;
+        color: #059669;
+    }
+
+    .selected-remove {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        color: #059669;
+        transition: color 0.15s;
+    }
+
+    .selected-remove:hover {
+        color: #065f46;
+    }
+
+    .selected-remove .material-icons {
+        font-size: 18px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .autocomplete-dropdown {
+            max-height: 200px;
+        }
+
+        .autocomplete-item-meta {
+            flex-direction: column;
+            gap: 4px;
+        }
+    }
+</style>

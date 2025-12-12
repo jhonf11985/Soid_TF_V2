@@ -72,11 +72,61 @@
                         </div>
                     </div>
 
-                    <div class="odoo-field-row">
-                        <label>Persona</label>
+                    <!-- 👇 AUTOCOMPLETE DE MIEMBRO - CÓDIGO DIRECTO (NO INCLUDE) -->
+                    <div class="odoo-field-row" style="grid-column: 1 / -1; position: relative;">
+                        <label for="search-id_persona_asociada" style="text-align: left;">Persona (opcional)</label>
                         <div class="odoo-field-value">
-                            {{ form.persona_asociada }}
-                            {% if form.persona_asociada.errors %}<span class="odoo-error">{{ form.persona_asociada.errors.0 }}</span>{% endif %}
+                            
+                            <!-- Input de búsqueda visible -->
+                            <div class="autocomplete-input-group">
+                                <input 
+                                    type="text" 
+                                    id="search-id_persona_asociada" 
+                                    class="autocomplete-search" 
+                                    placeholder="Escribe nombre, apellido o código..."
+                                    autocomplete="off"
+                                    data-filtro="activos"
+                                    style="width: 100%; padding: 10px 36px 10px 12px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 13px;"
+                                >
+                                <button type="button" class="autocomplete-clear-btn" title="Limpiar" style="position: absolute; right: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #9ca3af; display: none; z-index: 5;">
+                                    <span class="material-icons" style="font-size: 18px;">close</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Dropdown de resultados -->
+                            <div class="autocomplete-dropdown" id="dropdown-id_persona_asociada" style="position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: white; border: 1px solid #e5e7eb; border-radius: 4px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); z-index: 1000; max-height: 300px; overflow-y: auto;">
+                                <ul class="autocomplete-list" style="list-style: none; margin: 0; padding: 4px 0;"></ul>
+                                <div class="autocomplete-empty" style="display: none; padding: 24px 16px; text-align: center; color: #9ca3af; font-size: 13px;">
+                                    <span class="material-icons" style="font-size: 32px; opacity: 0.3; display: block; margin-bottom: 8px;">search</span>
+                                    <p>No se encontraron miembros</p>
+                                </div>
+                                <div class="autocomplete-loading" style="display: none; padding: 24px 16px; text-align: center; color: #9ca3af; font-size: 13px;">
+                                    <span class="material-icons spinner" style="font-size: 32px; opacity: 0.3; display: block; margin-bottom: 8px; animation: spin 1s linear infinite;">refresh</span>
+                                    <p>Buscando...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Campo hidden para guardar el ID -->
+                            <input 
+                                type="hidden" 
+                                id="id_persona_asociada" 
+                                name="persona_asociada" 
+                                value=""
+                            >
+                            
+                            <!-- Mostrar confirmación de selección -->
+                            <div class="autocomplete-selected" style="display: none; margin-top: 12px;">
+                                <div class="selected-card" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #ecfdf5; border: 1px solid #86efac; border-radius: 4px;">
+                                    <div class="selected-info" style="display: flex; flex-direction: column; gap: 2px;">
+                                        <span class="selected-name" style="font-size: 13px; font-weight: 600; color: #065f46;"></span>
+                                        <span class="selected-codigo" style="font-size: 12px; color: #059669;"></span>
+                                    </div>
+                                    <button type="button" class="selected-remove" title="Quitar selección" style="background: transparent; border: none; cursor: pointer; padding: 4px; color: #059669; transition: color 0.15s;">
+                                        <span class="material-icons" style="font-size: 18px;">clear</span>
+                                    </button>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -133,6 +183,96 @@
        ODOO FORM - ESTILO EXACTO
        ===================================== */
     
+    /* Autocomplete dropdown - control de visibilidad */
+    .autocomplete-dropdown {
+        display: none !important;
+    }
+    
+    .autocomplete-dropdown.open {
+        display: block !important;
+    }
+
+    /* Input de autocomplete - estilo línea como los demás campos */
+    .autocomplete-search {
+        width: 100%;
+        border: none !important;
+        border-bottom: 1px solid transparent !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        padding: 4px 0 !important;
+        font-size: 13px;
+        color: var(--odoo-text);
+        font-family: inherit;
+        transition: border-color 0.15s;
+    }
+
+    .autocomplete-search:hover {
+        border-bottom-color: var(--odoo-border) !important;
+    }
+
+    .autocomplete-search:focus {
+        outline: none;
+        border-bottom-color: var(--odoo-purple) !important;
+        border-bottom-width: 2px !important;
+        padding-bottom: 3px !important;
+        box-shadow: none !important;
+    }
+
+    .autocomplete-input-group {
+        position: relative;
+    }
+
+    .autocomplete-clear-btn {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    /* Estilos para items del autocomplete */
+    .autocomplete-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s;
+    }
+
+    .autocomplete-item:hover {
+        background: #f5f5f5;
+    }
+
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+
+    .autocomplete-item-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+
+    .autocomplete-item-nombre {
+        font-weight: 500;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .autocomplete-item-codigo {
+        font-size: 12px;
+        color: #888;
+        background: #f0f0f0;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+
+    .autocomplete-item-meta {
+        font-size: 12px;
+        color: #666;
+        display: flex;
+        gap: 12px;
+    }
+
     :root {
         --odoo-purple: #714B67;
         --odoo-purple-dark: #5d3d54;
@@ -259,119 +399,50 @@
         background: var(--odoo-bg-gray);
     }
 
-    /* BARRA DE ESTADO */
-    .odoo-status-bar {
-        display: flex;
-        align-items: center;
-        gap: 0;
-    }
-
-    .odoo-status-step {
-        padding: 6px 20px;
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--odoo-text-muted);
-        background: var(--odoo-bg-gray);
-        border: 1px solid var(--odoo-border);
-        position: relative;
-    }
-
-    .odoo-status-step:first-child {
-        border-radius: 4px 0 0 4px;
-    }
-
-    .odoo-status-step:last-child {
-        border-radius: 0 4px 4px 0;
-    }
-
-    .odoo-status-step:not(:first-child) {
-        border-left: none;
-    }
-
-    .odoo-status-step.odoo-status-active {
-        background: var(--odoo-purple);
-        color: white;
-        border-color: var(--odoo-purple);
-    }
-
-    /* HOJA DEL FORMULARIO */
+    /* FORMULARIO */
     .odoo-form-sheet {
-        background: var(--odoo-bg);
         max-width: 1200px;
-        margin: 24px auto;
+        margin: 16px auto;
+        background: var(--odoo-bg);
         border: 1px solid var(--odoo-border);
         border-radius: 4px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        padding: 0;
     }
 
-    /* TÍTULO DEL DOCUMENTO */
-    .odoo-doc-title {
-        padding: 20px 24px 16px;
-        border-bottom: 1px solid var(--odoo-border);
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
-    }
-
-    .odoo-doc-title h1 {
-        font-size: 28px;
-        font-weight: 400;
-        color: var(--odoo-text);
-        margin: 0;
-    }
-
-    .odoo-doc-type {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 10px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        background: #d4edda;
-        color: #155724;
-        border-radius: 3px;
-    }
-
-    /* CONTENIDO DEL FORMULARIO */
     .odoo-form-content {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 40px;
-        padding: 20px 24px;
+        gap: 24px;
+        padding: 24px;
+        border-bottom: 1px solid var(--odoo-border);
     }
 
     .odoo-form-col {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 16px;
     }
 
-    /* FILAS DE CAMPOS */
     .odoo-field-row {
         display: grid;
         grid-template-columns: 140px 1fr;
         gap: 12px;
-        align-items: baseline;
-        min-height: 32px;
-        padding: 4px 0;
+        align-items: center;
     }
 
     .odoo-field-row label {
-        font-size: 14px;
-        color: var(--odoo-text);
+        font-size: 13px;
         font-weight: 600;
+        color: var(--odoo-text);
         text-align: right;
-        white-space: nowrap;
     }
 
     .odoo-field-value {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 4px;
     }
 
-    /* INPUTS */
     .odoo-form-sheet input,
     .odoo-form-sheet select,
     .odoo-form-sheet textarea {
@@ -459,49 +530,84 @@
         margin-top: 2px;
     }
 
-    /* CHATTER */
-    .odoo-chatter {
-        max-width: 1200px;
-        margin: 0 auto 24px;
-        background: var(--odoo-bg);
-        border: 1px solid var(--odoo-border);
+    /* HINT */
+    .odoo-field-hint {
+        font-size: 11px;
+        color: var(--odoo-text-muted);
+        font-style: italic;
+        margin-top: 4px;
+    }
+
+    /* CAMPOS CONDICIONALES */
+    .odoo-field-conditional {
+        animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* AUTOCOMPLETE STYLES */
+    .autocomplete-input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .autocomplete-search:not(:placeholder-shown) ~ .autocomplete-clear-btn {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .autocomplete-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        transition: background 0.15s;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+
+    .autocomplete-item:hover {
+        background: #f9fafb;
+    }
+
+    .autocomplete-item-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 4px;
+    }
+
+    .autocomplete-item-nombre {
+        font-size: 13px;
+        font-weight: 500;
+        color: #111827;
+    }
+
+    .autocomplete-item-codigo {
+        font-size: 11px;
+        color: #9ca3af;
+        background: #f3f4f6;
+        padding: 2px 8px;
         border-radius: 4px;
     }
 
-    .odoo-chatter-tabs {
+    .autocomplete-item-meta {
         display: flex;
-        gap: 0;
-        border-bottom: 1px solid var(--odoo-border);
-    }
-
-    .odoo-chatter-tab {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 10px 16px;
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--odoo-text-muted);
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        transition: all 0.15s;
-    }
-
-    .odoo-chatter-tab:hover {
-        color: var(--odoo-text);
-        background: var(--odoo-bg-gray);
-    }
-
-    .odoo-chatter-tab-active {
-        color: var(--odoo-purple);
-        background: #f8f4f7;
-        border-bottom: 2px solid var(--odoo-purple);
-        margin-bottom: -1px;
-    }
-
-    .odoo-chatter-tab .material-icons {
-        font-size: 18px;
+        gap: 16px;
+        font-size: 11px;
+        color: #6b7280;
     }
 
     /* RESPONSIVE */
@@ -517,20 +623,6 @@
 
         .odoo-form-full .odoo-field-row {
             grid-template-columns: 120px 1fr;
-        }
-
-        .odoo-actionbar {
-            flex-direction: column;
-            gap: 12px;
-            align-items: stretch;
-        }
-
-        .odoo-actionbar-right {
-            order: -1;
-        }
-
-        .odoo-status-bar {
-            justify-content: center;
         }
     }
 
@@ -548,15 +640,6 @@
 
         .odoo-form-full .odoo-field-row {
             grid-template-columns: 1fr;
-        }
-
-        .odoo-doc-title {
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .odoo-doc-title h1 {
-            font-size: 22px;
         }
     }
 
@@ -583,35 +666,17 @@
         -webkit-appearance: none;
         margin: 0;
     }
-
-    /* HINT */
-    .odoo-field-hint {
-        font-size: 11px;
-        color: var(--odoo-text-muted);
-        font-style: italic;
-        margin-top: 4px;
-    }
-
-    /* CAMPOS CONDICIONALES */
-    .odoo-field-conditional {
-        animation: fadeIn 0.2s ease;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-4px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
 </style>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// Lógica para mostrar/ocultar campo de referencia
 document.addEventListener('DOMContentLoaded', function() {
     const formaPagoSelect = document.querySelector('[name="forma_pago"]');
     const fieldReferencia = document.getElementById('field-referencia');
 
-    // Formas de pago que requieren referencia
     const pagosConReferencia = ['transferencia', 'cheque', 'deposito', 'depósito'];
 
     function toggleReferencia() {
@@ -625,6 +690,231 @@ document.addEventListener('DOMContentLoaded', function() {
         formaPagoSelect.addEventListener('change', toggleReferencia);
         toggleReferencia();
     }
+});
+
+// ====================================
+// AUTOCOMPLETE DE MIEMBROS - CÓDIGO DIRECTO
+// ====================================
+
+class AutocompleteMiembro {
+    constructor(fieldId) {
+        this.fieldId = fieldId;
+        this.inputSearch = document.getElementById(`search-${fieldId}`);
+        this.dropdownEl = document.getElementById(`dropdown-${fieldId}`);
+        this.listEl = this.dropdownEl.querySelector('.autocomplete-list');
+        this.emptyEl = this.dropdownEl.querySelector('.autocomplete-empty');
+        this.loadingEl = this.dropdownEl.querySelector('.autocomplete-loading');
+        this.hiddenInput = document.getElementById(fieldId);
+
+        this.debounceTimer = null;
+        this.debounceDelay = 300;
+        this.minChars = 2;
+
+        if (!this.inputSearch) return;
+
+        this.attachEventListeners();
+    }
+
+    attachEventListeners() {
+        // Búsqueda con debounce
+        this.inputSearch.addEventListener('input', (e) => {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => {
+                this.search(e.target.value);
+            }, this.debounceDelay);
+        });
+
+        // Click fuera cierra dropdown
+        document.addEventListener('click', (e) => {
+            if (!this.inputSearch.contains(e.target) && !this.dropdownEl.contains(e.target)) {
+                this.closeDropdown();
+            }
+        });
+
+        // Botón limpiar
+        const clearBtn = document.querySelector(`.autocomplete-clear-btn[data-field="${this.fieldId}"]`) || 
+                         this.inputSearch.parentElement.querySelector('.autocomplete-clear-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.clearSelection();
+            });
+        }
+
+        // Focus abre dropdown si hay contenido
+        this.inputSearch.addEventListener('focus', () => {
+            if (this.inputSearch.value.length >= this.minChars) {
+                this.dropdownEl.classList.add('open');
+            }
+        });
+
+        // Navegar con teclado
+        this.inputSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeDropdown();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const firstItem = this.listEl.querySelector('.autocomplete-item');
+                if (firstItem) {
+                    this.selectItem(
+                        parseInt(firstItem.dataset.id),
+                        firstItem.dataset.nombre,
+                        firstItem.dataset.codigo
+                    );
+                }
+            }
+        });
+    }
+
+    async search(query) {
+        query = query.trim();
+
+        if (query.length < this.minChars) {
+            this.closeDropdown();
+            return;
+        }
+
+        this.showLoading();
+        this.openDropdown();
+
+        try {
+            const filtro = this.inputSearch.dataset.filtro || 'activos';
+            const response = await fetch(
+                `/api/buscar-miembros/?q=${encodeURIComponent(query)}&filtro=${filtro}&limit=15`,
+                {
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.resultados.length > 0) {
+                this.renderResults(data.resultados);
+            } else {
+                this.showEmpty();
+            }
+        } catch (error) {
+            console.error('Error en búsqueda:', error);
+            this.showEmpty();
+        }
+    }
+
+    renderResults(resultados) {
+        this.listEl.innerHTML = '';
+
+        resultados.forEach((miembro) => {
+            const item = document.createElement('li');
+            item.className = 'autocomplete-item';
+            item.dataset.id = miembro.id;
+            item.dataset.nombre = miembro.nombre;
+            item.dataset.codigo = miembro.codigo;
+
+            item.innerHTML = `
+                <div class="autocomplete-item-main">
+                    <span class="autocomplete-item-nombre">${this.escapeHtml(miembro.nombre)}</span>
+                    ${miembro.codigo ? `<span class="autocomplete-item-codigo">${this.escapeHtml(miembro.codigo)}</span>` : ''}
+                </div>
+                <div class="autocomplete-item-meta">
+                    ${miembro.edad ? `<span>Edad: ${miembro.edad}</span>` : ''}
+                    ${miembro.telefono && miembro.telefono !== '—' ? `<span>${this.escapeHtml(miembro.telefono)}</span>` : ''}
+                </div>
+            `;
+
+            item.addEventListener('click', () => {
+                this.selectItem(miembro.id, miembro.nombre, miembro.codigo);
+            });
+
+            this.listEl.appendChild(item);
+        });
+
+        this.emptyEl.style.display = 'none';
+        this.loadingEl.style.display = 'none';
+        this.listEl.style.display = 'block';
+    }
+
+    selectItem(id, nombre, codigo) {
+        this.hiddenInput.value = id;
+        this.inputSearch.value = nombre;
+        this.closeDropdown();
+        this.showSelected(nombre, codigo);
+    }
+
+    clearSelection() {
+        this.hiddenInput.value = '';
+        this.inputSearch.value = '';
+        const selectedDiv = this.dropdownEl.closest('.odoo-field-row').querySelector('.autocomplete-selected');
+        if (selectedDiv) {
+            selectedDiv.style.display = 'none';
+        }
+        this.listEl.innerHTML = '';
+        this.closeDropdown();
+        this.inputSearch.focus();
+    }
+
+    showSelected(nombre, codigo) {
+        const selectedDiv = this.dropdownEl.closest('.odoo-field-row').querySelector('.autocomplete-selected');
+        if (selectedDiv) {
+            selectedDiv.style.display = 'block';
+            selectedDiv.querySelector('.selected-name').textContent = nombre;
+            selectedDiv.querySelector('.selected-codigo').textContent = codigo || 'Sin código';
+
+            // Botón para quitar selección
+            const removeBtn = selectedDiv.querySelector('.selected-remove');
+            if (removeBtn && !removeBtn.dataset.listener) {
+                removeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.clearSelection();
+                });
+                removeBtn.dataset.listener = 'true';
+            }
+        }
+    }
+
+    showLoading() {
+        this.listEl.innerHTML = '';
+        this.listEl.style.display = 'none';
+        this.emptyEl.style.display = 'none';
+        this.loadingEl.style.display = 'block';
+    }
+
+    showEmpty() {
+        this.listEl.innerHTML = '';
+        this.listEl.style.display = 'none';
+        this.loadingEl.style.display = 'none';
+        this.emptyEl.style.display = 'block';
+    }
+
+    openDropdown() {
+        this.dropdownEl.classList.add('open');
+    }
+
+    closeDropdown() {
+        this.dropdownEl.classList.remove('open');
+    }
+
+    escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;',
+        };
+        return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+}
+
+// Inicializar autocomplete
+document.addEventListener('DOMContentLoaded', () => {
+    new AutocompleteMiembro('id_persona_asociada');
 });
 </script>
 {% endblock %}

@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, ajax_views
 
 app_name = "core"
 
@@ -26,4 +26,7 @@ urlpatterns = [
     path("cuenta/perfil/", views.perfil_usuario, name="perfil_usuario"),
     path("cuenta/cambiar-contrasena/", views.cambiar_contrasena, name="cambiar_contrasena"),
     path("cuenta/salir/", views.cerrar_sesion, name="logout"),
+    
+    # 🔌 AJAX APIs - Reutilizable en todos los módulos
+    path("api/buscar-miembros/", ajax_views.buscar_miembros, name="api_buscar_miembros"),
 ]

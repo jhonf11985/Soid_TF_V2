@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
 from django.conf import settings
+from core import ajax_views
 
 
 urlpatterns = [
@@ -22,6 +23,9 @@ urlpatterns = [
     path("votacion/", include("votacion_app.urls")),  # 👈 FALTABA LA COMA AQUÍ
 
     path("finanzas/", include("finanzas_app.urls")),  # 👈 NUEVA
+    
+    # 👇 API para búsqueda de miembros (usado por autocomplete)
+    path("api/buscar-miembros/", ajax_views.buscar_miembros, name="buscar_miembros"),
 ]
 
 # Para servir fotos y archivos subidos

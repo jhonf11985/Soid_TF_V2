@@ -6,7 +6,7 @@ from .utils_email import enviar_correo_sencillo
 from django.conf import settings
 from django.contrib.auth.decorators import permission_required
 from .forms import UsuarioIglesiaForm
-
+from . import ajax_views
 from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
