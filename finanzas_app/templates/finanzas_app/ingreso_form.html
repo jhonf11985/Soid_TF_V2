@@ -72,58 +72,49 @@
                         </div>
                     </div>
 
-                    <!-- 👇 AUTOCOMPLETE DE MIEMBRO - CÓDIGO DIRECTO (NO INCLUDE) -->
-                    <div class="odoo-field-row" style="grid-column: 1 / -1; position: relative;">
-                        <label for="search-id_persona_asociada" style="text-align: left;">Persona (opcional)</label>
-                        <div class="odoo-field-value">
+                    <!-- 👇 AUTOCOMPLETE DE MIEMBRO - ESTILO CHIP -->
+                    <div class="odoo-field-row">
+                        <label>Persona (opcional)</label>
+                        <div class="odoo-field-value autocomplete-wrapper" id="autocomplete-persona">
                             
-                            <!-- Input de búsqueda visible -->
-                            <div class="autocomplete-input-group">
+                            <!-- Campo hidden para guardar el ID -->
+                            <input type="hidden" id="id_persona_asociada" name="persona_asociada" value="">
+                            
+                            <!-- Contenedor del input y chip -->
+                            <div class="autocomplete-field">
+                                
+                                <!-- Chip de selección (oculto por defecto) -->
+                                <div class="autocomplete-chip" id="chip-persona" style="display: none;">
+                                    <span class="chip-avatar" id="chip-avatar">J</span>
+                                    <span class="chip-text">
+                                        <span class="chip-name" id="chip-name">Juan García</span>
+                                        <span class="chip-code" id="chip-code">TF-0001</span>
+                                    </span>
+                                    <button type="button" class="chip-remove" id="chip-remove" title="Quitar">
+                                        <span class="material-icons">close</span>
+                                    </button>
+                                </div>
+                                
+                                <!-- Input de búsqueda -->
                                 <input 
                                     type="text" 
-                                    id="search-id_persona_asociada" 
+                                    id="search-persona" 
                                     class="autocomplete-search" 
-                                    placeholder="Escribe nombre, apellido o código..."
+                                    placeholder="Buscar miembro..."
                                     autocomplete="off"
-                                    data-filtro="activos"
-                                    style="width: 100%; padding: 10px 36px 10px 12px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 13px;"
                                 >
-                                <button type="button" class="autocomplete-clear-btn" title="Limpiar" style="position: absolute; right: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #9ca3af; display: none; z-index: 5;">
-                                    <span class="material-icons" style="font-size: 18px;">close</span>
-                                </button>
                             </div>
                             
                             <!-- Dropdown de resultados -->
-                            <div class="autocomplete-dropdown" id="dropdown-id_persona_asociada" style="position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: white; border: 1px solid #e5e7eb; border-radius: 4px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); z-index: 1000; max-height: 300px; overflow-y: auto;">
-                                <ul class="autocomplete-list" style="list-style: none; margin: 0; padding: 4px 0;"></ul>
-                                <div class="autocomplete-empty" style="display: none; padding: 24px 16px; text-align: center; color: #9ca3af; font-size: 13px;">
-                                    <span class="material-icons" style="font-size: 32px; opacity: 0.3; display: block; margin-bottom: 8px;">search</span>
+                            <div class="autocomplete-dropdown" id="dropdown-persona">
+                                <ul class="autocomplete-list" id="list-persona"></ul>
+                                <div class="autocomplete-empty" id="empty-persona">
+                                    <span class="material-icons">person_search</span>
                                     <p>No se encontraron miembros</p>
                                 </div>
-                                <div class="autocomplete-loading" style="display: none; padding: 24px 16px; text-align: center; color: #9ca3af; font-size: 13px;">
-                                    <span class="material-icons spinner" style="font-size: 32px; opacity: 0.3; display: block; margin-bottom: 8px; animation: spin 1s linear infinite;">refresh</span>
+                                <div class="autocomplete-loading" id="loading-persona">
+                                    <span class="material-icons spinner">sync</span>
                                     <p>Buscando...</p>
-                                </div>
-                            </div>
-                            
-                            <!-- Campo hidden para guardar el ID -->
-                            <input 
-                                type="hidden" 
-                                id="id_persona_asociada" 
-                                name="persona_asociada" 
-                                value=""
-                            >
-                            
-                            <!-- Mostrar confirmación de selección -->
-                            <div class="autocomplete-selected" style="display: none; margin-top: 12px;">
-                                <div class="selected-card" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #ecfdf5; border: 1px solid #86efac; border-radius: 4px;">
-                                    <div class="selected-info" style="display: flex; flex-direction: column; gap: 2px;">
-                                        <span class="selected-name" style="font-size: 13px; font-weight: 600; color: #065f46;"></span>
-                                        <span class="selected-codigo" style="font-size: 12px; color: #059669;"></span>
-                                    </div>
-                                    <button type="button" class="selected-remove" title="Quitar selección" style="background: transparent; border: none; cursor: pointer; padding: 4px; color: #059669; transition: color 0.15s;">
-                                        <span class="material-icons" style="font-size: 18px;">clear</span>
-                                    </button>
                                 </div>
                             </div>
 
@@ -180,98 +171,8 @@
 
 <style>
     /* =====================================
-       ODOO FORM - ESTILO EXACTO
+       ODOO FORM - ESTILO BASE
        ===================================== */
-    
-    /* Autocomplete dropdown - control de visibilidad */
-    .autocomplete-dropdown {
-        display: none !important;
-    }
-    
-    .autocomplete-dropdown.open {
-        display: block !important;
-    }
-
-    /* Input de autocomplete - estilo línea como los demás campos */
-    .autocomplete-search {
-        width: 100%;
-        border: none !important;
-        border-bottom: 1px solid transparent !important;
-        border-radius: 0 !important;
-        background: transparent !important;
-        padding: 4px 0 !important;
-        font-size: 13px;
-        color: var(--odoo-text);
-        font-family: inherit;
-        transition: border-color 0.15s;
-    }
-
-    .autocomplete-search:hover {
-        border-bottom-color: var(--odoo-border) !important;
-    }
-
-    .autocomplete-search:focus {
-        outline: none;
-        border-bottom-color: var(--odoo-purple) !important;
-        border-bottom-width: 2px !important;
-        padding-bottom: 3px !important;
-        box-shadow: none !important;
-    }
-
-    .autocomplete-input-group {
-        position: relative;
-    }
-
-    .autocomplete-clear-btn {
-        position: absolute;
-        right: 0;
-        top: 50%;
-        transform: translateY(-50%);
-    }
-
-    /* Estilos para items del autocomplete */
-    .autocomplete-item {
-        padding: 10px 14px;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        transition: background 0.15s;
-    }
-
-    .autocomplete-item:hover {
-        background: #f5f5f5;
-    }
-
-    .autocomplete-item:last-child {
-        border-bottom: none;
-    }
-
-    .autocomplete-item-main {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 4px;
-    }
-
-    .autocomplete-item-nombre {
-        font-weight: 500;
-        color: #333;
-        font-size: 14px;
-    }
-
-    .autocomplete-item-codigo {
-        font-size: 12px;
-        color: #888;
-        background: #f0f0f0;
-        padding: 2px 8px;
-        border-radius: 4px;
-    }
-
-    .autocomplete-item-meta {
-        font-size: 12px;
-        color: #666;
-        display: flex;
-        gap: 12px;
-    }
 
     :root {
         --odoo-purple: #714B67;
@@ -315,6 +216,7 @@
         color: var(--odoo-text-muted);
         border-radius: 4px;
         transition: all 0.15s;
+        text-decoration: none;
     }
 
     .odoo-back-link:hover {
@@ -538,79 +440,266 @@
         margin-top: 4px;
     }
 
-    /* CAMPOS CONDICIONALES */
-    .odoo-field-conditional {
-        animation: fadeIn 0.2s ease;
+    /* =====================================
+       AUTOCOMPLETE - ESTILO CHIP/TAG
+       ===================================== */
+
+    .autocomplete-wrapper {
+        position: relative;
     }
 
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-4px); }
-        to { opacity: 1; transform: translateY(0); }
+    .autocomplete-field {
+        display: flex;
+        align-items: center;
+        min-height: 32px;
+        flex-wrap: wrap;
+        gap: 6px;
     }
 
+    /* Input de búsqueda */
+    .autocomplete-search {
+        flex: 1;
+        min-width: 120px;
+        border: none;
+        border-bottom: 1px solid transparent;
+        background: transparent;
+        padding: 4px 0;
+        font-size: 13px;
+        color: var(--odoo-text);
+        font-family: inherit;
+        transition: border-color 0.15s;
+    }
+
+    .autocomplete-search:hover {
+        border-bottom-color: var(--odoo-border);
+    }
+
+    .autocomplete-search:focus {
+        outline: none;
+        border-bottom-color: var(--odoo-purple);
+        border-bottom-width: 2px;
+        padding-bottom: 3px;
+    }
+
+    .autocomplete-search::placeholder {
+        color: #adb5bd;
+    }
+
+    /* Ocultar input cuando hay chip */
+    .autocomplete-field.has-selection .autocomplete-search {
+        display: none;
+    }
+
+    /* =====================================
+       CHIP / TAG - ESTILO SUTIL Y COMPACTO
+       ===================================== */
+
+    .autocomplete-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 6px 2px 2px;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        font-size: 13px;
+        color: var(--odoo-text);
+        animation: chipIn 0.15s ease;
+    }
+
+    @keyframes chipIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .chip-avatar {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--odoo-purple);
+        color: white;
+        font-size: 9px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-transform: uppercase;
+    }
+
+    .chip-text {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        line-height: 1;
+    }
+
+    .chip-name {
+        font-weight: 500;
+        color: var(--odoo-text);
+        font-size: 13px;
+    }
+
+    .chip-code {
+        font-size: 11px;
+        color: var(--odoo-text-muted);
+        font-weight: 400;
+    }
+
+    .chip-remove {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+        cursor: pointer;
+        transition: all 0.15s;
+        padding: 0;
+        margin-left: 2px;
+    }
+
+    .chip-remove:hover {
+        background: #e5e7eb;
+        color: var(--odoo-text);
+    }
+
+    .chip-remove .material-icons {
+        font-size: 14px;
+    }
+
+    /* =====================================
+       DROPDOWN
+       ===================================== */
+
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 4px;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        max-height: 280px;
+        overflow-y: auto;
+        display: none;
+    }
+
+    .autocomplete-dropdown.open {
+        display: block;
+    }
+
+    .autocomplete-list {
+        list-style: none;
+        margin: 0;
+        padding: 4px 0;
+    }
+
+    .autocomplete-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .autocomplete-item:hover {
+        background: #f5f0f4;
+    }
+
+    .autocomplete-item-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--odoo-purple) 0%, #8e6b82 100%);
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+
+    .autocomplete-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .autocomplete-item-name {
+        font-weight: 500;
+        color: #111827;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .autocomplete-item-meta {
+        font-size: 11px;
+        color: #6b7280;
+        display: flex;
+        gap: 8px;
+        margin-top: 2px;
+    }
+
+    .autocomplete-item-code {
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .autocomplete-empty,
+    .autocomplete-loading {
+        padding: 24px 14px;
+        text-align: center;
+        color: #9ca3af;
+        display: none;
+    }
+
+    .autocomplete-empty .material-icons,
+    .autocomplete-loading .material-icons {
+        font-size: 32px;
+        opacity: 0.4;
+        display: block;
+        margin: 0 auto 8px;
+    }
+
+    .autocomplete-empty p,
+    .autocomplete-loading p {
+        margin: 0;
+        font-size: 12px;
+    }
+
+    /* Spinner animation */
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
 
-    /* AUTOCOMPLETE STYLES */
-    .autocomplete-input-group {
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    .spinner {
+        animation: spin 1s linear infinite;
     }
 
-    .autocomplete-search:not(:placeholder-shown) ~ .autocomplete-clear-btn {
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-    }
+    /* =====================================
+       RESPONSIVE
+       ===================================== */
 
-    .autocomplete-item {
-        padding: 12px 16px;
-        cursor: pointer;
-        transition: background 0.15s;
-        border-bottom: 1px solid #f3f4f6;
-    }
-
-    .autocomplete-item:last-child {
-        border-bottom: none;
-    }
-
-    .autocomplete-item:hover {
-        background: #f9fafb;
-    }
-
-    .autocomplete-item-main {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        gap: 12px;
-        margin-bottom: 4px;
-    }
-
-    .autocomplete-item-nombre {
-        font-size: 13px;
-        font-weight: 500;
-        color: #111827;
-    }
-
-    .autocomplete-item-codigo {
-        font-size: 11px;
-        color: #9ca3af;
-        background: #f3f4f6;
-        padding: 2px 8px;
-        border-radius: 4px;
-    }
-
-    .autocomplete-item-meta {
-        display: flex;
-        gap: 16px;
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    /* RESPONSIVE */
     @media (max-width: 900px) {
         .odoo-form-content {
             grid-template-columns: 1fr;
@@ -641,13 +730,17 @@
         .odoo-form-full .odoo-field-row {
             grid-template-columns: 1fr;
         }
-    }
 
-    /* PLACEHOLDER */
-    .odoo-form-sheet input::placeholder,
-    .odoo-form-sheet textarea::placeholder {
-        color: #adb5bd;
-        font-style: normal;
+        .autocomplete-chip {
+            max-width: 100%;
+        }
+
+        .chip-name {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     }
 
     /* INPUT DATE */
@@ -672,8 +765,11 @@
 
 {% block extra_js %}
 <script>
-// Lógica para mostrar/ocultar campo de referencia
 document.addEventListener('DOMContentLoaded', function() {
+    
+    // ====================================
+    // LÓGICA PARA MOSTRAR/OCULTAR REFERENCIA
+    // ====================================
     const formaPagoSelect = document.querySelector('[name="forma_pago"]');
     const fieldReferencia = document.getElementById('field-referencia');
 
@@ -690,98 +786,152 @@ document.addEventListener('DOMContentLoaded', function() {
         formaPagoSelect.addEventListener('change', toggleReferencia);
         toggleReferencia();
     }
-});
 
-// ====================================
-// AUTOCOMPLETE DE MIEMBROS - CÓDIGO DIRECTO
-// ====================================
+    // ====================================
+    // AUTOCOMPLETE DE MIEMBROS - ESTILO CHIP
+    // ====================================
+    const searchInput = document.getElementById('search-persona');
+    const dropdown = document.getElementById('dropdown-persona');
+    const listEl = document.getElementById('list-persona');
+    const emptyEl = document.getElementById('empty-persona');
+    const loadingEl = document.getElementById('loading-persona');
+    const hiddenInput = document.getElementById('id_persona_asociada');
+    const fieldContainer = searchInput?.closest('.autocomplete-field');
+    
+    // Elementos del chip
+    const chip = document.getElementById('chip-persona');
+    const chipAvatar = document.getElementById('chip-avatar');
+    const chipName = document.getElementById('chip-name');
+    const chipCode = document.getElementById('chip-code');
+    const chipRemove = document.getElementById('chip-remove');
 
-class AutocompleteMiembro {
-    constructor(fieldId) {
-        this.fieldId = fieldId;
-        this.inputSearch = document.getElementById(`search-${fieldId}`);
-        this.dropdownEl = document.getElementById(`dropdown-${fieldId}`);
-        this.listEl = this.dropdownEl.querySelector('.autocomplete-list');
-        this.emptyEl = this.dropdownEl.querySelector('.autocomplete-empty');
-        this.loadingEl = this.dropdownEl.querySelector('.autocomplete-loading');
-        this.hiddenInput = document.getElementById(fieldId);
+    let debounceTimer = null;
+    const DEBOUNCE_DELAY = 300;
+    const MIN_CHARS = 2;
 
-        this.debounceTimer = null;
-        this.debounceDelay = 300;
-        this.minChars = 2;
-
-        if (!this.inputSearch) return;
-
-        this.attachEventListeners();
-    }
-
-    attachEventListeners() {
-        // Búsqueda con debounce
-        this.inputSearch.addEventListener('input', (e) => {
-            clearTimeout(this.debounceTimer);
-            this.debounceTimer = setTimeout(() => {
-                this.search(e.target.value);
-            }, this.debounceDelay);
-        });
-
-        // Click fuera cierra dropdown
-        document.addEventListener('click', (e) => {
-            if (!this.inputSearch.contains(e.target) && !this.dropdownEl.contains(e.target)) {
-                this.closeDropdown();
-            }
-        });
-
-        // Botón limpiar
-        const clearBtn = document.querySelector(`.autocomplete-clear-btn[data-field="${this.fieldId}"]`) || 
-                         this.inputSearch.parentElement.querySelector('.autocomplete-clear-btn');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.clearSelection();
-            });
+    // Obtener iniciales del nombre
+    function getInitials(nombre) {
+        if (!nombre) return '?';
+        const parts = nombre.trim().split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
         }
-
-        // Focus abre dropdown si hay contenido
-        this.inputSearch.addEventListener('focus', () => {
-            if (this.inputSearch.value.length >= this.minChars) {
-                this.dropdownEl.classList.add('open');
-            }
-        });
-
-        // Navegar con teclado
-        this.inputSearch.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeDropdown();
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                const firstItem = this.listEl.querySelector('.autocomplete-item');
-                if (firstItem) {
-                    this.selectItem(
-                        parseInt(firstItem.dataset.id),
-                        firstItem.dataset.nombre,
-                        firstItem.dataset.codigo
-                    );
-                }
-            }
-        });
+        return nombre.substring(0, 2).toUpperCase();
     }
 
-    async search(query) {
+    // Función para escapar HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // Mostrar loading
+    function showLoading() {
+        listEl.innerHTML = '';
+        listEl.style.display = 'none';
+        emptyEl.style.display = 'none';
+        loadingEl.style.display = 'block';
+        dropdown.classList.add('open');
+    }
+
+    // Mostrar vacío
+    function showEmpty() {
+        listEl.innerHTML = '';
+        listEl.style.display = 'none';
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+    }
+
+    // Cerrar dropdown
+    function closeDropdown() {
+        dropdown.classList.remove('open');
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'none';
+    }
+
+    // Renderizar resultados
+    function renderResults(resultados) {
+        listEl.innerHTML = '';
+
+        resultados.forEach(miembro => {
+            const li = document.createElement('li');
+            li.className = 'autocomplete-item';
+            li.dataset.id = miembro.id;
+            li.dataset.nombre = miembro.nombre;
+            li.dataset.codigo = miembro.codigo || '';
+
+            const initials = getInitials(miembro.nombre);
+
+            li.innerHTML = `
+                <div class="autocomplete-item-avatar">${initials}</div>
+                <div class="autocomplete-item-info">
+                    <div class="autocomplete-item-name">${escapeHtml(miembro.nombre)}</div>
+                    <div class="autocomplete-item-meta">
+                        ${miembro.codigo ? `<span class="autocomplete-item-code">${escapeHtml(miembro.codigo)}</span>` : ''}
+                        ${miembro.telefono && miembro.telefono !== '—' ? `<span>${escapeHtml(miembro.telefono)}</span>` : ''}
+                    </div>
+                </div>
+            `;
+
+            li.addEventListener('click', function() {
+                selectMiembro(miembro.id, miembro.nombre, miembro.codigo);
+            });
+
+            listEl.appendChild(li);
+        });
+
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'none';
+        listEl.style.display = 'block';
+    }
+
+    // Seleccionar miembro - mostrar chip
+    function selectMiembro(id, nombre, codigo) {
+        // Guardar valor
+        hiddenInput.value = id;
+        
+        // Actualizar chip
+        chipAvatar.textContent = getInitials(nombre);
+        chipName.textContent = nombre;
+        chipCode.textContent = codigo || 'Sin código';
+        
+        // Mostrar chip, ocultar input
+        chip.style.display = 'inline-flex';
+        searchInput.value = '';
+        searchInput.style.display = 'none';
+        fieldContainer.classList.add('has-selection');
+        
+        // Cerrar dropdown
+        closeDropdown();
+    }
+
+    // Limpiar selección
+    function clearSelection() {
+        hiddenInput.value = '';
+        chip.style.display = 'none';
+        searchInput.style.display = '';
+        searchInput.value = '';
+        fieldContainer.classList.remove('has-selection');
+        listEl.innerHTML = '';
+        closeDropdown();
+        searchInput.focus();
+    }
+
+    // Buscar miembros
+    async function searchMiembros(query) {
         query = query.trim();
 
-        if (query.length < this.minChars) {
-            this.closeDropdown();
+        if (query.length < MIN_CHARS) {
+            closeDropdown();
             return;
         }
 
-        this.showLoading();
-        this.openDropdown();
+        showLoading();
 
         try {
-            const filtro = this.inputSearch.dataset.filtro || 'activos';
             const response = await fetch(
-                `/api/buscar-miembros/?q=${encodeURIComponent(query)}&filtro=${filtro}&limit=15`,
+                `/api/buscar-miembros/?q=${encodeURIComponent(query)}&filtro=activos&limit=15`,
                 {
                     credentials: 'same-origin',
                     headers: {
@@ -796,125 +946,69 @@ class AutocompleteMiembro {
 
             const data = await response.json();
 
-            if (data.success && data.resultados.length > 0) {
-                this.renderResults(data.resultados);
+            if (data.success && data.resultados && data.resultados.length > 0) {
+                renderResults(data.resultados);
             } else {
-                this.showEmpty();
+                showEmpty();
             }
         } catch (error) {
             console.error('Error en búsqueda:', error);
-            this.showEmpty();
+            showEmpty();
         }
     }
 
-    renderResults(resultados) {
-        this.listEl.innerHTML = '';
-
-        resultados.forEach((miembro) => {
-            const item = document.createElement('li');
-            item.className = 'autocomplete-item';
-            item.dataset.id = miembro.id;
-            item.dataset.nombre = miembro.nombre;
-            item.dataset.codigo = miembro.codigo;
-
-            item.innerHTML = `
-                <div class="autocomplete-item-main">
-                    <span class="autocomplete-item-nombre">${this.escapeHtml(miembro.nombre)}</span>
-                    ${miembro.codigo ? `<span class="autocomplete-item-codigo">${this.escapeHtml(miembro.codigo)}</span>` : ''}
-                </div>
-                <div class="autocomplete-item-meta">
-                    ${miembro.edad ? `<span>Edad: ${miembro.edad}</span>` : ''}
-                    ${miembro.telefono && miembro.telefono !== '—' ? `<span>${this.escapeHtml(miembro.telefono)}</span>` : ''}
-                </div>
-            `;
-
-            item.addEventListener('click', () => {
-                this.selectItem(miembro.id, miembro.nombre, miembro.codigo);
-            });
-
-            this.listEl.appendChild(item);
+    // Event listeners
+    if (searchInput) {
+        // Búsqueda con debounce
+        searchInput.addEventListener('input', function(e) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                searchMiembros(e.target.value);
+            }, DEBOUNCE_DELAY);
         });
 
-        this.emptyEl.style.display = 'none';
-        this.loadingEl.style.display = 'none';
-        this.listEl.style.display = 'block';
-    }
-
-    selectItem(id, nombre, codigo) {
-        this.hiddenInput.value = id;
-        this.inputSearch.value = nombre;
-        this.closeDropdown();
-        this.showSelected(nombre, codigo);
-    }
-
-    clearSelection() {
-        this.hiddenInput.value = '';
-        this.inputSearch.value = '';
-        const selectedDiv = this.dropdownEl.closest('.odoo-field-row').querySelector('.autocomplete-selected');
-        if (selectedDiv) {
-            selectedDiv.style.display = 'none';
-        }
-        this.listEl.innerHTML = '';
-        this.closeDropdown();
-        this.inputSearch.focus();
-    }
-
-    showSelected(nombre, codigo) {
-        const selectedDiv = this.dropdownEl.closest('.odoo-field-row').querySelector('.autocomplete-selected');
-        if (selectedDiv) {
-            selectedDiv.style.display = 'block';
-            selectedDiv.querySelector('.selected-name').textContent = nombre;
-            selectedDiv.querySelector('.selected-codigo').textContent = codigo || 'Sin código';
-
-            // Botón para quitar selección
-            const removeBtn = selectedDiv.querySelector('.selected-remove');
-            if (removeBtn && !removeBtn.dataset.listener) {
-                removeBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.clearSelection();
-                });
-                removeBtn.dataset.listener = 'true';
+        // Focus abre dropdown si hay texto suficiente
+        searchInput.addEventListener('focus', function() {
+            if (this.value.length >= MIN_CHARS) {
+                dropdown.classList.add('open');
             }
+        });
+
+        // Teclado
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDropdown();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const firstItem = listEl.querySelector('.autocomplete-item');
+                if (firstItem) {
+                    selectMiembro(
+                        firstItem.dataset.id,
+                        firstItem.dataset.nombre,
+                        firstItem.dataset.codigo
+                    );
+                }
+            }
+        });
+    }
+
+    // Botón quitar chip
+    if (chipRemove) {
+        chipRemove.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            clearSelection();
+        });
+    }
+
+    // Click fuera cierra dropdown
+    document.addEventListener('click', function(e) {
+        const wrapper = document.getElementById('autocomplete-persona');
+        if (wrapper && !wrapper.contains(e.target)) {
+            closeDropdown();
         }
-    }
+    });
 
-    showLoading() {
-        this.listEl.innerHTML = '';
-        this.listEl.style.display = 'none';
-        this.emptyEl.style.display = 'none';
-        this.loadingEl.style.display = 'block';
-    }
-
-    showEmpty() {
-        this.listEl.innerHTML = '';
-        this.listEl.style.display = 'none';
-        this.loadingEl.style.display = 'none';
-        this.emptyEl.style.display = 'block';
-    }
-
-    openDropdown() {
-        this.dropdownEl.classList.add('open');
-    }
-
-    closeDropdown() {
-        this.dropdownEl.classList.remove('open');
-    }
-
-    escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;',
-        };
-        return text.replace(/[&<>"']/g, (m) => map[m]);
-    }
-}
-
-// Inicializar autocomplete
-document.addEventListener('DOMContentLoaded', () => {
-    new AutocompleteMiembro('id_persona_asociada');
 });
 </script>
 {% endblock %}
