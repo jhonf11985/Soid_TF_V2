@@ -1,0 +1,665 @@
+{% extends 'finanzas_app/base_finanzas.html' %}
+{% load static %}
+
+{% block title %}Transferencia #{{ transferencia.transferencia_id|slice:":8" }} · Soid_Tf_2{% endblock %}
+
+{% block finanzas_content %}
+
+<div class="odoo-page">
+
+    <!-- BARRA SUPERIOR -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a href="{% url 'finanzas_app:movimientos_listado' %}" class="odoo-back-link">
+                <span class="material-icons">arrow_back</span>
+            </a>
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-parent">Movimientos</span>
+                <span class="odoo-breadcrumb-separator">/</span>
+                <span class="odoo-breadcrumb-current">Transferencia</span>
+            </div>
+        </div>
+        <div class="odoo-topbar-right">
+            {% if transferencia.estado == "anulado" %}
+                <span class="odoo-status odoo-status-danger">Anulada</span>
+            {% else %}
+                <span class="odoo-status odoo-status-success">Confirmada</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- BARRA DE ACCIONES -->
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            {% if transferencia.estado != "anulado" %}
+            <a href="{% url 'finanzas_app:transferencia_anular' transferencia.pk %}" class="odoo-btn odoo-btn-danger">
+                <span class="material-icons">block</span>
+                Anular transferencia
+            </a>
+            {% else %}
+            <span class="odoo-btn odoo-btn-disabled">
+                <span class="material-icons">block</span>
+                Anular transferencia
+            </span>
+            {% endif %}
+            <button type="button" class="odoo-btn odoo-btn-secondary" onclick="window.print()">
+                <span class="material-icons">print</span>
+                Imprimir
+            </button>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="odoo-detail-sheet">
+        
+        <!-- CABECERA CON MONTO -->
+        <div class="odoo-detail-header odoo-detail-header-transfer">
+            <div class="odoo-detail-icon odoo-detail-icon-transfer">
+                <span class="material-icons">swap_horiz</span>
+            </div>
+            <div class="odoo-detail-title">
+                <span class="odoo-detail-type">Transferencia</span>
+                <span class="odoo-detail-amount">{{ mov_envio.cuenta.moneda }} {{ mov_envio.monto|floatformat:2 }}</span>
+            </div>
+            <div class="odoo-detail-date">
+                <span class="material-icons">event</span>
+                {{ transferencia.fecha|date:"d M Y" }}
+            </div>
+        </div>
+
+        <!-- FLUJO DE TRANSFERENCIA -->
+        <div class="transfer-flow">
+            <div class="transfer-box transfer-origin">
+                <div class="transfer-box-header">
+                    <span class="material-icons">arrow_upward</span>
+                    <span>Cuenta Origen</span>
+                </div>
+                <div class="transfer-box-content">
+                    <div class="transfer-account-name">{{ mov_envio.cuenta.nombre }}</div>
+                    <div class="transfer-account-type">{{ mov_envio.cuenta.get_tipo_display }}</div>
+                    <div class="transfer-amount transfer-negative">
+                        - {{ mov_envio.cuenta.moneda }} {{ mov_envio.monto|floatformat:2 }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="transfer-arrow">
+                <span class="material-icons">arrow_forward</span>
+            </div>
+
+            <div class="transfer-box transfer-destination">
+                <div class="transfer-box-header">
+                    <span class="material-icons">arrow_downward</span>
+                    <span>Cuenta Destino</span>
+                </div>
+                <div class="transfer-box-content">
+                    <div class="transfer-account-name">{{ mov_recepcion.cuenta.nombre }}</div>
+                    <div class="transfer-account-type">{{ mov_recepcion.cuenta.get_tipo_display }}</div>
+                    <div class="transfer-amount transfer-positive">
+                        + {{ mov_recepcion.cuenta.moneda }} {{ mov_recepcion.monto|floatformat:2 }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMACIÓN ADICIONAL -->
+        <div class="odoo-detail-content">
+            
+            <!-- COLUMNA IZQUIERDA -->
+            <div class="odoo-detail-col">
+                <div class="odoo-detail-section">
+                    <h3 class="odoo-section-title">Información de la transferencia</h3>
+                    
+                    {% if transferencia.referencia %}
+                    <div class="odoo-field-row">
+                        <label>Referencia</label>
+                        <div class="odoo-field-value">
+                            <code class="odoo-code">{{ transferencia.referencia }}</code>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="odoo-field-row">
+                        <label>ID Transferencia</label>
+                        <div class="odoo-field-value">
+                            <code class="odoo-code">{{ transferencia.transferencia_id }}</code>
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Movimientos vinculados</label>
+                        <div class="odoo-field-value">
+                            <a href="{% url 'finanzas_app:movimientos_listado' %}?q={{ transferencia.transferencia_id }}" 
+                               class="odoo-link">
+                                Ver en listado
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {% if transferencia.descripcion %}
+                <div class="odoo-detail-section">
+                    <h3 class="odoo-section-title">Descripción</h3>
+                    <p class="odoo-description">
+                        {{ transferencia.descripcion|linebreaks }}
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- COLUMNA DERECHA -->
+            <div class="odoo-detail-col">
+                <div class="odoo-detail-section">
+                    <h3 class="odoo-section-title">Auditoría</h3>
+                    
+                    <div class="odoo-audit-list">
+                        <div class="odoo-audit-item">
+                            <span class="material-icons">person_add</span>
+                            <div class="odoo-audit-info">
+                                <span class="odoo-audit-label">Registrado por</span>
+                                <span class="odoo-audit-value">
+                                    {% if transferencia.creado_por %}
+                                        {{ transferencia.creado_por.get_full_name|default:transferencia.creado_por.username }}
+                                    {% else %}
+                                        Sistema
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="odoo-audit-item">
+                            <span class="material-icons">schedule</span>
+                            <div class="odoo-audit-info">
+                                <span class="odoo-audit-label">Fecha de creación</span>
+                                <span class="odoo-audit-value">
+                                    {{ transferencia.creado_en|date:"d/m/Y H:i" }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {% if transferencia.estado == "anulado" %}
+                        <div class="odoo-audit-item">
+                            <span class="material-icons">cancel</span>
+                            <div class="odoo-audit-info">
+                                <span class="odoo-audit-label">Estado</span>
+                                <span class="odoo-audit-value" style="color: #dc2626; font-weight: 600;">
+                                    Anulada
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+    :root {
+        --odoo-purple: #714B67;
+        --odoo-purple-dark: #5d3d54;
+        --odoo-text: #212529;
+        --odoo-text-muted: #6c757d;
+        --odoo-border: #dee2e6;
+        --odoo-bg: #ffffff;
+        --odoo-bg-gray: #f8f9fa;
+        --odoo-success: #10b981;
+        --odoo-success-bg: #ecfdf5;
+        --odoo-danger: #ef4444;
+        --odoo-danger-bg: #fef2f2;
+    }
+
+    .odoo-page {
+        background: var(--odoo-bg-gray);
+        min-height: 100vh;
+    }
+
+    /* Estilos de barra superior (reutilizar del detalle de ingreso) */
+    .odoo-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 16px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .odoo-back-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        color: var(--odoo-text-muted);
+        border-radius: 4px;
+        transition: all 0.15s;
+        text-decoration: none;
+    }
+
+    .odoo-back-link:hover {
+        background: var(--odoo-bg-gray);
+        color: var(--odoo-text);
+    }
+
+    .odoo-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+    }
+
+    .odoo-breadcrumb-parent {
+        color: var(--odoo-purple);
+        font-weight: 500;
+    }
+
+    .odoo-breadcrumb-separator {
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-breadcrumb-current {
+        color: var(--odoo-text);
+        font-weight: 600;
+    }
+
+    .odoo-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .odoo-status-success {
+        background: var(--odoo-success-bg);
+        color: #065f46;
+    }
+
+    .odoo-status-danger {
+        background: var(--odoo-danger-bg);
+        color: #991b1b;
+    }
+
+    .odoo-actionbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 16px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-actionbar-left {
+        display: flex;
+        gap: 8px;
+    }
+
+    .odoo-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid var(--odoo-border);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+        font-family: inherit;
+    }
+
+    .odoo-btn .material-icons {
+        font-size: 18px;
+    }
+
+    .odoo-btn-secondary {
+        background: var(--odoo-bg);
+        color: var(--odoo-text);
+    }
+
+    .odoo-btn-secondary:hover {
+        background: var(--odoo-bg-gray);
+    }
+
+    .odoo-btn-danger {
+        background: var(--odoo-danger-bg);
+        color: #b91c1c;
+        border-color: #fecaca;
+    }
+
+    .odoo-btn-danger:hover {
+        background: #fee2e2;
+    }
+
+    .odoo-btn-disabled {
+        background: #e5e7eb;
+        color: #9ca3af;
+        border-color: #e5e7eb;
+        cursor: not-allowed;
+    }
+
+    .odoo-detail-sheet {
+        max-width: 1200px;
+        margin: 16px auto;
+        background: var(--odoo-bg);
+        border: 1px solid var(--odoo-border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .odoo-detail-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 24px;
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-detail-header-transfer {
+        background: linear-gradient(135deg, #f3e8ff 0%, #fae8ff 100%);
+        border-bottom: 1px solid #e9d5ff;
+    }
+
+    .odoo-detail-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .odoo-detail-icon .material-icons {
+        font-size: 28px;
+    }
+
+    .odoo-detail-icon-transfer {
+        background: #e9d5ff;
+        color: var(--odoo-purple);
+    }
+
+    .odoo-detail-title {
+        flex: 1;
+    }
+
+    .odoo-detail-type {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--odoo-purple);
+        margin-bottom: 4px;
+    }
+
+    .odoo-detail-amount {
+        font-size: 32px;
+        font-weight: 700;
+        color: #3b0764;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .odoo-detail-date {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: rgba(255,255,255,0.7);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--odoo-text);
+    }
+
+    .odoo-detail-date .material-icons {
+        font-size: 18px;
+        color: var(--odoo-text-muted);
+    }
+
+    /* FLUJO DE TRANSFERENCIA */
+    .transfer-flow {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        padding: 32px 24px;
+        background: var(--odoo-bg-gray);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .transfer-box {
+        flex: 1;
+        background: var(--odoo-bg);
+        border: 2px solid var(--odoo-border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .transfer-box-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .transfer-origin .transfer-box-header {
+        background: #fef2f2;
+        color: #991b1b;
+    }
+
+    .transfer-destination .transfer-box-header {
+        background: #ecfdf5;
+        color: #065f46;
+    }
+
+    .transfer-box-header .material-icons {
+        font-size: 18px;
+    }
+
+    .transfer-box-content {
+        padding: 20px 16px;
+    }
+
+    .transfer-account-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--odoo-text);
+        margin-bottom: 4px;
+    }
+
+    .transfer-account-type {
+        font-size: 12px;
+        color: var(--odoo-text-muted);
+        margin-bottom: 12px;
+    }
+
+    .transfer-amount {
+        font-size: 24px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .transfer-negative {
+        color: #dc2626;
+    }
+
+    .transfer-positive {
+        color: #059669;
+    }
+
+    .transfer-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        background: var(--odoo-purple);
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .transfer-arrow .material-icons {
+        font-size: 28px;
+        color: white;
+    }
+
+    /* CONTENIDO */
+    .odoo-detail-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+    }
+
+    .odoo-detail-col {
+        padding: 24px;
+    }
+
+    .odoo-detail-col:first-child {
+        border-right: 1px solid var(--odoo-border);
+    }
+
+    .odoo-detail-section {
+        margin-bottom: 24px;
+    }
+
+    .odoo-detail-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .odoo-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--odoo-text-muted);
+        margin: 0 0 16px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-field-row {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+        align-items: center;
+    }
+
+    .odoo-field-row label {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-field-value {
+        font-size: 14px;
+        color: var(--odoo-text);
+    }
+
+    .odoo-code {
+        font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+        font-size: 12px;
+        background: #f3f4f6;
+        padding: 3px 8px;
+        border-radius: 4px;
+        color: #374151;
+    }
+
+    .odoo-link {
+        color: var(--odoo-purple);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .odoo-link:hover {
+        text-decoration: underline;
+    }
+
+    .odoo-description {
+        font-size: 14px;
+        color: var(--odoo-text);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .odoo-audit-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .odoo-audit-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .odoo-audit-item > .material-icons {
+        font-size: 20px;
+        color: var(--odoo-text-muted);
+        margin-top: 2px;
+    }
+
+    .odoo-audit-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .odoo-audit-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-audit-value {
+        font-size: 13px;
+        color: var(--odoo-text);
+    }
+
+    @media (max-width: 900px) {
+        .odoo-detail-content {
+            grid-template-columns: 1fr;
+        }
+
+        .odoo-detail-col:first-child {
+            border-right: none;
+            border-bottom: 1px solid var(--odoo-border);
+        }
+
+        .transfer-flow {
+            flex-direction: column;
+        }
+
+        .transfer-arrow {
+            transform: rotate(90deg);
+        }
+    }
+
+    @media print {
+        .odoo-topbar,
+        .odoo-actionbar {
+            display: none;
+        }
+
+        .odoo-detail-sheet {
+            margin: 0;
+            border: none;
+            box-shadow: none;
+        }
+    }
+</style>
+
+{% endblock %}

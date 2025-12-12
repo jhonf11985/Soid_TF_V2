@@ -38,5 +38,9 @@ urlpatterns = [
         views.buscar_miembros_finanzas,
         name="buscar_miembros_finanzas",
     ),
+    # Transferencias
+    path("transferencias/nueva/", views.transferencia_crear, name="transferencia_crear"),
+    path("transferencias/<int:pk>/detalle/", views.transferencia_detalle, name="transferencia_detalle"),
+    path("transferencias/<int:pk>/anular/", views.transferencia_anular, name="transferencia_anular"),
 
 ]

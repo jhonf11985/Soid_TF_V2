@@ -135,13 +135,22 @@
             <tbody>
                 {% if movimientos %}
                     {% for mov in movimientos %}
-                       <tr class="row-clickable"
-                  
-                        >
+                    <tr class="row-clickable"
+                        {% if mov.es_transferencia %}
+                            data-href="{% url 'finanzas_app:transferencia_detalle' mov.pk %}"
+                        {% else %}
+                            data-href="{% url 'finanzas_app:ingreso_detalle' mov.pk %}"
+                        {% endif %}
+                    >
 
                             <td>{{ mov.fecha|date:"d M Y" }}</td>
                             <td>
-                                {% if mov.tipo == 'ingreso' %}
+                                {% if mov.es_transferencia %}
+                                    <span class="badge badge-transfer">
+                                        <span class="material-icons" style="font-size: 14px;">compare_arrows</span>
+                                        Transferencia
+                                    </span>
+                                {% elif mov.tipo == 'ingreso' %}
                                     <span class="badge badge-success">Ingreso</span>
                                 {% else %}
                                     <span class="badge badge-danger">Egreso</span>
@@ -193,6 +202,15 @@
 </div>
 
 <style>
+
+.badge-transfer {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+.badge-transfer .material-icons {
+    vertical-align: middle;
+}
     .link-miembro {
   color: #714B67;
   text-decoration: underline;

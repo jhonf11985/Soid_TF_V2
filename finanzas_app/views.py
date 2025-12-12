@@ -8,6 +8,7 @@ from django.utils import timezone
 from decimal import Decimal
 import json
 import datetime
+from django.core.exceptions import ValidationError
 
 from .models import MovimientoFinanciero, CuentaFinanciera, CategoriaMovimiento
 from .forms import (
@@ -685,3 +686,132 @@ def buscar_miembros_finanzas(request):
         )
 
     return JsonResponse({"resultados": data})
+# ============================================
+# TRANSFERENCIAS ENTRE CUENTAS
+# ============================================
+
+from .services import TransferenciaService
+from .forms import TransferenciaForm
+
+
+@login_required
+def transferencia_crear(request):
+    """
+    Vista para crear una transferencia entre cuentas.
+    """
+    if request.method == "POST":
+        form = TransferenciaForm(request.POST)
+        if form.is_valid():
+            try:
+                # Extraer datos del formulario
+                cuenta_origen = form.cleaned_data["cuenta_origen"]
+                cuenta_destino = form.cleaned_data["cuenta_destino"]
+                monto = form.cleaned_data["monto"]
+                fecha = form.cleaned_data["fecha"]
+                descripcion = form.cleaned_data.get("descripcion", "")
+                referencia = form.cleaned_data.get("referencia", "")
+                
+                # Crear la transferencia usando el servicio
+                mov_envio, mov_recepcion = TransferenciaService.crear_transferencia(
+                    cuenta_origen=cuenta_origen,
+                    cuenta_destino=cuenta_destino,
+                    monto=monto,
+                    fecha=fecha,
+                    usuario=request.user,
+                    descripcion=descripcion,
+                    referencia=referencia,
+                    validar_saldo=True  # Validar que haya fondos
+                )
+                
+                messages.success(
+                    request,
+                    f"Transferencia de {cuenta_origen.moneda} {monto} realizada exitosamente. "
+                    f"De '{cuenta_origen.nombre}' a '{cuenta_destino.nombre}'."
+                )
+                return redirect("finanzas_app:transferencia_detalle", pk=mov_envio.pk)
+            
+            except ValidationError as e:
+                messages.error(request, str(e))
+    else:
+        # Pre-llenar fecha con hoy
+        form = TransferenciaForm(initial={"fecha": timezone.now().date()})
+    
+    context = {
+        "form": form,
+    }
+    return render(request, "finanzas_app/transferencia_form.html", context)
+
+
+@login_required
+def transferencia_detalle(request, pk):
+    """
+    Vista de detalle de una transferencia.
+    Muestra ambos movimientos (envío y recepción).
+    """
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
+    
+    # Verificar que sea una transferencia
+    if not movimiento.es_transferencia:
+        messages.warning(request, "Este movimiento no es una transferencia.")
+        return redirect("finanzas_app:movimientos_listado")
+    
+    # Obtener el movimiento par
+    movimiento_par = movimiento.get_transferencia_par()
+    
+    # Determinar cuál es el envío y cuál la recepción
+    if movimiento.tipo == "egreso":
+        mov_envio = movimiento
+        mov_recepcion = movimiento_par
+    else:
+        mov_envio = movimiento_par
+        mov_recepcion = movimiento
+    
+    context = {
+        "transferencia": movimiento,
+        "mov_envio": mov_envio,
+        "mov_recepcion": mov_recepcion,
+    }
+    return render(request, "finanzas_app/transferencia_detalle.html", context)
+
+
+@login_required
+def transferencia_anular(request, pk):
+    """
+    Anula una transferencia completa (ambos movimientos).
+    """
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
+    
+    # Verificar que sea una transferencia
+    if not movimiento.es_transferencia:
+        messages.error(request, "Este movimiento no es una transferencia.")
+        return redirect("finanzas_app:movimientos_listado")
+    
+    # Verificar que no esté ya anulada
+    if movimiento.estado == "anulado":
+        messages.warning(request, "Esta transferencia ya está anulada.")
+        return redirect("finanzas_app:transferencia_detalle", pk=pk)
+    
+    if request.method == "POST":
+        try:
+            # Anular usando el servicio
+            TransferenciaService.anular_transferencia(movimiento)
+            
+            messages.success(
+                request,
+                f"Transferencia anulada correctamente. "
+                f"Ambos movimientos han sido marcados como anulados."
+            )
+            return redirect("finanzas_app:movimientos_listado")
+        
+        except ValidationError as e:
+            messages.error(request, str(e))
+            return redirect("finanzas_app:transferencia_detalle", pk=pk)
+    
+    # Si es GET, mostrar confirmación
+    movimiento_par = movimiento.get_transferencia_par()
+    
+    context = {
+        "transferencia": movimiento,
+        "movimiento_par": movimiento_par,
+    }
+    return render(request, "finanzas_app/transferencia_confirmar_anular.html", context)

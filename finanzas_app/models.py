@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from miembros_app.models import Miembro  # 👈 NUEVO IMPORT
+import uuid
 
 
 class CuentaFinanciera(models.Model):
@@ -120,10 +121,20 @@ class MovimientoFinanciero(models.Model):
     ESTADO_MOVIMIENTO_CHOICES = [
         ("pendiente", "Pendiente"),
         ("confirmado", "Confirmado"),
-        ("cuadrado", "Cuadrado"),
+        ("cuadrado", "Cuadrado"),   
         ("anulado", "Anulado"),
     ]
-
+    # --- TRANSFERENCIAS ---
+    es_transferencia = models.BooleanField(
+        default=False,
+        help_text="Indica si este movimiento es parte de una transferencia entre cuentas."
+    )
+    transferencia_id = models.UUIDField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="UUID compartido por ambos movimientos de una transferencia."
+    )
     # --- DATOS BÁSICOS ---
     fecha = models.DateField(
         help_text="Fecha en la que se realizó el movimiento."
@@ -231,3 +242,13 @@ class MovimientoFinanciero(models.Model):
     def __str__(self):
         signo = "+" if self.tipo == "ingreso" else "-"
         return f"{self.fecha} · {self.categoria} · {signo}{self.monto}"
+    def get_transferencia_par(self):
+        """
+        Retorna el movimiento relacionado si este es una transferencia.
+        """
+        if not self.es_transferencia or not self.transferencia_id:
+            return None
+        
+        return MovimientoFinanciero.objects.filter(
+            transferencia_id=self.transferencia_id
+        ).exclude(pk=self.pk).first()

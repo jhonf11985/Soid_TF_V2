@@ -206,3 +206,84 @@ class MovimientoEgresoForm(forms.ModelForm):
         if "persona_asociada" in self.fields:
             self.fields["persona_asociada"].widget = forms.HiddenInput()
             self.fields["persona_asociada"].required = False
+
+# ============================================
+# FORMULARIO DE TRANSFERENCIA
+# ============================================
+
+class TransferenciaForm(forms.Form):
+    """
+    Formulario para transferencias entre cuentas.
+    No hereda de ModelForm porque crea DOS movimientos a la vez.
+    """
+    fecha = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="Fecha de transferencia"
+    )
+    
+    cuenta_origen = forms.ModelChoiceField(
+        queryset=CuentaFinanciera.objects.filter(esta_activa=True),
+        label="De la cuenta",
+        help_text="Cuenta desde donde sale el dinero"
+    )
+    
+    cuenta_destino = forms.ModelChoiceField(
+        queryset=CuentaFinanciera.objects.filter(esta_activa=True),
+        label="A la cuenta",
+        help_text="Cuenta donde entra el dinero"
+    )
+    
+    monto = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=0.01,
+        label="Monto",
+        widget=forms.NumberInput(attrs={
+            "step": "0.01",
+            "min": "0.01",
+            "placeholder": "0.00"
+        })
+    )
+    
+    descripcion = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.Textarea(attrs={
+            "rows": 2,
+            "placeholder": "Motivo de la transferencia..."
+        }),
+        label="Descripción"
+    )
+    
+    referencia = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={
+            "placeholder": "Nº de operación, comprobante, etc."
+        }),
+        label="Referencia"
+    )
+    
+    def clean(self):
+        """
+        Validaciones personalizadas.
+        """
+        cleaned_data = super().clean()
+        cuenta_origen = cleaned_data.get("cuenta_origen")
+        cuenta_destino = cleaned_data.get("cuenta_destino")
+        
+        # Validar que no sean la misma cuenta
+        if cuenta_origen and cuenta_destino and cuenta_origen == cuenta_destino:
+            raise forms.ValidationError(
+                "No puedes transferir a la misma cuenta. Selecciona cuentas diferentes."
+            )
+        
+        # Validar que sean de la misma moneda (por ahora)
+        if cuenta_origen and cuenta_destino:
+            if cuenta_origen.moneda != cuenta_destino.moneda:
+                raise forms.ValidationError(
+                    f"Las cuentas deben ser de la misma moneda. "
+                    f"Origen: {cuenta_origen.moneda}, Destino: {cuenta_destino.moneda}."
+                )
+        
+        return cleaned_data
