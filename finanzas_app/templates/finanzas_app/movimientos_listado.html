@@ -126,6 +126,7 @@
                     <th>Tipo</th>
                     <th>Cuenta</th>
                     <th>Categoría</th>
+                    <th>Miembro</th>
                     <th>Descripción</th>
                     <th class="text-right">Monto</th>
                     <th class="col-actions"></th>
@@ -135,13 +136,8 @@
                 {% if movimientos %}
                     {% for mov in movimientos %}
                        <tr class="row-clickable"
-                        data-href="
-                            {% if mov.tipo == 'ingreso' %}
-                                {% url 'finanzas_app:ingreso_detalle' mov.id %}
-                            {% else %}
-                                {% url 'finanzas_app:movimiento_editar' mov.id %}
-                            {% endif %}
-                        ">
+                  
+                        >
 
                             <td>{{ mov.fecha|date:"d M Y" }}</td>
                             <td>
@@ -153,6 +149,19 @@
                             </td>
                             <td>{{ mov.cuenta.nombre }}</td>
                             <td>{{ mov.categoria.nombre }}</td>
+                                <td>
+                                {% if mov.persona_asociada %}
+                                    <a href="{% url 'miembros_app:detalle' mov.persona_asociada.pk %}"
+                                    class="link-miembro"
+                                    onclick="event.stopPropagation();">
+                                    {{ mov.persona_asociada.nombres }} {{ mov.persona_asociada.apellidos }}
+                                    </a>
+                                {% else %}
+                                    —
+                                {% endif %}
+                                </td>
+
+
                             <td>{{ mov.descripcion|default:"—"|truncatewords:6 }}</td>
                             <td class="text-right {% if mov.tipo == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
                                 <strong>{% if mov.tipo == 'ingreso' %}+{% else %}-{% endif %}{{ mov.monto|floatformat:2 }}</strong>
@@ -184,6 +193,16 @@
 </div>
 
 <style>
+    .link-miembro {
+  color: #714B67;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.link-miembro:hover {
+  text-decoration: none;
+}
+
 .movimientos-content {
     max-width: 100%;
 }

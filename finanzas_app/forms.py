@@ -192,7 +192,7 @@ class MovimientoEgresoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Filtrar categorías a solo tipo ingreso y activas
         self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
-            tipo="ingreso",
+            tipo="egreso",
             activo=True
         ).order_by("nombre")
 
