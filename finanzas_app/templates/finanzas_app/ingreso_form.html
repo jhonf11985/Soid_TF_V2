@@ -1,9 +1,9 @@
-{% extends 'core/base.html' %}
+{% extends 'finanzas_app/base_finanzas.html' %}
 {% load static %}
 
 {% block title %}Registrar ingreso · Soid_Tf_2{% endblock %}
 
-{% block content %}
+{% block finanzas_content %}
 
 <div class="odoo-page">
     
@@ -100,7 +100,7 @@
                                     type="text" 
                                     id="search-persona" 
                                     class="autocomplete-search" 
-                                    placeholder="Buscar miembro..."
+                                    placeholder="Escriba para buscar..."
                                     autocomplete="off"
                                 >
                             </div>
@@ -165,6 +165,17 @@
             </div>
 
         </form>
+    </div>
+
+    <!-- ZONA DE ADJUNTOS - ESTILO ODOO ELEGANTE -->
+    <div class="odoo-attachments">
+        <input type="file" id="attachment-input" multiple hidden>
+        <button type="button" class="odoo-attach-icon" id="attach-btn" title="Adjuntar archivo">
+            <span class="material-icons">attach_file</span>
+        </button>
+        <div class="odoo-attach-list" id="attach-list">
+            <!-- Los archivos adjuntos aparecerán aquí -->
+        </div>
     </div>
 
 </div>
@@ -759,9 +770,107 @@
         -webkit-appearance: none;
         margin: 0;
     }
+
+    /* =====================================
+       ZONA DE ADJUNTOS - ESTILO ODOO
+       ===================================== */
+
+    .odoo-attachments {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 8px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .odoo-attach-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        color: var(--odoo-text-muted);
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .odoo-attach-icon:hover {
+        color: var(--odoo-purple);
+        background: rgba(113, 75, 103, 0.08);
+    }
+
+    .odoo-attach-icon .material-icons {
+        font-size: 22px;
+    }
+
+    .odoo-attach-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        flex: 1;
+    }
+
+    .odoo-attach-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px 4px 10px;
+        background: #f8f9fa;
+        border: 1px solid var(--odoo-border);
+        border-radius: 4px;
+        font-size: 12px;
+        color: var(--odoo-text);
+        animation: chipIn 0.15s ease;
+    }
+
+    .odoo-attach-item .material-icons {
+        font-size: 16px;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-attach-item-name {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .odoo-attach-item-size {
+        font-size: 11px;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-attach-remove {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+        cursor: pointer;
+        transition: all 0.15s;
+        padding: 0;
+    }
+
+    .odoo-attach-remove:hover {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .odoo-attach-remove .material-icons {
+        font-size: 14px;
+    }
 </style>
 
-{% endblock %}
+{% endblock finanzas_content %}
 
 {% block extra_js %}
 <script>
@@ -1009,6 +1118,75 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // ====================================
+    // MANEJO DE ARCHIVOS ADJUNTOS
+    // ====================================
+    const attachBtn = document.getElementById('attach-btn');
+    const attachInput = document.getElementById('attachment-input');
+    const attachList = document.getElementById('attach-list');
+    
+    let attachedFiles = [];
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function getFileIcon(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const icons = {
+            'pdf': 'picture_as_pdf',
+            'doc': 'description',
+            'docx': 'description',
+            'xls': 'table_chart',
+            'xlsx': 'table_chart',
+            'jpg': 'image',
+            'jpeg': 'image',
+            'png': 'image',
+            'gif': 'image',
+        };
+        return icons[ext] || 'insert_drive_file';
+    }
+
+    function renderAttachments() {
+        attachList.innerHTML = '';
+        
+        attachedFiles.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = 'odoo-attach-item';
+            item.innerHTML = `
+                <span class="material-icons">${getFileIcon(file.name)}</span>
+                <span class="odoo-attach-item-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+                <span class="odoo-attach-item-size">${formatFileSize(file.size)}</span>
+                <button type="button" class="odoo-attach-remove" data-index="${index}" title="Quitar">
+                    <span class="material-icons">close</span>
+                </button>
+            `;
+            attachList.appendChild(item);
+        });
+
+        // Event listeners para botones de quitar
+        attachList.querySelectorAll('.odoo-attach-remove').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.index);
+                attachedFiles.splice(idx, 1);
+                renderAttachments();
+            });
+        });
+    }
+
+    if (attachBtn && attachInput) {
+        attachBtn.addEventListener('click', () => attachInput.click());
+        
+        attachInput.addEventListener('change', function() {
+            const newFiles = Array.from(this.files);
+            attachedFiles = [...attachedFiles, ...newFiles];
+            renderAttachments();
+            this.value = ''; // Reset para permitir seleccionar el mismo archivo
+        });
+    }
+
 });
 </script>
-{% endblock %}
+{% endblock extra_js %}
