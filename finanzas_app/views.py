@@ -470,8 +470,12 @@ def movimientos_listado(request):
     if q:
         movimientos = movimientos.filter(
             Q(descripcion__icontains=q) |
-            Q(referencia__icontains=q)
+            Q(referencia__icontains=q) |
+            Q(persona_asociada__nombres__icontains=q) |
+            Q(persona_asociada__apellidos__icontains=q) |
+            Q(persona_asociada__codigo_miembro__icontains=q)
         )
+
 
     if fecha_desde:
         movimientos = movimientos.filter(fecha__gte=fecha_desde)
