@@ -1,389 +1,685 @@
 {% extends 'finanzas_app/base_finanzas.html' %}
 {% load static %}
 
-{% block title %}Detalle de ingreso · Soid_Tf_2{% endblock %}
+{% block title %}Ingreso #{{ ingreso.id }} · Soid_Tf_2{% endblock %}
 
 {% block finanzas_content %}
 
-<div class="ingreso-detalle">
+<div class="odoo-page">
 
-    <!-- ENCABEZADO SUPERIOR -->
-    <div class="page-header-flex">
-        <div>
-            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="btn-secondary btn-sm back-link">
+    <!-- BARRA SUPERIOR -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a href="{% url 'finanzas_app:movimientos_listado' %}?tipo=ingreso" class="odoo-back-link">
                 <span class="material-icons">arrow_back</span>
-                Volver a ingresos
             </a>
-
-            <h1 class="page-title">Detalle de ingreso</h1>
-            <p class="page-subtitle">
-                ID: {{ ingreso.id }} · Fecha: {{ ingreso.fecha|date:"d/m/Y" }}
-                {% if ingreso.estado %}
-                    · Estado:
-                    {% if ingreso.estado == "anulado" %}
-                        <span class="badge badge-danger">Anulado</span>
-                    {% else %}
-                        <span class="badge badge-success">Activo</span>
-                    {% endif %}
-                {% endif %}
-            </p>
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-parent">Ingresos</span>
+                <span class="odoo-breadcrumb-separator">/</span>
+                <span class="odoo-breadcrumb-current">ING-{{ ingreso.id|stringformat:"04d" }}</span>
+            </div>
         </div>
-
-        <div class="header-actions">
-            <a href="{% url 'finanzas_app:movimiento_editar' ingreso.id %}" class="btn-secondary">
-                <span class="material-icons">edit</span>
-                Editar
-            </a>
-            <a href="{% url 'finanzas_app:movimiento_anular' ingreso.id %}" class="btn-danger-outline">
-                <span class="material-icons">cancel</span>
-                Anular
-            </a>
+        <div class="odoo-topbar-right">
+            {% if ingreso.estado == "anulado" %}
+                <span class="odoo-status odoo-status-danger">Anulado</span>
+            {% else %}
+                <span class="odoo-status odoo-status-success">Confirmado</span>
+            {% endif %}
         </div>
     </div>
 
-    <!-- TARJETA PRINCIPAL -->
-    <div class="detail-layout">
+    <!-- BARRA DE ACCIONES -->
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            {% if ingreso.estado != "anulado" %}
+            <a href="{% url 'finanzas_app:movimiento_editar' ingreso.id %}" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons">edit</span>
+                Editar
+            </a>
+            <a href="{% url 'finanzas_app:movimiento_anular' ingreso.id %}" class="odoo-btn odoo-btn-danger">
+                <span class="material-icons">block</span>
+                Anular
+            </a>
+            {% else %}
+            <span class="odoo-btn odoo-btn-disabled">
+                <span class="material-icons">edit</span>
+                Editar
+            </span>
+            {% endif %}
+            <button type="button" class="odoo-btn odoo-btn-secondary" onclick="window.print()">
+                <span class="material-icons">print</span>
+                Imprimir
+            </button>
+        </div>
+    </div>
 
-        <!-- COLUMNA IZQUIERDA: MONTO Y RESUMEN -->
-        <div class="detail-main">
-
-            <div class="card highlight-card">
-                <div class="highlight-label">Monto del ingreso</div>
-                <div class="highlight-amount">
-                    RD$ {{ ingreso.monto|floatformat:2 }}
-                </div>
-                <div class="highlight-tag">
-                    <span class="badge badge-success">Ingreso</span>
-                    {% if ingreso.categoria %}
-                        <span class="chip">{{ ingreso.categoria.nombre }}</span>
-                    {% endif %}
-                </div>
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="odoo-detail-sheet">
+        
+        <!-- CABECERA CON MONTO -->
+        <div class="odoo-detail-header">
+            <div class="odoo-detail-icon odoo-detail-icon-income">
+                <span class="material-icons">arrow_downward</span>
             </div>
+            <div class="odoo-detail-title">
+                <span class="odoo-detail-type">Ingreso</span>
+                <span class="odoo-detail-amount">RD$ {{ ingreso.monto|floatformat:2 }}</span>
+            </div>
+            <div class="odoo-detail-date">
+                <span class="material-icons">event</span>
+                {{ ingreso.fecha|date:"d M Y" }}
+            </div>
+        </div>
 
-            <div class="card">
-                <h2 class="card-title">Información principal</h2>
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <span class="detail-label">Fecha</span>
-                        <span class="detail-value">{{ ingreso.fecha|date:"d/m/Y" }}</span>
+        <!-- INFORMACIÓN EN DOS COLUMNAS -->
+        <div class="odoo-detail-content">
+            
+            <!-- COLUMNA IZQUIERDA -->
+            <div class="odoo-detail-col">
+                <div class="odoo-detail-section">
+                    <h3 class="odoo-section-title">Información del movimiento</h3>
+                    
+                    <div class="odoo-field-row">
+                        <label>Categoría</label>
+                        <div class="odoo-field-value">
+                            {% if ingreso.categoria %}
+                                <span class="odoo-tag odoo-tag-purple">{{ ingreso.categoria.nombre }}</span>
+                            {% else %}
+                                <span class="odoo-text-muted">Sin categoría</span>
+                            {% endif %}
+                        </div>
                     </div>
 
-                    <div class="detail-item">
-                        <span class="detail-label">Cuenta</span>
-                        <span class="detail-value">
+                    <div class="odoo-field-row">
+                        <label>Cuenta</label>
+                        <div class="odoo-field-value">
                             {% if ingreso.cuenta %}
+                                <span class="material-icons odoo-field-icon">account_balance</span>
                                 {{ ingreso.cuenta.nombre }}
                             {% else %}
-                                —
+                                <span class="odoo-text-muted">—</span>
                             {% endif %}
-                        </span>
+                        </div>
                     </div>
 
-                    <div class="detail-item">
-                        <span class="detail-label">Forma de pago</span>
-                        <span class="detail-value">
+                    <div class="odoo-field-row">
+                        <label>Forma de pago</label>
+                        <div class="odoo-field-value">
                             {{ ingreso.get_forma_pago_display|default:ingreso.forma_pago|default:"—" }}
-                        </span>
+                        </div>
                     </div>
 
-                    <div class="detail-item">
-                        <span class="detail-label">Referencia</span>
-                        <span class="detail-value">
-                            {{ ingreso.referencia|default:"—" }}
-                        </span>
+                    {% if ingreso.referencia %}
+                    <div class="odoo-field-row">
+                        <label>Referencia</label>
+                        <div class="odoo-field-value">
+                            <code class="odoo-code">{{ ingreso.referencia }}</code>
+                        </div>
                     </div>
+                    {% endif %}
+                </div>
+
+                <div class="odoo-detail-section">
+                    <h3 class="odoo-section-title">Descripción</h3>
+                    <p class="odoo-description">
+                        {{ ingreso.descripcion|default:"Sin descripción registrada."|linebreaks }}
+                    </p>
                 </div>
             </div>
 
-            <div class="card">
-                <h2 class="card-title">Descripción</h2>
-                <p class="description-text">
-                    {{ ingreso.descripcion|default:"Sin descripción registrada." }}
-                </p>
-            </div>
-        </div>
-
-        <!-- COLUMNA DERECHA: META / INFO ADICIONAL -->
-        <div class="detail-sidebar">
-
-            <div class="card">
-                <h2 class="card-title">Persona asociada</h2>
-                <p class="description-text">
-                    {{ ingreso.persona_asociada|default:"Sin persona asociada." }}
-                </p>
-            </div>
-
-            <div class="card">
-                <h2 class="card-title">Registro</h2>
-                <div class="detail-meta">
-                    <div class="detail-meta-row">
-                        <span class="detail-label">Registrado por</span>
-                        <span class="detail-value">
-                            {% if ingreso.creado_por %}
-                                {{ ingreso.creado_por.get_full_name|default:ingreso.creado_por.username }}
-                            {% else %}
-                                —
+            <!-- COLUMNA DERECHA -->
+            <div class="odoo-detail-col">
+                
+                {% if ingreso.persona_asociada %}
+                <div class="odoo-detail-section">
+                    <h3 class="odoo-section-title">Persona asociada</h3>
+                    <div class="odoo-person-card">
+                        <div class="odoo-person-avatar">
+                            {{ ingreso.persona_asociada.nombre|slice:":1"|upper }}{{ ingreso.persona_asociada.apellido|slice:":1"|upper }}
+                        </div>
+                        <div class="odoo-person-info">
+                            <span class="odoo-person-name">{{ ingreso.persona_asociada }}</span>
+                            {% if ingreso.persona_asociada.codigo_tf %}
+                            <span class="odoo-person-code">{{ ingreso.persona_asociada.codigo_tf }}</span>
                             {% endif %}
-                        </span>
-                    </div>
-
-                    <div class="detail-meta-row">
-                        <span class="detail-label">Creado</span>
-                        <span class="detail-value">
-                            {% if ingreso.creado_en %}
-                                {{ ingreso.creado_en|date:"d/m/Y H:i" }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </span>
-                    </div>
-
-                    <div class="detail-meta-row">
-                        <span class="detail-label">Última actualización</span>
-                        <span class="detail-value">
-                            {% if ingreso.actualizado_en %}
-                                {{ ingreso.actualizado_en|date:"d/m/Y H:i" }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </span>
+                        </div>
                     </div>
                 </div>
-            </div>
+                {% endif %}
 
+                <div class="odoo-detail-section">
+                    <h3 class="odoo-section-title">Auditoría</h3>
+                    
+                    <div class="odoo-audit-list">
+                        <div class="odoo-audit-item">
+                            <span class="material-icons">person_add</span>
+                            <div class="odoo-audit-info">
+                                <span class="odoo-audit-label">Registrado por</span>
+                                <span class="odoo-audit-value">
+                                    {% if ingreso.creado_por %}
+                                        {{ ingreso.creado_por.get_full_name|default:ingreso.creado_por.username }}
+                                    {% else %}
+                                        Sistema
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="odoo-audit-item">
+                            <span class="material-icons">schedule</span>
+                            <div class="odoo-audit-info">
+                                <span class="odoo-audit-label">Fecha de creación</span>
+                                <span class="odoo-audit-value">
+                                    {% if ingreso.creado_en %}
+                                        {{ ingreso.creado_en|date:"d/m/Y" }} a las {{ ingreso.creado_en|date:"H:i" }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        {% if ingreso.actualizado_en and ingreso.actualizado_en != ingreso.creado_en %}
+                        <div class="odoo-audit-item">
+                            <span class="material-icons">update</span>
+                            <div class="odoo-audit-info">
+                                <span class="odoo-audit-label">Última actualización</span>
+                                <span class="odoo-audit-value">
+                                    {{ ingreso.actualizado_en|date:"d/m/Y" }} a las {{ ingreso.actualizado_en|date:"H:i" }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
         </div>
+
+    </div>
+
+    <!-- ZONA INFERIOR -->
+    <div class="odoo-detail-footer">
+        <span class="material-icons">attach_file</span>
+        <span class="odoo-footer-text">Sin archivos adjuntos</span>
     </div>
 
 </div>
 
 <style>
-.ingreso-detalle {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.page-header-flex {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 16px;
-}
-
-.page-title {
-    font-size: 22px;
-    font-weight: 600;
-    margin: 8px 0 0;
-    color: #111827;
-}
-
-.page-subtitle {
-    font-size: 13px;
-    color: #6b7280;
-    margin: 4px 0 0;
-}
-
-.back-link {
-    margin-bottom: 4px;
-}
-
-.header-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-/* Layout columnas */
-.detail-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-    gap: 16px;
-    align-items: flex-start;
-    margin-bottom: 24px;
-}
-
-.card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 16px 18px;
-}
-
-.card-title {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 0 0 12px;
-    color: #111827;
-}
-
-.highlight-card {
-    margin-bottom: 16px;
-    background: linear-gradient(135deg, #ecfdf5, #eff6ff);
-    border: 1px solid #bbf7d0;
-}
-
-.highlight-label {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    color: #047857;
-    margin-bottom: 4px;
-}
-
-.highlight-amount {
-    font-size: 28px;
-    font-weight: 700;
-    color: #022c22;
-    margin-bottom: 8px;
-}
-
-.highlight-tag {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-/* Grid de detalles */
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-}
-
-.detail-item {
-    display: flex;
-    flex-direction: column;
-}
-
-.detail-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: #6b7280;
-    margin-bottom: 2px;
-}
-
-.detail-value {
-    font-size: 14px;
-    color: #111827;
-}
-
-/* Meta */
-.detail-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.detail-meta-row {
-    display: flex;
-    flex-direction: column;
-}
-
-/* Textos */
-.description-text {
-    font-size: 14px;
-    color: #374151;
-    margin: 0;
-    white-space: pre-line;
-}
-
-/* Chips / badges */
-.badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.badge-success {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.badge-danger {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-.chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: #f3f4f6;
-    font-size: 11px;
-    color: #374151;
-}
-
-/* Botones base (compatibles con los que ya usas) */
-.btn-primary,
-.btn-secondary,
-.btn-danger-outline,
-.btn-sm {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-size: 13px;
-    font-weight: 500;
-    border: 1px solid transparent;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.btn-sm {
-    padding: 6px 10px;
-    font-size: 12px;
-}
-
-.btn-primary {
-    background: var(--color-primary, #714B67);
-    color: #ffffff;
-    border-color: var(--color-primary, #714B67);
-}
-
-.btn-secondary {
-    background: #ffffff;
-    color: #374151;
-    border-color: #e5e7eb;
-}
-
-.btn-secondary:hover {
-    background: #f9fafb;
-}
-
-.btn-danger-outline {
-    background: #fef2f2;
-    color: #b91c1c;
-    border-color: #fecaca;
-}
-
-.btn-danger-outline:hover {
-    background: #fee2e2;
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-    .detail-layout {
-        grid-template-columns: 1fr;
+    :root {
+        --odoo-purple: #714B67;
+        --odoo-purple-light: #f5f0f4;
+        --odoo-text: #212529;
+        --odoo-text-muted: #6c757d;
+        --odoo-border: #dee2e6;
+        --odoo-bg: #ffffff;
+        --odoo-bg-gray: #f8f9fa;
+        --odoo-success: #10b981;
+        --odoo-success-bg: #ecfdf5;
+        --odoo-danger: #ef4444;
+        --odoo-danger-bg: #fef2f2;
     }
-}
 
-@media (max-width: 640px) {
-    .page-header-flex {
+    .odoo-page {
+        background: var(--odoo-bg-gray);
+        min-height: 100vh;
+    }
+
+    /* BARRA SUPERIOR */
+    .odoo-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 16px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .odoo-back-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        color: var(--odoo-text-muted);
+        border-radius: 4px;
+        transition: all 0.15s;
+        text-decoration: none;
+    }
+
+    .odoo-back-link:hover {
+        background: var(--odoo-bg-gray);
+        color: var(--odoo-text);
+    }
+
+    .odoo-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+    }
+
+    .odoo-breadcrumb-parent {
+        color: var(--odoo-purple);
+        font-weight: 500;
+    }
+
+    .odoo-breadcrumb-separator {
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-breadcrumb-current {
+        color: var(--odoo-text);
+        font-weight: 600;
+    }
+
+    .odoo-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .odoo-status-success {
+        background: var(--odoo-success-bg);
+        color: #065f46;
+    }
+
+    .odoo-status-danger {
+        background: var(--odoo-danger-bg);
+        color: #991b1b;
+    }
+
+    /* BARRA DE ACCIONES */
+    .odoo-actionbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 16px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-actionbar-left {
+        display: flex;
+        gap: 8px;
+    }
+
+    .odoo-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid var(--odoo-border);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+        font-family: inherit;
+    }
+
+    .odoo-btn .material-icons {
+        font-size: 18px;
+    }
+
+    .odoo-btn-primary {
+        background: var(--odoo-purple);
+        color: white;
+        border-color: var(--odoo-purple);
+    }
+
+    .odoo-btn-primary:hover {
+        background: #5d3d54;
+    }
+
+    .odoo-btn-secondary {
+        background: var(--odoo-bg);
+        color: var(--odoo-text);
+    }
+
+    .odoo-btn-secondary:hover {
+        background: var(--odoo-bg-gray);
+    }
+
+    .odoo-btn-danger {
+        background: var(--odoo-danger-bg);
+        color: #b91c1c;
+        border-color: #fecaca;
+    }
+
+    .odoo-btn-danger:hover {
+        background: #fee2e2;
+    }
+
+    .odoo-btn-disabled {
+        background: #e5e7eb;
+        color: #9ca3af;
+        border-color: #e5e7eb;
+        cursor: not-allowed;
+    }
+
+    /* HOJA DE DETALLE */
+    .odoo-detail-sheet {
+        max-width: 1200px;
+        margin: 16px auto;
+        background: var(--odoo-bg);
+        border: 1px solid var(--odoo-border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    /* CABECERA */
+    .odoo-detail-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 24px;
+        background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+        border-bottom: 1px solid #bbf7d0;
+    }
+
+    .odoo-detail-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .odoo-detail-icon .material-icons {
+        font-size: 28px;
+    }
+
+    .odoo-detail-icon-income {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .odoo-detail-icon-expense {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .odoo-detail-title {
+        flex: 1;
+    }
+
+    .odoo-detail-type {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #059669;
+        margin-bottom: 4px;
+    }
+
+    .odoo-detail-amount {
+        font-size: 32px;
+        font-weight: 700;
+        color: #022c22;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .odoo-detail-date {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: rgba(255,255,255,0.7);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--odoo-text);
+    }
+
+    .odoo-detail-date .material-icons {
+        font-size: 18px;
+        color: var(--odoo-text-muted);
+    }
+
+    /* CONTENIDO */
+    .odoo-detail-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+    }
+
+    .odoo-detail-col {
+        padding: 24px;
+    }
+
+    .odoo-detail-col:first-child {
+        border-right: 1px solid var(--odoo-border);
+    }
+
+    .odoo-detail-section {
+        margin-bottom: 24px;
+    }
+
+    .odoo-detail-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .odoo-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--odoo-text-muted);
+        margin: 0 0 16px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-field-row {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+        align-items: center;
+    }
+
+    .odoo-field-row label {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-field-value {
+        font-size: 14px;
+        color: var(--odoo-text);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .odoo-field-icon {
+        font-size: 16px;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-text-muted {
+        color: var(--odoo-text-muted);
+        font-style: italic;
+    }
+
+    .odoo-tag {
+        display: inline-flex;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .odoo-tag-purple {
+        background: var(--odoo-purple-light);
+        color: var(--odoo-purple);
+    }
+
+    .odoo-code {
+        font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+        font-size: 13px;
+        background: #f3f4f6;
+        padding: 2px 8px;
+        border-radius: 4px;
+        color: #374151;
+    }
+
+    .odoo-description {
+        font-size: 14px;
+        color: var(--odoo-text);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    /* PERSONA ASOCIADA */
+    .odoo-person-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: var(--odoo-bg-gray);
+        border-radius: 8px;
+    }
+
+    .odoo-person-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--odoo-purple) 0%, #8e6b82 100%);
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .odoo-person-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .odoo-person-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--odoo-text);
+    }
+
+    .odoo-person-code {
+        font-size: 12px;
+        color: var(--odoo-text-muted);
+    }
+
+    /* AUDITORÍA */
+    .odoo-audit-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .odoo-audit-item {
+        display: flex;
         align-items: flex-start;
+        gap: 12px;
     }
-    .header-actions {
-        width: 100%;
-        justify-content: flex-start;
+
+    .odoo-audit-item > .material-icons {
+        font-size: 20px;
+        color: var(--odoo-text-muted);
+        margin-top: 2px;
     }
-}
+
+    .odoo-audit-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .odoo-audit-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-audit-value {
+        font-size: 13px;
+        color: var(--odoo-text);
+    }
+
+    /* FOOTER */
+    .odoo-detail-footer {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--odoo-text-muted);
+        font-size: 13px;
+    }
+
+    .odoo-detail-footer .material-icons {
+        font-size: 20px;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+        .odoo-detail-content {
+            grid-template-columns: 1fr;
+        }
+
+        .odoo-detail-col:first-child {
+            border-right: none;
+            border-bottom: 1px solid var(--odoo-border);
+        }
+    }
+
+    @media (max-width: 600px) {
+        .odoo-detail-header {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .odoo-detail-date {
+            margin-top: 8px;
+        }
+
+        .odoo-field-row {
+            grid-template-columns: 1fr;
+            gap: 4px;
+        }
+
+        .odoo-actionbar-left {
+            flex-wrap: wrap;
+        }
+    }
+
+    /* PRINT */
+    @media print {
+        .odoo-topbar,
+        .odoo-actionbar,
+        .odoo-detail-footer {
+            display: none;
+        }
+
+        .odoo-detail-sheet {
+            margin: 0;
+            border: none;
+            box-shadow: none;
+        }
+    }
 </style>
 
-{% endblock %}
+{% endblock finanzas_content %}
