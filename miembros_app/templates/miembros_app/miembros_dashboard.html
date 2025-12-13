@@ -1,1017 +1,1032 @@
 {% extends 'miembros_app/base_miembros.html' %}
 
-
-{% block title %}Miembros · Panel{% endblock %}
-
-{% block breadcrumb %}
-Miembros / Panel
-{% endblock %}
+{% block title %}Dashboard · Miembros{% endblock %}
 
 {% block miembros_content %}
 
-<section class="page-header">
-    <div>
-        <h1 class="page-title">Panel de miembros</h1>
-        <p class="page-subtitle">
-            Vista general de la membresía oficial (mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años) y datos pastorales clave.
-        </p>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+    <div class="odoo-control-left">
+        <a href="{% url 'miembros_app:crear' %}" class="odoo-btn odoo-btn-primary">
+            <span class="material-icons">add</span>
+            Nuevo
+        </a>
+        
+        <div class="odoo-breadcrumb">
+            <span class="odoo-breadcrumb-title">Dashboard</span>
+            <span class="material-icons odoo-breadcrumb-icon">settings</span>
+        </div>
     </div>
 
-    <div class="page-header-actions">
-        <a href="{% url 'miembros_app:lista' %}" class="btn-secondary">
+    <div class="odoo-control-right">
+        <a href="{% url 'miembros_app:lista' %}" class="odoo-btn odoo-btn-secondary">
             <span class="material-icons">group</span>
             Ver lista
         </a>
-        <a href="{% url 'miembros_app:crear' %}" class="btn-primary">
-            <span class="material-icons">person_add</span>
-            Nuevo miembro
-        </a>
     </div>
-</section>
+</div>
 
-<section class="dashboard-section">
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTENIDO DEL DASHBOARD
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-dashboard">
 
-    <!-- ZONA 1 · RESUMEN PRINCIPAL -->
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label">Miembros registrados</div>
-            <div class="kpi-value">{{ total_miembros|default:"0" }}</div>
-            <div class="kpi-sub">Incluye niños, nuevos creyentes y registros sin estado.</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Miembros oficiales</div>
-            <div class="kpi-value">{{ total_oficiales|default:"0" }}</div>
-            <div class="kpi-sub">
-                Mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años que pueden votar y participar en la membresía.
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         KPIs PRINCIPALES
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-kpi-row">
+        <div class="odoo-kpi-card">
+            <div class="odoo-kpi-icon" style="background: #e0f2fe; color: #0284c7;">
+                <span class="material-icons">groups</span>
+            </div>
+            <div class="odoo-kpi-content">
+                <div class="odoo-kpi-value">{{ total_miembros|default:"0" }}</div>
+                <div class="odoo-kpi-label">Miembros registrados</div>
+                <div class="odoo-kpi-sub">Incluye niños y nuevos creyentes</div>
             </div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Nuevos creyentes (últimos 7 días)</div>
-            <div class="kpi-value">{{ nuevos_creyentes_semana|default:"0" }}</div>
-            <div class="kpi-sub">Personas marcadas como nuevos creyentes recientemente.</div>
+
+        <div class="odoo-kpi-card">
+            <div class="odoo-kpi-icon" style="background: #d1fae5; color: #059669;">
+                <span class="material-icons">verified_user</span>
+            </div>
+            <div class="odoo-kpi-content">
+                <div class="odoo-kpi-value">{{ total_oficiales|default:"0" }}</div>
+                <div class="odoo-kpi-label">Miembros oficiales</div>
+                <div class="odoo-kpi-sub">Mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años</div>
+            </div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="odoo-kpi-icon" style="background: #fef3c7; color: #d97706;">
+                <span class="material-icons">emoji_people</span>
+            </div>
+            <div class="odoo-kpi-content">
+                <div class="odoo-kpi-value">{{ nuevos_creyentes_semana|default:"0" }}</div>
+                <div class="odoo-kpi-label">Nuevos creyentes</div>
+                <div class="odoo-kpi-sub">Últimos 7 días</div>
+            </div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="odoo-kpi-icon" style="background: #fee2e2; color: #dc2626;">
+                <span class="material-icons">person_off</span>
+            </div>
+            <div class="odoo-kpi-content">
+                <div class="odoo-kpi-value">{{ descarriados|default:"0" }}</div>
+                <div class="odoo-kpi-label">Descarriados</div>
+                <div class="odoo-kpi-sub">Necesitan seguimiento</div>
+            </div>
         </div>
     </div>
 
-    <!-- ZONA 1b · ESTADOS + ACCIONES / ALERTAS -->
-    <div class="dashboard-grid">
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         GRID PRINCIPAL: Estados + Acciones
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-dashboard-grid">
+        
+        <!-- COLUMNA IZQUIERDA: Estados pastorales -->
+        <div class="odoo-dashboard-column">
+            
+            <!-- Panel de estados -->
+            <div class="odoo-panel">
+                <div class="odoo-panel-header">
+                    <h2>Estados pastorales</h2>
+                    <span class="odoo-panel-badge">{{ total_oficiales }} oficiales</span>
+                </div>
+                
+                <div class="odoo-status-grid">
+                    <a href="{% url 'miembros_app:lista' %}?estado=activo" class="odoo-status-card odoo-status-activo">
+                        <div class="odoo-status-value">{{ activos|default:"0" }}</div>
+                        <div class="odoo-status-label">Activos</div>
+                        <div class="odoo-status-pct">{{ pct_activos }}%</div>
+                    </a>
 
-        <!-- Izquierda: Estados pastorales -->
-        <div>
+                    <a href="{% url 'miembros_app:lista' %}?estado=catecumeno" class="odoo-status-card odoo-status-catecumeno">
+                        <div class="odoo-status-value">{{ catecumenos|default:"0" }}</div>
+                        <div class="odoo-status-label">Catecúmenos</div>
+                        <div class="odoo-status-pct">{{ pct_catecumenos }}%</div>
+                    </a>
 
-            <!-- TARJETAS DE ESTADO PASTORAL -->
-            <div class="dashboard-cards">
-                <!-- Activos -->
-                <div class="dash-card dash-card--activo">
-                    <div class="dash-card-label">Miembros activos</div>
-                    <div class="dash-card-value">{{ activos }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_activos }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
+                    <a href="{% url 'miembros_app:lista' %}?estado=pasivo" class="odoo-status-card odoo-status-pasivo">
+                        <div class="odoo-status-value">{{ pasivos|default:"0" }}</div>
+                        <div class="odoo-status-label">Pasivos</div>
+                        <div class="odoo-status-pct">{{ pct_pasivos }}%</div>
+                    </a>
+
+                    <a href="{% url 'miembros_app:lista' %}?estado=observacion" class="odoo-status-card odoo-status-observacion">
+                        <div class="odoo-status-value">{{ observacion|default:"0" }}</div>
+                        <div class="odoo-status-label">En observación</div>
+                        <div class="odoo-status-pct">{{ pct_observacion }}%</div>
+                    </a>
+
+                    <a href="{% url 'miembros_app:lista' %}?estado=disciplina" class="odoo-status-card odoo-status-disciplina">
+                        <div class="odoo-status-value">{{ disciplina|default:"0" }}</div>
+                        <div class="odoo-status-label">En disciplina</div>
+                        <div class="odoo-status-pct">{{ pct_disciplina }}%</div>
+                    </a>
+
+                    <a href="{% url 'miembros_app:lista' %}?estado=descarriado" class="odoo-status-card odoo-status-descarriado">
+                        <div class="odoo-status-value">{{ descarriados|default:"0" }}</div>
+                        <div class="odoo-status-label">Descarriados</div>
+                        <div class="odoo-status-pct">—</div>
+                    </a>
                 </div>
 
-                <!-- Catecúmenos -->
-                <div class="dash-card dash-card--catecumeno">
-                    <div class="dash-card-label">Catecúmenos (no bautizados)</div>
-                    <div class="dash-card-value">{{ catecumenos }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_catecumenos }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
-                </div>
-
-                <!-- Pasivos -->
-                <div class="dash-card dash-card--pasivo">
-                    <div class="dash-card-label">Miembros pasivos</div>
-                    <div class="dash-card-value">{{ pasivos }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_pasivos }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
-                </div>
-
-                <!-- Disciplina -->
-                <div class="dash-card dash-card--disciplina">
-                    <div class="dash-card-label">En disciplina</div>
-                    <div class="dash-card-value">{{ disciplina }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_disciplina }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
-                </div>
-
-                <!-- Observación -->
-                <div class="dash-card dash-card--observacion">
-                    <div class="dash-card-label">En observación</div>
-                    <div class="dash-card-value">{{ observacion }}</div>
-                    <div class="dash-card-sub">
-                        {{ pct_observacion }}% del total oficial
-                        {% if total_oficiales %} ({{ total_oficiales }}){% endif %}
-                    </div>
-                </div>
-
-                <!-- Descarriados -->
-                <div class="dash-card dash-card--descarriado">
-                    <div class="dash-card-label">Miembros descarriados</div>
-                    <div class="dash-card-value">{{ descarriados }}</div>
-                    <div class="dash-card-sub">
-                        Miembros inactivos con razón de salida “descarriado”.
-                    </div>
-                </div>
-            </div>
-
-            <!-- GRÁFICO: DISTRIBUCIÓN POR ESTADO PASTORAL -->
-            <div class="dash-panel" style="margin-top: 12px;">
-                <div class="dash-panel-header">
-                    <h2>Distribución por estado pastoral</h2>
-                    <p>Solo cuenta miembros oficiales (mayores de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años).</p>
-                </div>
-
+                <!-- Barra de distribución -->
                 {% if total_oficiales %}
-                    <div class="estado-bar-wrapper">
-                        {% if pct_activos > 0 %}
-                            <div class="estado-bar estado-activo"
-                                 style="width: {{ pct_activos }}%;"
-                                 title="Activos: {{ activos }} ({{ pct_activos }}%)">
-                            </div>
-                        {% endif %}
-                        {% if pct_pasivos > 0 %}
-                            <div class="estado-bar estado-pasivo"
-                                 style="width: {{ pct_pasivos }}%;"
-                                 title="Pasivos: {{ pasivos }} ({{ pct_pasivos }}%)">
-                            </div>
-                        {% endif %}
-                        {% if pct_observacion > 0 %}
-                            <div class="estado-bar estado-observacion"
-                                 style="width: {{ pct_observacion }}%;"
-                                 title="En observación: {{ observacion }} ({{ pct_observacion }}%)">
-                            </div>
-                        {% endif %}
-                        {% if pct_catecumenos > 0 %}
-                            <div class="estado-bar estado-catecumeno"
-                                 style="width: {{ pct_catecumenos }}%;"
-                                 title="Catecúmenos: {{ catecumenos }} ({{ pct_catecumenos }}%)">
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <ul class="estado-legend">
-                        <li>
-                            <span class="estado-dot estado-activo"></span>
-                            <span class="estado-label">Activos</span>
-                            <span class="estado-percent">{{ pct_activos }}%</span>
-                        </li>
-                        <li>
-                            <span class="estado-dot estado-pasivo"></span>
-                            <span class="estado-label">Pasivos</span>
-                            <span class="estado-percent">{{ pct_pasivos }}%</span>
-                        </li>
-                        <li>
-                            <span class="estado-dot estado-observacion"></span>
-                            <span class="estado-label">En observación</span>
-                            <span class="estado-percent">{{ pct_observacion }}%</span>
-                        </li>
-                        <li>
-                            <span class="estado-dot estado-catecumeno"></span>
-                            <span class="estado-label">Catecúmenos</span>
-                            <span class="estado-percent">{{ pct_catecumenos }}%</span>
-                        </li>
-                    </ul>
-                {% else %}
-                    <p class="dash-empty">
-                        Aún no hay suficientes miembros oficiales para mostrar esta distribución.
-                    </p>
+                <div class="odoo-distribution-bar">
+                    {% if pct_activos > 0 %}
+                    <div class="odoo-bar-segment odoo-bar-activo" style="width: {{ pct_activos }}%;" title="Activos: {{ pct_activos }}%"></div>
+                    {% endif %}
+                    {% if pct_catecumenos > 0 %}
+                    <div class="odoo-bar-segment odoo-bar-catecumeno" style="width: {{ pct_catecumenos }}%;" title="Catecúmenos: {{ pct_catecumenos }}%"></div>
+                    {% endif %}
+                    {% if pct_pasivos > 0 %}
+                    <div class="odoo-bar-segment odoo-bar-pasivo" style="width: {{ pct_pasivos }}%;" title="Pasivos: {{ pct_pasivos }}%"></div>
+                    {% endif %}
+                    {% if pct_observacion > 0 %}
+                    <div class="odoo-bar-segment odoo-bar-observacion" style="width: {{ pct_observacion }}%;" title="Observación: {{ pct_observacion }}%"></div>
+                    {% endif %}
+                    {% if pct_disciplina > 0 %}
+                    <div class="odoo-bar-segment odoo-bar-disciplina" style="width: {{ pct_disciplina }}%;" title="Disciplina: {{ pct_disciplina }}%"></div>
+                    {% endif %}
+                </div>
                 {% endif %}
             </div>
-        </div>
 
-        <!-- Derecha: Acciones rápidas + alertas -->
-        <div>
-            <div class="dash-panel">
-                <div class="dash-panel-header">
-                    <h2>Acciones rápidas</h2>
-                    <p>Atajos frecuentes para el trabajo diario.</p>
+            <!-- Panel de etapas de vida -->
+            <div class="odoo-panel">
+                <div class="odoo-panel-header">
+                    <h2>Etapas de vida</h2>
+                    <span class="odoo-panel-badge">{{ total_miembros }} total</span>
                 </div>
 
-                <div class="quick-actions">
-                    <a href="{% url 'miembros_app:lista' %}" class="quick-action">
-                        <span class="material-icons">table_rows</span>
-                        <div>
-                            <div class="qa-title">Ver lista completa</div>
-                            <div class="qa-sub">Gestionar todos los registros de miembros.</div>
-                        </div>
-                    </a>
-
-                    <a href="{% url 'miembros_app:crear' %}" class="quick-action">
-                        <span class="material-icons">person_add</span>
-                        <div>
-                            <div class="qa-title">Agregar nuevo miembro</div>
-                            <div class="qa-sub">Registrar una persona en la base de datos.</div>
-                        </div>
-                    </a>
-
-                    <a href="{% url 'miembros_app:nuevo_creyente_crear' %}" class="quick-action">
-                        <span class="material-icons">hail</span>
-                        <div>
-                            <div class="qa-title">Registrar nuevo creyente</div>
-                            <div class="qa-sub">Decisión reciente en seguimiento.</div>
-                        </div>
-                    </a>
-
-                    <a href="{% url 'miembros_app:lista' %}?estado=descarriado" class="quick-action">
-                        <span class="material-icons">heart_broken</span>
-                        <div>
-                            <div class="qa-title">Miembros descarriados</div>
-                            <div class="qa-sub">Orar, visitar y restaurar.</div>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="dash-divider"></div>
-
-                <div class="dash-panel-header mt-2">
-                    <h2>Alertas de datos</h2>
-                    <p>Registros que necesitan completar información.</p>
-                </div>
-
-                <div class="alerts-grid">
-                    <div class="alert-item">
-                        <div class="alert-label">Sin contacto</div>
-                        <div class="alert-value">{{ sin_contacto|default:"0" }}</div>
-                        <div class="alert-sub">Sin teléfono ni correo.</div>
-                    </div>
-                    <div class="alert-item">
-                        <div class="alert-label">Sin foto</div>
-                        <div class="alert-value">{{ sin_foto|default:"0" }}</div>
-                    </div>
-                    <div class="alert-item">
-                        <div class="alert-label">Sin fecha de nacimiento</div>
-                        <div class="alert-value">{{ sin_fecha_nacimiento|default:"0" }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ZONA 2 · MOVIMIENTO (Nuevos creyentes / Salidas) -->
-    <div class="dashboard-grid">
-        <!-- Nuevos creyentes -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Nuevos creyentes recientes</h2>
-                <p>Personas en seguimiento inicial.</p>
-            </div>
-
-            {% if nuevos_creyentes_recientes %}
-                <ul class="recent-list">
-                    {% for m in nuevos_creyentes_recientes|slice:":3" %}
-                        <li>
-                            <div class="recent-main">
-                                <div class="recent-avatar">
-                                    {% if m.foto %}
-                                        <img src="{{ m.foto.url }}" alt="{{ m.nombres }} {{ m.apellidos }}">
-                                    {% else %}
-                                        <span>{{ m.nombres|default:""|first }}{{ m.apellidos|default:""|first }}</span>
-                                    {% endif %}
-                                </div>
-                                <div>
-                                    <div class="recent-name">
-                                        <a href="{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}">
-                                            {{ m.nombres }} {{ m.apellidos }}
-                                        </a>
-                                    </div>
-                                    <div class="recent-sub">
-                                        Registrado
-                                        {% if m.fecha_creacion %}
-                                            · {{ m.fecha_creacion|date:"d/m/Y H:i" }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="recent-tag">
-                                Nuevo creyente
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-                <div class="panel-footer-link">
-                    <a href="{% url 'miembros_app:reporte_nuevos_creyentes' %}">Ver todos los nuevos creyentes →</a>
-                </div>
-            {% else %}
-                <p class="dash-empty">
-                    Aún no hay nuevos creyentes registrados recientemente.
-                </p>
-            {% endif %}
-        </div>
-
-        <!-- Salidas / traslados -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Últimas salidas / traslados</h2>
-                <p>Miembros que ya no pertenecen a Torre Fuerte.</p>
-            </div>
-
-            {% if ultimas_salidas %}
-                <ul class="recent-list">
-                    {% for m in ultimas_salidas|slice:":3" %}
-                        <li>
-                            <div class="recent-main">
-                                <div>
-                                    <div class="recent-name">
-                                        {{ m.nombres }} {{ m.apellidos }}
-                                    </div>
-                                    <div class="recent-sub">
-                                        Salida: {{ m.fecha_salida|date:"d/m/Y" }}
-                                        {% if m.razon_salida %}
-                                            · {{ m.razon_salida.nombre }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="recent-tag recent-tag--inactive">
-                                Inactivo
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-                <div class="panel-footer-link">
-                    <a href="{% url 'miembros_app:reporte_miembros_salida' %}">Ver reporte completo de salidas →</a>
-                </div>
-            {% else %}
-                <p class="dash-empty">No hay registros recientes de salida.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- ZONA 3 · FOTO GENERAL (Etapas de vida + Cumpleaños) -->
-    <div class="dashboard-grid">
-        <!-- Distribución por etapas de vida -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Distribución por etapas de vida</h2>
-                <p>Cómo se reparte la iglesia por grupos de edad.</p>
-            </div>
-
-            {% if distribucion_etapa_vida and distribucion_etapa_vida|length > 0 %}
-                <div class="etapas-header-summary">
-                    <span class="etapas-total-label">Total miembros</span>
-                    <span class="etapas-total-value">{{ total_miembros }}</span>
-                </div>
-
-                <div class="etapas-list">
+                {% if distribucion_etapa_vida %}
+                <div class="odoo-etapas-list">
                     {% for e in distribucion_etapa_vida %}
                         {% if total_miembros %}
                             {% widthratio e.cantidad total_miembros 100 as pct %}
                         {% endif %}
-
-                        <div class="etapa-row">
-                            <div class="etapa-info">
-                                <div class="etapa-title">
-                                    {{ e.nombre }}
-                                </div>
-                                <div class="etapa-meta">
-                                    <span class="etapa-count-pill">
-                                        {{ e.cantidad }} persona{% if e.cantidad != 1 %}s{% endif %}
-                                    </span>
-                                    {% if total_miembros %}
-                                        <span class="etapa-percent-pill">
-                                            {{ pct }}%
-                                        </span>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="etapa-bar-wrapper">
-                                <div class="etapa-bar"
-                                     style="width: {% if total_miembros %}{{ pct }}{% else %}0{% endif %}%;">
-                                </div>
-                            </div>
+                    <div class="odoo-etapa-row">
+                        <div class="odoo-etapa-info">
+                            <span class="odoo-etapa-name">{{ e.nombre }}</span>
+                            <span class="odoo-etapa-count">{{ e.cantidad }}</span>
                         </div>
+                        <div class="odoo-etapa-bar-wrap">
+                            <div class="odoo-etapa-bar" style="width: {% if total_miembros %}{{ pct }}{% else %}0{% endif %}%;"></div>
+                        </div>
+                        <span class="odoo-etapa-pct">{% if total_miembros %}{{ pct }}{% else %}0{% endif %}%</span>
+                    </div>
                     {% endfor %}
                 </div>
+                {% else %}
+                <p class="odoo-empty">No hay datos disponibles.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: Acciones y listas -->
+        <div class="odoo-dashboard-column">
+            
+            <!-- Acciones rápidas -->
+            <div class="odoo-panel">
+                <div class="odoo-panel-header">
+                    <h2>Acciones rápidas</h2>
+                </div>
+
+                <div class="odoo-quick-actions">
+                    <a href="{% url 'miembros_app:lista' %}" class="odoo-quick-action">
+                        <span class="material-icons">table_rows</span>
+                        <div>
+                            <div class="odoo-qa-title">Ver lista completa</div>
+                            <div class="odoo-qa-sub">Todos los registros</div>
+                        </div>
+                        <span class="material-icons odoo-qa-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="{% url 'miembros_app:crear' %}" class="odoo-quick-action">
+                        <span class="material-icons">person_add</span>
+                        <div>
+                            <div class="odoo-qa-title">Agregar miembro</div>
+                            <div class="odoo-qa-sub">Nuevo registro</div>
+                        </div>
+                        <span class="material-icons odoo-qa-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="{% url 'miembros_app:nuevo_creyente_crear' %}" class="odoo-quick-action">
+                        <span class="material-icons">hail</span>
+                        <div>
+                            <div class="odoo-qa-title">Nuevo creyente</div>
+                            <div class="odoo-qa-sub">Decisión reciente</div>
+                        </div>
+                        <span class="material-icons odoo-qa-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="{% url 'miembros_app:lista' %}?estado=descarriado" class="odoo-quick-action odoo-quick-action-warning">
+                        <span class="material-icons">heart_broken</span>
+                        <div>
+                            <div class="odoo-qa-title">Descarriados</div>
+                            <div class="odoo-qa-sub">Orar y restaurar</div>
+                        </div>
+                        <span class="material-icons odoo-qa-arrow">chevron_right</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Alertas de datos -->
+            <div class="odoo-panel">
+                <div class="odoo-panel-header">
+                    <h2>Alertas de datos</h2>
+                    <span class="odoo-panel-sub">Registros incompletos</span>
+                </div>
+
+                <div class="odoo-alerts-grid">
+                    <div class="odoo-alert-item">
+                        <span class="material-icons">phone_disabled</span>
+                        <div class="odoo-alert-info">
+                            <div class="odoo-alert-value">{{ sin_contacto|default:"0" }}</div>
+                            <div class="odoo-alert-label">Sin contacto</div>
+                        </div>
+                    </div>
+                    <div class="odoo-alert-item">
+                        <span class="material-icons">no_photography</span>
+                        <div class="odoo-alert-info">
+                            <div class="odoo-alert-value">{{ sin_foto|default:"0" }}</div>
+                            <div class="odoo-alert-label">Sin foto</div>
+                        </div>
+                    </div>
+                    <div class="odoo-alert-item">
+                        <span class="material-icons">event_busy</span>
+                        <div class="odoo-alert-info">
+                            <div class="odoo-alert-value">{{ sin_fecha_nacimiento|default:"0" }}</div>
+                            <div class="odoo-alert-label">Sin fecha nac.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Próximos cumpleaños -->
+            <div class="odoo-panel">
+                <div class="odoo-panel-header">
+                    <h2>Próximos cumpleaños</h2>
+                    <span class="odoo-panel-sub">Próximos 30 días</span>
+                </div>
+
+                {% if proximos_cumpleanos %}
+                <ul class="odoo-birthday-list">
+                    {% for c in proximos_cumpleanos %}
+                    <li class="odoo-birthday-item">
+                        <div class="odoo-birthday-date">
+                            <span class="odoo-birthday-day">{{ c.fecha|date:"d" }}</span>
+                            <span class="odoo-birthday-month">{{ c.fecha|date:"M" }}</span>
+                        </div>
+                        <div class="odoo-birthday-info">
+                            <div class="odoo-birthday-name">{{ c.nombre }}</div>
+                            {% if c.edad %}
+                            <div class="odoo-birthday-age">Cumple {{ c.edad }} años</div>
+                            {% endif %}
+                        </div>
+                        <span class="material-icons odoo-birthday-icon">cake</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="odoo-empty">No hay cumpleaños próximos.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         FILA INFERIOR: Nuevos creyentes + Salidas
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-dashboard-grid">
+        
+        <!-- Nuevos creyentes recientes -->
+        <div class="odoo-panel">
+            <div class="odoo-panel-header">
+                <h2>Nuevos creyentes recientes</h2>
+                <a href="{% url 'miembros_app:reporte_nuevos_creyentes' %}" class="odoo-panel-link">
+                    Ver todos →
+                </a>
+            </div>
+
+            {% if nuevos_creyentes_recientes %}
+            <ul class="odoo-recent-list">
+                {% for m in nuevos_creyentes_recientes|slice:":4" %}
+                <li class="odoo-recent-item">
+                    <div class="odoo-recent-avatar" style="background: {% cycle '#3b82f6' '#10b981' '#f59e0b' '#8b5cf6' %};">
+                        {% if m.foto %}
+                            <img src="{{ m.foto.url }}" alt="{{ m.nombres }}">
+                        {% else %}
+                            {{ m.nombres|slice:":1"|upper }}
+                        {% endif %}
+                    </div>
+                    <div class="odoo-recent-info">
+                        <a href="{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}" class="odoo-recent-name">
+                            {{ m.nombres }} {{ m.apellidos }}
+                        </a>
+                        <div class="odoo-recent-sub">
+                            {{ m.fecha_creacion|date:"d/m/Y" }}
+                        </div>
+                    </div>
+                    <span class="odoo-recent-badge odoo-badge-new">Nuevo</span>
+                </li>
+                {% endfor %}
+            </ul>
             {% else %}
-                <p class="dash-empty">Aún no hay datos suficientes para mostrar esta distribución.</p>
+            <p class="odoo-empty">No hay nuevos creyentes recientes.</p>
             {% endif %}
         </div>
 
-        <!-- Próximos cumpleaños -->
-        <div class="dash-panel">
-            <div class="dash-panel-header">
-                <h2>Próximos cumpleaños</h2>
-                <p>En los próximos 30 días.</p>
+        <!-- Últimas salidas -->
+        <div class="odoo-panel">
+            <div class="odoo-panel-header">
+                <h2>Últimas salidas</h2>
+                <a href="{% url 'miembros_app:reporte_miembros_salida' %}" class="odoo-panel-link">
+                    Ver reporte →
+                </a>
             </div>
 
-            {% if proximos_cumpleanos %}
-                <ul class="birthday-list">
-                    {% for c in proximos_cumpleanos %}
-                        <li>
-                            <div class="birthday-date">
-                                {{ c.fecha|date:"d/m" }}
-                            </div>
-                            <div class="birthday-info">
-                                <div class="birthday-name">{{ c.nombre }}</div>
-                                {% if c.edad %}
-                                    <div class="birthday-sub">Cumple {{ c.edad }} años</div>
-                                {% endif %}
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
+            {% if ultimas_salidas %}
+            <ul class="odoo-recent-list">
+                {% for m in ultimas_salidas|slice:":4" %}
+                <li class="odoo-recent-item">
+                    <div class="odoo-recent-avatar odoo-avatar-inactive">
+                        {{ m.nombres|slice:":1"|upper }}
+                    </div>
+                    <div class="odoo-recent-info">
+                        <div class="odoo-recent-name">{{ m.nombres }} {{ m.apellidos }}</div>
+                        <div class="odoo-recent-sub">
+                            {{ m.fecha_salida|date:"d/m/Y" }}
+                            {% if m.razon_salida %} · {{ m.razon_salida.nombre }}{% endif %}
+                        </div>
+                    </div>
+                    <span class="odoo-recent-badge odoo-badge-inactive">Inactivo</span>
+                </li>
+                {% endfor %}
+            </ul>
             {% else %}
-                <p class="dash-empty">No hay cumpleaños registrados en los próximos 30 días.</p>
+            <p class="odoo-empty">No hay salidas recientes.</p>
             {% endif %}
         </div>
     </div>
 
-</section>
+</div>
 
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
 <style>
-    :root {
-        --accent: #0f766e;
-        --accent-soft: #ecfdf5;
-        --accent-strong: #0f766e;
-        --accent-alt: #2563eb;
-        --accent-warning: #f59e0b;
-        --accent-danger: #dc2626;
-        --panel-bg: #ffffff;
-        --panel-border: #e5e7eb;
+/* ═══════════════════════════════════════════════════════════════════════════
+   BARRA DE CONTROL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.odoo-control-left,
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: #016166;
+}
+
+.odoo-btn-secondary {
+    background: white;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.odoo-btn-secondary:hover {
+    background: #e9ecef;
+}
+
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.odoo-breadcrumb-title {
+    font-weight: 500;
+    color: #495057;
+}
+
+.odoo-breadcrumb-icon {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-dashboard {
+    padding: 16px;
+    background: #f8f9fa;
+    min-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KPI ROW
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.odoo-kpi-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.odoo-kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.odoo-kpi-icon .material-icons {
+    font-size: 24px;
+}
+
+.odoo-kpi-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.odoo-kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #212529;
+    line-height: 1;
+}
+
+.odoo-kpi-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #495057;
+    margin-top: 4px;
+}
+
+.odoo-kpi-sub {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD GRID
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.odoo-dashboard-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANELS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-panel {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.odoo-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.odoo-panel-header h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0;
+}
+
+.odoo-panel-badge {
+    font-size: 11px;
+    background: #e9ecef;
+    color: #495057;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.odoo-panel-sub {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.odoo-panel-link {
+    font-size: 12px;
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-panel-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-empty {
+    font-size: 13px;
+    color: #6c757d;
+    text-align: center;
+    padding: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATUS GRID (Estados pastorales)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.odoo-status-card {
+    padding: 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.odoo-status-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.odoo-status-value {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.odoo-status-label {
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+.odoo-status-pct {
+    font-size: 10px;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+
+/* Colores de estados */
+.odoo-status-activo {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+}
+
+.odoo-status-catecumeno {
+    background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+    color: #0369a1;
+}
+
+.odoo-status-pasivo {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+}
+
+.odoo-status-observacion {
+    background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+    color: #5b21b6;
+}
+
+.odoo-status-disciplina {
+    background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+    color: #9d174d;
+}
+
+.odoo-status-descarriado {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #991b1b;
+}
+
+/* Barra de distribución */
+.odoo-distribution-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: #e9ecef;
+    display: flex;
+    overflow: hidden;
+}
+
+.odoo-bar-segment {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.odoo-bar-activo { background: #10b981; }
+.odoo-bar-catecumeno { background: #0ea5e9; }
+.odoo-bar-pasivo { background: #f59e0b; }
+.odoo-bar-observacion { background: #8b5cf6; }
+.odoo-bar-disciplina { background: #ec4899; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ETAPAS DE VIDA
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-etapas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.odoo-etapa-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.odoo-etapa-info {
+    width: 120px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.odoo-etapa-name {
+    font-size: 12px;
+    color: #495057;
+}
+
+.odoo-etapa-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.odoo-etapa-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.odoo-etapa-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #017e84, #0ea5e9);
+    border-radius: 3px;
+}
+
+.odoo-etapa-pct {
+    width: 40px;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCIONES RÁPIDAS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-quick-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-quick-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.odoo-quick-action:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.odoo-quick-action > .material-icons:first-child {
+    font-size: 20px;
+    color: #017e84;
+}
+
+.odoo-quick-action > div {
+    flex: 1;
+}
+
+.odoo-qa-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #212529;
+}
+
+.odoo-qa-sub {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.odoo-qa-arrow {
+    font-size: 18px;
+    color: #adb5bd;
+}
+
+.odoo-quick-action-warning > .material-icons:first-child {
+    color: #dc2626;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALERTAS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-alerts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.odoo-alert-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: #fef2f2;
+    border-radius: 6px;
+}
+
+.odoo-alert-item .material-icons {
+    font-size: 20px;
+    color: #dc2626;
+}
+
+.odoo-alert-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #991b1b;
+}
+
+.odoo-alert-label {
+    font-size: 11px;
+    color: #991b1b;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUMPLEAÑOS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-birthday-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-birthday-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.odoo-birthday-date {
+    width: 44px;
+    height: 44px;
+    background: #017e84;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.odoo-birthday-day {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    line-height: 1;
+}
+
+.odoo-birthday-month {
+    font-size: 10px;
+    color: rgba(255,255,255,0.8);
+    text-transform: uppercase;
+}
+
+.odoo-birthday-info {
+    flex: 1;
+}
+
+.odoo-birthday-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #212529;
+}
+
+.odoo-birthday-age {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.odoo-birthday-icon {
+    font-size: 20px;
+    color: #f59e0b;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LISTAS RECIENTES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-recent-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-recent-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.odoo-recent-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.odoo-recent-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.odoo-avatar-inactive {
+    background: #9ca3af !important;
+}
+
+.odoo-recent-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.odoo-recent-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #212529;
+    text-decoration: none;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+a.odoo-recent-name:hover {
+    color: #017e84;
+}
+
+.odoo-recent-sub {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.odoo-recent-badge {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.odoo-badge-new {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.odoo-badge-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1200px) {
+    .odoo-kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 992px) {
+    .odoo-dashboard-grid {
+        grid-template-columns: 1fr;
     }
 
-    .dashboard-section {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-        background: radial-gradient(circle at top left, #ecfdf5 0, #eff6ff 45%, #f9fafb 100%);
-        border-radius: 18px;
-        padding: 14px;
-        border: 1px solid #e5e7eb;
+    .odoo-status-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .odoo-kpi-row {
+        grid-template-columns: 1fr;
     }
 
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 12px;
+    .odoo-status-grid {
+        grid-template-columns: 1fr;
     }
 
-    .kpi-card {
-        background: linear-gradient(135deg, #ffffff, #f4f4ff);
-        border-radius: 14px;
-        padding: 12px 14px;
-        border: 1px solid rgba(148, 163, 184, 0.4);
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        position: relative;
-        overflow: hidden;
+    .odoo-alerts-grid {
+        grid-template-columns: 1fr;
     }
 
-    .kpi-card::before {
-        content: "";
-        position: absolute;
-        inset-inline-start: -1px;
-        top: -1px;
-        bottom: -1px;
-        width: 4px;
-        background: linear-gradient(to bottom, var(--accent-strong), #22c55e);
-    }
-
-    .kpi-label {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #6b7280;
-    }
-
-    .kpi-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .kpi-sub {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(0, 2fr);
-        gap: 12px;
-    }
-
-    @media (max-width: 900px) {
-        .dashboard-grid {
-            grid-template-columns: minmax(0, 1fr);
-        }
-        .dashboard-section {
-            padding: 10px;
-        }
-    }
-
-    .dashboard-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        gap: 12px;
-    }
-
-    .dash-card {
-        border-radius: 14px;
-        padding: 12px 14px;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 8px 20px rgba(15,23,42,0.05);
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .dash-card-label {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #6b7280;
-    }
-
-    .dash-card-value {
-        font-size: 26px;
-        font-weight: 700;
-        color: #111827;
-    }
-
-    .dash-card-sub {
-        font-size: 12px;
-        color: #4b5563;
-    }
-
-    .dash-card--activo {
-        border-color: #bbf7d0;
-        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-    }
-
-    .dash-card--pasivo {
-        border-color: #fef3c7;
-        background: linear-gradient(135deg, #fffbeb, #fef9c3);
-    }
-
-    .dash-card--descarriado {
-        border-color: #fee2e2;
-        background: linear-gradient(135deg, #fef2f2, #fee2e2);
-    }
-
-    .dash-card--observacion {
-        border-color: #e0e7ff;
-        background: linear-gradient(135deg, #eef2ff, #e0f2fe);
-    }
-
-    .dash-card--disciplina {
-        border-color: #fde68a;
-        background: linear-gradient(135deg, #fefce8, #fef3c7);
-    }
-
-    .dash-card--catecumeno {
-        border-color: #bfdbfe;
-        background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    }
-
-    .dash-panel {
-        background: var(--panel-bg);
-        border-radius: 16px;
-        padding: 14px 16px;
-        border: 1px solid var(--panel-border);
-        box-shadow: 0 10px 24px rgba(15,23,42,0.05);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .dash-panel::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: -1px;
-        height: 3px;
-        background: linear-gradient(to right, var(--accent-strong), var(--accent-alt));
-        opacity: 0.5;
-    }
-
-    .dash-panel-header h2 {
-        margin: 0;
-        font-size: 15px;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .dash-panel-header h2::before {
-        content: "";
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: var(--accent-strong);
-        opacity: 0.75;
-    }
-
-    .dash-panel-header p {
-        margin: 2px 0 10px;
-        font-size: 12px;
-        color: #6b7280;
-    }
-
-    .dash-empty {
-        font-size: 12px;
-        color: #9ca3af;
-    }
-
-    .dash-divider {
-        margin: 10px 0;
-        border-top: 1px dashed #e5e7eb;
-    }
-
-    .mt-2 {
-        margin-top: 8px;
-    }
-
-    /* Etapas de vida */
-    .etapas-header-summary {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 8px;
-        font-size: 12px;
-    }
-
-    .etapas-total-label {
-        color: #6b7280;
-    }
-
-    .etapas-total-value {
-        font-weight: 700;
-        color: #111827;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: #e0f2fe;
-    }
-
-    .etapas-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-top: 4px;
-    }
-
-    .etapa-row {
-        border-radius: 12px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        padding: 8px 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .etapa-info {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
+    .odoo-control-bar {
         flex-wrap: wrap;
-    }
-
-    .etapa-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .etapa-meta {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .etapa-count-pill,
-    .etapa-percent-pill {
-        font-size: 11px;
-        padding: 2px 10px;
-        border-radius: 999px;
-        border: 1px solid #e5e7eb;
-        background: #ffffff;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        white-space: nowrap;
-    }
-
-    .etapa-count-pill {
-        color: #374151;
-    }
-
-    .etapa-percent-pill {
-        border-color: #bfdbfe;
-        background: #eff6ff;
-        color: #1d4ed8;
-        font-weight: 600;
-    }
-
-    .etapa-bar-wrapper {
-        background: #e5e7eb;
-        border-radius: 999px;
-        overflow: hidden;
-        height: 10px;
-        position: relative;
-    }
-
-    .etapa-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #0f766e, #22c55e);
-        box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
-        transition: width 0.4s ease;
-    }
-
-    /* Cumpleaños */
-    .birthday-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        font-size: 12px;
-    }
-
-    .birthday-list li {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 8px;
-        border-radius: 8px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-    }
-
-    .birthday-date {
-        font-weight: 700;
-        color: var(--accent-alt);
-        min-width: 48px;
-    }
-
-    .birthday-name {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .birthday-sub {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    /* Nuevos / salidas */
-    .recent-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        font-size: 12px;
-    }
-
-    .recent-list li {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 6px 8px;
-        border-radius: 10px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-    }
-
-    .recent-main {
-        display: flex;
-        align-items: center;
         gap: 8px;
     }
-
-    .recent-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        background: #e0f2fe;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 600;
-        color: #0f172a;
-        overflow: hidden;
-    }
-
-    .recent-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .recent-name a {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-        text-decoration: none;
-    }
-
-    .recent-name a:hover {
-        text-decoration: underline;
-    }
-
-    .recent-sub {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    .recent-tag {
-        font-size: 11px;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: #e5e7eb;
-        color: #374151;
-        white-space: nowrap;
-    }
-
-    .recent-tag--inactive {
-        background: #fee2e2;
-        color: var(--accent-danger);
-    }
-
-    .panel-footer-link {
-        margin-top: 8px;
-        font-size: 12px;
-    }
-
-    .panel-footer-link a {
-        color: var(--accent-alt);
-        text-decoration: none;
-        font-weight: 500;
-    }
-
-    .panel-footer-link a:hover {
-        text-decoration: underline;
-    }
-
-    /* Acciones rápidas */
-    .quick-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-bottom: 6px;
-    }
-
-    .quick-action {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: #eff6ff;
-        text-decoration: none;
-        color: inherit;
-        font-size: 12px;
-        border: 1px solid #dbeafe;
-    }
-
-    .quick-action:hover {
-        background: #dbeafe;
-    }
-
-    .quick-action .material-icons {
-        font-size: 18px;
-        color: var(--accent-alt);
-    }
-
-    .qa-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .qa-sub {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    /* Alertas */
-    .alerts-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 8px;
-        margin-top: 6px;
-    }
-
-    .alert-item {
-        border-radius: 10px;
-        background: #f9fafb;
-        padding: 8px 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        border: 1px solid #e5e7eb;
-    }
-
-    .alert-label {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    .alert-value {
-        font-size: 18px;
-        font-weight: 700;
-        color: var(--accent-strong);
-    }
-
-    .alert-sub {
-        font-size: 10px;
-        color: #9ca3af;
-    }
-
-    /* Gráfico de estado pastoral */
-    .estado-bar-wrapper {
-        width: 100%;
-        height: 18px;
-        border-radius: 999px;
-        overflow: hidden;
-        background: #f3f4f6;
-        display: flex;
-        margin-bottom: 8px;
-        border: 1px solid #e5e7eb;
-    }
-
-    .estado-bar {
-        height: 100%;
-    }
-
-    .estado-activo {
-        background: linear-gradient(90deg, #16a34a, #22c55e);
-    }
-
-    .estado-pasivo {
-        background: linear-gradient(90deg, #f59e0b, #fbbf24);
-    }
-
-    .estado-descarriado {
-        background: linear-gradient(90deg, #ef4444, #f97373);
-    }
-
-    .estado-observacion {
-        background: linear-gradient(90deg, #6366f1, #a855f7);
-    }
-
-    .estado-catecumeno {
-        background: linear-gradient(90deg, #0ea5e9, #38bdf8);
-    }
-
-    .estado-legend {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-        gap: 4px 10px;
-        font-size: 11px;
-    }
-
-    .estado-legend li {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        color: #4b5563;
-    }
-
-    .estado-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        display: inline-block;
-    }
-
-    .estado-dot.estado-activo { background: #16a34a; }
-    .estado-dot.estado-pasivo { background: #f59e0b; }
-    .estado-dot.estado-descarriado { background: #ef4444; }
-    .estado-dot.estado-observacion { background: #6366f1; }
-    .estado-dot.estado-catecumeno { background: #0ea5e9; }
-
-    .estado-label {
-        flex: 1;
-    }
-
-    .estado-percent {
-        font-weight: 600;
-        color: #111827;
-    }
+}
 </style>
 
 {% endblock %}

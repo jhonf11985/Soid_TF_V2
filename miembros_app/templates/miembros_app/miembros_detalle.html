@@ -1,710 +1,1034 @@
-{% extends 'core/base_modulo.html' %}
+{% extends 'miembros_app/base_miembros.html' %}
 
-{% block title %}Perfil del miembro{% endblock %}
+{% block title %}{{ miembro.nombres }} {{ miembro.apellidos }}{% endblock %}
 
-{% block breadcrumb %}
-Miembros / Perfil
-{% endblock %}
+{% block miembros_content %}
 
-{% block content %}
-
-<section class="page-header">
-    <div>
-        <h1 class="page-title">
-            {{ miembro.nombres }} {{ miembro.apellidos }}
-        </h1>
-            <!-- 🔵 Código del miembro -->
-            <div style="font-size:13px; color:#1e3a8a; font-weight:600; margin-top:4px;">
-                Código: {{ miembro.codigo_miembro }}
-            </div>
-        <p class="page-subtitle">
-            Perfil detallado del miembro de la iglesia Torre Fuerte.
-        </p>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+    <div class="odoo-control-left">
+        <a href="{% url 'miembros_app:lista' %}" class="odoo-btn odoo-btn-secondary">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        
+        <div class="odoo-breadcrumb">
+            <a href="{% url 'miembros_app:lista' %}" class="odoo-breadcrumb-link">Miembros</a>
+            <span class="material-icons">chevron_right</span>
+            <span class="odoo-breadcrumb-current">{{ miembro.codigo_miembro }}</span>
+        </div>
     </div>
 
-    <div class="page-header-actions">
-    <a href="{% url 'miembros_app:lista' %}" class="btn-secondary">
-        <span class="material-icons">arrow_back</span>
-        Volver a la lista
-    </a>
-
-    <a href="{% url 'miembros_app:editar' miembro.pk %}" class="btn-primary">
-        <span class="material-icons">edit</span>
-        Editar
-    </a>
-    
-      <!-- 🔵 NUEVO BOTÓN -->
-    <a href="{% url 'miembros_app:miembro_enviar_ficha_email' miembro.pk %}" class="btn-secondary">
-        <span class="material-icons">mail</span>
-        Enviar por correo
-    </a>
-
-    <a href="{% url 'miembros_app:ficha' miembro.pk %}" class="btn-secondary">
-        <span class="material-icons">description</span>
-        Ficha pastoral
-    </a>
+    <div class="odoo-control-right">
+        <a href="{% url 'miembros_app:miembro_enviar_ficha_email' miembro.pk %}" class="odoo-btn odoo-btn-secondary">
+            <span class="material-icons">mail</span>
+            Enviar
+        </a>
+        <a href="{% url 'miembros_app:ficha' miembro.pk %}" class="odoo-btn odoo-btn-secondary">
+            <span class="material-icons">description</span>
+            Ficha
+        </a>
+        <a href="{% url 'miembros_app:editar' miembro.pk %}" class="odoo-btn odoo-btn-primary">
+            <span class="material-icons">edit</span>
+            Editar
+        </a>
+    </div>
 </div>
 
-</section>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTENIDO PRINCIPAL (Layout estilo Odoo Form)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-detail-container">
 
-<section class="member-profile">
-
-    <!-- Panel principal -->
-    <div class="member-profile-main">
-        <div class="member-profile-header">
-
-            <!-- IZQUIERDA: FOTO + NOMBRE + TAGS + SUBINFO -->
-            <div class="member-profile-left">
-                <div class="member-profile-photo">
-                    {% if miembro.foto %}
-                        <img src="{{ miembro.foto.url }}" alt="{{ miembro.nombres }} {{ miembro.apellidos }}">
-                    {% else %}
-                        <span class="material-icons">person</span>
-                    {% endif %}
-                </div>
-
-                <div class="member-profile-info">
-                    <h2>{{ miembro.nombres }} {{ miembro.apellidos }}</h2>
-
-                    <div class="member-profile-tags">
-                        
-                        {% if not miembro.activo %}
-                            <span class="badge badge-red">Inactivo</span>
-                            {% if miembro.estado_miembro %}
-                                <span class="badge badge-neutral">
-                                    {{ miembro.get_estado_miembro_display }}
-                                </span>
-                            {% endif %}
-                        {% elif miembro.edad and miembro.edad < EDAD_MINIMA_MIEMBRO_OFICIAL %}
-                            <span class="badge badge-neutral">
-                                Niño(a) de la congregación
-                            </span>
-                        {% else %}
-                            {% if miembro.estado_miembro %}
-                                <span class="badge badge-neutral">
-                                    {{ miembro.get_estado_miembro_display }}
-                                </span>
-                            {% endif %}
-                        {% endif %}
-
-                        {# Edad calculada #}
-                        {% if miembro.edad %}
-                            <span class="badge badge-blue">
-                                {{ miembro.edad }} años
-                            </span>
-                        {% endif %}
-
-                        {# Categoría de edad (Infante, Niño, Adolescente, etc.) #}
-                        {% if miembro.categoria_edad %}
-                            <span class="badge badge-neutral">
-                                {{ miembro.get_categoria_edad_display }}
-                            </span>
-                        {% endif %}
-                    </div>
-
-                    <div class="member-profile-subinfo">
-                        <div>
-                            <strong>Fecha de nacimiento</strong>
-                            <span>
-                                {% if miembro.fecha_nacimiento %}
-                                    {{ miembro.fecha_nacimiento|date:"d/m/Y" }}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div>
-                            <strong>Género</strong>
-                            <span>{{ miembro.genero|default:"—" }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- DERECHA: SITUACIÓN ACTUAL EN LA IGLESIA -->
-            <div class="member-profile-exit">
-                <div class="status-exit-block">
-                    <strong>Situación actual en la iglesia</strong>
-
-                    {# 1) MIEMBRO CON SALIDA (ACTIVO = False) -> PRIORIDAD MÁXIMA #}
-                    {% if not miembro.activo %}
-                        <p class="status-exit-text">
-                            Actualmente no está activo en la membresía oficial de Torre Fuerte.
-                        </p>
-
-                        <p class="status-exit-text">
-                            <span class="status-exit-label">Razón de salida:</span>
-                            {{ miembro.razon_salida|default:"No especificada." }}
-                        </p>
-
-                        <p class="status-exit-text">
-                            <span class="status-exit-label">Fecha de salida:</span>
-                            {% if miembro.fecha_salida %}
-                                {{ miembro.fecha_salida|date:"d/m/Y" }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </p>
-
-                        {% if miembro.comentario_salida %}
-                            <p class="status-exit-text">
-                                <span class="status-exit-label">Comentario pastoral:</span>
-                                {{ miembro.comentario_salida }}
-                            </p>
-                        {% endif %}
-
-                    {# 2) NIÑOS ACTIVOS (<12): NO SON MIEMBROS OFICIALES #}
-                    {% elif miembro.edad and miembro.edad < EDAD_MINIMA_MIEMBRO_OFICIAL %}
-                        <p class="status-exit-text">
-                            Actualmente es menor de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años.
-                            . Está registrado como niño(a) de la congregación,
-                            pero aún no forma parte de la membresía oficial.
-                        </p>
-
-                    {# 3) ADOLESCENTES / ADULTOS ACTIVOS #}
-                    {% else %}
-
-                        {# ¿Es miembro oficial según la lógica del modelo? #}
-                        {% if miembro.es_miembro_oficial %}
-                            {# Es miembro oficial, ahora matizamos por estado_miembro #}
-                            {% if miembro.estado_miembro == "pasivo" %}
-                                <p class="status-exit-text">
-                                    Forma parte de la membresía oficial, pero actualmente está en estado
-                                    <strong>pasivo</strong> y no participa activamente en ministerios ni responsabilidades.
-                                </p>
-                            {% elif miembro.estado_miembro == "observacion" %}
-                                <p class="status-exit-text">
-                                    Se considera miembro oficial, pero está en
-                                    <strong>observación pastoral</strong> y tiene restricciones para participar en algunas áreas.
-                                </p>
-                            {% elif miembro.estado_miembro == "disciplina" %}
-                                <p class="status-exit-text">
-                                    Es miembro oficial, pero actualmente está bajo
-                                    <strong>disciplina</strong> y no puede participar en ningún ministerio ni servicio
-                                    mientras se mantenga esta condición.
-                                </p>
-                            {% elif miembro.estado_miembro == "descarriado" %}
-                                <p class="status-exit-text">
-                                    Se considera miembro <strong>descarriado</strong>: no se congrega de forma regular
-                                    y está apartado de la vida activa de la iglesia, aunque se mantiene en el registro
-                                    de membresía para seguimiento pastoral.
-                                </p>
-                            {% elif miembro.estado_miembro == "catecumeno" %}
-                                <p class="status-exit-text">
-                                    Se encuentra como <strong>catecúmeno</strong>: en proceso de preparación antes de ser
-                                    plenamente recibido como miembro oficial, aunque ya cumple los requisitos básicos.
-                                </p>
-                            {% else %}
-                                {# Activo u otro valor por defecto #}
-                                <p class="status-exit-text">
-                                    Actualmente forma parte de la <strong>membresía oficial</strong> de Torre Fuerte
-                                    y puede participar normalmente en los ministerios y actividades de la iglesia.
-                                </p>
-                            {% endif %}
-                        {% else %}
-                            {# No cumple criterios de miembro oficial (no bautizado confirmado, etc.) #}
-                            {% if miembro.estado_miembro == "catecumeno" %}
-                                <p class="status-exit-text">
-                                    Se encuentra como <strong>catecúmeno</strong>: asistiendo y en preparación para
-                                    ser recibido como miembro oficial de la iglesia.
-                                </p>
-                            {% else %}
-                                <p class="status-exit-text">
-                                    Se congrega en Torre Fuerte, pero aún no forma parte de la
-                                    <strong>membresía oficial</strong> (en proceso de membresía o preparación).
-                                </p>
-                            {% endif %}
-                        {% endif %}
-                    {% endif %}
-                </div>
-            </div>
-
+    <!-- HEADER: Avatar + Nombre + Info rápida -->
+    <div class="odoo-detail-header">
+        
+        <!-- Avatar -->
+        <div class="odoo-detail-avatar" style="background: {% if miembro.genero == 'M' %}#3b82f6{% else %}#ec4899{% endif %};">
+            {% if miembro.foto %}
+                <img src="{{ miembro.foto.url }}" alt="{{ miembro.nombres }}">
+            {% else %}
+                <span class="odoo-avatar-initial">{{ miembro.nombres|slice:":1"|upper }}</span>
+            {% endif %}
         </div>
 
-        <!-- Bloques de información -->
-        <div class="member-profile-sections">
-
-            <!-- Contacto -->
-            <div class="profile-card">
-                <h3>Contacto</h3>
-                <div class="profile-grid">
-                    <div>
-                        <strong>Teléfono principal</strong>
-                        <p>{{ miembro.telefono|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <strong>Teléfono secundario</strong>
-                        <p>{{ miembro.telefono_secundario|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <strong>WhatsApp</strong>
-                        <p>{{ miembro.whatsapp|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <strong>Correo electrónico</strong>
-                        <p>{{ miembro.email|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <strong>Cédula</strong>
-                        <p>{{ miembro.cedula|default:"—" }}</p>
-                    </div>
-
-                    <div>
-                        <strong>Pasaporte</strong>
-                        <p>{{ miembro.pasaporte|default:"—" }}</p>
-                    </div>
-                    <div class="profile-grid-full">
-                        <strong>Dirección</strong>
-                        <p>
-                            {% if miembro.direccion %}
-                                {{ miembro.direccion }}
-                                {% if miembro.sector %} · {{ miembro.sector }}{% endif %}
-                                {% if miembro.ciudad %} · {{ miembro.ciudad }}{% endif %}
-                                {% if miembro.provincia %} · {{ miembro.provincia }}{% endif %}
-                                {% if miembro.codigo_postal %} · {{ miembro.codigo_postal }}{% endif %}
-                            {% else %}
-                                — 
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Emergencia y salud -->
-            <div class="profile-card">
-                <h3>Emergencia y salud</h3>
-                <div class="profile-grid">
-                    <div>
-                        <strong>Contacto de emergencia</strong>
-                        <p>{{ miembro.contacto_emergencia_nombre|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <strong>Teléfono de emergencia</strong>
-                        <p>{{ miembro.contacto_emergencia_telefono|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <strong>Relación</strong>
-                        <p>{{ miembro.contacto_emergencia_relacion|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <strong>Tipo de sangre</strong>
-                        <p>{{ miembro.tipo_sangre|default:"—" }}</p>
-                    </div>
-
-                    <div class="profile-grid-full">
-                        <strong>Alergias</strong>
-                        <p>{{ miembro.alergias|default:"—" }}</p>
-                    </div>
-                    <div class="profile-grid-full">
-                        <strong>Condiciones médicas</strong>
-                        <p>{{ miembro.condiciones_medicas|default:"—" }}</p>
-                    </div>
-                    <div class="profile-grid-full">
-                        <strong>Medicamentos</strong>
-                        <p>{{ miembro.medicamentos|default:"—" }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Trabajo -->
-            <div class="profile-card">
-                <h3>Trabajo</h3>
-                <div class="profile-grid">
-                    <div>
-                        <strong>Empleador</strong>
-                        <p>{{ miembro.empleador|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <strong>Puesto</strong>
-                        <p>{{ miembro.puesto|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <strong>Teléfono del trabajo</strong>
-                        <p>{{ miembro.telefono_trabajo|default:"—" }}</p>
-                    </div>
-                    <div class="profile-grid-full">
-                        <strong>Dirección del trabajo</strong>
-                        <p>{{ miembro.direccion_trabajo|default:"—" }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Membresía -->
-            <div class="profile-card membership-card">
-                <h3>Membresía e información espiritual</h3>
-                <div class="profile-grid">
-
-                    <div>
-                        <strong>Estado del miembro</strong>
-                        <p>{% if miembro.estado_miembro %}{{ miembro.get_estado_miembro_display }}{% else %}—{% endif %}</p>
-                    </div>
-
-                    <div>
-                        <strong>Categoría</strong>
-                        <p>{{ miembro.categoria_miembro|default:"—" }}</p>
-                    </div>
-
-                    <div>
-                        <strong>Fecha de ingreso</strong>
-                        <p>{% if miembro.fecha_ingreso_iglesia %}{{ miembro.fecha_ingreso_iglesia|date:"d/m/Y" }}{% else %}—{% endif %}</p>
-                    </div>
-
-                    <div>
-                        <strong>Iglesia anterior</strong>
-                        <p>{{ miembro.iglesia_anterior|default:"—" }}</p>
-                    </div>
-
-                    <div>
-                        <strong>Fecha de conversión</strong>
-                        <p>{% if miembro.fecha_conversion %}{{ miembro.fecha_conversion|date:"d/m/Y" }}{% else %}—{% endif %}</p>
-                    </div>
-
-                    <div>
-                        <strong>Fecha de bautismo</strong>
-                        <p>{% if miembro.fecha_bautismo %}{{ miembro.fecha_bautismo|date:"d/m/Y" }}{% else %}—{% endif %}</p>
-                    </div>
-
-                    <div>
-                        <strong>Bautizado confirmado</strong>
-                        <p>
-                            {% if miembro.bautizado_confirmado %}
-                                <span class="pill pill-success">Sí</span>
-                            {% else %}
-                                <span class="pill pill-muted">No</span>
-                            {% endif %}
-                        </p>
-                    </div>
-
-                    <div>
-                        <strong>Mentor</strong>
-                        <p>{{ miembro.mentor|default:"—" }}</p>
-                    </div>
-
-                    <div>
-                        <strong>Líder de célula</strong>
-                        <p>{{ miembro.lider_celula|default:"—" }}</p>
-                    </div>
-
-                </div>
-            </div>
-
-           <!-- Familia -->
-           <div class="profile-card">
-                <h3>Familia</h3>
-
-                {% if relaciones_familia %}
-                    <div class="profile-grid-full">
-                        <table class="family-table">
-                            <thead>
-                                <tr>
-                                    <th>Miembro principal</th>
-                                    <th>Familiar</th>
-                                    <th>Relación</th>
-                                    <th>Vive en casa</th>
-                                    <th>Responsable</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for rel in relaciones_familia %}
-                                    <tr>
-                                        <td>{{ rel.miembro.nombres }} {{ rel.miembro.apellidos }}</td>
-                                        <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
-                                        <td>{{ rel.get_tipo_relacion_display }}</td>
-                                        <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
-                                        <td>{% if rel.es_responsable %}Sí{% else %}No{% endif %}</td>
-                                    </tr>
-                                {% empty %}
-                                    <tr>
-                                        <td colspan="5" style="text-align:center; color:#6b7280;">
-                                            No hay familiares registrados para este miembro.
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <p style="color:#6b7280; font-size:13px;">
-                        No hay familiares registrados para este miembro.
-                    </p>
+        <!-- Info principal -->
+        <div class="odoo-detail-info">
+            <h1 class="odoo-detail-name">{{ miembro.nombres }} {{ miembro.apellidos }}</h1>
+            
+            <div class="odoo-detail-badges">
+                {% if not miembro.activo %}
+                    <span class="odoo-badge odoo-badge-danger">Inactivo</span>
+                {% endif %}
+                
+                {% if miembro.estado_miembro %}
+                    <span class="odoo-badge odoo-badge-{% if miembro.estado_miembro == 'activo' %}success{% elif miembro.estado_miembro == 'pasivo' %}warning{% elif miembro.estado_miembro == 'disciplina' or miembro.estado_miembro == 'descarriado' %}danger{% else %}info{% endif %}">
+                        {{ miembro.get_estado_miembro_display }}
+                    </span>
+                {% endif %}
+                
+                {% if miembro.edad and miembro.edad < EDAD_MINIMA_MIEMBRO_OFICIAL %}
+                    <span class="odoo-badge odoo-badge-neutral">Niño(a)</span>
+                {% endif %}
+                
+                {% if miembro.edad %}
+                    <span class="odoo-badge odoo-badge-info">{{ miembro.edad }} años</span>
+                {% endif %}
+                
+                {% if miembro.categoria_edad %}
+                    <span class="odoo-badge odoo-badge-neutral">{{ miembro.get_categoria_edad_display }}</span>
+                {% endif %}
+                
+                {% if miembro.bautizado_confirmado %}
+                    <span class="odoo-badge odoo-badge-success">Bautizado</span>
                 {% endif %}
             </div>
 
-            <!-- Intereses -->
-            <div class="profile-card">
-                <h3>Intereses y habilidades</h3>
-                <div class="profile-grid">
-                    <div class="profile-grid-full">
-                        <strong>Intereses</strong>
-                        <p>{{ miembro.intereses|default:"—" }}</p>
-                    </div>
-                    <div class="profile-grid-full">
-                        <strong>Otros intereses</strong>
-                        <p>{{ miembro.otros_intereses|default:"—" }}</p>
-                    </div>
-                    <div class="profile-grid-full">
-                        <strong>Habilidades</strong>
-                        <p>{{ miembro.habilidades|default:"—" }}</p>
-                    </div>
-                    <div class="profile-grid-full">
-                        <strong>Otras habilidades</strong>
-                        <p>{{ miembro.otras_habilidades|default:"—" }}</p>
-                    </div>
+            <!-- Quick info -->
+            <div class="odoo-detail-quick">
+                {% if miembro.email %}
+                <div class="odoo-quick-item">
+                    <span class="material-icons">mail</span>
+                    <a href="mailto:{{ miembro.email }}">{{ miembro.email }}</a>
                 </div>
+                {% endif %}
+                {% if miembro.telefono %}
+                <div class="odoo-quick-item">
+                    <span class="material-icons">phone</span>
+                    <span>{{ miembro.telefono }}</span>
+                </div>
+                {% endif %}
+                {% if miembro.whatsapp %}
+                <div class="odoo-quick-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#25d366">
+                        <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2z"/>
+                    </svg>
+                    <a href="https://wa.me/{{ miembro.whatsapp|cut:' '|cut:'-' }}" target="_blank">{{ miembro.whatsapp }}</a>
+                </div>
+                {% endif %}
             </div>
+        </div>
 
-            <!-- Notas -->
-            <div class="profile-card">
-                <h3>Notas pastorales</h3>
-                <p>
-                    {{ miembro.notas|default:"Sin notas registradas." }}
-                </p>
-            </div>
+        <!-- Código del miembro -->
+        <div class="odoo-detail-code">
+            <span class="odoo-code-label">Código</span>
+            <span class="odoo-code-value">{{ miembro.codigo_miembro }}</span>
         </div>
     </div>
 
-</section>
+    <!-- SITUACIÓN EN LA IGLESIA (Card destacada) -->
+    <div class="odoo-situation-card {% if not miembro.activo %}odoo-situation-inactive{% elif miembro.estado_miembro == 'disciplina' or miembro.estado_miembro == 'descarriado' %}odoo-situation-warning{% else %}odoo-situation-ok{% endif %}">
+        <div class="odoo-situation-icon">
+            {% if not miembro.activo %}
+                <span class="material-icons">person_off</span>
+            {% elif miembro.estado_miembro == 'disciplina' %}
+                <span class="material-icons">gavel</span>
+            {% elif miembro.estado_miembro == 'descarriado' %}
+                <span class="material-icons">heart_broken</span>
+            {% elif miembro.estado_miembro == 'observacion' %}
+                <span class="material-icons">visibility</span>
+            {% elif miembro.es_miembro_oficial %}
+                <span class="material-icons">verified</span>
+            {% else %}
+                <span class="material-icons">person</span>
+            {% endif %}
+        </div>
+        <div class="odoo-situation-content">
+            <strong>Situación actual en la iglesia</strong>
+            
+            {% if not miembro.activo %}
+                <p>Actualmente no está activo en la membresía oficial.</p>
+                {% if miembro.razon_salida %}
+                    <p><span class="odoo-sit-label">Razón:</span> {{ miembro.razon_salida }}</p>
+                {% endif %}
+                {% if miembro.fecha_salida %}
+                    <p><span class="odoo-sit-label">Fecha de salida:</span> {{ miembro.fecha_salida|date:"d/m/Y" }}</p>
+                {% endif %}
+                {% if miembro.comentario_salida %}
+                    <p><span class="odoo-sit-label">Comentario:</span> {{ miembro.comentario_salida }}</p>
+                {% endif %}
+                
+            {% elif miembro.edad and miembro.edad < EDAD_MINIMA_MIEMBRO_OFICIAL %}
+                <p>Menor de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años. Registrado como niño(a) de la congregación, aún no forma parte de la membresía oficial.</p>
+                
+            {% else %}
+                {% if miembro.es_miembro_oficial %}
+                    {% if miembro.estado_miembro == "pasivo" %}
+                        <p>Forma parte de la membresía oficial, pero está en estado <strong>pasivo</strong> y no participa activamente.</p>
+                    {% elif miembro.estado_miembro == "observacion" %}
+                        <p>Miembro oficial en <strong>observación pastoral</strong> con restricciones para participar en algunas áreas.</p>
+                    {% elif miembro.estado_miembro == "disciplina" %}
+                        <p>Miembro oficial bajo <strong>disciplina</strong>. No puede participar en ministerios ni servicios.</p>
+                    {% elif miembro.estado_miembro == "descarriado" %}
+                        <p>Miembro <strong>descarriado</strong>: no se congrega regularmente. Se mantiene en registro para seguimiento pastoral.</p>
+                    {% elif miembro.estado_miembro == "catecumeno" %}
+                        <p><strong>Catecúmeno</strong>: en proceso de preparación antes de ser recibido como miembro oficial.</p>
+                    {% else %}
+                        <p>Forma parte de la <strong>membresía oficial</strong> y puede participar normalmente en ministerios y actividades.</p>
+                    {% endif %}
+                {% else %}
+                    {% if miembro.estado_miembro == "catecumeno" %}
+                        <p><strong>Catecúmeno</strong>: asistiendo y en preparación para ser recibido como miembro oficial.</p>
+                    {% else %}
+                        <p>Se congrega en la iglesia, pero aún no forma parte de la <strong>membresía oficial</strong>.</p>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
 
+    <!-- TABS DE INFORMACIÓN -->
+    <div class="odoo-detail-tabs">
+        <button type="button" class="odoo-tab active" data-tab="personal">
+            <span class="material-icons">person</span>
+            Personal
+        </button>
+        <button type="button" class="odoo-tab" data-tab="contacto">
+            <span class="material-icons">contact_phone</span>
+            Contacto
+        </button>
+        <button type="button" class="odoo-tab" data-tab="membresia">
+            <span class="material-icons">card_membership</span>
+            Membresía
+        </button>
+        <button type="button" class="odoo-tab" data-tab="salud">
+            <span class="material-icons">medical_services</span>
+            Salud
+        </button>
+        <button type="button" class="odoo-tab" data-tab="trabajo">
+            <span class="material-icons">work</span>
+            Trabajo
+        </button>
+        <button type="button" class="odoo-tab" data-tab="familia">
+            <span class="material-icons">family_restroom</span>
+            Familia
+        </button>
+        <button type="button" class="odoo-tab" data-tab="otros">
+            <span class="material-icons">more_horiz</span>
+            Otros
+        </button>
+    </div>
+
+    <!-- CONTENIDO DE TABS -->
+    <div class="odoo-tab-contents">
+        
+        <!-- TAB: Personal -->
+        <div class="odoo-tab-content active" id="tab-personal">
+            <div class="odoo-fields-grid">
+                <div class="odoo-field">
+                    <label>Fecha de nacimiento</label>
+                    <span>{% if miembro.fecha_nacimiento %}{{ miembro.fecha_nacimiento|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Lugar de nacimiento</label>
+                    <span>{{ miembro.lugar_nacimiento|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Género</label>
+                    <span>{{ miembro.get_genero_display|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Estado civil</label>
+                    <span>{{ miembro.get_estado_civil_display|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Nacionalidad</label>
+                    <span>{{ miembro.nacionalidad|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Cédula</label>
+                    <span>{{ miembro.cedula|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Pasaporte</label>
+                    <span>{{ miembro.pasaporte|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Nivel educativo</label>
+                    <span>{{ miembro.get_nivel_educativo_display|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Profesión</label>
+                    <span>{{ miembro.profesion|default:"—" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Contacto -->
+        <div class="odoo-tab-content" id="tab-contacto">
+            <div class="odoo-fields-grid">
+                <div class="odoo-field">
+                    <label>Teléfono principal</label>
+                    <span>{{ miembro.telefono|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Teléfono secundario</label>
+                    <span>{{ miembro.telefono_secundario|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>WhatsApp</label>
+                    <span>
+                        {% if miembro.whatsapp %}
+                            <a href="https://wa.me/{{ miembro.whatsapp|cut:' '|cut:'-' }}" target="_blank">{{ miembro.whatsapp }}</a>
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="odoo-field">
+                    <label>Correo electrónico</label>
+                    <span>
+                        {% if miembro.email %}
+                            <a href="mailto:{{ miembro.email }}">{{ miembro.email }}</a>
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="odoo-field odoo-field-full">
+                    <label>Dirección</label>
+                    <span>
+                        {% if miembro.direccion %}
+                            {{ miembro.direccion }}
+                            {% if miembro.sector %}, {{ miembro.sector }}{% endif %}
+                            {% if miembro.ciudad %}, {{ miembro.ciudad }}{% endif %}
+                            {% if miembro.provincia %}, {{ miembro.provincia }}{% endif %}
+                            {% if miembro.codigo_postal %} ({{ miembro.codigo_postal }}){% endif %}
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Membresía -->
+        <div class="odoo-tab-content" id="tab-membresia">
+            <div class="odoo-fields-grid">
+                <div class="odoo-field">
+                    <label>Estado del miembro</label>
+                    <span>
+                        {% if miembro.estado_miembro %}
+                            <span class="odoo-badge odoo-badge-{% if miembro.estado_miembro == 'activo' %}success{% elif miembro.estado_miembro == 'pasivo' %}warning{% else %}info{% endif %}">
+                                {{ miembro.get_estado_miembro_display }}
+                            </span>
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="odoo-field">
+                    <label>Categoría</label>
+                    <span>{{ miembro.categoria_miembro|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Fecha de ingreso</label>
+                    <span>{% if miembro.fecha_ingreso_iglesia %}{{ miembro.fecha_ingreso_iglesia|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Iglesia anterior</label>
+                    <span>{{ miembro.iglesia_anterior|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Fecha de conversión</label>
+                    <span>{% if miembro.fecha_conversion %}{{ miembro.fecha_conversion|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Fecha de bautismo</label>
+                    <span>{% if miembro.fecha_bautismo %}{{ miembro.fecha_bautismo|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Bautizado confirmado</label>
+                    <span>
+                        {% if miembro.bautizado_confirmado %}
+                            <span class="odoo-badge odoo-badge-success">Sí</span>
+                        {% else %}
+                            <span class="odoo-badge odoo-badge-neutral">No</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="odoo-field">
+                    <label>Mentor</label>
+                    <span>{{ miembro.mentor|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Líder de célula</label>
+                    <span>{{ miembro.lider_celula|default:"—" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Salud -->
+        <div class="odoo-tab-content" id="tab-salud">
+            <div class="odoo-fields-grid">
+                <div class="odoo-field">
+                    <label>Contacto de emergencia</label>
+                    <span>{{ miembro.contacto_emergencia_nombre|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Teléfono de emergencia</label>
+                    <span>{{ miembro.contacto_emergencia_telefono|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Relación</label>
+                    <span>{{ miembro.contacto_emergencia_relacion|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Tipo de sangre</label>
+                    <span>{{ miembro.tipo_sangre|default:"—" }}</span>
+                </div>
+                <div class="odoo-field odoo-field-full">
+                    <label>Alergias</label>
+                    <span>{{ miembro.alergias|default:"—" }}</span>
+                </div>
+                <div class="odoo-field odoo-field-full">
+                    <label>Condiciones médicas</label>
+                    <span>{{ miembro.condiciones_medicas|default:"—" }}</span>
+                </div>
+                <div class="odoo-field odoo-field-full">
+                    <label>Medicamentos</label>
+                    <span>{{ miembro.medicamentos|default:"—" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Trabajo -->
+        <div class="odoo-tab-content" id="tab-trabajo">
+            <div class="odoo-fields-grid">
+                <div class="odoo-field">
+                    <label>Empleador</label>
+                    <span>{{ miembro.empleador|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Puesto</label>
+                    <span>{{ miembro.puesto|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Teléfono del trabajo</label>
+                    <span>{{ miembro.telefono_trabajo|default:"—" }}</span>
+                </div>
+                <div class="odoo-field odoo-field-full">
+                    <label>Dirección del trabajo</label>
+                    <span>{{ miembro.direccion_trabajo|default:"—" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Familia -->
+        <div class="odoo-tab-content" id="tab-familia">
+            {% if relaciones_familia %}
+            <div class="odoo-table-container">
+                <table class="odoo-table">
+                    <thead>
+                        <tr>
+                            <th>Familiar</th>
+                            <th>Relación</th>
+                            <th>Vive junto</th>
+                            <th>Responsable</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rel in relaciones_familia %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'miembros_app:detalle' rel.familiar.pk %}">
+                                    {{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}
+                                </a>
+                            </td>
+                            <td>{{ rel.get_tipo_relacion_display }}</td>
+                            <td>
+                                {% if rel.vive_junto %}
+                                    <span class="odoo-badge odoo-badge-success">Sí</span>
+                                {% else %}
+                                    <span class="odoo-badge odoo-badge-neutral">No</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rel.es_responsable %}
+                                    <span class="odoo-badge odoo-badge-info">Sí</span>
+                                {% else %}
+                                    <span class="odoo-badge odoo-badge-neutral">No</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="odoo-empty">No hay familiares registrados para este miembro.</p>
+            {% endif %}
+        </div>
+
+        <!-- TAB: Otros -->
+        <div class="odoo-tab-content" id="tab-otros">
+            <div class="odoo-fields-grid">
+                <div class="odoo-field odoo-field-full">
+                    <label>Intereses</label>
+                    <span>{{ miembro.intereses|default:"—" }}</span>
+                </div>
+                <div class="odoo-field odoo-field-full">
+                    <label>Otros intereses</label>
+                    <span>{{ miembro.otros_intereses|default:"—" }}</span>
+                </div>
+                <div class="odoo-field odoo-field-full">
+                    <label>Habilidades</label>
+                    <span>{{ miembro.habilidades|default:"—" }}</span>
+                </div>
+                <div class="odoo-field odoo-field-full">
+                    <label>Otras habilidades</label>
+                    <span>{{ miembro.otras_habilidades|default:"—" }}</span>
+                </div>
+            </div>
+            
+            <div class="odoo-notes-section">
+                <h3>Notas pastorales</h3>
+                <div class="odoo-notes-content">
+                    {{ miembro.notas|default:"Sin notas registradas."|linebreaks }}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
 <style>
-    .member-profile {
-        display: flex;
+/* ═══════════════════════════════════════════════════════════════════════════
+   BARRA DE CONTROL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.odoo-control-left,
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: #016166;
+}
+
+.odoo-btn-secondary {
+    background: white;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.odoo-btn-secondary:hover {
+    background: #e9ecef;
+}
+
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+}
+
+.odoo-breadcrumb-link {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-breadcrumb .material-icons {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+.odoo-breadcrumb-current {
+    color: #495057;
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-detail-container {
+    background: white;
+    min-height: calc(100vh - 60px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 24px;
+    border-bottom: 1px solid #e9ecef;
+    background: linear-gradient(180deg, #f8f9fa 0%, white 100%);
+}
+
+.odoo-detail-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.odoo-detail-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.odoo-avatar-initial {
+    font-size: 42px;
+    font-weight: 500;
+    color: white;
+}
+
+.odoo-detail-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.odoo-detail-name {
+    font-size: 24px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 8px 0;
+}
+
+.odoo-detail-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.odoo-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.odoo-badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.odoo-badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.odoo-badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.odoo-badge-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.odoo-badge-neutral {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.odoo-detail-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.odoo-quick-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-quick-item .material-icons {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+.odoo-quick-item a {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-quick-item a:hover {
+    text-decoration: underline;
+}
+
+.odoo-detail-code {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.odoo-code-label {
+    display: block;
+    font-size: 11px;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+.odoo-code-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e3a8a;
+    font-family: 'Roboto Mono', monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SITUATION CARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-situation-card {
+    display: flex;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.odoo-situation-ok {
+    background: #f0fdf4;
+}
+
+.odoo-situation-warning {
+    background: #fffbeb;
+}
+
+.odoo-situation-inactive {
+    background: #fef2f2;
+}
+
+.odoo-situation-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.odoo-situation-ok .odoo-situation-icon {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.odoo-situation-warning .odoo-situation-icon {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.odoo-situation-inactive .odoo-situation-icon {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.odoo-situation-icon .material-icons {
+    font-size: 20px;
+}
+
+.odoo-situation-content {
+    flex: 1;
+}
+
+.odoo-situation-content strong {
+    display: block;
+    font-size: 13px;
+    color: #212529;
+    margin-bottom: 4px;
+}
+
+.odoo-situation-content p {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-sit-label {
+    font-weight: 600;
+    color: #212529;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-detail-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 24px;
+    border-bottom: 1px solid #dee2e6;
+    background: white;
+    overflow-x: auto;
+}
+
+.odoo-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6c757d;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.odoo-tab .material-icons {
+    font-size: 18px;
+}
+
+.odoo-tab:hover {
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.odoo-tab.active {
+    color: #017e84;
+    border-bottom-color: #017e84;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB CONTENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-tab-contents {
+    padding: 24px;
+}
+
+.odoo-tab-content {
+    display: none;
+}
+
+.odoo-tab-content.active {
+    display: block;
+}
+
+.odoo-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.odoo-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.odoo-field-full {
+    grid-column: 1 / -1;
+}
+
+.odoo-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.odoo-field span {
+    font-size: 14px;
+    color: #212529;
+}
+
+.odoo-field a {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-field a:hover {
+    text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-table-container {
+    overflow-x: auto;
+}
+
+.odoo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.odoo-table th {
+    text-align: left;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 500;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.odoo-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9ecef;
+    color: #212529;
+}
+
+.odoo-table tr:hover {
+    background: #f8f9fa;
+}
+
+.odoo-table a {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-table a:hover {
+    text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NOTES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-notes-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.odoo-notes-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 12px 0;
+}
+
+.odoo-notes-content {
+    font-size: 14px;
+    color: #495057;
+    line-height: 1.6;
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 6px;
+}
+
+.odoo-empty {
+    font-size: 13px;
+    color: #6c757d;
+    text-align: center;
+    padding: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 992px) {
+    .odoo-fields-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-detail-header {
         flex-direction: column;
-        gap: 16px;
-    }
-
-    .member-profile-main {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 18px 18px 20px;
-        box-shadow: 0 10px 25px rgba(15,23,42,0.08);
-        border: 1px solid #e5e7eb;
-    }
-
-    .member-profile-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 18px;
-    }
-
-    .member-profile-left {
-        display: flex;
-        gap: 16px;
         align-items: center;
+        text-align: center;
     }
 
-    .member-profile-exit {
-        text-align: right;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        align-items: flex-end;
-        font-size: 12px;
-        max-width: 320px;
-    }
-
-    .member-profile-photo {
-        width: 80px;
-        height: 80px;
-        border-radius: 999px;
-        background: #e5e7eb;
-        display: flex;
-        align-items: center;
+    .odoo-detail-quick {
         justify-content: center;
-        overflow: hidden;
-        flex-shrink: 0;
     }
 
-    .member-profile-photo img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+    .odoo-detail-code {
+        text-align: center;
     }
 
-    .member-profile-photo .material-icons {
-        font-size: 40px;
-        color: #6b7280;
+    .odoo-fields-grid {
+        grid-template-columns: 1fr;
     }
 
-    .member-profile-info h2 {
-        margin: 0 0 4px;
-        font-size: 20px;
-        color: #111827;
-    }
-
-    .member-profile-tags {
-        display: flex;
+    .odoo-control-bar {
         flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 8px;
+        gap: 8px;
     }
 
-    .member-profile-subinfo {
-        font-size: 13px;
-        color: #374151;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 4px 12px;
+    .odoo-control-right {
+        flex-wrap: wrap;
     }
-
-    .member-profile-subinfo strong {
-        display: block;
-        font-size: 12px;
-        color: #4b5563;
-    }
-
-    .member-profile-subinfo span {
-        font-size: 13px;
-        color: #111827;
-    }
-
-    .member-profile-sections {
-        margin-top: 12px;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 12px;
-    }
-
-    .profile-card {
-        background: #f9fafb;
-        border-radius: 12px;
-        padding: 12px 14px;
-        border: 1px solid #e5e7eb;
-        font-size: 13px;
-    }
-
-    .profile-card h3 {
-        margin: 0 0 8px;
-        font-size: 14px;
-        color: #111827;
-    }
-
-    .profile-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 6px 12px;
-    }
-
-    .profile-grid-full {
-        grid-column: 1 / -1;
-    }
-
-    .profile-card strong {
-        display: block;
-        font-size: 12px;
-        color: #4b5563;
-    }
-
-    .profile-card p {
-        margin: 2px 0 0;
-        font-size: 13px;
-        color: #111827;
-        white-space: pre-line;
-    }
-
-    /* Badges */
-    .badge {
-        display: inline-block;
-        padding: 6px 14px;
-        border-radius: 14px;
-        font-size: 13px;
-        font-weight: 600;
-        line-height: 1;
-    }
-
-    .badge-blue {
-        background-color: #dbeafe;
-        color: #1e3a8a;
-    }
-
-    .badge-green {
-        background-color: #dcfce7;
-        color: #166534;
-    }
-
-    .badge-yellow {
-        background-color: #fef9c3;
-        color: #854d0e;
-    }
-
-    .badge-red {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-
-    .badge-neutral {
-        background-color: #f3f4f6;
-        color: #374151;
-    }
-
-    @media (max-width: 768px) {
-        .member-profile-main {
-            padding: 14px;
-        }
-        .member-profile-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        .member-profile-left {
-            width: 100%;
-        }
-        .member-profile-info h2 {
-            font-size: 18px;
-        }
-        .member-profile-exit {
-            align-items: flex-start;
-            text-align: left;
-            max-width: 100%;
-        }
-    }
-
-    .family-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 6px;
-        font-size: 13px;
-    }
-
-    .family-table th {
-        background: #eef2ff;
-        color: #1e3a8a;
-        text-align: left;
-        padding: 6px;
-        border-bottom: 1px solid #d1d5db;
-    }
-
-    .family-table td {
-        padding: 6px;
-        border-bottom: 1px solid #e5e7eb;
-    }
-
-    .family-table tr:hover {
-        background: #f9fafb;
-    }
-
-    .membership-card p {
-        white-space: normal;
-        margin-top: 2px;
-    }
-
-    .status-exit-block {
-        margin-top: 0;
-        padding-top: 0;
-        border-top: none;
-    }
-
-    .status-exit-text {
-        margin: 2px 0;
-        font-size: 12px;
-        color: #374151;
-    }
-
-    .status-exit-label {
-        font-weight: 600;
-        color: #111827;
-        margin-right: 4px;
-    }
+}
 </style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching
+    const tabs = document.querySelectorAll('.odoo-tab');
+    const contents = document.querySelectorAll('.odoo-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetId = 'tab-' + this.dataset.tab;
+
+            // Remove active from all
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            // Add active to clicked
+            this.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+
+    // Check URL for tab parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+        const targetTab = document.querySelector(`.odoo-tab[data-tab="${tabParam}"]`);
+        if (targetTab) {
+            targetTab.click();
+        }
+    }
+});
+</script>
 
 {% endblock %}
