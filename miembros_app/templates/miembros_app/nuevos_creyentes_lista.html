@@ -1,446 +1,892 @@
-{% extends 'core/base_modulo.html' %}
+{% extends 'miembros_app/base_miembros.html' %}
 
-{% block title %}Nuevos creyentes · Soid_Tf_2{% endblock %}
+{% block title %}Nuevos creyentes{% endblock %}
 
-{% block breadcrumb %}
-Miembros / Nuevos creyentes / Lista
-{% endblock %}
+{% block miembros_content %}
 
-{% block content %}
-
-<section class="page-header no-print">
-    <div>
-        <h1 class="page-title">Nuevos creyentes</h1>
-    </div>
-    <div class="page-header-actions">
-
-        <!-- Imprimir -->
-        <button type="button" class="btn-secondary" onclick="window.print()">
-            <span class="material-icons" style="font-size:16px;">print</span>
-            Imprimir
-        </button>
-
-        <!-- Enviar por correo -->
-        <a href="{% url 'miembros_app:nuevos_creyentes_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-           class="btn-secondary"
-           style="display:inline-flex; align-items:center; gap:4px;">
-            <span class="material-icons" style="font-size:16px;">mail</span>
-            Enviar
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar no-print">
+    <div class="odoo-control-left">
+        <a href="{% url 'miembros_app:nuevo_creyente_crear' %}" class="odoo-btn odoo-btn-primary">
+            <span class="material-icons">add</span>
+            Nuevo
         </a>
-
-        <!-- Registrar nuevo creyente -->
-        <a href="{% url 'miembros_app:nuevo_creyente_crear' %}" class="btn-primary btn-accion">
-            <span class="material-icons">person_add</span>
-            Registrar
-        </a>
-
+        
+        <div class="odoo-breadcrumb">
+            <span class="odoo-breadcrumb-title">Nuevos creyentes</span>
+            <span class="material-icons odoo-breadcrumb-settings">settings</span>
+        </div>
     </div>
-</section>
 
-
-<section class="page-section">
-
-    <!-- ================================
-             FILTROS PROFESIONALES
-       ================================ -->
-    <form method="get" class="filters-card no-print">
-
-        <div class="filters-main-row">
-
-            <!-- Buscar -->
-            <div class="form-field form-field-grow">
-                <label for="id_q">Buscar</label>
-                <input
-                    id="id_q"
-                    type="text"
-                    name="q"
-                    placeholder="Nombre, apellido, teléfono o correo…"
-                    value="{{ query }}"
-                >
+    <div class="odoo-control-center">
+        <form method="get" class="odoo-search-form" id="search-form">
+            <!-- Mantener filtros existentes -->
+            <input type="hidden" name="genero" value="{{ genero_filtro }}">
+            <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
+            <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
+            {% if solo_contacto %}<input type="hidden" name="solo_contacto" value="1">{% endif %}
+            
+            <div class="odoo-search-box">
+                <span class="material-icons">search</span>
+                <input type="text" name="q" placeholder="Buscar..." value="{{ query }}">
+                
+                {% if query or genero_filtro or fecha_desde or fecha_hasta or solo_contacto %}
+                <div class="odoo-filter-chips">
+                    {% if query %}
+                    <span class="odoo-chip">
+                        "{{ query }}"
+                        <button type="button" onclick="removeFilter('q')">×</button>
+                    </span>
+                    {% endif %}
+                    {% if genero_filtro %}
+                    <span class="odoo-chip">
+                        Género: {{ genero_filtro }}
+                        <button type="button" onclick="removeFilter('genero')">×</button>
+                    </span>
+                    {% endif %}
+                    {% if fecha_desde or fecha_hasta %}
+                    <span class="odoo-chip">
+                        {% if fecha_desde %}Desde: {{ fecha_desde }}{% endif %}
+                        {% if fecha_hasta %}{% if fecha_desde %} - {% endif %}Hasta: {{ fecha_hasta }}{% endif %}
+                        <button type="button" onclick="removeFilter('fecha_desde'); removeFilter('fecha_hasta');">×</button>
+                    </span>
+                    {% endif %}
+                    {% if solo_contacto %}
+                    <span class="odoo-chip">
+                        Con contacto
+                        <button type="button" onclick="removeFilter('solo_contacto')">×</button>
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
+            
+            <button type="button" class="odoo-filter-btn" onclick="toggleFilterPanel()">
+                <span class="material-icons">filter_list</span>
+                Filtros
+            </button>
+        </form>
+    </div>
 
-            <!-- Género -->
-            <div class="form-field">
-                <label for="id_genero">Género</label>
-                <select id="id_genero" name="genero">
+    <div class="odoo-control-right">
+        <span class="odoo-pagination-info">
+            {% if miembros %}1-{{ miembros|length }} / {{ miembros|length }}{% else %}0{% endif %}
+        </span>
+        
+        <div class="odoo-view-toggle">
+            <button type="button" class="odoo-view-btn active" title="Vista lista">
+                <span class="material-icons">view_list</span>
+            </button>
+        </div>
+
+        <div class="odoo-actions-menu">
+            <button type="button" class="odoo-btn-icon" onclick="toggleActionsMenu()">
+                <span class="material-icons">more_vert</span>
+            </button>
+            <div class="odoo-dropdown" id="actions-dropdown">
+                <button type="button" onclick="window.print()">
+                    <span class="material-icons">print</span>
+                    Imprimir
+                </button>
+                <a href="{% url 'miembros_app:nuevos_creyentes_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
+                    <span class="material-icons">mail</span>
+                    Enviar por correo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PANEL DE FILTROS EXPANDIBLE
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-filter-panel no-print" id="filter-panel" style="display: none;">
+    <form method="get" class="odoo-filter-form">
+        {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+        
+        <div class="odoo-filter-grid">
+            <div class="odoo-filter-group">
+                <label>Género</label>
+                <select name="genero">
                     <option value="">Todos</option>
                     {% for value, label in generos_choices %}
-                        <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
-                            {{ label }}
-                        </option>
+                    <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <!-- Desde -->
-            <div class="form-field">
-                <label for="id_fecha_desde">Conversión desde</label>
-                <input
-                    id="id_fecha_desde"
-                    type="date"
-                    name="fecha_desde"
-                    value="{{ fecha_desde }}"
-                >
+            <div class="odoo-filter-group">
+                <label>Conversión desde</label>
+                <input type="date" name="fecha_desde" value="{{ fecha_desde }}">
             </div>
 
-            <!-- Hasta -->
-            <div class="form-field">
-                <label for="id_fecha_hasta">Conversión hasta</label>
-                <input
-                    id="id_fecha_hasta"
-                    type="date"
-                    name="fecha_hasta"
-                    value="{{ fecha_hasta }}"
-                >
+            <div class="odoo-filter-group">
+                <label>Conversión hasta</label>
+                <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}">
             </div>
 
-            <!-- Solo contacto -->
-            <div class="form-field form-field-checkbox">
-                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; margin:0;">
-                    <input
-                        type="checkbox"
-                        name="solo_contacto"
-                        value="1"
-                        {% if solo_contacto %}checked{% endif %}
-                    >
+            <div class="odoo-filter-group odoo-filter-checkbox">
+                <label>
+                    <input type="checkbox" name="solo_contacto" value="1" {% if solo_contacto %}checked{% endif %}>
                     <span>Solo con contacto</span>
                 </label>
             </div>
-
-            <!-- Botones -->
-            <div class="filters-actions">
-                <button type="submit" class="btn-secondary">
-                    <span class="material-icons" style="font-size:16px;">search</span>
-                    Buscar / Filtrar
-                </button>
-
-                <a href="{{ request.path }}"
-                   class="btn-secondary clear-btn-mini"
-                   style="margin-left:6px;">
-                    <span class="material-icons" style="font-size:14px;">close</span>
-                    Borrar
-                </a>
-            </div>
-
         </div>
 
-        <p class="filters-help-text">
-            Si no seleccionas fechas, se mostrarán todos los nuevos creyentes registrados.
-        </p>
-
+        <div class="odoo-filter-actions">
+            <a href="{{ request.path }}" class="odoo-btn odoo-btn-secondary">
+                Limpiar filtros
+            </a>
+            <button type="submit" class="odoo-btn odoo-btn-primary">
+                Aplicar
+            </button>
+        </div>
     </form>
+</div>
 
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ENCABEZADO PARA IMPRESIÓN
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="print-header">
+    <h1>Listado de Nuevos Creyentes</h1>
+    <p>Generado el {% now "d/m/Y H:i" %}</p>
+</div>
 
-    <!-- Chips de filtros activos -->
-    {% if query or genero_filtro or fecha_desde or fecha_hasta or solo_contacto %}
-        <div class="filters-tags no-print">
-            <span class="filters-tags-label">Filtros activos:</span>
-
-            {% if query %}
-                <span class="filter-chip">Búsqueda: “{{ query }}”</span>
-            {% endif %}
-
-            {% if genero_filtro %}
-                <span class="filter-chip">Género: {{ genero_filtro }}</span>
-            {% endif %}
-
-            {% if fecha_desde or fecha_hasta %}
-                <span class="filter-chip">
-                    Conversión:
-                    {% if fecha_desde %} desde {{ fecha_desde }}{% endif %}
-                    {% if fecha_desde and fecha_hasta %} · {% endif %}
-                    {% if fecha_hasta %} hasta {{ fecha_hasta }}{% endif %}
-                </span>
-            {% endif %}
-
-            {% if solo_contacto %}
-                <span class="filter-chip">Solo con contacto</span>
-            {% endif %}
-        </div>
-    {% endif %}
-
-
-    <!-- Resumen -->
-    <div class="filters-summary no-print">
-        {% if miembros %}
-            {{ miembros|length }} registro{{ miembros|length|pluralize:"s" }} encontrados
-        {% else %}
-            No hay nuevos creyentes registrados aún.
-        {% endif %}
-    </div>
-
-
-
-    <!-- ================================
-             TABLA DE RESULTADOS
-       ================================ -->
-
-    <div class="table-wrapper">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Nombre</th>
-                    <th>Contacto</th>
-                    <th>Conversión</th>
-                    <th>Edad</th>
-                    <th>Notas</th>
-                    <th class="col-center no-print">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TABLA DE DATOS
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-table-container">
+    <table class="odoo-table">
+        <thead>
+            <tr>
+                <th class="col-check no-print">
+                    <input type="checkbox" id="select-all">
+                </th>
+                <th class="col-num">#</th>
+                <th>Nombre</th>
+                <th>Contacto</th>
+                <th>Conversión</th>
+                <th>Edad</th>
+                <th>Notas</th>
+                <th class="col-actions no-print">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
             {% if miembros %}
                 {% for m in miembros %}
-
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-
-                        <!-- Nombre -->
-                        <td>
-                            <div style="font-weight:600; font-size:13px;">
+                <tr onclick="window.location='{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}'" class="odoo-row-clickable">
+                    <td class="col-check no-print" onclick="event.stopPropagation();">
+                        <input type="checkbox" class="row-check" value="{{ m.pk }}">
+                    </td>
+                    <td class="col-num">{{ forloop.counter }}</td>
+                    <td>
+                        <div class="odoo-cell-main">
+                            <a href="{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}" class="odoo-name-link" onclick="event.stopPropagation();">
                                 {{ m.nombres }} {{ m.apellidos }}
-                            </div>
-                            <div style="font-size:11px; color:#6b7280;">
-                                {% if m.genero %}{{ m.get_genero_display }}{% else %}—{% endif %}
-                            </div>
-                        </td>
-
-                        <!-- Contacto -->
-                        <td>
-    {% if m.telefono or m.telefono_secundario or m.email or m.direccion %}
-
-        <!-- Teléfonos + WhatsApp -->
-        {% if m.telefono or m.telefono_secundario %}
-            <div style="font-size:12px; display:flex; align-items:center; gap:6px;">
-                
-                {% if m.telefono %}
-                    {% with numero=m.telefono|cut:" "|cut:"-" %}
-                        <span>{{ m.telefono }}</span>
-
-                        <!-- Ícono WhatsApp -->
-                        <a href="https://wa.me/{{ numero }}"
-                           target="_blank"
-                           title="Enviar WhatsApp"
-                           class="no-print-inline">
-                            <svg xmlns="http://www.w3.org/2000/svg"
-                                 width="14"
-                                 height="14"
-                                 viewBox="0 0 24 24"
-                                 style="fill:#25D366;">
-                                <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm0 18a7.93 7.93 0 0 1-4.062-1.129l-.289-.172-2.999.807.802-2.92-.188-.3A7.924 7.924 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8zm4.427-5.444c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
-                            </svg>
-                        </a>
-                    {% endwith %}
-                {% endif %}
-
-                {% if m.telefono_secundario %}
-                    <span>·</span>
-                    <span>{{ m.telefono_secundario }}</span>
-                {% endif %}
-
-            </div>
-        {% endif %}
-
-        <!-- Email -->
-        {% if m.email %}
-            <div style="font-size:11px; color:#6b7280;">
-                {{ m.email }}
-            </div>
-        {% endif %}
-
-        <!-- Dirección -->
-        {% if m.direccion %}
-            <div style="font-size:11px; color:#9ca3af; max-width:220px;">
-                {{ m.direccion|truncatechars:60 }}
-            </div>
-        {% endif %}
-
-    {% else %}
-        <span style="font-size:11px; color:#9ca3af;">Sin datos</span>
-    {% endif %}
-</td>
-
-
-                        <!-- Fecha conversión -->
-                        <td>
-                            {% if m.fecha_conversion %}
-                                {{ m.fecha_conversion|date:"d/m/Y" }}
-                            {% else %}
-                                <span style="font-size:11px; color:#9ca3af;">—</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Edad -->
-                        <td>
-                            {% if m.calcular_edad %}
-                                {{ m.calcular_edad }} años
-                            {% else %}
-                                <span style="font-size:11px; color:#9ca3af;">—</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Notas -->
-                        <td>
-                            {% if m.notas %}
-                                <div style="font-size:11px; color:#4b5563; max-width:260px;">
-                                    {{ m.notas|truncatechars:80 }}
-                                </div>
-                            {% else %}
-                                <span style="font-size:11px; color:#9ca3af;">Sin notas</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Acciones -->
-                        <td class="col-center no-print">
-                            <div style="display:flex; justify-content:center; gap:4px;">
-                                <a href="{% url 'miembros_app:nuevo_creyente_editar' m.pk %}"
-                                   class="btn-secondary"
-                                   style="padding:4px; min-width:auto;">
-                                    <span class="material-icons" style="font-size:18px;">edit</span>
+                            </a>
+                        </div>
+                        <div class="odoo-cell-sub">
+                            {% if m.genero %}{{ m.get_genero_display }}{% else %}—{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if m.telefono or m.email %}
+                        <div class="odoo-contact-info">
+                            {% if m.telefono %}
+                            <div class="odoo-contact-row">
+                                <span class="material-icons">phone</span>
+                                <span>{{ m.telefono }}</span>
+                                {% with numero=m.telefono|cut:" "|cut:"-" %}
+                                <a href="https://wa.me/{{ numero }}" target="_blank" class="odoo-wa-link no-print" onclick="event.stopPropagation();">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#25d366">
+                                        <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2z"/>
+                                    </svg>
                                 </a>
-
-                                <a href="{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}"
-                                   class="btn-secondary"
-                                   style="padding:4px; min-width:auto;">
-                                    <span class="material-icons" style="font-size:18px;">visibility</span>
-                                </a>
+                                {% endwith %}
                             </div>
-                        </td>
-                    </tr>
-
+                            {% endif %}
+                            {% if m.email %}
+                            <div class="odoo-contact-row odoo-contact-email">
+                                <span class="material-icons">mail</span>
+                                <span>{{ m.email }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <span class="odoo-empty-cell">Sin datos</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if m.fecha_conversion %}
+                            {{ m.fecha_conversion|date:"d/m/Y" }}
+                        {% else %}
+                            <span class="odoo-empty-cell">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if m.calcular_edad %}
+                            {{ m.calcular_edad }} años
+                        {% else %}
+                            <span class="odoo-empty-cell">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if m.notas %}
+                        <div class="odoo-notes-cell" title="{{ m.notas }}">
+                            {{ m.notas|truncatechars:50 }}
+                        </div>
+                        {% else %}
+                        <span class="odoo-empty-cell">Sin notas</span>
+                        {% endif %}
+                    </td>
+                    <td class="col-actions no-print" onclick="event.stopPropagation();">
+                        <div class="odoo-row-actions">
+                            <a href="{% url 'miembros_app:nuevo_creyente_editar' m.pk %}" class="odoo-action-btn" title="Editar">
+                                <span class="material-icons">edit</span>
+                            </a>
+                            <a href="{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}" class="odoo-action-btn" title="Ver ficha">
+                                <span class="material-icons">visibility</span>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
                 {% endfor %}
             {% else %}
                 <tr>
-                    <td colspan="7" class="table-empty">
-                        No hay registros para mostrar.
+                    <td colspan="8" class="odoo-empty-table">
+                        <span class="material-icons">search_off</span>
+                        <p>No hay nuevos creyentes registrados.</p>
                     </td>
                 </tr>
             {% endif %}
-
-            </tbody>
-        </table>
+        </tbody>
+    </table>
+    
+    {% if miembros %}
+    <div class="odoo-table-footer no-print">
+        <span>{{ miembros|length }} registro{{ miembros|length|pluralize:"s" }}</span>
     </div>
+    {% endif %}
+</div>
 
-</section>
-
-
-<!-- ================================
-            ESTILOS FILTROS
-     ================================ -->
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
 <style>
-
-.filters-card {
-    background: #f9fafb;
-    border-radius: 10px;
-    padding: 10px 12px;
-    margin-bottom: 10px;
-    border: 1px solid #e5e7eb;
-}
-
-.filters-main-row {
+/* ═══════════════════════════════════════════════════════════════════════════
+   BARRA DE CONTROL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.odoo-control-left,
+.odoo-control-center,
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.odoo-control-center {
+    flex: 1;
+    justify-content: center;
+}
+
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: #016166;
+}
+
+.odoo-btn-secondary {
+    background: white;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.odoo-btn-secondary:hover {
+    background: #e9ecef;
+}
+
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.odoo-breadcrumb-title {
+    font-weight: 500;
+    color: #495057;
+}
+
+.odoo-breadcrumb-settings {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+/* Search box */
+.odoo-search-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 500px;
+    width: 100%;
+}
+
+.odoo-search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.odoo-search-box .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+}
+
+.odoo-search-box input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    background: transparent;
+    min-width: 100px;
+}
+
+.odoo-filter-chips {
+    display: flex;
+    gap: 4px;
     flex-wrap: wrap;
-    gap: 10px;
-    align-items: flex-end;
 }
 
-.form-field-grow {
-    flex: 2 1 220px;
+.odoo-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: #e9ecef;
+    border-radius: 12px;
+    font-size: 11px;
+    color: #495057;
 }
 
-.filters-card .form-field {
-    flex: 1 1 150px;
-    min-width: 150px;
+.odoo-chip button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-size: 14px;
+    color: #6c757d;
+    line-height: 1;
 }
 
-.filters-card .form-field label {
-    font-size: 12px;
-    color: #4b5563;
-    margin-bottom: 2px;
+.odoo-chip button:hover {
+    color: #dc2626;
+}
+
+.odoo-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #495057;
+}
+
+.odoo-filter-btn:hover {
+    background: #e9ecef;
+}
+
+/* Right controls */
+.odoo-pagination-info {
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.odoo-view-toggle {
+    display: flex;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.odoo-view-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: white;
+    border: none;
+    cursor: pointer;
+}
+
+.odoo-view-btn:hover {
+    background: #e9ecef;
+}
+
+.odoo-view-btn.active {
+    background: #e9ecef;
+    color: #017e84;
+}
+
+.odoo-btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #495057;
+}
+
+.odoo-btn-icon:hover {
+    background: #e9ecef;
+}
+
+.odoo-actions-menu {
+    position: relative;
+}
+
+.odoo-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    min-width: 180px;
+    z-index: 1000;
+    display: none;
+}
+
+.odoo-dropdown.show {
     display: block;
 }
 
-.filters-card input[type="text"],
-.filters-card input[type="date"],
-.filters-card select {
+.odoo-dropdown button,
+.odoo-dropdown a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: 100%;
+    padding: 8px 12px;
+    background: none;
+    border: none;
     font-size: 13px;
-    padding: 6px 8px;
-    border-radius: 8px;
-    border: 1px solid #d1d5db;
-    background: #ffffff;
+    color: #495057;
+    text-decoration: none;
+    cursor: pointer;
+    text-align: left;
 }
 
-.form-field-checkbox {
-    flex: 1 1 180px;
-    font-size: 12px;
-    color: #111827;
+.odoo-dropdown button:hover,
+.odoo-dropdown a:hover {
+    background: #f8f9fa;
 }
 
-.filters-actions {
+.odoo-dropdown .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL DE FILTROS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-filter-panel {
+    padding: 16px;
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.odoo-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.odoo-filter-group {
     display: flex;
-    align-items: flex-end;
-    margin-left: auto;
-}
-
-/* Botón borrar filtros */
-.clear-btn-mini {
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-size: 12px;
-    display: inline-flex;
-    align-items: center;
+    flex-direction: column;
     gap: 4px;
 }
 
-/* Texto de ayuda debajo de los filtros */
-.filters-help-text {
-    font-size: 11px;
-    color: #6b7280;
-    margin-top: 6px;
+.odoo-filter-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #495057;
 }
 
-/* Chips de filtros activos */
-.filters-tags {
-    margin-bottom: 6px;
-    font-size: 11px;
+.odoo-filter-group input,
+.odoo-filter-group select {
+    padding: 8px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.odoo-filter-checkbox label {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding-top: 20px;
+}
+
+.odoo-filter-checkbox input {
+    width: auto;
+}
+
+.odoo-filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLA
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-table-container {
+    background: white;
+}
+
+.odoo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.odoo-table thead {
+    position: sticky;
+    top: 52px;
+    z-index: 50;
+}
+
+.odoo-table th {
+    background: #f8f9fa;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 500;
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.odoo-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: top;
+}
+
+.odoo-row-clickable {
+    cursor: pointer;
+}
+
+.odoo-row-clickable:hover {
+    background: #f8f9fa;
+}
+
+.col-check {
+    width: 40px;
+    text-align: center;
+}
+
+.col-num {
+    width: 50px;
+    color: #6c757d;
+}
+
+.col-actions {
+    width: 80px;
+}
+
+.odoo-cell-main {
+    font-weight: 500;
+}
+
+.odoo-name-link {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-name-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-cell-sub {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.odoo-contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.odoo-contact-row {
+    display: flex;
+    align-items: center;
     gap: 6px;
-    align-items: center;
+    font-size: 12px;
 }
 
-.filters-tags-label {
-    font-weight: 600;
-    color: #4b5563;
-    margin-right: 4px;
+.odoo-contact-row .material-icons {
+    font-size: 14px;
+    color: #6c757d;
 }
 
-.filter-chip {
-    background: #eef2ff;
-    color: #111827;
-    border-radius: 999px;
-    padding: 3px 8px;
+.odoo-contact-email {
     font-size: 11px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border: 1px solid #e0e7ff;
+    color: #6c757d;
 }
 
-/* Responsive */
-@media (max-width: 640px) {
-    .filters-main-row {
-        flex-direction: column;
-        align-items: stretch;
+.odoo-wa-link {
+    display: flex;
+    align-items: center;
+}
+
+.odoo-empty-cell {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.odoo-notes-cell {
+    font-size: 11px;
+    color: #495057;
+    max-width: 200px;
+}
+
+.odoo-row-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.odoo-row-clickable:hover .odoo-row-actions {
+    opacity: 1;
+}
+
+.odoo-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    color: #6c757d;
+    text-decoration: none;
+}
+
+.odoo-action-btn:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.odoo-action-btn .material-icons {
+    font-size: 16px;
+}
+
+.odoo-empty-table {
+    text-align: center;
+    padding: 48px !important;
+    color: #6c757d;
+}
+
+.odoo-empty-table .material-icons {
+    font-size: 48px;
+    opacity: 0.5;
+}
+
+.odoo-empty-table p {
+    margin: 8px 0 0;
+}
+
+.odoo-table-footer {
+    padding: 10px 16px;
+    font-size: 12px;
+    color: #6c757d;
+    border-top: 1px solid #e9ecef;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRINT STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.print-header {
+    display: none;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
     }
 
-    .filters-actions {
-        margin-left: 0;
-        justify-content: flex-start;
+    .print-header {
+        display: block;
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #000;
+    }
+
+    .print-header h1 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .print-header p {
+        margin: 5px 0 0;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .odoo-table thead {
+        position: static;
+    }
+
+    .odoo-table th {
+        background: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .odoo-row-clickable:hover {
+        background: transparent;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+    .odoo-filter-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-control-bar {
+        flex-wrap: wrap;
+    }
+
+    .odoo-control-center {
+        order: 3;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .odoo-search-form {
+        max-width: 100%;
+    }
+
+    .odoo-filter-grid {
+        grid-template-columns: 1fr;
     }
 }
 </style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+function toggleFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleActionsMenu() {
+    const dropdown = document.getElementById('actions-dropdown');
+    dropdown.classList.toggle('show');
+}
+
+function removeFilter(filterName) {
+    const form = document.getElementById('search-form');
+    const input = form.querySelector(`input[name="${filterName}"], select[name="${filterName}"]`);
+    if (input) {
+        if (input.type === 'checkbox') {
+            input.checked = false;
+        } else {
+            input.value = '';
+        }
+    }
+    // Remove hidden input if exists
+    const hiddenInput = form.querySelector(`input[type="hidden"][name="${filterName}"]`);
+    if (hiddenInput) {
+        hiddenInput.remove();
+    }
+    form.submit();
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const menu = document.querySelector('.odoo-actions-menu');
+    const dropdown = document.getElementById('actions-dropdown');
+    if (menu && !menu.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});
+
+// Select all checkbox
+document.getElementById('select-all')?.addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.row-check');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+});
+</script>
 
 {% endblock %}
