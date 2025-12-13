@@ -5,142 +5,166 @@
 
 {% block finanzas_content %}
 
-<div class="list-page">
+<div class="odoo-list-view">
 
-    <!-- ENCABEZADO -->
-    <div class="page-header-flex">
-        <div>
-            <h1 class="page-title">Cuentas financieras</h1>
-            <p class="page-subtitle">Administra las cuentas donde se registran los ingresos y egresos.</p>
+    <!-- BARRA SUPERIOR - CONTROL PANEL -->
+    <div class="odoo-control-panel">
+        <div class="odoo-cp-left">
+            <div class="odoo-breadcrumb">
+                <h1 class="odoo-breadcrumb-title">Cuentas financieras</h1>
+            </div>
         </div>
-        <div class="header-actions">
-            <a href="{% url 'finanzas_app:cuenta_crear' %}" class="btn-primary">
+        <div class="odoo-cp-right">
+            <a href="{% url 'finanzas_app:cuenta_crear' %}" class="odoo-btn odoo-btn-primary">
                 <span class="material-icons">add</span>
-                Nueva cuenta
+                Nuevo
             </a>
         </div>
     </div>
 
-    <!-- RESUMEN -->
-    <div class="summary-pills">
-        <div class="summary-pill pill-success">
-            <span class="material-icons">check_circle</span>
-            Activas: <strong>{{ total_activas }}</strong>
+    <!-- BARRA DE BÚSQUEDA Y RESUMEN -->
+    <div class="odoo-search-panel">
+        <div class="odoo-search-left">
+            <!-- Resumen rápido -->
+            <div class="odoo-summary-pills">
+                <div class="odoo-pill odoo-pill-success">
+                    <span class="material-icons">check_circle</span>
+                    <span>Activas: <strong>{{ total_activas }}</strong></span>
+                </div>
+                <div class="odoo-pill odoo-pill-muted">
+                    <span class="material-icons">pause_circle</span>
+                    <span>Inactivas: <strong>{{ total_inactivas }}</strong></span>
+                </div>
+                <div class="odoo-pill odoo-pill-primary">
+                    <span class="material-icons">account_balance_wallet</span>
+                    <span>Saldo total: <strong>RD$ {{ saldo_total_general|floatformat:2 }}</strong></span>
+                </div>
+            </div>
         </div>
-        <div class="summary-pill pill-muted">
-            <span class="material-icons">cancel</span>
-            Inactivas: <strong>{{ total_inactivas }}</strong>
-        </div>
-        <div class="summary-pill pill-primary" style="margin-left: auto;">
-            Saldo total: <strong>RD$ {{ saldo_total_general|floatformat:2 }}</strong>
+        <div class="odoo-search-right">
+            <span class="odoo-pager">
+                {{ cuentas|length }} cuenta{{ cuentas|length|pluralize:"s" }}
+            </span>
         </div>
     </div>
 
-    <!-- TABLA -->
-    <div class="table-card">
-        <table class="data-table">
+    <!-- TABLA DE DATOS -->
+    <div class="odoo-list-container">
+        <table class="odoo-list-table">
             <thead>
                 <tr>
-                    <th>Nombre</th>
-                    <th class="col-center">Tipo</th>
-                    <th class="col-center">Moneda</th>
-                    <th class="col-center">Saldo inicial</th>
-                    <th class="col-center">Ingresos</th>
-                    <th class="col-center">Egresos</th>
-                    <th class="col-center">Saldo actual</th>
-                    <th class="col-center">Estado</th>
-                    <th class="col-center">Acciones</th>
+                    <th class="odoo-cell-checkbox">
+                        <input type="checkbox" class="odoo-checkbox-all">
+                    </th>
+                    <th class="odoo-cell-name">Nombre</th>
+                    <th class="odoo-cell-type">Tipo</th>
+                    <th class="odoo-cell-currency">Moneda</th>
+                    <th class="odoo-cell-number">Saldo inicial</th>
+                    <th class="odoo-cell-number">Ingresos</th>
+                    <th class="odoo-cell-number">Egresos</th>
+                    <th class="odoo-cell-number odoo-cell-highlight">Saldo actual</th>
+                    <th class="odoo-cell-status">Estado</th>
+                    <th class="odoo-cell-actions"></th>
                 </tr>
             </thead>
             <tbody>
                 {% if cuentas %}
                     {% for item in cuentas %}
-                        <tr>
-                            <td>
-                                <strong>{{ item.cuenta.nombre }}</strong>
+                    <tr class="odoo-list-row {% if not item.cuenta.esta_activa %}odoo-row-muted{% endif %}"
+                        data-href="{% url 'finanzas_app:cuenta_editar' item.cuenta.pk %}">
+                        <td class="odoo-cell-checkbox">
+                            <input type="checkbox" class="odoo-checkbox-row">
+                        </td>
+                        <td class="odoo-cell-name">
+                            <div class="odoo-cell-name-content">
+                                <span class="odoo-name-text">{{ item.cuenta.nombre }}</span>
                                 {% if item.cuenta.descripcion %}
-                                    <br>
-                                    <small class="text-muted">{{ item.cuenta.descripcion|truncatechars:50 }}</small>
+                                    <span class="odoo-name-sub">{{ item.cuenta.descripcion|truncatechars:40 }}</span>
                                 {% endif %}
-                            </td>
-                            <td class="col-center">
-                                {% if item.cuenta.tipo == 'caja' %}
-                                    <span class="badge badge-warning">
-                                        <span class="material-icons">point_of_sale</span>
-                                        Caja
-                                    </span>
-                                {% elif item.cuenta.tipo == 'banco' %}
-                                    <span class="badge badge-info">
-                                        <span class="material-icons">account_balance</span>
-                                        Banco
-                                    </span>
-                                {% else %}
-                                    <span class="badge badge-muted">Otra</span>
-                                {% endif %}
-                            </td>
-                            <td class="col-center">
-                                <strong>{{ item.cuenta.moneda }}</strong>
-                            </td>
-                            <td class="col-center text-muted">
-                                {{ item.cuenta.saldo_inicial|floatformat:2 }}
-                            </td>
-                            <td class="col-center text-success">
-                                +{{ item.ingresos|floatformat:2 }}
-                            </td>
-                            <td class="col-center text-danger">
-                                -{{ item.egresos|floatformat:2 }}
-                            </td>
-                            <td class="col-center">
-                                <strong class="{% if item.saldo_actual >= 0 %}text-primary{% else %}text-danger{% endif %}">
-                                    {{ item.cuenta.moneda }} {{ item.saldo_actual|floatformat:2 }}
-                                </strong>
-                            </td>
-                            <td class="col-center">
+                            </div>
+                        </td>
+                        <td class="odoo-cell-type">
+                            {% if item.cuenta.tipo == 'caja' %}
+                                <span class="odoo-tag odoo-tag-warning">
+                                    <span class="material-icons">point_of_sale</span>
+                                    Caja
+                                </span>
+                            {% elif item.cuenta.tipo == 'banco' %}
+                                <span class="odoo-tag odoo-tag-info">
+                                    <span class="material-icons">account_balance</span>
+                                    Banco
+                                </span>
+                            {% else %}
+                                <span class="odoo-tag odoo-tag-muted">
+                                    <span class="material-icons">wallet</span>
+                                    Otra
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="odoo-cell-currency">
+                            <span class="odoo-currency-badge">{{ item.cuenta.moneda }}</span>
+                        </td>
+                        <td class="odoo-cell-number odoo-text-muted">
+                            {{ item.cuenta.saldo_inicial|floatformat:2 }}
+                        </td>
+                        <td class="odoo-cell-number odoo-text-success">
+                            +{{ item.ingresos|floatformat:2 }}
+                        </td>
+                        <td class="odoo-cell-number odoo-text-danger">
+                            -{{ item.egresos|floatformat:2 }}
+                        </td>
+                        <td class="odoo-cell-number odoo-cell-highlight">
+                            <span class="odoo-saldo {% if item.saldo_actual >= 0 %}odoo-saldo-positive{% else %}odoo-saldo-negative{% endif %}">
+                                {{ item.cuenta.moneda }} {{ item.saldo_actual|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td class="odoo-cell-status">
+                            {% if item.cuenta.esta_activa %}
+                                <span class="odoo-status odoo-status-success">Activa</span>
+                            {% else %}
+                                <span class="odoo-status odoo-status-muted">Inactiva</span>
+                            {% endif %}
+                        </td>
+                        <td class="odoo-cell-actions">
+                            <div class="odoo-row-actions">
+                                <a href="{% url 'finanzas_app:movimientos_listado' %}?cuenta={{ item.cuenta.pk }}" 
+                                   class="odoo-action-btn" title="Ver movimientos">
+                                    <span class="material-icons">receipt_long</span>
+                                </a>
+                                <a href="{% url 'finanzas_app:cuenta_editar' item.cuenta.pk %}" 
+                                   class="odoo-action-btn" title="Editar">
+                                    <span class="material-icons">edit</span>
+                                </a>
                                 {% if item.cuenta.esta_activa %}
-                                    <span class="status-badge status-success">Activa</span>
+                                    <a href="{% url 'finanzas_app:cuenta_toggle' item.cuenta.pk %}" 
+                                       class="odoo-action-btn odoo-action-warning"
+                                       title="Desactivar"
+                                       onclick="return confirm('¿Desactivar esta cuenta?');">
+                                        <span class="material-icons">visibility_off</span>
+                                    </a>
                                 {% else %}
-                                    <span class="status-badge status-muted">Inactiva</span>
+                                    <a href="{% url 'finanzas_app:cuenta_toggle' item.cuenta.pk %}" 
+                                       class="odoo-action-btn odoo-action-success"
+                                       title="Activar">
+                                        <span class="material-icons">visibility</span>
+                                    </a>
                                 {% endif %}
-                            </td>
-                            <td class="col-center">
-                                <div class="action-menu-wrapper">
-                                    <button type="button" class="action-menu-toggle">
-                                        <span class="material-icons">more_horiz</span>
-                                    </button>
-                                    <div class="action-menu-dropdown">
-                                        <a href="{% url 'finanzas_app:cuenta_editar' item.cuenta.pk %}" class="action-menu-item">
-                                            <span class="material-icons">edit</span>
-                                            <span>Editar</span>
-                                        </a>
-                                        <a href="{% url 'finanzas_app:movimientos_listado' %}?cuenta={{ item.cuenta.pk }}" class="action-menu-item">
-                                            <span class="material-icons">receipt_long</span>
-                                            <span>Ver movimientos</span>
-                                        </a>
-                                        {% if item.cuenta.esta_activa %}
-                                            <a href="{% url 'finanzas_app:cuenta_toggle' item.cuenta.pk %}" 
-                                               class="action-menu-item action-danger"
-                                               onclick="return confirm('¿Desactivar esta cuenta?');">
-                                                <span class="material-icons">block</span>
-                                                <span>Desactivar</span>
-                                            </a>
-                                        {% else %}
-                                            <a href="{% url 'finanzas_app:cuenta_toggle' item.cuenta.pk %}" 
-                                               class="action-menu-item action-success">
-                                                <span class="material-icons">check_circle</span>
-                                                <span>Activar</span>
-                                            </a>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="9" class="empty-row">
-                            <span class="material-icons">account_balance</span>
-                            <p>No hay cuentas registradas</p>
-                            <a href="{% url 'finanzas_app:cuenta_crear' %}">Crear la primera cuenta</a>
+                        <td colspan="10" class="odoo-empty-state">
+                            <div class="odoo-empty-content">
+                                <span class="material-icons">account_balance</span>
+                                <p class="odoo-empty-title">No hay cuentas registradas</p>
+                                <p class="odoo-empty-text">Comienza creando una nueva cuenta financiera.</p>
+                                <a href="{% url 'finanzas_app:cuenta_crear' %}" class="odoo-btn odoo-btn-primary">
+                                    <span class="material-icons">add</span>
+                                    Nueva cuenta
+                                </a>
+                            </div>
                         </td>
                     </tr>
                 {% endif %}
@@ -151,320 +175,546 @@
 </div>
 
 <style>
-.list-page {
-    max-width: 100%;
+/* =====================================
+   ODOO LIST VIEW - ESTILOS BASE
+   ===================================== */
+:root {
+    --odoo-purple: #714B67;
+    --odoo-purple-dark: #5d3d54;
+    --odoo-purple-light: #f3eef2;
+    --odoo-text: #212529;
+    --odoo-text-muted: #6c757d;
+    --odoo-border: #dee2e6;
+    --odoo-bg: #ffffff;
+    --odoo-bg-gray: #f8f9fa;
+    --odoo-success: #28a745;
+    --odoo-success-light: #d4edda;
+    --odoo-danger: #dc3545;
+    --odoo-danger-light: #f8d7da;
+    --odoo-warning: #e6a117;
+    --odoo-warning-light: #fff3cd;
+    --odoo-info: #17a2b8;
+    --odoo-info-light: #d1ecf1;
+    --odoo-hover: #f5f0f4;
 }
 
-.page-header-flex {
+.odoo-list-view {
+    background: var(--odoo-bg);
+    min-height: 100%;
+}
+
+/* =====================================
+   CONTROL PANEL (BARRA SUPERIOR)
+   ===================================== */
+.odoo-control-panel {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--odoo-border);
+    background: var(--odoo-bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.odoo-cp-left {
+    display: flex;
+    align-items: center;
     gap: 16px;
 }
 
-.page-title {
-    font-size: 22px;
+.odoo-breadcrumb-title {
+    font-size: 18px;
     font-weight: 600;
+    color: var(--odoo-text);
     margin: 0;
-    color: #111827;
 }
 
-.page-subtitle {
-    font-size: 13px;
-    color: #6b7280;
-    margin: 4px 0 0;
-}
-
-.header-actions {
+.odoo-cp-right {
     display: flex;
+    align-items: center;
     gap: 8px;
 }
 
-/* Resumen en pills */
-.summary-pills {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.summary-pill {
+/* Botones estilo Odoo */
+.odoo-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 14px;
-    border-radius: 999px;
+    padding: 7px 14px;
     font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--odoo-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    font-family: inherit;
+    background: var(--odoo-bg);
+    color: var(--odoo-text);
 }
 
-.summary-pill .material-icons {
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: var(--odoo-purple);
+    color: white;
+    border-color: var(--odoo-purple);
+}
+
+.odoo-btn-primary:hover {
+    background: var(--odoo-purple-dark);
+    border-color: var(--odoo-purple-dark);
+}
+
+/* =====================================
+   SEARCH PANEL (RESUMEN)
+   ===================================== */
+.odoo-search-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: var(--odoo-bg-gray);
+    border-bottom: 1px solid var(--odoo-border);
+}
+
+.odoo-search-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.odoo-summary-pills {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.odoo-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.odoo-pill .material-icons {
     font-size: 16px;
 }
 
-.pill-success {
-    background: #ecfdf5;
-    color: #065f46;
+.odoo-pill-success {
+    background: var(--odoo-success-light);
+    color: #155724;
 }
 
-.pill-muted {
-    background: #f3f4f6;
-    color: #6b7280;
+.odoo-pill-muted {
+    background: #e9ecef;
+    color: var(--odoo-text-muted);
 }
 
-.pill-primary {
-    background: #f3e8ff;
-    color: var(--color-primary, #714B67);
+.odoo-pill-primary {
+    background: var(--odoo-purple-light);
+    color: var(--odoo-purple);
 }
 
-/* Tabla */
-.table-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    overflow: hidden;
+.odoo-pager {
+    font-size: 13px;
+    color: var(--odoo-text-muted);
 }
 
-.data-table {
+/* =====================================
+   TABLA LISTA
+   ===================================== */
+.odoo-list-container {
+    overflow-x: auto;
+}
+
+.odoo-list-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
 }
 
-.data-table thead {
-    background: #f9fafb;
+.odoo-list-table thead {
+    background: var(--odoo-bg-gray);
+    position: sticky;
+    top: 54px;
+    z-index: 5;
 }
 
-.data-table th {
-    padding: 12px 14px;
+.odoo-list-table th {
+    padding: 10px 12px;
     text-align: left;
     font-weight: 600;
-    color: #374151;
-    border-bottom: 1px solid #e5e7eb;
+    color: var(--odoo-text);
+    border-bottom: 2px solid var(--odoo-border);
+    white-space: nowrap;
+    user-select: none;
 }
 
-.data-table td {
-    padding: 12px 14px;
-    border-bottom: 1px solid #f3f4f6;
-    color: #111827;
+.odoo-list-table th:hover {
+    background: #eee;
 }
 
-.data-table tbody tr:hover {
-    background: #f8f4f7;
+.odoo-list-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    color: var(--odoo-text);
+    vertical-align: middle;
 }
 
-.col-center {
+.odoo-list-row {
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.odoo-list-row:hover {
+    background: var(--odoo-hover);
+}
+
+.odoo-list-row:hover .odoo-row-actions {
+    opacity: 1;
+}
+
+.odoo-row-muted {
+    background: #fafafa;
+}
+
+.odoo-row-muted .odoo-name-text {
+    color: var(--odoo-text-muted);
+}
+
+/* Celdas específicas */
+.odoo-cell-checkbox {
+    width: 40px;
     text-align: center;
 }
 
-.text-muted { color: #6b7280; }
-.text-success { color: #059669; font-weight: 500; }
-.text-danger { color: #dc2626; font-weight: 500; }
-.text-primary { color: var(--color-primary, #714B67); }
+.odoo-checkbox-all,
+.odoo-checkbox-row {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--odoo-purple);
+}
 
-/* Badges */
-.badge {
+.odoo-cell-name {
+    min-width: 180px;
+}
+
+.odoo-cell-name-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.odoo-name-text {
+    font-weight: 600;
+    color: var(--odoo-text);
+}
+
+.odoo-name-sub {
+    font-size: 12px;
+    color: var(--odoo-text-muted);
+    font-weight: 400;
+}
+
+.odoo-cell-type {
+    width: 110px;
+}
+
+.odoo-cell-currency {
+    width: 70px;
+    text-align: center;
+}
+
+.odoo-cell-number {
+    width: 110px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.odoo-cell-highlight {
+    background: rgba(113, 75, 103, 0.03);
+}
+
+.odoo-cell-status {
+    width: 90px;
+    text-align: center;
+}
+
+.odoo-cell-actions {
+    width: 100px;
+    text-align: right;
+}
+
+/* Tags de tipo */
+.odoo-tag {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 11px;
+    border-radius: 4px;
+    font-size: 12px;
     font-weight: 600;
 }
 
-.badge .material-icons {
+.odoo-tag .material-icons {
     font-size: 14px;
 }
 
-.badge-warning {
-    background: #fef3c7;
-    color: #92400e;
+.odoo-tag-warning {
+    background: var(--odoo-warning-light);
+    color: #856404;
 }
 
-.badge-info {
-    background: #dbeafe;
-    color: #1e40af;
+.odoo-tag-info {
+    background: var(--odoo-info-light);
+    color: #0c5460;
 }
 
-.badge-muted {
-    background: #f3f4f6;
-    color: #6b7280;
+.odoo-tag-muted {
+    background: #e9ecef;
+    color: var(--odoo-text-muted);
 }
 
-/* Status badges */
-.status-badge {
+/* Currency badge */
+.odoo-currency-badge {
     display: inline-block;
-    padding: 4px 10px;
-    border-radius: 999px;
+    padding: 3px 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--odoo-text-muted);
+}
+
+/* Textos coloreados */
+.odoo-text-muted {
+    color: var(--odoo-text-muted) !important;
+}
+
+.odoo-text-success {
+    color: var(--odoo-success) !important;
+    font-weight: 500;
+}
+
+.odoo-text-danger {
+    color: var(--odoo-danger) !important;
+    font-weight: 500;
+}
+
+/* Saldo */
+.odoo-saldo {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.odoo-saldo-positive {
+    color: var(--odoo-purple);
+}
+
+.odoo-saldo-negative {
+    color: var(--odoo-danger);
+}
+
+/* Status */
+.odoo-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
     font-size: 11px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
-.status-success {
-    background: #d1fae5;
-    color: #065f46;
+.odoo-status-success {
+    background: var(--odoo-success-light);
+    color: #155724;
 }
 
-.status-muted {
-    background: #f3f4f6;
-    color: #6b7280;
+.odoo-status-muted {
+    background: #e9ecef;
+    color: var(--odoo-text-muted);
 }
 
-/* Menú de acciones */
-.action-menu-wrapper {
-    position: relative;
-    display: inline-block;
+/* Acciones de fila */
+.odoo-row-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+    opacity: 0;
+    transition: opacity 0.15s;
 }
 
-.action-menu-toggle {
-    background: #f3f4f6;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.action-menu-toggle:hover {
-    background: #e5e7eb;
-}
-
-.action-menu-toggle .material-icons {
-    font-size: 20px;
-    color: #6b7280;
-}
-
-.action-menu-dropdown {
-    position: absolute;
-    right: 0;
-    top: 100%;
-    margin-top: 4px;
-    background: #ffffff;
-    border-radius: 8px;
-    padding: 6px 0;
-    min-width: 160px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-    display: none;
-    z-index: 100;
-}
-
-.action-menu-wrapper.open .action-menu-dropdown {
-    display: block;
-}
-
-.action-menu-item {
+.odoo-action-btn {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 14px;
-    color: #374151;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    color: var(--odoo-text-muted);
     text-decoration: none;
-    font-size: 13px;
-    transition: background 0.15s;
+    transition: all 0.15s;
 }
 
-.action-menu-item:hover {
-    background: #f9fafb;
+.odoo-action-btn:hover {
+    background: var(--odoo-purple-light);
+    color: var(--odoo-purple);
 }
 
-.action-menu-item .material-icons {
+.odoo-action-btn .material-icons {
     font-size: 18px;
-    color: #6b7280;
 }
 
-.action-danger:hover {
-    background: #fef2f2;
+.odoo-action-warning:hover {
+    background: var(--odoo-warning-light);
+    color: #856404;
 }
 
-.action-danger:hover .material-icons {
-    color: #dc2626;
+.odoo-action-success:hover {
+    background: var(--odoo-success-light);
+    color: var(--odoo-success);
 }
 
-.action-success:hover {
-    background: #ecfdf5;
-}
-
-.action-success:hover .material-icons {
-    color: #059669;
-}
-
-/* Empty state */
-.empty-row {
+/* =====================================
+   ESTADO VACÍO
+   ===================================== */
+.odoo-empty-state {
+    padding: 60px 20px !important;
     text-align: center;
-    padding: 40px 20px !important;
-    color: #9ca3af;
 }
 
-.empty-row .material-icons {
-    font-size: 40px;
-    opacity: 0.3;
-    display: block;
-    margin-bottom: 8px;
+.odoo-empty-content {
+    max-width: 300px;
+    margin: 0 auto;
 }
 
-.empty-row a {
-    color: var(--color-primary, #714B67);
+.odoo-empty-content .material-icons {
+    font-size: 48px;
+    color: #dee2e6;
+    margin-bottom: 16px;
 }
 
-/* Botones */
-.btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 18px;
-    background: var(--color-primary, #714B67);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
-    transition: background 0.15s;
+.odoo-empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--odoo-text);
+    margin: 0 0 8px 0;
 }
 
-.btn-primary:hover {
-    background: #5d3d54;
+.odoo-empty-text {
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+    margin: 0 0 20px 0;
 }
 
-.btn-primary .material-icons {
-    font-size: 18px;
-}
-
+/* =====================================
+   RESPONSIVE
+   ===================================== */
 @media (max-width: 1024px) {
-    .data-table {
-        display: block;
-        overflow-x: auto;
+    .odoo-cell-number:not(.odoo-cell-highlight) {
+        display: none;
+    }
+    
+    .odoo-list-table th:nth-child(5),
+    .odoo-list-table th:nth-child(6),
+    .odoo-list-table th:nth-child(7) {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-control-panel {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .odoo-cp-right {
+        justify-content: flex-end;
+    }
+    
+    .odoo-search-panel {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .odoo-summary-pills {
+        justify-content: flex-start;
+    }
+    
+    .odoo-search-right {
+        text-align: right;
+    }
+    
+    .odoo-cell-checkbox {
+        display: none;
+    }
+    
+    .odoo-row-actions {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 576px) {
+    .odoo-list-table th,
+    .odoo-list-table td {
+        padding: 8px 10px;
+    }
+    
+    .odoo-cell-name {
+        min-width: 120px;
+    }
+    
+    .odoo-cell-currency,
+    .odoo-cell-status {
+        display: none;
+    }
+    
+    .odoo-summary-pills {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .odoo-pill {
+        justify-content: center;
     }
 }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.action-menu-wrapper').forEach(function (wrapper) {
-        const toggle = wrapper.querySelector('.action-menu-toggle');
-
-        toggle.addEventListener('click', function (e) {
-            e.stopPropagation();
-            
-            document.querySelectorAll('.action-menu-wrapper.open').forEach(function (openWrapper) {
-                if (openWrapper !== wrapper) {
-                    openWrapper.classList.remove('open');
-                }
-            });
-
-            wrapper.classList.toggle('open');
+document.addEventListener('DOMContentLoaded', function() {
+    // Click en filas para navegar
+    document.querySelectorAll('.odoo-list-row[data-href]').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            // No navegar si se hizo click en checkbox o acciones
+            if (e.target.closest('.odoo-cell-checkbox') || 
+                e.target.closest('.odoo-cell-actions')) {
+                return;
+            }
+            window.location.href = this.dataset.href;
         });
     });
 
-    document.addEventListener('click', function () {
-        document.querySelectorAll('.action-menu-wrapper.open').forEach(function (wrapper) {
-            wrapper.classList.remove('open');
+    // Checkbox de seleccionar todos
+    const checkAll = document.querySelector('.odoo-checkbox-all');
+    const checkboxes = document.querySelectorAll('.odoo-checkbox-row');
+    
+    if (checkAll) {
+        checkAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = this.checked);
         });
-    });
+    }
 });
 </script>
 
