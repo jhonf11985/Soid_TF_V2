@@ -105,7 +105,6 @@ class MovimientoFinancieroForm(forms.ModelForm):
 # ============================================
 # FORMULARIO DE INGRESO
 # ============================================
-
 class MovimientoIngresoForm(forms.ModelForm):
     """
     Formulario especializado solo para INGRESOS.
@@ -137,6 +136,7 @@ class MovimientoIngresoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         # Filtrar categorías a solo tipo ingreso y activas
         self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
             tipo="ingreso",
@@ -155,6 +155,22 @@ class MovimientoIngresoForm(forms.ModelForm):
             ).order_by("nombres", "apellidos")
             self.fields["persona_asociada"].required = False
 
+        # --------------------------------------------
+        # REGLA: si es EDICIÓN de un ingreso confirmado,
+        # solo se puede corregir lo NO contable.
+        # --------------------------------------------
+        if self.instance and self.instance.pk:
+            if self.instance.estado == "confirmado":
+                campos_bloqueados = ["fecha", "cuenta", "categoria", "monto", "forma_pago"]
+                for name in campos_bloqueados:
+                    if name in self.fields:
+                        self.fields[name].disabled = True
+                        self.fields[name].help_text = "Este campo no se puede modificar en un ingreso confirmado."
+
+            if self.instance.estado == "anulado":
+                # Si está anulado, bloqueamos todo (por seguridad).
+                for f in self.fields.values():
+                    f.disabled = True
 
 # ============================================
 # FORMULARIO DE EGRESO

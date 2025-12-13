@@ -124,6 +124,25 @@ class MovimientoFinanciero(models.Model):
         ("cuadrado", "Cuadrado"),   
         ("anulado", "Anulado"),
     ]
+    # --- ANULACIÓN / AUDITORÍA ---
+    motivo_anulacion = models.TextField(
+        blank=True,
+        help_text="Motivo o comentario de por qué se anuló el movimiento."
+    )
+    anulado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="movimientos_anulados",
+        help_text="Usuario que anuló el movimiento."
+    )
+    anulado_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha y hora en que se anuló el movimiento."
+    )
+
     # --- TRANSFERENCIAS ---
     es_transferencia = models.BooleanField(
         default=False,

@@ -18,7 +18,8 @@ from .forms import (
     MovimientoEgresoForm, 
     CategoriaMovimientoForm,
 )
-
+from django.db import transaction
+from django.utils import timezone
 
 # ============================================
 # DASHBOARD
@@ -534,7 +535,6 @@ def movimiento_crear(request):
     }
     return render(request, "finanzas_app/ingreso_form.html", context)
 
-
 @login_required
 def ingreso_crear(request):
     """
@@ -545,9 +545,10 @@ def ingreso_crear(request):
         if form.is_valid():
             mov = form.save(commit=False)
             mov.tipo = "ingreso"
+            mov.estado = "confirmado"
             mov.creado_por = request.user
             mov.save()
-            messages.success(request, "Ingreso registrado correctamente.")
+            messages.success(request, "Ingreso registrado y confirmado correctamente.")
             return redirect("/finanzas/movimientos/?tipo=ingreso")
     else:
         form = MovimientoIngresoForm(
@@ -561,7 +562,6 @@ def ingreso_crear(request):
         "modo": "crear",
     }
     return render(request, "finanzas_app/ingreso_form.html", context)
-
 
 @login_required
 def egreso_crear(request):
@@ -599,7 +599,11 @@ def movimiento_editar(request, pk):
     - Si es egreso: usa MovimientoEgresoForm + egreso.html
     """
     movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
-
+    if movimiento.estado == "anulado":
+        messages.error(request, "Este movimiento está anulado y no se puede editar.")
+        if movimiento.tipo == "ingreso":
+            return redirect("finanzas_app:ingreso_detalle", pk=movimiento.pk)
+        return redirect("finanzas_app:movimientos_listado")   
     # Elegimos formulario y plantilla según el tipo
     if movimiento.tipo == "ingreso":
         FormClass = MovimientoIngresoForm
@@ -629,17 +633,34 @@ def movimiento_editar(request, pk):
 
 @login_required
 def movimiento_anular(request, pk):
-    """
-    Anular un movimiento (cambiar estado a 'anulado').
-    No eliminamos para mantener el historial.
-    """
     movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
-    
-    movimiento.estado = "anulado"
-    movimiento.save()
 
-    messages.warning(request, f"Movimiento #{movimiento.pk} anulado.")
-    return redirect("finanzas_app:movimientos_listado")
+    if movimiento.estado == "anulado":
+        messages.warning(request, "Este movimiento ya está anulado.")
+        return redirect("finanzas_app:movimientos_listado")
+
+    if request.method == "POST":
+        motivo = (request.POST.get("motivo") or "").strip()
+        if not motivo:
+            messages.error(request, "Debes indicar el motivo de la anulación.")
+            return redirect("finanzas_app:movimiento_anular", pk=movimiento.pk)
+
+        movimiento.estado = "anulado"
+        movimiento.motivo_anulacion = motivo
+        movimiento.anulado_por = request.user
+        movimiento.anulado_en = timezone.now()
+        movimiento.save()
+
+        messages.warning(request, f"Movimiento #{movimiento.pk} anulado.")
+        return redirect("finanzas_app:movimientos_listado")
+
+    context = {
+        "modo": "movimiento",
+        "movimiento": movimiento,
+        "back_url": request.META.get("HTTP_REFERER") or reverse("finanzas_app:movimientos_listado"),
+    }
+    return render(request, "finanzas_app/anulacion_confirmar.html", context)
+
 
 @login_required
 def ingreso_detalle(request, pk):
@@ -777,48 +798,68 @@ def transferencia_detalle(request, pk):
     }
     return render(request, "finanzas_app/transferencia_detalle.html", context)
 
-
 @login_required
 def transferencia_anular(request, pk):
-    """
-    Anula una transferencia completa (ambos movimientos).
-    """
-    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
-    
-    # Verificar que sea una transferencia
-    if not movimiento.es_transferencia:
+    transferencia = get_object_or_404(MovimientoFinanciero, pk=pk)
+
+    if not transferencia.es_transferencia:
         messages.error(request, "Este movimiento no es una transferencia.")
         return redirect("finanzas_app:movimientos_listado")
-    
-    # Verificar que no esté ya anulada
-    if movimiento.estado == "anulado":
+
+    try:
+        movimiento_par = transferencia.get_transferencia_par()
+    except Exception:
+        movimiento_par = None
+
+    if transferencia.estado == "anulado":
         messages.warning(request, "Esta transferencia ya está anulada.")
-        return redirect("finanzas_app:transferencia_detalle", pk=pk)
-    
+        return redirect("finanzas_app:movimientos_listado")
+
     if request.method == "POST":
-        try:
-            # Anular usando el servicio
-            TransferenciaService.anular_transferencia(movimiento)
-            
-            messages.success(
-                request,
-                f"Transferencia anulada correctamente. "
-                f"Ambos movimientos han sido marcados como anulados."
-            )
-            return redirect("finanzas_app:movimientos_listado")
-        
-        except ValidationError as e:
-            messages.error(request, str(e))
-            return redirect("finanzas_app:transferencia_detalle", pk=pk)
-    
-    # Si es GET, mostrar confirmación
-    movimiento_par = movimiento.get_transferencia_par()
-    
+        motivo = (request.POST.get("motivo") or "").strip()
+        if not motivo:
+            messages.error(request, "Debes indicar el motivo de la anulación.")
+            return redirect("finanzas_app:transferencia_anular", pk=pk)
+
+        # anular ambos (si existe el par)
+        transferencia.estado = "anulado"
+        transferencia.motivo_anulacion = motivo
+        transferencia.anulado_por = request.user
+        transferencia.anulado_en = timezone.now()
+        transferencia.save()
+
+        if movimiento_par:
+            movimiento_par.estado = "anulado"
+            movimiento_par.motivo_anulacion = motivo
+            movimiento_par.anulado_por = request.user
+            movimiento_par.anulado_en = timezone.now()
+            movimiento_par.save()
+
+        messages.success(request, "Transferencia anulada correctamente.")
+        return redirect("finanzas_app:movimientos_listado")
+
+    # calcular origen/destino para mostrarlo bonito
+    if movimiento_par:
+        if transferencia.tipo == "egreso":
+            cuenta_origen = transferencia.cuenta.nombre
+            cuenta_destino = movimiento_par.cuenta.nombre
+        else:
+            cuenta_origen = movimiento_par.cuenta.nombre
+            cuenta_destino = transferencia.cuenta.nombre
+    else:
+        cuenta_origen = "—"
+        cuenta_destino = "—"
+
     context = {
-        "transferencia": movimiento,
+        "modo": "transferencia",
+        "transferencia": transferencia,
         "movimiento_par": movimiento_par,
+        "cuenta_origen": cuenta_origen,
+        "cuenta_destino": cuenta_destino,
+        "back_url": reverse("finanzas_app:transferencia_detalle", kwargs={"pk": transferencia.pk}),
     }
-    return render(request, "finanzas_app/transferencia_confirmar_anular.html", context)
+    return render(request, "finanzas_app/anulacion_confirmar.html", context)
+
 
 # ============================================
 # ADJUNTOS DE MOVIMIENTOS

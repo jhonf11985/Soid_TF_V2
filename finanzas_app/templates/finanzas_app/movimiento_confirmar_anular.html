@@ -1,0 +1,129 @@
+{% extends 'finanzas_app/base_finanzas.html' %}
+{% load static %}
+
+{% block title %}Anular movimiento · Soid_Tf_2{% endblock %}
+
+{% block finanzas_content %}
+
+<div class="odoo-page">
+
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a class="odoo-back-link" href="{% url 'finanzas_app:movimientos_listado' %}">
+                <span class="material-icons">arrow_back</span>
+            </a>
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-parent">Movimientos</span>
+                <span class="odoo-breadcrumb-separator">/</span>
+                <span class="odoo-breadcrumb-current">Anular</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            <span class="odoo-action-title">Confirmar anulación</span>
+        </div>
+    </div>
+
+    <div class="odoo-content">
+        <div class="odoo-form-sheet">
+
+            <div class="odoo-alert odoo-alert-warning">
+                <span class="material-icons">warning</span>
+                <div>
+                    <strong>Vas a anular este movimiento</strong>
+                    <p>El registro no se elimina: quedará en historial como <b>Anulado</b>.</p>
+                </div>
+            </div>
+
+            <div class="odoo-summary-box">
+                <div class="odoo-summary-row">
+                    <span class="odoo-summary-label">Tipo</span>
+                    <span class="odoo-summary-value">{{ movimiento.tipo|title }}</span>
+                </div>
+                <div class="odoo-summary-row">
+                    <span class="odoo-summary-label">Fecha</span>
+                    <span class="odoo-summary-value">{{ movimiento.fecha|date:"d/m/Y" }}</span>
+                </div>
+                <div class="odoo-summary-row">
+                    <span class="odoo-summary-label">Cuenta</span>
+                    <span class="odoo-summary-value">{{ movimiento.cuenta.nombre }}</span>
+                </div>
+                <div class="odoo-summary-row">
+                    <span class="odoo-summary-label">Monto</span>
+                    <span class="odoo-summary-value">{{ movimiento.cuenta.moneda }} {{ movimiento.monto|floatformat:2 }}</span>
+                </div>
+                <div class="odoo-summary-row">
+                    <span class="odoo-summary-label">Categoría</span>
+                    <span class="odoo-summary-value">{{ movimiento.categoria.nombre }}</span>
+                </div>
+            </div>
+
+            <form method="post" class="odoo-form">
+                {% csrf_token %}
+
+                <div class="odoo-form-group">
+                    <label class="odoo-label">Motivo de la anulación <span class="odoo-required">*</span></label>
+                    <textarea name="motivo" class="odoo-textarea" rows="3" placeholder="Ej: duplicado, error de monto, corrección contable, etc." required></textarea>
+                    <span class="odoo-field-hint">Este comentario quedará guardado en el historial del movimiento.</span>
+                </div>
+
+                <div class="odoo-form-actions">
+                    <button type="submit" class="odoo-btn odoo-btn-danger">
+                        <span class="material-icons">block</span>
+                        Anular movimiento
+                    </button>
+                    <a href="{% url 'finanzas_app:movimientos_listado' %}" class="odoo-btn odoo-btn-light">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<style>
+.odoo-summary-box{
+    border: 1px solid var(--odoo-border, #dee2e6);
+    background: var(--odoo-bg, #fff);
+    border-radius: 10px;
+    padding: 14px;
+    margin: 12px 0 18px;
+}
+.odoo-summary-row{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    padding:8px 0;
+    border-bottom: 1px solid var(--odoo-border, #dee2e6);
+}
+.odoo-summary-row:last-child{ border-bottom:none; }
+.odoo-summary-label{ color: var(--odoo-text-muted, #6c757d); font-size:13px; font-weight:600; }
+.odoo-summary-value{ color: var(--odoo-text, #212529); font-size:14px; font-weight:600; }
+
+.odoo-form-group{ margin-top: 10px; }
+.odoo-textarea{
+    width:100%;
+    border:1px solid var(--odoo-border, #dee2e6);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:14px;
+    background:#fff;
+    outline:none;
+}
+.odoo-textarea:focus{
+    border-color: var(--odoo-purple, #714B67);
+    box-shadow: 0 0 0 3px rgba(113,75,103,.12);
+}
+.odoo-form-actions{
+    display:flex;
+    gap:10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+</style>
+
+{% endblock %}

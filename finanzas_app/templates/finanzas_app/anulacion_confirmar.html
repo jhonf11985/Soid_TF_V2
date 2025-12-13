@@ -1,0 +1,434 @@
+{% extends 'finanzas_app/base_finanzas.html' %}
+{% load static %}
+
+{% block title %}Anular operación · Soid_Tf_2{% endblock %}
+
+{% block finanzas_content %}
+
+<div class="odoo-page">
+
+  <!-- TOPBAR -->
+  <div class="odoo-topbar">
+    <div class="odoo-topbar-left">
+      <a class="odoo-back-link" href="{{ back_url }}">
+        <span class="material-icons">arrow_back</span>
+      </a>
+      <div class="odoo-breadcrumb">
+        <span class="odoo-breadcrumb-parent">
+          {% if modo == 'transferencia' %}Transferencias{% else %}Movimientos{% endif %}
+        </span>
+        <span class="odoo-breadcrumb-separator">/</span>
+        <span class="odoo-breadcrumb-current">Anular operación</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTION BAR -->
+  <div class="odoo-actionbar">
+    <div class="odoo-actionbar-left">
+      <span class="odoo-action-title">Confirmar anulación</span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="odoo-content">
+    <div class="odoo-form-sheet">
+
+      <!-- ALERT -->
+      <div class="odoo-alert-warning">
+        <span class="material-icons">warning_amber</span>
+        <span>
+          <strong>Acción irreversible:</strong>
+          La operación quedará marcada como <strong>Anulada</strong> permanentemente. 
+          No se eliminará del historial ni afectará los saldos.
+        </span>
+      </div>
+
+      <!-- GRID 2 COLUMNAS -->
+      <div class="anular-grid">
+        
+        <!-- DETALLES -->
+        <div class="odoo-card">
+          <div class="odoo-card-header">
+            <span class="material-icons">
+              {% if modo == 'transferencia' %}swap_horiz{% else %}{% if movimiento.tipo == 'ingreso' %}trending_up{% else %}trending_down{% endif %}{% endif %}
+            </span>
+            <span>
+              {% if modo == 'transferencia' %}
+                Transferencia
+              {% else %}
+                Movimiento #{{ movimiento.pk }}
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="odoo-card-body">
+            {% if modo == 'transferencia' %}
+              <div class="odoo-field-row">
+                <span class="odoo-field-label">Fecha</span>
+                <span class="odoo-field-value">{{ transferencia.fecha|date:"d/m/Y" }}</span>
+              </div>
+              <div class="odoo-field-row odoo-field-highlight">
+                <span class="odoo-field-label">Monto</span>
+                <span class="odoo-field-value odoo-field-amount">{{ transferencia.cuenta.moneda }} {{ transferencia.monto|floatformat:2 }}</span>
+              </div>
+              <div class="odoo-field-row">
+                <span class="odoo-field-label">Origen</span>
+                <span class="odoo-field-value">{{ cuenta_origen }}</span>
+              </div>
+              <div class="odoo-field-row">
+                <span class="odoo-field-label">Destino</span>
+                <span class="odoo-field-value">{{ cuenta_destino }}</span>
+              </div>
+            {% else %}
+              <div class="odoo-field-row">
+                <span class="odoo-field-label">Tipo</span>
+                <span class="odoo-field-value">
+                  <span class="odoo-badge odoo-badge-{{ movimiento.tipo }}">{{ movimiento.tipo|capfirst }}</span>
+                </span>
+              </div>
+              <div class="odoo-field-row">
+                <span class="odoo-field-label">Fecha</span>
+                <span class="odoo-field-value">{{ movimiento.fecha|date:"d/m/Y" }}</span>
+              </div>
+              <div class="odoo-field-row odoo-field-highlight">
+                <span class="odoo-field-label">Monto</span>
+                <span class="odoo-field-value odoo-field-amount">{{ movimiento.cuenta.moneda }} {{ movimiento.monto|floatformat:2 }}</span>
+              </div>
+              <div class="odoo-field-row">
+                <span class="odoo-field-label">Cuenta</span>
+                <span class="odoo-field-value">{{ movimiento.cuenta.nombre }}</span>
+              </div>
+              <div class="odoo-field-row">
+                <span class="odoo-field-label">Categoría</span>
+                <span class="odoo-field-value">{{ movimiento.categoria.nombre }}</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- FORMULARIO -->
+        <div class="odoo-card">
+          <form method="post">
+            {% csrf_token %}
+
+            <div class="odoo-form-group">
+              <label class="odoo-label">
+                Motivo de anulación
+                <span class="odoo-required">*</span>
+              </label>
+
+              <textarea
+                name="motivo"
+                class="odoo-textarea"
+                rows="6"
+                placeholder="Describa el motivo (ej: monto incorrecto, duplicado, cuenta equivocada...)"
+                required
+                maxlength="300"></textarea>
+
+              <div class="odoo-field-hint-row">
+                <span class="odoo-field-hint">Quedará registrado para auditoría</span>
+                <span class="odoo-char-counter">0/300</span>
+              </div>
+            </div>
+
+            <!-- BOTONES -->
+            <div class="odoo-form-actions">
+              <button type="submit" class="odoo-btn odoo-btn-danger">
+                <span class="material-icons">block</span>
+                Confirmar anulación
+              </button>
+              <a href="{{ back_url }}" class="odoo-btn odoo-btn-secondary">
+                Cancelar
+              </a>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<style>
+/* ========================================
+   ESTILO ODOO - MINIMALISTA Y PROFESIONAL
+   ======================================== */
+
+.odoo-form-sheet {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* --- Alerta --- */
+.odoo-alert-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #92400e;
+}
+
+.odoo-alert-warning .material-icons {
+  font-size: 20px;
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+/* --- Grid --- */
+.anular-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* --- Cards Odoo --- */
+.odoo-card {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+}
+
+.odoo-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.odoo-card-header .material-icons {
+  font-size: 18px;
+  color: #714B67;
+}
+
+.odoo-card-body {
+  padding: 0;
+}
+
+/* --- Field Rows --- */
+.odoo-field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.odoo-field-row:last-child {
+  border-bottom: none;
+}
+
+.odoo-field-highlight {
+  background: #f8f9fa;
+}
+
+.odoo-field-label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.odoo-field-value {
+  color: #212529;
+  font-weight: 600;
+  text-align: right;
+}
+
+.odoo-field-amount {
+  color: #714B67;
+  font-size: 14px;
+}
+
+/* --- Badges --- */
+.odoo-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.odoo-badge-ingreso {
+  background: #d4edda;
+  color: #155724;
+}
+
+.odoo-badge-egreso {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* --- Form Group --- */
+.odoo-form-group {
+  padding: 16px;
+}
+
+.odoo-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 6px;
+}
+
+.odoo-required {
+  color: #dc3545;
+  margin-left: 2px;
+}
+
+.odoo-textarea {
+  width: 100%;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #212529;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+
+.odoo-textarea:focus {
+  border-color: #714B67;
+  outline: none;
+  box-shadow: 0 0 0 0.2rem rgba(113, 75, 103, 0.15);
+}
+
+.odoo-textarea::placeholder {
+  color: #adb5bd;
+}
+
+.odoo-field-hint-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.odoo-field-hint {
+  color: #6c757d;
+}
+
+.odoo-char-counter {
+  color: #adb5bd;
+  font-weight: 500;
+}
+
+/* --- Botones --- */
+.odoo-form-actions {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  padding-top: 0;
+}
+
+.odoo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+
+.odoo-btn .material-icons {
+  font-size: 16px;
+}
+
+.odoo-btn-danger {
+  background: #dc3545;
+  color: white;
+  flex: 1;
+}
+
+.odoo-btn-danger:hover {
+  background: #c82333;
+}
+
+.odoo-btn-secondary {
+  background: #fff;
+  color: #495057;
+  border-color: #ced4da;
+}
+
+.odoo-btn-secondary:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+/* --- Responsivo --- */
+@media (max-width: 900px) {
+  .anular-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .odoo-field-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 10px 16px;
+  }
+  
+  .odoo-field-value {
+    text-align: left;
+  }
+  
+  .odoo-form-actions {
+    flex-direction: column;
+  }
+  
+  .odoo-btn {
+    width: 100%;
+  }
+}
+</style>
+
+<script>
+// Contador de caracteres
+document.addEventListener('DOMContentLoaded', function() {
+  const textarea = document.querySelector('.odoo-textarea');
+  const counter = document.querySelector('.odoo-char-counter');
+  
+  if (textarea && counter) {
+    textarea.addEventListener('input', function() {
+      const current = this.value.length;
+      counter.textContent = `${current}/300`;
+      
+      if (current > 270) {
+        counter.style.color = '#dc3545';
+      } else {
+        counter.style.color = '#adb5bd';
+      }
+    });
+  }
+});
+</script>
+
+{% endblock %}
