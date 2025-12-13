@@ -1,805 +1,1578 @@
-{% extends 'core/base_modulo.html' %}
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
 
 {% block title %}
     {% if modo == "editar" and miembro %}
-        Editar miembro · Soid_Tf_2
+        {{ miembro.nombres }} {{ miembro.apellidos }} · Miembros
     {% else %}
-        Agregar miembro · Soid_Tf_2
+        Nuevo miembro · Miembros
     {% endif %}
 {% endblock %}
 
-{% block breadcrumb %}
-Miembros /
-{% if modo == "editar" %}
-    Editar
-{% else %}
-    Crear
-{% endif %}
-{% endblock %}
+{% block miembros_content %}
 
-{% block content %}
+<form method="post" enctype="multipart/form-data" class="odoo-form">
+    {% csrf_token %}
 
-<section class="page-header">
-    <div>
-        {% if modo == "editar" %}
-            <h1 class="page-title">Editar miembro</h1>
-            <p class="page-subtitle">
-                Actualiza la información del miembro. Revisa con calma cada pestaña.
-            </p>
-        {% else %}
-            <h1 class="page-title">Nuevo miembro</h1>
-            <p class="page-subtitle">
-                Registra los datos completos del miembro para mantener la información organizada.
-            </p>
-        {% endif %}
-    </div>
-
-    <div class="page-header-actions">
-        <a href="{% url 'miembros_app:lista' %}" class="btn-secondary">
-            <span class="material-icons">arrow_back</span>
-            Volver a la lista
-        </a>
-    </div>
-</section>
-
-<section class="member-create-wrapper">
-    <div class="member-card">
-
-        <!-- ENCABEZADO DEL FORMULARIO -->
-        <div class="member-card-header">
-            <div>
-                <h2>Ficha de registro</h2>
-                <p class="member-card-subtitle">
-                    Revisa con calma cada pestaña. Los campos marcados con <span class="required">*</span> son obligatorios.
-                </p>
-            </div>
-            <div class="member-status-pill">
-                <span class="status-dot"></span>
-                {% if modo == "editar" and miembro %}
-                    Editando: {{ miembro.nombres }} {{ miembro.apellidos }}
+    <!-- ══════════════════════════════════════════════════════════════════
+         BARRA SUPERIOR (Control Bar)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:lista' %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                Miembros
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">
+                {% if modo == "editar" %}Editar{% else %}Nuevo{% endif %}
+            </span>
+            
+            {% if not modo == "editar" %}
+            <span class="odoo-new-badge">Nuevo</span>
+            {% endif %}
+        </div>
+        
+        <div class="odoo-control-right">
+            <div class="odoo-member-code">
+                <span class="material-icons">qr_code_2</span>
+                {% if form.codigo_miembro_display.value %}
+                    {{ form.codigo_miembro_display.value }}
                 {% else %}
-                    Nuevo registro
+                    {{ form.codigo_miembro_display.initial }}
                 {% endif %}
             </div>
         </div>
-
-        <!-- CÓDIGO DE MIEMBRO (SOLO LECTURA, ARRIBA Y FUERA DEL FORMULARIO) -->
-<!-- BANNER CÓDIGO DE MIEMBRO (SIEMPRE VISIBLE) -->
-<div class="member-code-banner">
-    <div class="member-code-main">
-        <span class="material-icons member-code-icon">qr_code_2</span>
-        <span class="member-code-text">
-            {% if form.codigo_miembro_display.value %}
-                {{ form.codigo_miembro_display.value }}
-            {% else %}
-                {{ form.codigo_miembro_display.initial }}
-            {% endif %}
-        </span>
     </div>
-    <div class="member-code-sub">
-        {% if modo == "editar" and miembro %}
-            Código interno del miembro (no editable).
-        {% else %}
-            Código que se asignará a este nuevo miembro al guardar.
-        {% endif %}
-    </div>
-</div>
 
-
-        <!-- FORMULARIO -->
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-
-
-            <!-- BARRA DE TABS -->
-            <div class="tabs-bar">
-                <button type="button" class="tab-btn active" onclick="openTab('personal', this)">
-                    Información personal
-                </button>
-                <button type="button" class="tab-btn" onclick="openTab('contacto', this)">
-                    Contacto
-                </button>
-                <button type="button" class="tab-btn" onclick="openTab('membresia', this)">
-                    Membresía
-                </button>
-                <button type="button" class="tab-btn" onclick="openTab('emergencia', this)">
-                    Emergencia y salud
-                </button>
-                <button type="button" class="tab-btn" onclick="openTab('trabajo', this)">
-                    Trabajo
-                </button>
+    <!-- ══════════════════════════════════════════════════════════════════
+         CONTENIDO PRINCIPAL
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-form-container">
+        
+        <!-- ÁREA PRINCIPAL DEL FORMULARIO -->
+        <div class="odoo-form-main">
+            
+            <!-- ─────────────────────────────────────────────────────────
+                 HEADER: Foto + Nombre + Campos principales
+                 ───────────────────────────────────────────────────────── -->
+            <div class="odoo-form-header">
                 
-
-                <!-- NUEVA PESTAÑA: FAMILIARES -->
-                <button type="button" class="tab-btn" onclick="openTab('familiares', this)">
-                    Familiares
-                </button>
-
-                <button type="button" class="tab-btn" onclick="openTab('intereses', this)">
-                    Intereses y habilidades
-                </button>
-                <button type="button" class="tab-btn" onclick="openTab('notas', this)">
-                    Notas
-                </button>
-            </div>
-
-
-            <div class="member-layout">
-                <!-- CONTENIDO DE TABS -->
-                <div class="member-main">
-
-                    <!-- ========== PESTAÑA: INFORMACIÓN PERSONAL ========== -->
-                    <div id="personal" class="tab-content" style="display: block;">
-                        <h3 class="tab-title">Información personal</h3>
-                        <p class="tab-description">
-                            Datos básicos de identidad del miembro.
-                        </p>
-
-                        <div class="form-grid">
-                            <!-- Foto destacada a la izquierda -->
-                            <div class="form-field form-field-full member-photo-field">
-                                <label>Foto</label>
-                                <div class="member-photo-wrapper">
-                                    <div class="member-photo-preview">
-                                        {% if miembro and miembro.foto %}
-                                            <img src="{{ miembro.foto.url }}" alt="Foto del miembro">
-                                        {% else %}
-                                            <span class="material-icons member-photo-icon">person</span>
-                                        {% endif %}
-                                    </div>
-
-                                    <div class="member-photo-input">
-                                        {{ form.foto }}
-
-                                        <p class="help-text">
-                                            Formatos permitidos: JPG, PNG. Tamaño recomendado 500x500 px.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-
-                            <div class="form-field">
-                                <label for="{{ form.nombres.id_for_label }}">Nombres <span class="required">*</span></label>
-                                {{ form.nombres }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.apellidos.id_for_label }}">Apellidos <span class="required">*</span></label>
-                                {{ form.apellidos }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.genero.id_for_label }}">Género</label>
-                                {{ form.genero }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.fecha_nacimiento.id_for_label }}">Fecha de nacimiento</label>
-                                {{ form.fecha_nacimiento }}
-                                <div id="edad_aviso" 
-                                style="display:none; margin-top:6px; padding:10px; border-radius:6px;
-                                        background:#fff7ed; color:#c2410c; font-size:13px;">
-                                ⚠️ ⚠️ Esta registando a un miembro menor de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años.
-
-                                <br>
-                                <strong>Por lo tanto no sera consierado en la lista Oficial.</strong>
-                            </div>
-
-                                {# ERRORES ESPECÍFICOS DE FECHA DE NACIMIENTO (AÑADIDO) #}
-                                {% if form.fecha_nacimiento.errors %}
-                                    <div class="field-error">
-                                        {% for error in form.fecha_nacimiento.errors %}
-                                            {{ error }}{% if not forloop.last %}<br>{% endif %}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-
-                               
-                            </div>
-
-                            <div class="form-field">
-                                <label>Edad</label>
-                                <div class="info-pill">
-                                    <span class="info-pill-value" id="id_edad_display">—</span>
-                                    <span class="info-pill-label">años</span>
-                                </div>
-                                <small class="field-help">Se calcula según la fecha de nacimiento.</small>
-                            </div>
-
-                            <div class="form-field">
-                                <label>Categoría de edad</label>
-                                <span class="badge badge-green" id="id_categoria_edad_display">—</span>
-                                <small class="field-help">Infante, niño, adolescente, joven, etc.</small>
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.lugar_nacimiento.id_for_label }}">Lugar de nacimiento</label>
-                                {{ form.lugar_nacimiento }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.nacionalidad.id_for_label }}">Nacionalidad</label>
-                                {{ form.nacionalidad }}
-                            </div>
-                       <!-- 👇 NUEVOS CAMPOS DE IDENTIDAD -->
-                            <div class="form-field">
-                                <label for="{{ form.cedula.id_for_label }}">Cédula</label>
-                                {{ form.cedula }}
-                                <small class="field-help">
-                                    Formato: 000-0000000-0
-                                </small>
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.pasaporte.id_for_label }}">Pasaporte</label>
-                                {{ form.pasaporte }}
-                                <small class="field-help">
-                                    Solo si aplica.
-                                </small>
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.estado_civil.id_for_label }}">Estado civil</label>
-                                {{ form.estado_civil }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.nivel_educativo.id_for_label }}">Nivel educativo</label>
-                                {{ form.nivel_educativo }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.profesion.id_for_label }}">Profesión</label>
-                                {{ form.profesion }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ========== PESTAÑA: CONTACTO ========== -->
-                    <div id="contacto" class="tab-content">
-                        <h3 class="tab-title">Contacto</h3>
-                        <p class="tab-description">
-                            Información de contacto y dirección.
-                        </p>
-
-                        <div class="form-grid">
-                            <div class="form-field">
-                                <label for="{{ form.telefono.id_for_label }}">Teléfono principal</label>
-                                {{ form.telefono }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.telefono_secundario.id_for_label }}">Teléfono secundario</label>
-                                {{ form.telefono_secundario }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.whatsapp.id_for_label }}">WhatsApp</label>
-                                {{ form.whatsapp }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.email.id_for_label }}">Correo electrónico</label>
-                                {{ form.email }}
-                            </div>
-
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.direccion.id_for_label }}">Dirección</label>
-                                {{ form.direccion }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.sector.id_for_label }}">Sector / Barrio</label>
-                                {{ form.sector }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.ciudad.id_for_label }}">Ciudad</label>
-                                {{ form.ciudad }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.provincia.id_for_label }}">Provincia</label>
-                                {{ form.provincia }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.codigo_postal.id_for_label }}">Código postal</label>
-                                {{ form.codigo_postal }}
-                            </div>
-                        </div>
-                    </div>
-<!-- ========== PESTAÑA: MEMBRESÍA ========== -->
-                                        <!-- ========== PESTAÑA: MEMBRESÍA ========== -->
-                    <div id="membresia" class="tab-content">
-                        <h3 class="tab-title">Membresía</h3>
-                        <p class="tab-description">
-                            Estado espiritual y datos de ingreso del miembro en la iglesia.
-                        </p>
-
-                        <div class="form-grid">
-
-                            <!-- Estado + Bautizado en línea -->
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.estado_miembro.id_for_label }}">Estado del miembro</label>
-                                <div class="field-inline">
-                                    <div class="field-inline-main">
-                                        {{ form.estado_miembro }}
-                                    </div>
-                                    <label class="field-inline-side" for="{{ form.bautizado_confirmado.id_for_label }}">
-                                        {{ form.bautizado_confirmado }}
-                                        Bautizado confirmado
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Fecha ingreso + traslado -->
-                            <div class="form-field">
-                                <label for="{{ form.fecha_ingreso_iglesia.id_for_label }}">Fecha de ingreso a la iglesia</label>
-                                {{ form.fecha_ingreso_iglesia }}
-
-                                {% if form.fecha_ingreso_iglesia.errors %}
-                                <div class="field-error">
-                                    {% for error in form.fecha_ingreso_iglesia.errors %}
-                                    {{ error }}{% if not forloop.last %}<br>{% endif %}
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                            </div>
-
-                            <div class="form-field">
-                                <label class="checkbox-label" for="{{ form.es_trasladado.id_for_label }}">
-                                    {{ form.es_trasladado }}
-                                    Viene de otra iglesia
-                                </label>
-                                <small class="field-help">
-                                    Marca esta opción si el miembro llega trasladado de otra iglesia.
-                                </small>
-                            </div>
-
-                            <!-- Iglesia anterior normal (no full width) -->
-                            <div class="form-field">
-                                <label for="{{ form.iglesia_anterior.id_for_label }}">Iglesia anterior</label>
-                                {{ form.iglesia_anterior }}
-                            </div>
-
-                            <!-- Fechas espirituales -->
-                            <div class="form-field">
-                                <label for="{{ form.fecha_conversion.id_for_label }}">Fecha de conversión</label>
-                                {{ form.fecha_conversion }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.fecha_bautismo.id_for_label }}">Fecha de bautismo</label>
-                                {{ form.fecha_bautismo }}
-                            </div>
-
-                            <!-- Miembro activo (abajo) -->
-                            <div class="form-field form-field-full">
-                                <label class="checkbox-label" for="{{ form.activo.id_for_label }}">
-                                    {{ form.activo }}
-                                    Miembro activo
-                                </label>
-                                <p class="field-help">
-                                    Si desmarcas esta casilla, el miembro dejará de aparecer en la lista oficial.
-                                    Podrás indicar el motivo y la fecha de salida.
-                                </p>
-                            </div>
-
-                            <!-- Bloque de salida: se muestra solo cuando "Miembro activo" está desmarcado -->
-                            <div id="bloque-salida-miembro" class="form-field form-field-full" style="display: none;">
-                                <h4 class="tab-subtitle">Información de salida</h4>
-                                <p class="field-help">
-                                    Estos datos se usan para llevar estadísticas de cuántos miembros se van y por qué.
-                                </p>
-
-                                <div class="form-grid">
-                                    <!-- Razón de salida -->
-                                    <div class="form-field">
-                                        <label for="{{ form.razon_salida.id_for_label }}">Razón de salida</label>
-                                        {{ form.razon_salida }}
-
-                                        {% if form.razon_salida.errors %}
-                                        <div class="field-error">
-                                            {% for error in form.razon_salida.errors %}
-                                            {{ error }}{% if not forloop.last %}<br>{% endif %}
-                                            {% endfor %}
-                                        </div>
-                                        {% endif %}
-                                    </div>
-
-                                    <!-- Fecha de salida -->
-                                    <div class="form-field">
-                                        <label for="{{ form.fecha_salida.id_for_label }}">Fecha de salida</label>
-                                        {{ form.fecha_salida }}
-
-                                        {% if form.fecha_salida.errors %}
-                                        <div class="field-error">
-                                            {% for error in form.fecha_salida.errors %}
-                                            {{ error }}{% if not forloop.last %}<br>{% endif %}
-                                            {% endfor %}
-                                        </div>
-                                        {% endif %}
-                                        <p class="field-help">
-                                            Si no indicas una fecha, se usará la fecha actual automáticamente.
-                                        </p>
-                                    </div>
-
-                                    <!-- Comentario de salida -->
-                                    <div class="form-field form-field-full">
-                                        <label for="{{ form.comentario_salida.id_for_label }}">Comentario</label>
-                                        {{ form.comentario_salida }}
-
-                                        {% if form.comentario_salida.errors %}
-                                        <div class="field-error">
-                                            {% for error in form.comentario_salida.errors %}
-                                            {{ error }}{% if not forloop.last %}<br>{% endif %}
-                                            {% endfor %}
-                                        </div>
-                                        {% endif %}
-                                        <p class="field-help">
-                                            Opcional. Puedes añadir detalles breves (ej: se mudó de ciudad, cambio de trabajo, etc.).
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <!-- ========== PESTAÑA: EMERGENCIA Y SALUD ========== -->
-                    <div id="emergencia" class="tab-content">
-                        <h3 class="tab-title">Emergencia y salud</h3>
-                        <p class="tab-description">
-                            Datos importantes para contacto de emergencia y condiciones médicas relevantes.
-                        </p>
-
-                        <div class="form-grid">
-                            <div class="form-field">
-                                <label for="{{ form.contacto_emergencia_nombre.id_for_label }}">Nombre contacto de emergencia</label>
-                                {{ form.contacto_emergencia_nombre }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.contacto_emergencia_telefono.id_for_label }}">Teléfono de emergencia</label>
-                                {{ form.contacto_emergencia_telefono }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.contacto_emergencia_relacion.id_for_label }}">Relación</label>
-                                {{ form.contacto_emergencia_relacion }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.tipo_sangre.id_for_label }}">Tipo de sangre</label>
-                                {{ form.tipo_sangre }}
-                            </div>
-
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.alergias.id_for_label }}">Alergias</label>
-                                {{ form.alergias }}
-                            </div>
-
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.condiciones_medicas.id_for_label }}">Condiciones médicas</label>
-                                {{ form.condiciones_medicas }}
-                            </div>
-
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.medicamentos.id_for_label }}">Medicamentos</label>
-                                {{ form.medicamentos }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ========== PESTAÑA: TRABAJO ========== -->
-                    <div id="trabajo" class="tab-content">
-                        <h3 class="tab-title">Trabajo</h3>
-                        <p class="tab-description">
-                            Información laboral del miembro.
-                        </p>
-
-                        <div class="form-grid">
-                            <div class="form-field">
-                                <label for="{{ form.empleador.id_for_label }}">Empleador</label>
-                                {{ form.empleador }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.puesto.id_for_label }}">Puesto</label>
-                                {{ form.puesto }}
-                            </div>
-
-                            <div class="form-field">
-                                <label for="{{ form.telefono_trabajo.id_for_label }}">Teléfono del trabajo</label>
-                                {{ form.telefono_trabajo }}
-                            </div>
-
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.direccion_trabajo.id_for_label }}">Dirección del trabajo</label>
-                                {{ form.direccion_trabajo }}
-                            </div>
-                        </div>
-                    </div>
-                    
-                                          <!-- ========== PESTAÑA: FAMILIARES ========== -->
-                    <div id="familiares" class="tab-content">
-                        <h3 class="tab-title">Familiares</h3>
-                        <p class="tab-description">
-                            Asigna familiares a este miembro usando la lista de miembros registrados.
-                        </p>
-
-                        {% if modo == "editar" and miembro %}
-                            <!-- Tabla de familiares ya asignados -->
-                            {% if familiares %}
-                                <div class="form-grid">
-                                    <div class="form-field form-field-full">
-                                        <table class="table-familiares">
-                                            <thead>
-                                            <tr>
-                                                <th>Familiar</th>
-                                                <th>Relación</th>
-                                                <th>Vive en casa</th>
-                                                <th>Responsable</th>
-                                                <th>Acciones</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            {% for rel in familiares %}
-                                                <tr>
-                                                    <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
-                                                    <td>{{ rel.get_tipo_relacion_display }}</td>
-                                                    <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
-                                                    <td>{% if rel.es_responsable %}Sí{% else %}No{% endif %}</td>
-                                                    <td>
-                                                        <a href="{% url 'miembros_app:eliminar_familiar' rel.pk %}"
-                                                        class="btn-secondary"
-                                                        style="padding:2px 8px; font-size:11px;"
-                                                        onclick="return confirm('¿Seguro que quieres quitar este familiar?')">
-                                                            Quitar
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                            {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            {% else %}
-                                <p class="tab-helper">Este miembro aún no tiene familiares asignados.</p>
-                            {% endif %}
-                     
-
-                            <hr class="divider">
-
-                            <!-- Formulario para agregar un nuevo familiar (MISMO FORMULARIO GENERAL) -->
-                            <h4 class="tab-subtitle">Agregar familiar desde la lista de miembros</h4>
-                            <p class="tab-description">
-                                Selecciona un miembro ya registrado y define la relación familiar.
-                            </p>
-
-                            <div class="familia-form">
-                                <div class="form-grid">
-                                    <div class="form-field">
-                                        <label for="familiar_search">Miembro familiar <span class="required">*</span></label>
-
-                                        <!-- Buscador para filtrar la lista -->
-                                        <input type="text"
-                                               id="familiar_search"
-                                               class="input"
-                                               placeholder="Escribe para buscar por nombre o apellido...">
-
-                                        <small class="field-help">
-                                            Escribe parte del nombre o apellido para filtrar la lista.
-                                        </small>
-
-                                        <select name="familiar" id="id_familiar" class="input" size="6" style="margin-top: 6px;">
-                                            <option value="">Seleccione un miembro</option>
-                                            {% for m in todos_miembros %}
-                                                {% if m.pk != miembro.pk %}
-                                                    <option value="{{ m.pk }}">
-                                                        {{ m.nombres }} {{ m.apellidos }}
-                                                    </option>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-
-                                    <div class="form-field">
-                                        <label for="id_tipo_relacion">Relación <span class="required">*</span></label>
-                                        <select name="tipo_relacion" id="id_tipo_relacion" class="input">
-                                        <option value="">Seleccione relación</option>
-
-                                        <option value="padre">Padre</option>
-                                        <option value="madre">Madre</option>
-
-                                        <!-- Valor 'hijo' (el modelo entiende Hijo/a) -->
-                                        <option value="hijo">Hijo / Hija</option>
-
-                                        <!-- Valor 'hermano' (el modelo entiende Hermano/a) -->
-                                        <option value="hermano">Hermano / Hermana</option>
-
-                                        <option value="conyuge">Cónyuge</option>
-
-                                        <!-- Todo lo demás entra como 'otro' -->
-                                        <option value="otro">Abuelo / Abuela</option>
-                                        <option value="otro">Tutor / Encargado</option>
-                                        <option value="otro">Otro familiar</option>
-                                    </select>
-
-                                    </div>
-
-                                    <div class="form-field">
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" name="vive_junto" class="checkbox">
-                                            Vive en la misma casa
-                                        </label>
-
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" name="es_responsable" class="checkbox">
-                                            Responsable principal
-                                        </label>
-
-                                        <small class="field-help">
-                                            Marca <strong>Responsable principal</strong> solo cuando este familiar es
-                                            el adulto o encargado principal del hogar (por ejemplo: padre, madre o tutor
-                                            de los menores que viven en la casa).
-                                        </small>
-                                    </div>
-
-
-                                    <div class="form-field form-field-full">
-                                        <label for="id_notas_familiar">Notas</label>
-                                        <textarea name="notas" id="id_notas_familiar" rows="2" class="textarea"
-                                                  placeholder="Notas breves sobre esta relación familiar (opcional)"></textarea>
-                                    </div>
-                                </div>
-
-                                <div class="form-actions">
-                                    <!-- IMPORTANTE: este name es lo que usaremos en la vista -->
-                                    <button type="submit" name="agregar_familiar" value="1" class="btn-secondary" style="margin-top:8px;">
-                                        + Agregar familiar
-                                    </button>
-                                </div>
-                            </div>
+                <!-- Foto del miembro -->
+                <div class="odoo-avatar-section">
+                    <div class="odoo-avatar">
+                        {% if miembro and miembro.foto %}
+                            <img src="{{ miembro.foto.url }}" alt="Foto">
                         {% else %}
-                            <p>
-                                Guarda primero el miembro para poder gestionar sus familiares.
-                            </p>
+                            <span class="material-icons">person</span>
                         {% endif %}
                     </div>
+                    <div class="odoo-avatar-upload">
+                        {{ form.foto }}
+                    </div>
+                </div>
 
-
-
-                    <!-- ========== PESTAÑA: INTERESES ========== -->
-                    <div id="intereses" class="tab-content">
-                        <h3 class="tab-title">Intereses y habilidades</h3>
-                        <p class="tab-description">
-                            Áreas donde el miembro podría servir o involucrarse.
-                        </p>
-
-                        <div class="form-grid">
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.intereses.id_for_label }}">Intereses</label>
-                                {{ form.intereses }}
-                            </div>
-
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.otros_intereses.id_for_label }}">Otros intereses</label>
-                                {{ form.otros_intereses }}
-                            </div>
-
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.habilidades.id_for_label }}">Habilidades</label>
-                                {{ form.habilidades }}
-                            </div>
-
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.otras_habilidades.id_for_label }}">Otras habilidades</label>
-                                {{ form.otras_habilidades }}
-                            </div>
-                        </div>
+                <!-- Info principal -->
+                <div class="odoo-header-info">
+                    
+                    <!-- Radio: Género -->
+                    <div class="odoo-radio-group">
+                        <label class="odoo-radio">
+                            <input type="radio" name="genero" value="M" 
+                                   {% if form.genero.value == 'M' %}checked{% endif %}>
+                            <span>Masculino</span>
+                        </label>
+                        <label class="odoo-radio">
+                            <input type="radio" name="genero" value="F"
+                                   {% if form.genero.value == 'F' %}checked{% endif %}>
+                            <span>Femenino</span>
+                        </label>
                     </div>
 
-                    <!-- ========== PESTAÑA: NOTAS ========== -->
-                    <div id="notas" class="tab-content">
-                        <h3 class="tab-title">Notas pastorales</h3>
-                        <p class="tab-description">
-                            Observaciones internas sobre el miembro (visible solo para el equipo autorizado).
-                        </p>
+                    <!-- Nombre grande -->
+                    <div class="odoo-name-field">
+                        <input type="text" 
+                               name="nombres" 
+                               id="{{ form.nombres.id_for_label }}"
+                               value="{{ form.nombres.value|default:'' }}"
+                               placeholder="Nombres"
+                               class="odoo-name-input"
+                               required>
+                        <input type="text" 
+                               name="apellidos" 
+                               id="{{ form.apellidos.id_for_label }}"
+                               value="{{ form.apellidos.value|default:'' }}"
+                               placeholder="Apellidos"
+                               class="odoo-name-input"
+                               required>
+                    </div>
 
-                        <div class="form-grid">
-                            <div class="form-field form-field-full">
-                                <label for="{{ form.notas.id_for_label }}">Notas</label>
-                                {{ form.notas }}
+                    <!-- Campos de contacto rápido -->
+                    <div class="odoo-quick-fields">
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">email</span>
+                            <input type="email" 
+                                   name="email" 
+                                   id="{{ form.email.id_for_label }}"
+                                   value="{{ form.email.value|default:'' }}"
+                                   placeholder="Correo electrónico">
+                        </div>
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">phone</span>
+                            <input type="tel" 
+                                   name="telefono" 
+                                   id="{{ form.telefono.id_for_label }}"
+                                   value="{{ form.telefono.value|default:'' }}"
+                                   placeholder="Teléfono">
+                        </div>
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">chat</span>
+                            <input type="tel" 
+                                   name="whatsapp" 
+                                   id="{{ form.whatsapp.id_for_label }}"
+                                   value="{{ form.whatsapp.value|default:'' }}"
+                                   placeholder="WhatsApp">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────────────────────────────────
+                 BODY: Campos en dos columnas estilo Odoo
+                 ───────────────────────────────────────────────────────── -->
+            <div class="odoo-form-body">
+                
+                <!-- Columna Izquierda -->
+                <div class="odoo-form-column">
+                    
+                    <div class="odoo-field-group">
+                        <label class="odoo-label">Dirección</label>
+                        <div class="odoo-field-stack">
+                            <input type="text" name="direccion" 
+                                   id="{{ form.direccion.id_for_label }}"
+                                   value="{{ form.direccion.value|default:'' }}"
+                                   placeholder="Calle..." class="odoo-input">
+                            <input type="text" name="sector" 
+                                   id="{{ form.sector.id_for_label }}"
+                                   value="{{ form.sector.value|default:'' }}"
+                                   placeholder="Sector / Barrio" class="odoo-input">
+                            <div class="odoo-field-row">
+                                <input type="text" name="ciudad" 
+                                       id="{{ form.ciudad.id_for_label }}"
+                                       value="{{ form.ciudad.value|default:'' }}"
+                                       placeholder="Ciudad" class="odoo-input">
+                                <input type="text" name="provincia" 
+                                       id="{{ form.provincia.id_for_label }}"
+                                       value="{{ form.provincia.value|default:'' }}"
+                                       placeholder="Provincia" class="odoo-input">
+                                <input type="text" name="codigo_postal" 
+                                       id="{{ form.codigo_postal.id_for_label }}"
+                                       value="{{ form.codigo_postal.value|default:'' }}"
+                                       placeholder="C.P." class="odoo-input odoo-input-small">
                             </div>
+                            <select name="nacionalidad" id="{{ form.nacionalidad.id_for_label }}" class="odoo-input">
+                                <option value="">País</option>
+                                {% for value, label in form.nacionalidad.field.choices %}
+                                    <option value="{{ value }}" {% if form.nacionalidad.value == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
                 </div>
 
-                <!-- ASIDE / AYUDA -->
-                <aside class="member-aside">
-                    <div class="aside-card">
-                        <h4>Consejos rápidos</h4>
-                        <ul>
-                            <li>Revisa primero la pestaña de <strong>Información personal</strong>.</li>
-                            <li>En <strong>Emergencia y salud</strong>, añade todo lo que pueda ser útil.</li>
-                            <li>En <strong>Membresía</strong>, verifica bien fechas y estado.</li>
-                        </ul>
+                <!-- Columna Derecha -->
+                <div class="odoo-form-column">
+                    
+                    <div class="odoo-field">
+                        <label class="odoo-label">Cédula</label>
+                        <input type="text" name="cedula" id="id_cedula"
+                               value="{{ form.cedula.value|default:'' }}"
+                               placeholder="000-0000000-0" class="odoo-input">
                     </div>
-                    <div class="aside-card">
-                        <h4>Acciones</h4>
-                        <p class="member-card-subtitle">
-                            Cuando termines de revisar las pestañas, guarda los cambios.
-                        </p>
 
-                        {% if modo == "editar" %}
-                            <!-- MODO EDITAR: un solo botón -->
-                            <button type="submit"
-                                    class="btn-primary"
-                                    style="width:100%; justify-content:center;">
-                                <span class="material-icons">save</span>
-                                Guardar cambios
-                            </button>
+                    <div class="odoo-field">
+                        <label class="odoo-label">Fecha nacimiento</label>
+                        <input type="date" name="fecha_nacimiento" 
+                               id="id_fecha_nacimiento"
+                               value="{{ form.fecha_nacimiento.value|default:'' }}"
+                               class="odoo-input">
+                    </div>
+
+                    <!-- Aviso de edad mínima -->
+                    <div id="edad_aviso" class="odoo-alert odoo-alert-warning" style="display:none;">
+                        ⚠️ Estás registrando a un miembro menor de {{ EDAD_MINIMA_MIEMBRO_OFICIAL }} años.
+                        <strong>No será considerado en la lista oficial.</strong>
+                    </div>
+
+                    {% if form.fecha_nacimiento.errors %}
+                    <div class="odoo-field-error">
+                        {% for error in form.fecha_nacimiento.errors %}
+                            {{ error }}{% if not forloop.last %}<br>{% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="odoo-field">
+                        <label class="odoo-label">Estado civil</label>
+                        <select name="estado_civil" id="{{ form.estado_civil.id_for_label }}" class="odoo-input">
+                            {% for value, label in form.estado_civil.field.choices %}
+                                <option value="{{ value }}" {% if form.estado_civil.value == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="odoo-field">
+                        <label class="odoo-label">Estado miembro</label>
+                        <select name="estado_miembro" id="id_estado_miembro" class="odoo-input">
+                            {% for value, label in form.estado_miembro.field.choices %}
+                                <option value="{{ value }}" {% if form.estado_miembro.value == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="odoo-field odoo-field-checkbox">
+                        <label class="odoo-checkbox-label">
+                            <input type="checkbox" name="bautizado_confirmado" id="id_bautizado_confirmado"
+                                   {% if form.bautizado_confirmado.value %}checked{% endif %}>
+                            <span>Bautizado confirmado</span>
+                        </label>
+                    </div>
+
+                    <div class="odoo-field odoo-field-checkbox">
+                        <label class="odoo-checkbox-label">
+                            <input type="checkbox" name="activo" id="id_activo"
+                                   {% if form.activo.value %}checked{% endif %}>
+                            <span>Miembro activo</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────────────────────────────────
+                 TABS: Pestañas inferiores estilo Odoo
+                 ───────────────────────────────────────────────────────── -->
+            <div class="odoo-tabs-section">
+                
+                <!-- Tab buttons -->
+                <div class="odoo-tabs-bar">
+                    <button type="button" class="odoo-tab active" data-tab="personal">
+                        Información personal
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="membresia">
+                        Membresía
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="emergencia">
+                        Emergencia
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="trabajo">
+                        Trabajo
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="familiares">
+                        Familiares
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="intereses">
+                        Intereses
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="notas">
+                        Notas
+                    </button>
+                </div>
+
+                <!-- Tab contents -->
+                <div class="odoo-tabs-content">
+                    
+                    <!-- TAB: Información Personal -->
+                    <div class="odoo-tab-panel active" id="tab-personal">
+                        <div class="odoo-tab-grid">
+                            <div class="odoo-field">
+                                <label class="odoo-label">Lugar nacimiento</label>
+                                <input type="text" name="lugar_nacimiento" 
+                                       id="{{ form.lugar_nacimiento.id_for_label }}"
+                                       value="{{ form.lugar_nacimiento.value|default:'' }}"
+                                       placeholder="Ciudad o país de nacimiento" class="odoo-input">
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Pasaporte</label>
+                                <input type="text" name="pasaporte" 
+                                       id="{{ form.pasaporte.id_for_label }}"
+                                       value="{{ form.pasaporte.value|default:'' }}"
+                                       placeholder="Número de pasaporte" class="odoo-input">
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Nivel educativo</label>
+                                <select name="nivel_educativo" id="{{ form.nivel_educativo.id_for_label }}" class="odoo-input">
+                                    {% for value, label in form.nivel_educativo.field.choices %}
+                                        <option value="{{ value }}" {% if form.nivel_educativo.value == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Profesión</label>
+                                <input type="text" name="profesion" 
+                                       id="{{ form.profesion.id_for_label }}"
+                                       value="{{ form.profesion.value|default:'' }}"
+                                       placeholder="Profesión u ocupación" class="odoo-input">
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Tel. secundario</label>
+                                <input type="tel" name="telefono_secundario" 
+                                       id="{{ form.telefono_secundario.id_for_label }}"
+                                       value="{{ form.telefono_secundario.value|default:'' }}"
+                                       placeholder="Teléfono alternativo" class="odoo-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Membresía -->
+                    <div class="odoo-tab-panel" id="tab-membresia">
+                        <div class="odoo-tab-grid">
+                            <div class="odoo-field">
+                                <label class="odoo-label">Fecha ingreso</label>
+                                <input type="date" name="fecha_ingreso_iglesia" 
+                                       id="{{ form.fecha_ingreso_iglesia.id_for_label }}"
+                                       value="{{ form.fecha_ingreso_iglesia.value|default:'' }}"
+                                       class="odoo-input">
+                            </div>
+                            {% if form.fecha_ingreso_iglesia.errors %}
+                            <div class="odoo-field-error odoo-field-full">
+                                {% for error in form.fecha_ingreso_iglesia.errors %}
+                                    {{ error }}{% if not forloop.last %}<br>{% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            <div class="odoo-field">
+                                <label class="odoo-label">Fecha conversión</label>
+                                <input type="date" name="fecha_conversion" 
+                                       id="{{ form.fecha_conversion.id_for_label }}"
+                                       value="{{ form.fecha_conversion.value|default:'' }}"
+                                       class="odoo-input">
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Fecha bautismo</label>
+                                <input type="date" name="fecha_bautismo" 
+                                       id="{{ form.fecha_bautismo.id_for_label }}"
+                                       value="{{ form.fecha_bautismo.value|default:'' }}"
+                                       class="odoo-input">
+                            </div>
+                            <div class="odoo-field odoo-field-checkbox">
+                                <label class="odoo-checkbox-label">
+                                    <input type="checkbox" name="es_trasladado" id="id_es_trasladado"
+                                           {% if form.es_trasladado.value %}checked{% endif %}>
+                                    <span>Viene de otra iglesia</span>
+                                </label>
+                            </div>
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Iglesia anterior</label>
+                                <input type="text" name="iglesia_anterior" id="id_iglesia_anterior"
+                                       value="{{ form.iglesia_anterior.value|default:'' }}"
+                                       placeholder="Nombre de la iglesia anterior" class="odoo-input">
+                            </div>
+                        </div>
+
+                        <!-- Sección de salida (solo visible si no está activo) -->
+                        <div class="odoo-subsection" id="bloque-salida-miembro" style="display: none;">
+                            <h4 class="odoo-subsection-title">Información de salida</h4>
+                            <div class="odoo-tab-grid">
+                                <div class="odoo-field">
+                                    <label class="odoo-label">Razón salida</label>
+                                    <select name="razon_salida" id="{{ form.razon_salida.id_for_label }}" class="odoo-input">
+                                        {% for value, label in form.razon_salida.field.choices %}
+                                            <option value="{{ value }}" {% if form.razon_salida.value == value %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% if form.razon_salida.errors %}
+                                <div class="odoo-field-error">
+                                    {% for error in form.razon_salida.errors %}{{ error }}{% endfor %}
+                                </div>
+                                {% endif %}
+
+                                <div class="odoo-field">
+                                    <label class="odoo-label">Fecha salida</label>
+                                    <input type="date" name="fecha_salida" 
+                                           id="{{ form.fecha_salida.id_for_label }}"
+                                           value="{{ form.fecha_salida.value|default:'' }}"
+                                           class="odoo-input">
+                                </div>
+                                {% if form.fecha_salida.errors %}
+                                <div class="odoo-field-error">
+                                    {% for error in form.fecha_salida.errors %}{{ error }}{% endfor %}
+                                </div>
+                                {% endif %}
+
+                                <div class="odoo-field odoo-field-full">
+                                    <label class="odoo-label">Comentario</label>
+                                    <textarea name="comentario_salida" id="{{ form.comentario_salida.id_for_label }}"
+                                              rows="2" class="odoo-textarea"
+                                              placeholder="Detalles adicionales sobre la salida...">{{ form.comentario_salida.value|default:'' }}</textarea>
+                                </div>
+                                {% if form.comentario_salida.errors %}
+                                <div class="odoo-field-error">
+                                    {% for error in form.comentario_salida.errors %}{{ error }}{% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Emergencia -->
+                    <div class="odoo-tab-panel" id="tab-emergencia">
+                        <div class="odoo-tab-grid">
+                            <div class="odoo-field">
+                                <label class="odoo-label">Contacto emergencia</label>
+                                <input type="text" name="contacto_emergencia_nombre" 
+                                       id="{{ form.contacto_emergencia_nombre.id_for_label }}"
+                                       value="{{ form.contacto_emergencia_nombre.value|default:'' }}"
+                                       placeholder="Nombre completo" class="odoo-input">
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Tel. emergencia</label>
+                                <input type="tel" name="contacto_emergencia_telefono" 
+                                       id="{{ form.contacto_emergencia_telefono.id_for_label }}"
+                                       value="{{ form.contacto_emergencia_telefono.value|default:'' }}"
+                                       placeholder="Teléfono" class="odoo-input">
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Relación</label>
+                                <input type="text" name="contacto_emergencia_relacion" 
+                                       id="{{ form.contacto_emergencia_relacion.id_for_label }}"
+                                       value="{{ form.contacto_emergencia_relacion.value|default:'' }}"
+                                       placeholder="Ej: Esposa, Padre, Hermano" class="odoo-input">
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Tipo de sangre</label>
+                                <select name="tipo_sangre" id="{{ form.tipo_sangre.id_for_label }}" class="odoo-input">
+                                    {% for value, label in form.tipo_sangre.field.choices %}
+                                        <option value="{{ value }}" {% if form.tipo_sangre.value == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Alergias</label>
+                                <textarea name="alergias" id="{{ form.alergias.id_for_label }}"
+                                          rows="2" class="odoo-textarea"
+                                          placeholder="Lista de alergias conocidas...">{{ form.alergias.value|default:'' }}</textarea>
+                            </div>
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Condiciones médicas</label>
+                                <textarea name="condiciones_medicas" id="{{ form.condiciones_medicas.id_for_label }}"
+                                          rows="2" class="odoo-textarea"
+                                          placeholder="Condiciones médicas relevantes...">{{ form.condiciones_medicas.value|default:'' }}</textarea>
+                            </div>
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Medicamentos</label>
+                                <textarea name="medicamentos" id="{{ form.medicamentos.id_for_label }}"
+                                          rows="2" class="odoo-textarea"
+                                          placeholder="Medicamentos que toma regularmente...">{{ form.medicamentos.value|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Trabajo -->
+                    <div class="odoo-tab-panel" id="tab-trabajo">
+                        <div class="odoo-tab-grid">
+                            <div class="odoo-field">
+                                <label class="odoo-label">Empleador</label>
+                                <input type="text" name="empleador" 
+                                       id="{{ form.empleador.id_for_label }}"
+                                       value="{{ form.empleador.value|default:'' }}"
+                                       placeholder="Nombre de la empresa" class="odoo-input">
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Puesto</label>
+                                <input type="text" name="puesto" 
+                                       id="{{ form.puesto.id_for_label }}"
+                                       value="{{ form.puesto.value|default:'' }}"
+                                       placeholder="Cargo o posición" class="odoo-input">
+                            </div>
+                            <div class="odoo-field">
+                                <label class="odoo-label">Tel. trabajo</label>
+                                <input type="tel" name="telefono_trabajo" 
+                                       id="{{ form.telefono_trabajo.id_for_label }}"
+                                       value="{{ form.telefono_trabajo.value|default:'' }}"
+                                       placeholder="Teléfono laboral" class="odoo-input">
+                            </div>
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Dirección trabajo</label>
+                                <textarea name="direccion_trabajo" id="{{ form.direccion_trabajo.id_for_label }}"
+                                          rows="2" class="odoo-textarea"
+                                          placeholder="Dirección completa del lugar de trabajo...">{{ form.direccion_trabajo.value|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Familiares -->
+                    <div class="odoo-tab-panel" id="tab-familiares">
+                        {% if modo == "editar" and miembro %}
+                            {% if familiares %}
+                            <table class="odoo-table">
+                                <thead>
+                                    <tr>
+                                        <th>Familiar</th>
+                                        <th>Relación</th>
+                                        <th>Vive en casa</th>
+                                        <th>Responsable</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rel in familiares %}
+                                    <tr>
+                                        <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
+                                        <td>{{ rel.get_tipo_relacion_display }}</td>
+                                        <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
+                                        <td>{% if rel.es_responsable %}Sí{% else %}No{% endif %}</td>
+                                        <td>
+                                            <a href="{% url 'miembros_app:eliminar_familiar' rel.pk %}"
+                                               class="odoo-link-danger"
+                                               onclick="return confirm('¿Quitar este familiar?')">
+                                                <span class="material-icons">close</span>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% endif %}
+
+                            <div class="odoo-add-line">
+                                <a href="#" class="odoo-add-link" onclick="toggleFamiliarForm(); return false;">
+                                    <span class="material-icons">add</span>
+                                    Agregar familiar
+                                </a>
+                            </div>
+
+                            <div class="odoo-inline-form" id="familiar-form" style="display: none;">
+                                <div class="odoo-tab-grid">
+                                    <div class="odoo-field">
+                                        <label class="odoo-label">Miembro</label>
+                                        <!-- Buscador para filtrar la lista -->
+                                        <input type="text" id="familiar_search" class="odoo-input"
+                                               placeholder="Buscar por nombre..." style="margin-bottom: 6px;">
+                                        <select name="familiar" id="id_familiar" class="odoo-input" size="5">
+                                            <option value="">Seleccione un miembro</option>
+                                            {% for m in todos_miembros %}
+                                                {% if m.pk != miembro.pk %}
+                                                <option value="{{ m.pk }}">{{ m.nombres }} {{ m.apellidos }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="odoo-field">
+                                        <label class="odoo-label">Relación</label>
+                                        <select name="tipo_relacion" id="id_tipo_relacion" class="odoo-input">
+                                            <option value="">Seleccione</option>
+                                            <option value="padre">Padre</option>
+                                            <option value="madre">Madre</option>
+                                            <option value="hijo">Hijo / Hija</option>
+                                            <option value="hermano">Hermano / Hermana</option>
+                                            <option value="conyuge">Cónyuge</option>
+                                            <option value="otro">Abuelo / Abuela</option>
+                                            <option value="otro">Tutor / Encargado</option>
+                                            <option value="otro">Otro familiar</option>
+                                        </select>
+                                    </div>
+                                    <div class="odoo-field odoo-field-checkboxes">
+                                        <label class="odoo-checkbox-label">
+                                            <input type="checkbox" name="vive_junto">
+                                            <span>Vive en la misma casa</span>
+                                        </label>
+                                        <label class="odoo-checkbox-label">
+                                            <input type="checkbox" name="es_responsable">
+                                            <span>Responsable principal</span>
+                                        </label>
+                                    </div>
+                                    <div class="odoo-field odoo-field-full">
+                                        <label class="odoo-label">Notas</label>
+                                        <textarea name="notas_familiar" id="id_notas_familiar" rows="2" 
+                                                  class="odoo-textarea" placeholder="Notas sobre esta relación (opcional)"></textarea>
+                                    </div>
+                                    <div class="odoo-field odoo-field-full">
+                                        <button type="submit" name="agregar_familiar" value="1" class="odoo-btn-link">
+                                            + Agregar familiar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         {% else %}
-                            <!-- MODO CREAR: dos botones -->
-
-                            <!-- Botón GUARDAR (va a la lista) -->
-                            <button type="submit"
-                                    name="guardar"
-                                    value="1"
-                                    class="btn-primary"
-                                    style="width:100%; justify-content:center; margin-bottom:8px;">
-                                <span class="material-icons">check</span>
-                                Guardar
-                            </button>
-
-                            <!-- Botón GUARDAR Y NUEVO (vuelve al formulario limpio) -->
-                            <button type="submit"
-                                    name="guardar_y_nuevo"
-                                    value="1"
-                                    class="btn-secondary"
-                                    style="width:100%; justify-content:center;">
-                                <span class="material-icons">add</span>
-                                Guardar y nuevo
-                            </button>
+                            <p class="odoo-empty-text">Guarda primero el miembro para gestionar familiares.</p>
                         {% endif %}
                     </div>
 
-                </aside>
+                    <!-- TAB: Intereses y Habilidades -->
+                    <div class="odoo-tab-panel" id="tab-intereses">
+                        <div class="odoo-tab-grid">
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Intereses</label>
+                                {{ form.intereses }}
+                            </div>
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Otros intereses</label>
+                                <textarea name="otros_intereses" id="{{ form.otros_intereses.id_for_label }}"
+                                          rows="2" class="odoo-textarea"
+                                          placeholder="Otros intereses no listados...">{{ form.otros_intereses.value|default:'' }}</textarea>
+                            </div>
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Habilidades</label>
+                                {{ form.habilidades }}
+                            </div>
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Otras habilidades</label>
+                                <textarea name="otras_habilidades" id="{{ form.otras_habilidades.id_for_label }}"
+                                          rows="2" class="odoo-textarea"
+                                          placeholder="Otras habilidades no listadas...">{{ form.otras_habilidades.value|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Notas -->
+                    <div class="odoo-tab-panel" id="tab-notas">
+                        <div class="odoo-field odoo-field-full">
+                            <label class="odoo-label">Notas pastorales</label>
+                            <textarea name="notas" id="{{ form.notas.id_for_label }}"
+                                      rows="6" class="odoo-textarea"
+                                      placeholder="Observaciones internas sobre el miembro (visible solo para el equipo autorizado)...">{{ form.notas.value|default:'' }}</textarea>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </form>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             PANEL LATERAL (Chatter / Acciones)
+             ══════════════════════════════════════════════════════════════════ -->
+        <div class="odoo-form-aside">
+            
+            <!-- Botones de acción -->
+            <div class="odoo-aside-actions">
+                {% if modo == "editar" %}
+                    <button type="submit" class="odoo-btn odoo-btn-primary">
+                        <span class="material-icons">save</span>
+                        Guardar cambios
+                    </button>
+                {% else %}
+                    <button type="submit" name="guardar" value="1" class="odoo-btn odoo-btn-primary">
+                        <span class="material-icons">check</span>
+                        Guardar
+                    </button>
+                    <button type="submit" name="guardar_y_nuevo" value="1" class="odoo-btn odoo-btn-secondary">
+                        <span class="material-icons">add</span>
+                        Guardar y nuevo
+                    </button>
+                {% endif %}
+            </div>
+
+            <!-- Info rápida -->
+            <div class="odoo-aside-info">
+                <div class="odoo-info-item">
+                    <span class="odoo-info-label">Edad</span>
+                    <span class="odoo-info-value" id="id_edad_display">—</span>
+                </div>
+                <div class="odoo-info-item">
+                    <span class="odoo-info-label">Categoría</span>
+                    <span class="odoo-info-badge" id="id_categoria_edad_display">—</span>
+                </div>
+            </div>
+
+            <!-- Consejos rápidos -->
+            <div class="odoo-aside-tips">
+                <h4 class="odoo-aside-title">Consejos</h4>
+                <ul class="odoo-tips-list">
+                    <li>Revisa la pestaña <strong>Membresía</strong> para fechas importantes.</li>
+                    <li>En <strong>Emergencia</strong>, añade contacto y condiciones médicas.</li>
+                    <li>Usa <strong>Notas</strong> para observaciones pastorales.</li>
+                </ul>
+            </div>
+
+            <!-- Actividad reciente -->
+            <div class="odoo-aside-activity">
+                <h4 class="odoo-aside-title">Actividad</h4>
+                {% if modo == "editar" and miembro %}
+                <div class="odoo-activity-item">
+                    <div class="odoo-activity-avatar">
+                        <span class="material-icons">person</span>
+                    </div>
+                    <div class="odoo-activity-content">
+                        <span class="odoo-activity-text">Registro creado</span>
+                        <span class="odoo-activity-date">{{ miembro.fecha_creacion|date:"d M Y" }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="odoo-activity-item">
+                    <div class="odoo-activity-avatar">
+                        <span class="material-icons">add_circle</span>
+                    </div>
+                    <div class="odoo-activity-content">
+                        <span class="odoo-activity-text">Creando nuevo registro...</span>
+                        <span class="odoo-activity-date">Ahora</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
-</section>
+</form>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESET Y BASE - Estilo Odoo
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form {
+    background: #fff;
+    min-height: calc(100vh - 60px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BARRA DE CONTROL SUPERIOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.odoo-control-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-breadcrumb-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #017e84;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.odoo-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-breadcrumb-link .material-icons {
+    font-size: 18px;
+}
+
+.odoo-breadcrumb-sep {
+    color: #6c757d;
+}
+
+.odoo-breadcrumb-current {
+    color: #495057;
+    font-size: 14px;
+}
+
+.odoo-new-badge {
+    background: #017e84;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+.odoo-member-code {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 13px;
+    color: #6c757d;
+    background: #e9ecef;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.odoo-member-code .material-icons {
+    font-size: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTENEDOR PRINCIPAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-container {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 0;
+    min-height: calc(100vh - 110px);
+}
+
+.odoo-form-main {
+    padding: 24px 32px;
+    border-right: 1px solid #dee2e6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER DEL FORMULARIO (Avatar + Nombre)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-header {
+    display: flex;
+    gap: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 24px;
+}
+
+.odoo-avatar-section {
+    flex-shrink: 0;
+}
+
+.odoo-avatar {
+    width: 110px;
+    height: 110px;
+    background: linear-gradient(135deg, #e8f4f4 0%, #d4e8e8 100%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+}
+
+.odoo-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.odoo-avatar .material-icons {
+    font-size: 56px;
+    color: #017e84;
+    opacity: 0.6;
+}
+
+.odoo-avatar-upload {
+    margin-top: 8px;
+}
+
+.odoo-avatar-upload input[type="file"] {
+    font-size: 11px;
+    width: 110px;
+}
+
+.odoo-header-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Radio group (Masculino/Femenino) */
+.odoo-radio-group {
+    display: flex;
+    gap: 16px;
+}
+
+.odoo-radio {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-radio input[type="radio"] {
+    accent-color: #017e84;
+}
+
+/* Campo de nombre grande */
+.odoo-name-field {
+    display: flex;
+    gap: 12px;
+}
+
+.odoo-name-input {
+    flex: 1;
+    font-size: 28px;
+    font-weight: 400;
+    color: #212529;
+    border: none;
+    border-bottom: 1px solid transparent;
+    background: #fff0f3;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.odoo-name-input:hover {
+    background: #ffe4e9;
+}
+
+.odoo-name-input:focus {
+    outline: none;
+    background: #fff;
+    border-bottom-color: #017e84;
+}
+
+.odoo-name-input::placeholder {
+    color: #adb5bd;
+    font-weight: 300;
+}
+
+/* Campos de contacto rápido */
+.odoo-quick-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.odoo-quick-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-quick-field .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+    width: 20px;
+}
+
+.odoo-quick-field input {
+    flex: 1;
+    max-width: 280px;
+    border: none;
+    border-bottom: 1px dashed #dee2e6;
+    padding: 4px 0;
+    font-size: 14px;
+    color: #495057;
+    background: transparent;
+}
+
+.odoo-quick-field input:hover {
+    border-bottom-color: #adb5bd;
+}
+
+.odoo-quick-field input:focus {
+    outline: none;
+    border-bottom: 1px solid #017e84;
+}
+
+.odoo-quick-field input::placeholder {
+    color: #adb5bd;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BODY DEL FORMULARIO (Dos columnas)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px 48px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 24px;
+}
+
+.odoo-form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Campos estilo Odoo */
+.odoo-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.odoo-field-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.odoo-label {
+    width: 120px;
+    flex-shrink: 0;
+    font-size: 13px;
+    color: #495057;
+    padding-top: 6px;
+    text-align: right;
+}
+
+.odoo-input {
+    flex: 1;
+    border: none;
+    border-bottom: 1px solid #dee2e6;
+    padding: 6px 0;
+    font-size: 14px;
+    color: #212529;
+    background: transparent;
+    transition: border-color 0.2s ease;
+}
+
+.odoo-input:hover {
+    border-bottom-color: #adb5bd;
+}
+
+.odoo-input:focus {
+    outline: none;
+    border-bottom-color: #017e84;
+}
+
+.odoo-input::placeholder {
+    color: #adb5bd;
+}
+
+.odoo-input-small {
+    max-width: 80px;
+}
+
+select.odoo-input {
+    cursor: pointer;
+    background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='%236c757d' d='M6 8L1 3h10z'/%3e%3c/svg%3e") no-repeat right center;
+    padding-right: 20px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* Stack de campos (para dirección) */
+.odoo-field-stack {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.odoo-field-row {
+    display: flex;
+    gap: 12px;
+}
+
+/* Checkbox */
+.odoo-field-checkbox {
+    padding-left: 132px;
+}
+
+.odoo-field-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-left: 132px;
+}
+
+.odoo-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-checkbox-label input[type="checkbox"] {
+    accent-color: #017e84;
+    width: 16px;
+    height: 16px;
+}
+
+/* Alertas */
+.odoo-alert {
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin: 8px 0;
+}
+
+.odoo-alert-warning {
+    background: #fff7ed;
+    color: #c2410c;
+    border-left: 3px solid #f97316;
+}
+
+/* Field errors */
+.odoo-field-error {
+    color: #dc3545;
+    font-size: 12px;
+    padding-left: 132px;
+    margin-top: -8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-tabs-section {
+    margin-top: 8px;
+}
+
+.odoo-tabs-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #dee2e6;
+    flex-wrap: wrap;
+}
+
+.odoo-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6c757d;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.odoo-tab:hover {
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.odoo-tab.active {
+    color: #017e84;
+    border-bottom-color: #017e84;
+}
+
+.odoo-tabs-content {
+    padding: 20px 0;
+}
+
+.odoo-tab-panel {
+    display: none;
+}
+
+.odoo-tab-panel.active {
+    display: block;
+}
+
+.odoo-tab-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 32px;
+}
+
+.odoo-field-full {
+    grid-column: 1 / -1;
+}
+
+.odoo-textarea {
+    width: 100%;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s ease;
+}
+
+.odoo-textarea:focus {
+    outline: none;
+    border-color: #017e84;
+}
+
+/* Subsection */
+.odoo-subsection {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed #dee2e6;
+}
+
+.odoo-subsection-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 12px;
+}
+
+/* Tabla estilo Odoo */
+.odoo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.odoo-table th {
+    text-align: left;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 500;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.odoo-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9ecef;
+    color: #212529;
+}
+
+.odoo-table tr:hover td {
+    background: #f8f9fa;
+}
+
+.odoo-link-danger {
+    color: #dc3545;
+    display: flex;
+}
+
+.odoo-link-danger .material-icons {
+    font-size: 18px;
+}
+
+/* Add line */
+.odoo-add-line {
+    padding: 8px 0;
+}
+
+.odoo-add-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #017e84;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.odoo-add-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-add-link .material-icons {
+    font-size: 18px;
+}
+
+.odoo-inline-form {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 4px;
+    margin-top: 12px;
+}
+
+.odoo-btn-link {
+    background: none;
+    border: none;
+    color: #017e84;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.odoo-btn-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-empty-text {
+    color: #6c757d;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL LATERAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-aside {
+    background: #f8f9fa;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.odoo-aside-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: #016166;
+}
+
+.odoo-btn-secondary {
+    background: white;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.odoo-btn-secondary:hover {
+    background: #e9ecef;
+}
+
+/* Info lateral */
+.odoo-aside-info {
+    background: white;
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.odoo-info-label {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.odoo-info-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.odoo-info-badge {
+    font-size: 11px;
+    font-weight: 500;
+    background: #d4edda;
+    color: #155724;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Tips */
+.odoo-aside-tips {
+    background: white;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.odoo-aside-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.odoo-tips-list {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 12px;
+    color: #6c757d;
+    line-height: 1.6;
+}
+
+.odoo-tips-list li {
+    margin-bottom: 4px;
+}
+
+/* Actividad */
+.odoo-aside-activity {
+    background: white;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.odoo-activity-item {
+    display: flex;
+    gap: 10px;
+}
+
+.odoo-activity-avatar {
+    width: 32px;
+    height: 32px;
+    background: #017e84;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.odoo-activity-avatar .material-icons {
+    font-size: 18px;
+    color: white;
+}
+
+.odoo-activity-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.odoo-activity-text {
+    font-size: 13px;
+    color: #212529;
+}
+
+.odoo-activity-date {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1200px) {
+    .odoo-form-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .odoo-form-main {
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .odoo-form-aside {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    
+    .odoo-aside-actions {
+        flex-direction: row;
+    }
+    
+    .odoo-aside-info,
+    .odoo-aside-tips,
+    .odoo-aside-activity {
+        flex: 1;
+        min-width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-form-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .odoo-name-field {
+        flex-direction: column;
+    }
+    
+    .odoo-form-body {
+        grid-template-columns: 1fr;
+    }
+    
+    .odoo-field,
+    .odoo-field-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .odoo-label {
+        width: auto;
+        text-align: left;
+        padding-top: 0;
+        margin-bottom: 4px;
+    }
+    
+    .odoo-field-checkbox,
+    .odoo-field-checkboxes {
+        padding-left: 0;
+    }
+    
+    .odoo-field-error {
+        padding-left: 0;
+    }
+    
+    .odoo-tab-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SCRIPTS
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Variable de edad mínima desde Django -->
 <script>
     const EDAD_MINIMA_MIEMBRO_OFICIAL = {{ EDAD_MINIMA_MIEMBRO_OFICIAL }};
 </script>
 
 <script>
-function openTab(tabName, btn) {
-    // Ocultar todas las tabs
-    document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
-
-    // Quitar 'active' de todos los botones
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-
-    // Mostrar la tab seleccionada
-    const tab = document.getElementById(tabName);
-    if (tab) {
-        tab.style.display = 'block';
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNCIONALIDAD DE TABS
+// ═══════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.odoo-tab');
+    const panels = document.querySelectorAll('.odoo-tab-panel');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetId = 'tab-' + this.dataset.tab;
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            panels.forEach(p => p.classList.remove('active'));
+            
+            this.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+    
+    // Check URL params for tab
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+        const targetTab = document.querySelector(`[data-tab="${tabParam}"]`);
+        if (targetTab) targetTab.click();
     }
+});
 
-    // Activar el botón actual
-    if (btn) {
-        btn.classList.add('active');
-    }
+// Toggle familiar form
+function toggleFamiliarForm() {
+    const form = document.getElementById('familiar-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
 
-// =========================
-// Cálculo de edad y categoría en el navegador
-// =========================
-
+// ═══════════════════════════════════════════════════════════════════════════
+// CÁLCULO DE EDAD Y CATEGORÍA
+// ═══════════════════════════════════════════════════════════════════════════
 function calcularEdadDesdeFecha(fechaStr) {
     if (!fechaStr) return null;
 
@@ -836,8 +1609,6 @@ function obtenerCategoriaEdad(edad) {
     return "Adulto mayor";
 }
 
-
-
 function actualizarEdadYCategoria() {
     const inputFecha       = document.getElementById('id_fecha_nacimiento');
     const edadDisplay      = document.getElementById('id_edad_display');
@@ -864,650 +1635,180 @@ function actualizarEdadYCategoria() {
         return;
     }
 
-    // Actualizar badges
-    edadDisplay.textContent = edad;  // ← solo el número
+    // Actualizar displays
+    edadDisplay.textContent = edad + " años";
     categoriaDisplay.textContent = obtenerCategoriaEdad(edad);
 
-    // Mostrar/ocultar aviso según edad mínima configurable
+    // Mostrar/ocultar aviso según edad mínima
     if (avisoEdad) {
-        if (edad < EDAD_MINIMA_MIEMBRO_OFICIAL) {
-            avisoEdad.style.display = "block";
-        } else {
-            avisoEdad.style.display = "none";
-        }
+        avisoEdad.style.display = edad < EDAD_MINIMA_MIEMBRO_OFICIAL ? "block" : "none";
     }
 }
 
-
-document.addEventListener('DOMContentLoaded', function() {
-    actualizarEdadYCategoria();
+// ═══════════════════════════════════════════════════════════════════════════
+// LÓGICA DE BAUTISMO SEGÚN EDAD Y ESTADO
+// ═══════════════════════════════════════════════════════════════════════════
+function actualizarBautismoPorEstadoYEdad() {
     const inputFecha = document.getElementById('id_fecha_nacimiento');
-    if (inputFecha) {
-        inputFecha.addEventListener('change', function () {
-            actualizarEdadYCategoria();
-            actualizarBautismoPorEstadoYEdad();
-        });
-        inputFecha.addEventListener('input', function () {
-            actualizarEdadYCategoria();
-            actualizarBautismoPorEstadoYEdad();
-        });
-    }
-
-    // Lógica adicional: bautismo según edad y estado
     const estadoSelect = document.getElementById('id_estado_miembro');
     const bautizadoCheckbox = document.getElementById('id_bautizado_confirmado');
 
-    function actualizarBautismoPorEstadoYEdad() {
-        if (!bautizadoCheckbox) return;
+    if (!bautizadoCheckbox) return;
 
-        const edad = inputFecha ? calcularEdadDesdeFecha(inputFecha.value) : null;
-        const estado = estadoSelect ? estadoSelect.value : "";
-        const EDAD_MIN_BAUTISMO = EDAD_MINIMA_MIEMBRO_OFICIAL;
+    const edad = inputFecha ? calcularEdadDesdeFecha(inputFecha.value) : null;
+    const estado = estadoSelect ? estadoSelect.value : "";
+    const EDAD_MIN_BAUTISMO = EDAD_MINIMA_MIEMBRO_OFICIAL;
 
+    // Por defecto dejamos que el usuario pueda marcar/desmarcar
+    bautizadoCheckbox.disabled = false;
 
-        // Por defecto dejamos que el usuario pueda marcar/desmarcar
-        bautizadoCheckbox.disabled = false;
-
-        // Si es menor que la edad mínima -> nunca bautizado confirmado
-        if (edad !== null && edad < EDAD_MIN_BAUTISMO) {
-            bautizadoCheckbox.checked = false;
-            bautizadoCheckbox.disabled = true;
-            return;
-        }
-
-        // Catecúmeno nunca se marca como bautizado
-        if (estado === "catecumeno") {
-            bautizadoCheckbox.checked = false;
-            bautizadoCheckbox.disabled = true;
-            return;
-        }
-
-        // Estados pastorales oficiales -> siempre bautizados
-        const estadosBautizados = ["activo", "pasivo", "observacion", "disciplina", "descarriado"];
-        if (estadosBautizados.includes(estado)) {
-            bautizadoCheckbox.checked = true;
-            bautizadoCheckbox.disabled = true;
-            return;
-        }
-
-        // Otros estados futuros -> libre
-        bautizadoCheckbox.disabled = false;
+    // Si es menor que la edad mínima -> nunca bautizado confirmado
+    if (edad !== null && edad < EDAD_MIN_BAUTISMO) {
+        bautizadoCheckbox.checked = false;
+        bautizadoCheckbox.disabled = true;
+        return;
     }
 
-    if (estadoSelect) {
-        estadoSelect.addEventListener('change', actualizarBautismoPorEstadoYEdad);
+    // Catecúmeno nunca se marca como bautizado
+    if (estado === "catecumeno") {
+        bautizadoCheckbox.checked = false;
+        bautizadoCheckbox.disabled = true;
+        return;
     }
 
-    // Ejecutar una vez al cargar la página
-    actualizarBautismoPorEstadoYEdad();
+    // Estados pastorales oficiales -> siempre bautizados
+    const estadosBautizados = ["activo", "pasivo", "observacion", "disciplina", "descarriado"];
+    if (estadosBautizados.includes(estado)) {
+        bautizadoCheckbox.checked = true;
+        bautizadoCheckbox.disabled = true;
+        return;
+    }
 
-    // -------- Lógica de traslado / iglesia anterior ----------
+    // Otros estados futuros -> libre
+    bautizadoCheckbox.disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LÓGICA DE TRASLADO / IGLESIA ANTERIOR
+// ═══════════════════════════════════════════════════════════════════════════
+function actualizarIglesiaAnterior() {
     const trasladoCheckbox = document.getElementById('id_es_trasladado');
     const iglesiaAnteriorInput = document.getElementById('id_iglesia_anterior');
 
-    function actualizarIglesiaAnterior() {
-        if (!iglesiaAnteriorInput || !trasladoCheckbox) return;
-
-        if (trasladoCheckbox.checked) {
-            iglesiaAnteriorInput.removeAttribute('disabled');
-            iglesiaAnteriorInput.removeAttribute('readonly');
-        } else {
-            iglesiaAnteriorInput.value = '';
-            iglesiaAnteriorInput.setAttribute('disabled', 'disabled');
-            iglesiaAnteriorInput.setAttribute('readonly', 'readonly');
-        }
-    }
-
-    if (trasladoCheckbox) {
-        trasladoCheckbox.addEventListener('change', actualizarIglesiaAnterior);
-        // Ejecutar una vez al cargar para dejar el estado correcto
-        actualizarIglesiaAnterior();
-    }
-});
-
-</script>
-
-<style>
-    .member-create-wrapper {
-        margin-top: 10px;
-    }
-
-    .member-card {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 18px 18px 20px;
-        box-shadow: 0 10px 25px rgba(15,23,42,0.08);
-        border: 1px solid #e5e7eb;
-    }
-
-    .member-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-
-    .member-card-header h2 {
-        margin: 0;
-        font-size: 18px;
-        color: #111827;
-    }
-
-    .member-card-subtitle {
-        margin: 4px 0 0;
-        font-size: 12px;
-        color: #6b7280;
-    }
-
-    .member-status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        font-size: 11px;
-        background: #eff6ff;
-        color: #1d4ed8;
-        border: 1px solid #bfdbfe;
-        white-space: nowrap;
-    }
-
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: #22c55e;
-    }
-
-    .required {
-        color: #dc2626;
-    }
-
-    .tabs-bar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        background: #f3f4f6;
-        padding: 6px;
-        border-radius: 999px;
-        margin-bottom: 16px;
-    }
-
-    .tab-btn {
-        border: none;
-        background: transparent;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-size: 12px;
-        cursor: pointer;
-        color: #4b5563;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .tab-btn.active {
-        background: #ffffff;
-        color: #111827;
-        box-shadow: 0 2px 6px rgba(15,23,42,0.12);
-    }
-
-    .member-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 3fr) minmax(220px, 1.2fr);
-        gap: 18px;
-        align-items: flex-start;
-    }
-
-    .tab-title {
-        margin: 0 0 4px;
-        font-size: 15px;
-        color: #111827;
-    }
-
-    .tab-description {
-        margin: 0 0 12px;
-        font-size: 12px;
-        color: #6b7280;
-    }
-
-    .member-photo-field label {
-        margin-bottom: 6px;
-    }
-
-    .member-photo-wrapper {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-    }
-
-    .member-photo-preview {
-        width: 70px;
-        height: 70px;
-        border-radius: 999px;
-        background: #e5e7eb;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        flex-shrink: 0;
-    }
-
-    .member-photo-preview img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .member-photo-icon {
-        font-size: 32px;
-        color: #6b7280;
-    }
-
-    .member-photo-input input[type="file"] {
-        font-size: 12px;
-    }
-
-    .help-text {
-        margin: 4px 0 0;
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    .member-aside {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .aside-card {
-        background: #f9fafb;
-        border-radius: 12px;
-        padding: 10px 12px;
-        border: 1px solid #e5e7eb;
-        margin-bottom: 10px;
-        font-size: 12px;
-        color: #4b5563;
-    }
-
-    .aside-card h4 {
-        margin: 0 0 6px;
-        font-size: 13px;
-        color: #111827;
-    }
-
-    .aside-card ul {
-        padding-left: 18px;
-        margin: 0;
-    }
-
-    .aside-card ul li {
-        margin-bottom: 4px;
-    }
-
-    .tab-content {
-        display: none;
-    }
-
-    /* Responsive */
-    @media (max-width: 900px) {
-        .member-layout {
-            grid-template-columns: 1fr;
-        }
-
-        .member-aside {
-            flex-direction: column-reverse;
-        }
-
-        .tabs-bar {
-            border-radius: 12px;
-        }
-
-        .member-card-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-    }
-    .badge {
-        display: inline-block;
-        padding: 6px 14px;
-        border-radius: 14px;
-        font-size: 13px;
-        font-weight: 600;
-        line-height: 1;
-    }
-
-    .badge-blue {
-        background-color: #dbeafe;   /* azul suave */
-        color: #1e3a8a;               /* azul oscuro */
-    }
-
-    .badge-green {
-        background-color: #dcfce7;   /* verde suave */
-        color: #166534;               /* verde oscuro */
-    }
-
-    .badge-yellow {
-        background-color: #fef9c3;   /* amarillo suave */
-        color: #854d0e;
-    }
-
-    .badge-red {
-        background-color: #fee2e2;   /* rojo suave */
-        color: #991b1b;
-    }
-
-    /* CLASES NUEVAS PARA ERRORES */
-    .form-error-summary {
-        margin-bottom: 14px;
-        padding: 10px 12px;
-        border-radius: 8px;
-        border: 1px solid #fecaca;
-        background: #fef2f2;
-        color: #991b1b;
-        font-size: 13px;
-    }
-
-    .form-error-summary h4 {
-        margin: 0 0 4px;
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    .form-error-summary p {
-        margin: 0 0 4px;
-    }
-
-    .form-error-summary ul {
-        margin: 4px 0 0;
-        padding-left: 18px;
-    }
-
-    .form-error-summary li {
-        margin-bottom: 2px;
-    }
-
-    .field-error {
-        margin-top: 4px;
-        font-size: 12px;
-        color: #b91c1c;
-    }
-#familiar_search {
-    font-size: 12px;
-}
-
-#id_familiar {
-    font-size: 12px;
-    max-height: 180px;
-}
-    .field-inline {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .field-inline-main {
-        flex: 1;
-    }
-
-    .field-inline-side {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        white-space: nowrap;
-    }
-
-
-/* ============================
-   Icono "Reemplazar foto" (🔄)
-   y ocultar ruta tipo miembros_fotos/...
-   ============================ */
-
-/* Contenedor que genera Django para el campo de archivo */
-.member-photo-input .clearable-file-input {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    font-size: 0; /* Oculta textos como "Actualmente:" y "Cambiar:" */
-}
-
-/* Ocultar el enlace con el nombre/ruta del archivo */
-.member-photo-input .clearable-file-input a {
-    display: none !important;
-}
-
-/* Input de archivo (para seleccionar nueva foto) */
-.member-photo-input .clearable-file-input input[type="file"] {
-    font-size: 11px;
-}
-
-/* Ocultamos el checkbox real de borrar */
-.member-photo-input .clearable-file-input input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-    pointer-events: none;
-}
-
-/* Botón sutil con icono de "reemplazar" 🔄 */
-.member-photo-input .clearable-file-input label {
-    width: 24px;
-    height: 24px;
-    border-radius: 999px;
-    background: #f3f4f6;           /* gris suave */
-    border: 1px solid #d1d5db;     /* borde gris */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0;
-    margin-top: 3px;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-}
-
-/* Icono 🔄 dentro del circulito */
-.member-photo-input .clearable-file-input label::before {
-    content: "⟳";                  /* icono tipo "reemplazar" / refresh */
-    font-size: 13px;
-    color: #4b5563;                /* gris medio, discreto */
-}
-
-/* Hover elegante, sutil */
-.member-photo-input .clearable-file-input label:hover {
-    background: #e5e7eb;
-    border-color: #9ca3af;
-    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
-    transform: translateY(-1px);
-}
-
-
-
-
-</style>
-<style>
-.member-code-banner {
-    margin: 12px 0 16px 0;
-    padding: 10px 14px;
-    border-radius: 8px;
-    background: #f1f5f9;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.member-code-main {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 600;
-    font-size: 14px;
-}
-
-.member-code-icon {
-    font-size: 20px;
-}
-
-.member-code-text {
-    font-family: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    letter-spacing: 0.04em;
-}
-
-.member-code-sub {
-    font-size: 12px;
-    color: #64748b;
-    margin-left: 28px;
-}
-</style>
-
-<script>
-// ===============================================
-//  FUNCIONES PARA MANEJO DE PESTAÑAS EN EL FORM
-// ===============================================
-
-// Abre una pestaña y activa su botón
-function openTab(tabName, btn) {
-    // Ocultar todas las tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.style.display = 'none';
-    });
-
-    // Quitar "active" de todos los botones
-    document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('active');
-    });
-
-    // Mostrar la tab seleccionada
-    const tab = document.getElementById(tabName);
-    if (tab) {
-        tab.style.display = 'block';
-    }
-
-    // Si tenemos botón, activar directamente
-    if (btn) {
-        btn.classList.add('active');
+    if (!iglesiaAnteriorInput || !trasladoCheckbox) return;
+
+    if (trasladoCheckbox.checked) {
+        iglesiaAnteriorInput.removeAttribute('disabled');
+        iglesiaAnteriorInput.removeAttribute('readonly');
     } else {
-        // Si no hay botón (por ejemplo, al usar ?tab=familiares)
-        // buscamos el botón que corresponde al nombre del tab
-        document.querySelectorAll('.tab-btn').forEach(b => {
-            const onclick = b.getAttribute('onclick') || "";
-            if (onclick.includes("'" + tabName + "'")) {
-                b.classList.add('active');
-            }
-        });
+        iglesiaAnteriorInput.value = '';
+        iglesiaAnteriorInput.setAttribute('disabled', 'disabled');
+        iglesiaAnteriorInput.setAttribute('readonly', 'readonly');
     }
 }
 
-// =======================================================
-//  Mantener activa la pestaña al regresar de un redirect
-// =======================================================
-document.addEventListener('DOMContentLoaded', function () {
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
+// ═══════════════════════════════════════════════════════════════════════════
+// LÓGICA DE MIEMBRO ACTIVO / BLOQUE DE SALIDA
+// ═══════════════════════════════════════════════════════════════════════════
+function actualizarBloqueSalida() {
+    const chkActivo = document.getElementById('id_activo');
+    const bloqueSalida = document.getElementById('bloque-salida-miembro');
 
-    // Si tenemos ?tab=familiares, ?tab=intereses, etc.
-    if (tab) {
-        openTab(tab, null); 
+    if (!chkActivo || !bloqueSalida) return;
+
+    bloqueSalida.style.display = chkActivo.checked ? 'none' : 'block';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FORMATO DE CÉDULA DOMINICANA
+// ═══════════════════════════════════════════════════════════════════════════
+function formatearCedula(valor) {
+    let soloDigitos = valor.replace(/\D/g, '').slice(0, 11);
+
+    if (soloDigitos.length <= 3) return soloDigitos;
+    if (soloDigitos.length <= 10) {
+        return soloDigitos.slice(0, 3) + '-' + soloDigitos.slice(3);
     }
-});
+    return soloDigitos.slice(0, 3) + '-' + soloDigitos.slice(3, 10) + '-' + soloDigitos.slice(10);
+}
 
-// =======================================================
-//  FILTRO DEL BUSCADOR PARA LA LISTA DE FAMILIARES
-// =======================================================
-document.addEventListener('DOMContentLoaded', () => {
+// ═══════════════════════════════════════════════════════════════════════════
+// FILTRO DE BÚSQUEDA DE FAMILIARES
+// ═══════════════════════════════════════════════════════════════════════════
+function setupFamiliarSearch() {
     const searchInput = document.getElementById('familiar_search');
     const selectList = document.getElementById('id_familiar');
 
     if (searchInput && selectList) {
-        searchInput.addEventListener('input', function () {
+        searchInput.addEventListener('input', function() {
             const filter = this.value.toLowerCase();
 
-            // Recorremos todas las opciones del <select>
             for (let i = 0; i < selectList.options.length; i++) {
                 const option = selectList.options[i];
                 const text = option.textContent.toLowerCase();
-
-                // Filtrar si coincide con el texto
                 option.style.display = text.includes(filter) ? "" : "none";
             }
         });
     }
-});
-// =======================================================
-//  MOSTRAR / OCULTAR CAMPOS DE SALIDA SEGÚN "Miembro activo"
-// =======================================================
-document.addEventListener('DOMContentLoaded', () => {
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INICIALIZACIÓN AL CARGAR LA PÁGINA
+// ═══════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar edad y categoría
+    actualizarEdadYCategoria();
+    
+    // Eventos de fecha de nacimiento
+    const inputFecha = document.getElementById('id_fecha_nacimiento');
+    if (inputFecha) {
+        inputFecha.addEventListener('change', function() {
+            actualizarEdadYCategoria();
+            actualizarBautismoPorEstadoYEdad();
+        });
+        inputFecha.addEventListener('input', function() {
+            actualizarEdadYCategoria();
+            actualizarBautismoPorEstadoYEdad();
+        });
+    }
+
+    // Eventos de estado del miembro
+    const estadoSelect = document.getElementById('id_estado_miembro');
+    if (estadoSelect) {
+        estadoSelect.addEventListener('change', actualizarBautismoPorEstadoYEdad);
+    }
+
+    // Inicializar bautismo
+    actualizarBautismoPorEstadoYEdad();
+
+    // Eventos de traslado
+    const trasladoCheckbox = document.getElementById('id_es_trasladado');
+    if (trasladoCheckbox) {
+        trasladoCheckbox.addEventListener('change', actualizarIglesiaAnterior);
+        actualizarIglesiaAnterior();
+    }
+
+    // Eventos de miembro activo
     const chkActivo = document.getElementById('id_activo');
-    const bloqueSalida = document.getElementById('bloque-salida-miembro');
-
-    function actualizarBloqueSalida() {
-        if (!chkActivo || !bloqueSalida) return;
-
-        // Si el checkbox está desmarcado, mostramos el bloque
-        if (chkActivo.checked) {
-            bloqueSalida.style.display = 'none';
-        } else {
-            bloqueSalida.style.display = '';
-        }
-    }
-
-    if (chkActivo && bloqueSalida) {
-        // Estado inicial (por si se está editando un miembro ya dado de baja)
-        actualizarBloqueSalida();
-
-        // Cuando el usuario cambia el checkbox
+    if (chkActivo) {
         chkActivo.addEventListener('change', actualizarBloqueSalida);
+        actualizarBloqueSalida();
     }
-});
 
-</script>
-
-<script>
-// ============================
-// FORMATEO DE CÉDULA DOMINICANA
-// ============================
-document.addEventListener('DOMContentLoaded', function () {
+    // Formato de cédula
     const cedulaInput = document.getElementById('id_cedula');
-    if (!cedulaInput) return;
-
-    function formatearCedula(valor) {
-        // 1) Quitar todo lo que no sea dígito
-        let soloDigitos = valor.replace(/\D/g, '');
-
-        // 2) Limitar a 11 dígitos (formato oficial)
-        soloDigitos = soloDigitos.slice(0, 11);
-
-        // 3) Reconstruir con guiones: 000-0000000-0
-        if (soloDigitos.length <= 3) {
-            return soloDigitos;
-        } else if (soloDigitos.length <= 10) {
-            return soloDigitos.slice(0, 3) + '-' + soloDigitos.slice(3);
-        } else {
-            return (
-                soloDigitos.slice(0, 3) +
-                '-' +
-                soloDigitos.slice(3, 10) +
-                '-' +
-                soloDigitos.slice(10)
-            );
+    if (cedulaInput) {
+        if (cedulaInput.value) {
+            cedulaInput.value = formatearCedula(cedulaInput.value);
         }
+        cedulaInput.addEventListener('input', function() {
+            this.value = formatearCedula(this.value);
+        });
     }
 
-    // Formatear el valor inicial (por si viene de la BD)
-    if (cedulaInput.value) {
-        cedulaInput.value = formatearCedula(cedulaInput.value);
-    }
-
-    // Re-formatear cada vez que el usuario escribe
-    cedulaInput.addEventListener('input', function () {
-        const valorFormateado = formatearCedula(cedulaInput.value);
-        cedulaInput.value = valorFormateado;
-    });
+    // Búsqueda de familiares
+    setupFamiliarSearch();
 });
 </script>
-
-
 
 {% endblock %}

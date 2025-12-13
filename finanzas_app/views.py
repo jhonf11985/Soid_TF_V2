@@ -449,7 +449,7 @@ def movimientos_listado(request):
     """
     movimientos = MovimientoFinanciero.objects.select_related(
         "cuenta", "categoria", "creado_por"
-    ).order_by("-fecha", "-creado_en")
+    ).exclude(estado="anulado").order_by("-fecha", "-creado_en")
 
     # --------- FILTROS ----------
     tipo = request.GET.get("tipo")
@@ -659,6 +659,14 @@ def movimiento_anular(request, pk):
         "movimiento": movimiento,
         "back_url": request.META.get("HTTP_REFERER") or reverse("finanzas_app:movimientos_listado"),
     }
+
+
+    messages.success(
+        request,
+        f"El {movimiento.tipo} fue anulado correctamente."
+    )
+
+
     return render(request, "finanzas_app/anulacion_confirmar.html", context)
 
 

@@ -1,146 +1,170 @@
-{% extends 'core/base_modulo.html' %}
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
 
-{% block title %}Listado general de miembros{% endblock %}
+{% block title %}Listado de miembros{% endblock %}
 
-{% block breadcrumb %}
-Miembros / Reportes / Listado general
-{% endblock %}
+{% block miembros_content %}
 
-{% block content %}
-<section class="page-header no-print">
-    <div>
-        <h1 class="page-title">Listado general de miembros</h1>
-        <p class="page-subtitle"></p>
-    </div>
-
-    <div class="page-header-actions">
-
-        <!-- Imprimir (compacto) -->
-        <button type="button"
-                class="btn-secondary small-btn"
-                onclick="window.print()">
-            <span class="material-icons" style="font-size:16px;">print</span>
-            Imprimir
-        </button>
-
-        <!-- Enviar por correo (compacto) -->
-        <a href="{% url 'miembros_app:listado_miembros_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-           class="btn-primary small-btn"
-           style="display:inline-flex; align-items:center; gap:4px;">
-            <span class="material-icons" style="font-size:16px;">mail</span>
-            Enviar
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar no-print">
+    <div class="odoo-control-left">
+        <a href="{% url 'miembros_app:crear' %}" class="odoo-btn odoo-btn-primary">
+            <span class="material-icons">add</span>
+            Nuevo
         </a>
-
-        <!-- Exportar a Excel (compacto) -->
-        <a href="{% url 'miembros_app:exportar_miembros_excel' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-           class="btn-secondary small-btn"
-           style="display:inline-flex; align-items:center; gap:4px;">
-            <span class="material-icons" style="font-size:16px;">download</span>
-            Excel
-        </a>
-
-        <!-- Importar Excel (compacto, con input oculto) -->
-        <form id="importar-excel-form"
-              action="{% url 'miembros_app:importar_miembros_excel' %}"
-              method="post"
-              enctype="multipart/form-data"
-              style="display:inline;">
-            {% csrf_token %}
-            <input type="file"
-                   id="archivo-excel-input"
-                   name="archivo_excel"
-                   accept=".xlsx,.xls"
-                   style="display:none;"
-                   onchange="document.getElementById('importar-excel-form').submit();">
-
-            <button type="button"
-                    class="btn-secondary small-btn"
-                    style="display:inline-flex; align-items:center; gap:4px;"
-                    onclick="document.getElementById('archivo-excel-input').click();">
-                <span class="material-icons" style="font-size:16px;">upload</span>
-                Importar
-            </button>
-        </form>
-
-    </div>
-</section>
-
-<section class="page-section">
-
-    {# Encabezado institucional: solo se verá AL IMPRIMIR #}
-    <div class="only-print" style="text-align:center; margin-bottom:12px;">
-        {% if CFG.logo %}
-            <img src="{{ CFG.logo.url }}"
-                 alt="{{ CFG.nombre_iglesia|default:'Logo iglesia' }}"
-                 style="max-height:70px; margin-bottom:6px;">
-        {% endif %}
-
-        <h2 style="margin:0; font-size:18px; font-weight:700; letter-spacing:0.04em;">
-            {% if CFG.nombre_iglesia %}
-                {{ CFG.nombre_iglesia|upper }}
-            {% else %}
-                IGLESIA TORRE FUERTE
-            {% endif %}
-        </h2>
-
-        {% if CFG.denominacion %}
-            <div style="font-size:12px; color:#4b5563; margin-top:2px;">
-                {{ CFG.denominacion }}
-            </div>
-        {% endif %}
-
-        {% if CFG.lema %}
-            <div style="font-size:12px; color:#6b7280; margin-top:4px; font-style:italic;">
-                “{{ CFG.lema }}”
-            </div>
-        {% endif %}
-
-        {% if CFG.direccion %}
-            <div style="font-size:11px; color:#6b7280; margin-top:4px;">
-                {{ CFG.direccion }}
-            </div>
-        {% endif %}
-
-        <div style="font-size:11px; color:#6b7280; margin-top:6px;">
-            Reporte: Listado general de miembros · Fecha: {{ hoy|date:"d/m/Y" }}
+        
+        <div class="odoo-breadcrumb">
+            <span class="odoo-breadcrumb-title">Miembros</span>
+            <span class="material-icons odoo-breadcrumb-icon">settings</span>
         </div>
-
-        <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
     </div>
 
-    {# Meta info solo en pantalla #}
-    <div class="report-meta no-print" style="font-size:12px; color:#6b7280; margin-bottom:8px;">
-        <span>Registros encontrados:
+    <div class="odoo-control-center">
+        <!-- Barra de búsqueda con filtros activos -->
+        <form method="get" class="odoo-search-form" id="main-search-form">
+            <span class="material-icons odoo-search-icon">search</span>
+            
+            <!-- Chips de filtros activos dentro de la barra -->
+            <div class="odoo-search-filters">
+                {% if estado %}
+                <span class="odoo-filter-tag">
+                    {{ estado }}
+                    <button type="button" onclick="removeFilter('estado')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                {% if categoria_edad_filtro %}
+                <span class="odoo-filter-tag">
+                    {{ categoria_edad_filtro }}
+                    <button type="button" onclick="removeFilter('categoria_edad')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                {% if genero_filtro %}
+                <span class="odoo-filter-tag">
+                    {{ genero_filtro }}
+                    <button type="button" onclick="removeFilter('genero')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                {% if bautizado == "1" %}
+                <span class="odoo-filter-tag">
+                    Bautizados
+                    <button type="button" onclick="removeFilter('bautizado')" class="odoo-filter-remove">×</button>
+                </span>
+                {% elif bautizado == "0" %}
+                <span class="odoo-filter-tag">
+                    No bautizados
+                    <button type="button" onclick="removeFilter('bautizado')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+            </div>
+            
+            <input type="text" 
+                   name="q" 
+                   class="odoo-search-input" 
+                   placeholder="Buscar..."
+                   value="{{ query }}">
+            
+            <!-- Campos ocultos para mantener filtros -->
+            <input type="hidden" name="estado" value="{{ estado }}">
+            <input type="hidden" name="categoria_edad" value="{{ categoria_edad_filtro }}">
+            <input type="hidden" name="genero" value="{{ genero_filtro }}">
+            <input type="hidden" name="bautizado" value="{{ bautizado }}">
+            <input type="hidden" name="edad_min" value="{{ edad_min }}">
+            <input type="hidden" name="edad_max" value="{{ edad_max }}">
+            <input type="hidden" name="usar_rango_edad" value="{% if usar_rango_edad %}1{% endif %}">
+            <input type="hidden" name="tiene_contacto" value="{% if tiene_contacto %}1{% endif %}">
+            <input type="hidden" name="mostrar_todos" value="{% if mostrar_todos %}1{% endif %}">
+            <input type="hidden" name="incluir_ninos" value="{% if incluir_ninos %}1{% endif %}">
+            
+            <!-- Dropdown de filtros -->
+            <div class="odoo-filter-dropdown">
+                <button type="button" class="odoo-filter-btn" onclick="toggleFilterPanel()">
+                    <span class="material-icons">filter_list</span>
+                    Filtros
+                    <span class="material-icons">arrow_drop_down</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="odoo-control-right">
+        <!-- Paginación -->
+        <span class="odoo-pagination-info">
             {% if miembros %}
-                {{ miembros|length }}
+                1-{{ miembros|length }} / {{ miembros|length }}
             {% else %}
-                0
+                0 / 0
             {% endif %}
         </span>
-        <span style="margin-left:12px;">Fecha de generación: {{ hoy|date:"d/m/Y" }}</span>
-    </div>
+        
+        <div class="odoo-pagination-btns">
+            <button class="odoo-page-btn" disabled>
+                <span class="material-icons">chevron_left</span>
+            </button>
+            <button class="odoo-page-btn" disabled>
+                <span class="material-icons">chevron_right</span>
+            </button>
+        </div>
 
-    <!-- Filtros (versión profesional) -->
-    <form method="get" class="filters-card no-print">
+        <!-- Toggle de vista -->
+        <div class="odoo-view-toggle">
+            <button type="button" class="odoo-view-btn active" data-view="lista" title="Vista lista">
+                <span class="material-icons">view_list</span>
+            </button>
+            <button type="button" class="odoo-view-btn" data-view="grid" title="Vista tarjetas">
+                <span class="material-icons">grid_view</span>
+            </button>
+        </div>
 
-        <!-- 🧩 Fila principal: búsqueda + filtros clave -->
-        <div class="filters-main-row">
-            <!-- Buscar -->
-            <div class="form-field form-field-grow">
-                <label for="id_q">Buscar</label>
-                <input
-                    id="id_q"
-                    type="text"
-                    name="q"
-                    placeholder="Nombre, apellido, teléfono, cédula o correo…"
-                    value="{{ query }}"
-                >
+        <!-- Menú de acciones -->
+        <div class="odoo-actions-menu">
+            <button type="button" class="odoo-action-btn" onclick="toggleActionsMenu()">
+                <span class="material-icons">more_vert</span>
+            </button>
+            <div class="odoo-actions-dropdown" id="actions-dropdown">
+                <button type="button" onclick="window.print()">
+                    <span class="material-icons">print</span>
+                    Imprimir
+                </button>
+                <a href="{% url 'miembros_app:exportar_miembros_excel' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
+                    <span class="material-icons">download</span>
+                    Exportar Excel
+                </a>
+                <a href="{% url 'miembros_app:listado_miembros_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
+                    <span class="material-icons">mail</span>
+                    Enviar por correo
+                </a>
+                <label class="odoo-action-upload">
+                    <span class="material-icons">upload</span>
+                    Importar Excel
+                    <form id="importar-excel-form" 
+                          action="{% url 'miembros_app:importar_miembros_excel' %}" 
+                          method="post" 
+                          enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="file" name="archivo_excel" accept=".xlsx,.xls" 
+                               onchange="this.form.submit();">
+                    </form>
+                </label>
             </div>
+        </div>
+    </div>
+</div>
 
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PANEL DE FILTROS (Desplegable estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-filter-panel no-print" id="filter-panel" style="display: none;">
+    <form method="get" class="odoo-filter-form">
+        <!-- Mantener búsqueda actual -->
+        <input type="hidden" name="q" value="{{ query }}">
+        
+        <div class="odoo-filter-grid">
             <!-- Estado -->
-            <div class="form-field">
-                <label for="id_estado">Estado</label>
-                <select id="id_estado" name="estado">
+            <div class="odoo-filter-group">
+                <label>Estado del miembro</label>
+                <select name="estado">
                     <option value="">Todos</option>
                     {% for value, label in estados_choices %}
                         <option value="{{ value }}" {% if value == estado %}selected{% endif %}>
@@ -150,10 +174,10 @@ Miembros / Reportes / Listado general
                 </select>
             </div>
 
-            <!-- Categoría -->
-            <div class="form-field">
-                <label for="id_categoria_edad">Categoría</label>
-                <select id="id_categoria_edad" name="categoria_edad">
+            <!-- Categoría de edad -->
+            <div class="odoo-filter-group">
+                <label>Categoría de edad</label>
+                <select name="categoria_edad">
                     <option value="">Todas</option>
                     {% for value, label in categorias_choices %}
                         <option value="{{ value }}" {% if value == categoria_edad_filtro %}selected{% endif %}>
@@ -164,9 +188,9 @@ Miembros / Reportes / Listado general
             </div>
 
             <!-- Género -->
-            <div class="form-field">
-                <label for="id_genero">Género</label>
-                <select id="id_genero" name="genero">
+            <div class="odoo-filter-group">
+                <label>Género</label>
+                <select name="genero">
                     <option value="">Todos</option>
                     {% for value, label in generos_choices %}
                         <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
@@ -177,1086 +201,1309 @@ Miembros / Reportes / Listado general
             </div>
 
             <!-- Bautismo -->
-            <div class="form-field">
-                <label for="id_bautizado">Bautismo</label>
-                <select id="id_bautizado" name="bautizado">
+            <div class="odoo-filter-group">
+                <label>Bautismo</label>
+                <select name="bautizado">
                     <option value="">Todos</option>
                     <option value="1" {% if bautizado == "1" %}selected{% endif %}>Solo bautizados</option>
                     <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
                 </select>
             </div>
 
-            <!-- Botón aplicar -->
-            <div class="filters-actions">
-                <button type="submit" class="btn-secondary">
-                    <span class="material-icons" style="font-size:16px;">search</span>
-                    Aplicar
-                </button>
-            </div>
-        </div>
-
-        <!-- ⚙️ Filtros avanzados (plegable) -->
-        <details class="filters-advanced" {% if edad_min or edad_max or usar_rango_edad or tiene_contacto or mostrar_todos or incluir_ninos %}open{% endif %}>
-            <summary>
-                <span class="summary-icon">⚙️</span>
-                <span>Filtros avanzados</span>
-                <span class="summary-hint">Edad, contacto, niños…</span>
-            </summary>
-
-            <!-- Botón borrar filtros alineado a la derecha -->
-            <div class="filters-advanced-actions">
-                <a href="{{ request.path }}"
-                   class="btn-secondary clear-btn-mini no-print">
-                    <span class="material-icons" style="font-size:14px;">close</span>
-                    Borrar filtros
-                </a>
-            </div>
-
-            <div class="filters-advanced-body">
-
-                <!-- Rango de edad -->
-                <div class="advanced-row">
-                    <div class="advanced-block">
-                        <label>Edad (años)</label>
-                        <div class="edad-range-row">
-                            <input
-                                type="number"
-                                name="edad_min"
-                                min="0"
-                                value="{{ edad_min }}"
-                                placeholder="Desde"
-                            >
-                            <span class="edad-sep">a</span>
-                            <input
-                                type="number"
-                                name="edad_max"
-                                min="0"
-                                value="{{ edad_max }}"
-                                placeholder="Hasta"
-                            >
-                        </div>
-                        <p class="hint-text">
-                            Si no marcas la casilla, el reporte ignora este rango.
-                        </p>
-                    </div>
-
-                    <label class="checkbox-inline">
-                        <input
-                            type="checkbox"
-                            name="usar_rango_edad"
-                            value="1"
-                            {% if usar_rango_edad %}checked{% endif %}
-                        >
-                        Aplicar este rango de edad
+            <!-- Rango de edad -->
+            <div class="odoo-filter-group odoo-filter-group-wide">
+                <label>Rango de edad</label>
+                <div class="odoo-filter-range">
+                    <input type="number" name="edad_min" placeholder="Desde" 
+                           value="{{ edad_min }}" min="0">
+                    <span>a</span>
+                    <input type="number" name="edad_max" placeholder="Hasta" 
+                           value="{{ edad_max }}" min="0">
+                    <label class="odoo-filter-checkbox">
+                        <input type="checkbox" name="usar_rango_edad" value="1"
+                               {% if usar_rango_edad %}checked{% endif %}>
+                        Aplicar
                     </label>
                 </div>
+            </div>
 
-                <!-- Checkboxes especiales -->
-                <div class="advanced-row">
-                    <div class="checkbox-group">
-                        <label class="checkbox-inline">
-                            <input
-                                type="checkbox"
-                                name="tiene_contacto"
-                                value="1"
-                                {% if tiene_contacto %}checked{% endif %}
-                            >
-                            Solo con contacto
-                        </label>
+            <!-- Checkboxes adicionales -->
+            <div class="odoo-filter-group odoo-filter-group-wide">
+                <label>Opciones adicionales</label>
+                <div class="odoo-filter-checks">
+                    <label class="odoo-filter-checkbox">
+                        <input type="checkbox" name="tiene_contacto" value="1"
+                               {% if tiene_contacto %}checked{% endif %}>
+                        Solo con contacto
+                    </label>
+                    <label class="odoo-filter-checkbox">
+                        <input type="checkbox" name="mostrar_todos" value="1"
+                               {% if mostrar_todos %}checked{% endif %}>
+                        Incluir inactivos
+                    </label>
+                    <label class="odoo-filter-checkbox">
+                        <input type="checkbox" name="incluir_ninos" value="1"
+                               {% if incluir_ninos %}checked{% endif %}>
+                        Incluir niños (&lt;12 años)
+                    </label>
+                </div>
+            </div>
+        </div>
 
-                        <label class="checkbox-inline">
-                            <input
-                                type="checkbox"
-                                name="mostrar_todos"
-                                value="1"
-                                {% if mostrar_todos %}checked{% endif %}
-                            >
-                            Mostrar todos (incluye inactivos)
-                        </label>
+        <div class="odoo-filter-actions">
+            <a href="{{ request.path }}" class="odoo-btn odoo-btn-text">
+                Limpiar filtros
+            </a>
+            <button type="submit" class="odoo-btn odoo-btn-primary">
+                Aplicar
+            </button>
+        </div>
+    </form>
+</div>
 
-                        <label class="checkbox-inline">
-                            <input
-                                type="checkbox"
-                                name="incluir_ninos"
-                                value="1"
-                                {% if incluir_ninos %}checked{% endif %}
-                            >
-                            Incluir niños (menores de 12 años)
-                        </label>
-                    </div>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ENCABEZADO PARA IMPRESIÓN
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="only-print" style="text-align:center; margin-bottom:12px;">
+    {% if CFG.logo %}
+        <img src="{{ CFG.logo.url }}" alt="{{ CFG.nombre_iglesia|default:'Logo' }}"
+             style="max-height:70px; margin-bottom:6px;">
+    {% endif %}
+    <h2 style="margin:0; font-size:18px; font-weight:700;">
+        {% if CFG.nombre_iglesia %}{{ CFG.nombre_iglesia|upper }}{% else %}IGLESIA{% endif %}
+    </h2>
+    {% if CFG.denominacion %}
+        <div style="font-size:12px; color:#4b5563;">{{ CFG.denominacion }}</div>
+    {% endif %}
+    {% if CFG.lema %}
+        <div style="font-size:12px; color:#6b7280; font-style:italic;">"{{ CFG.lema }}"</div>
+    {% endif %}
+    <div style="font-size:11px; color:#6b7280; margin-top:6px;">
+        Listado de miembros · {{ hoy|date:"d/m/Y" }}
+    </div>
+    <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TABLA DE MIEMBROS (Vista Lista - Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-list-container" id="vista-lista">
+    <table class="odoo-table">
+        <thead>
+            <tr>
+                <th class="odoo-th-checkbox no-print">
+                    <input type="checkbox" id="select-all">
+                </th>
+                <th class="odoo-th-sortable">
+                    Código
+                    <span class="material-icons odoo-sort-icon">unfold_more</span>
+                </th>
+                <th class="odoo-th-sortable odoo-th-main">
+                    Miembro
+                    <span class="material-icons odoo-sort-icon">unfold_more</span>
+                </th>
+                <th>Edad</th>
+                <th>Categoría</th>
+                <th>Contacto</th>
+                <th>Estado</th>
+                <th>Bautismo</th>
+                <th class="no-print"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if miembros %}
+                {% for m in miembros %}
+                <tr class="odoo-row {% if not m.activo %}odoo-row-inactive{% endif %}"
+                    onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'"
+                    style="cursor: pointer;">
+                    
+                    <!-- Checkbox -->
+                    <td class="odoo-td-checkbox no-print" onclick="event.stopPropagation();">
+                        <input type="checkbox" class="row-checkbox" value="{{ m.pk }}">
+                    </td>
+
+                    <!-- Código -->
+                    <td class="odoo-td-code">
+                        {{ m.codigo_miembro }}
+                    </td>
+
+                    <!-- Miembro (nombre + profesión) -->
+                    <td class="odoo-td-main">
+                        <div class="odoo-member-name">
+                            <a href="{% url 'miembros_app:detalle' m.pk %}" 
+                               onclick="event.stopPropagation();"
+                               class="no-print">
+                                {{ m.nombres }} {{ m.apellidos }}
+                            </a>
+                            <span class="only-print">{{ m.nombres }} {{ m.apellidos }}</span>
+                        </div>
+                        <div class="odoo-member-sub">
+                            {{ m.profesion|default:"—" }}
+                        </div>
+                    </td>
+
+                    <!-- Edad -->
+                    <td>
+                        {% if m.calcular_edad %}
+                            {{ m.calcular_edad }}
+                        {% else %}
+                            <span class="odoo-empty">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Categoría -->
+                    <td>
+                        {% if m.categoria_edad %}
+                            <span class="odoo-badge odoo-badge-info">
+                                {{ m.get_categoria_edad_display }}
+                            </span>
+                        {% else %}
+                            <span class="odoo-empty">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Contacto -->
+                    <td class="odoo-td-contact">
+                        {% if m.telefono or m.whatsapp or m.email %}
+                            {% if m.telefono %}
+                                <div class="odoo-contact-line">
+                                    {{ m.telefono }}
+                                    <a href="https://wa.me/{{ m.telefono|cut:' '|cut:'-' }}"
+                                       target="_blank"
+                                       onclick="event.stopPropagation();"
+                                       class="odoo-wa-link no-print"
+                                       title="WhatsApp">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm4.427 14.556c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
+                                        </svg>
+                                    </a>
+                                </div>
+                            {% elif m.whatsapp %}
+                                <div class="odoo-contact-line">
+                                    {{ m.whatsapp }}
+                                    <a href="https://wa.me/{{ m.whatsapp|cut:' '|cut:'-' }}"
+                                       target="_blank"
+                                       onclick="event.stopPropagation();"
+                                       class="odoo-wa-link no-print">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2z"/>
+                                        </svg>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if m.email %}
+                                <div class="odoo-contact-email">{{ m.email }}</div>
+                            {% endif %}
+                        {% else %}
+                            <span class="odoo-empty">Sin datos</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Estado -->
+                    <td>
+                        {% if not m.activo %}
+                            <span class="odoo-badge odoo-badge-danger">Inactivo</span>
+                            {% if m.razon_salida %}
+                                <div class="odoo-sub-info">{{ m.razon_salida }}</div>
+                            {% endif %}
+                            {% if m.fecha_salida %}
+                                <div class="odoo-sub-info">{{ m.fecha_salida|date:"d/m/Y" }}</div>
+                            {% endif %}
+                        {% else %}
+                            {% if m.estado_miembro %}
+                                <span class="odoo-estado">{{ m.get_estado_miembro_display }}</span>
+                            {% else %}
+                                <span class="odoo-empty">—</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+
+                    <!-- Bautismo -->
+                    <td>
+                        {% if m.bautizado_confirmado %}
+                            <span class="odoo-badge odoo-badge-success">Sí</span>
+                            {% if m.fecha_bautismo %}
+                                <div class="odoo-sub-info">{{ m.fecha_bautismo|date:"d/m/Y" }}</div>
+                            {% endif %}
+                        {% else %}
+                            <span class="odoo-badge odoo-badge-muted">No</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Acciones -->
+                    <td class="odoo-td-actions no-print" onclick="event.stopPropagation();">
+                        <div class="odoo-row-actions">
+                            <a href="{% url 'miembros_app:detalle' m.pk %}" 
+                               class="odoo-action-icon" title="Ver">
+                                <span class="material-icons">visibility</span>
+                            </a>
+                            <a href="{% url 'miembros_app:editar' m.pk %}" 
+                               class="odoo-action-icon" title="Editar">
+                                <span class="material-icons">edit</span>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="9" class="odoo-empty-row">
+                        <span class="material-icons">search_off</span>
+                        No se encontraron miembros con los filtros actuales.
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <!-- Total al final (estilo Odoo) -->
+    {% if miembros %}
+    <div class="odoo-table-footer">
+        <span class="odoo-total-label">Total:</span>
+        <span class="odoo-total-value">{{ miembros|length }} miembros</span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     VISTA KANBAN (Tarjetas estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-kanban-container no-print" id="vista-cuadricula" style="display: none;">
+    {% if miembros %}
+        <div class="odoo-kanban-grid">
+            {% for m in miembros %}
+            <article class="odoo-kanban-card {% if not m.activo %}odoo-kanban-card-inactive{% endif %}"
+                     onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'">
+                
+                <!-- Avatar con inicial o foto -->
+                <div class="odoo-kanban-avatar" style="background: {% cycle '#3b82f6' '#10b981' '#f59e0b' '#ef4444' '#8b5cf6' '#ec4899' %};">
+                    {% if m.foto %}
+                        <img src="{{ m.foto.url }}" alt="{{ m.nombres }}">
+                    {% else %}
+                        <span class="odoo-kanban-initial">{{ m.nombres|slice:":1"|upper }}</span>
+                    {% endif %}
                 </div>
 
-            </div>
-        </details>
-    </form>
+                <!-- Contenido de la tarjeta -->
+                <div class="odoo-kanban-content">
+                    <!-- Nombre -->
+                    <div class="odoo-kanban-name">
+                        {{ m.nombres }} {{ m.apellidos }}
+                    </div>
 
-    <!-- 🔵 Chips de filtros activos -->
-    {% if query or estado or genero_filtro or categoria_edad_filtro or bautizado or edad_min or edad_max or tiene_contacto or mostrar_todos or incluir_ninos %}
-        <div class="filters-tags no-print">
-            <span class="filters-tags-label">Filtros activos:</span>
+                    <!-- Info de contacto con iconos -->
+                    <div class="odoo-kanban-info">
+                        {% if m.email %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">mail</span>
+                            <span>{{ m.email }}</span>
+                        </div>
+                        {% endif %}
 
-            {% if query %}
-                <span class="filter-chip">Búsqueda: “{{ query }}”</span>
-            {% endif %}
+                        {% if m.telefono %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">phone</span>
+                            <span>{{ m.telefono }}</span>
+                        </div>
+                        {% elif m.whatsapp %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">phone</span>
+                            <span>{{ m.whatsapp }}</span>
+                        </div>
+                        {% endif %}
 
-            {% if estado %}
-                <span class="filter-chip">Estado: {{ estado }}</span>
-            {% endif %}
+                        {% if m.sector or m.ciudad %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">location_on</span>
+                            <span>{% if m.sector %}{{ m.sector }}{% endif %}{% if m.sector and m.ciudad %}, {% endif %}{% if m.ciudad %}{{ m.ciudad }}{% endif %}</span>
+                        </div>
+                        {% endif %}
+                    </div>
 
-            {% if genero_filtro %}
-                <span class="filter-chip">Género: {{ genero_filtro }}</span>
-            {% endif %}
-
-            {% if categoria_edad_filtro %}
-                <span class="filter-chip">Categoría: {{ categoria_edad_filtro }}</span>
-            {% endif %}
-
-            {% if bautizado == "1" %}
-                <span class="filter-chip">Solo bautizados</span>
-            {% elif bautizado == "0" %}
-                <span class="filter-chip">No bautizados</span>
-            {% endif %}
-
-            {# Edad: separamos la lógica para evitar paréntesis en el if #}
-            {% if usar_rango_edad %}
-                {% if edad_min or edad_max %}
-                    <span class="filter-chip">
-                        Edad:
-                        {% if edad_min %}desde {{ edad_min }}{% endif %}
-                        {% if edad_min and edad_max %} · {% endif %}
-                        {% if edad_max %}hasta {{ edad_max }}{% endif %}
-                    </span>
-                {% endif %}
-            {% endif %}
-
-            {% if tiene_contacto %}
-                <span class="filter-chip">Solo con contacto</span>
-            {% endif %}
-
-            {% if mostrar_todos %}
-                <span class="filter-chip">Incluye inactivos</span>
-            {% endif %}
-
-            {% if incluir_ninos %}
-                <span class="filter-chip">Incluye niños</span>
-            {% endif %}
+                    <!-- Footer con badges y acciones -->
+                    <div class="odoo-kanban-footer">
+                        <div class="odoo-kanban-badges">
+                            {% if m.estado_miembro %}
+                            <span class="odoo-kanban-badge">
+                                <span class="material-icons">edit_note</span>
+                                {{ m.get_estado_miembro_display|slice:":3" }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="odoo-kanban-actions" onclick="event.stopPropagation();">
+                            <button type="button" class="odoo-kanban-action-btn" title="Actividad">
+                                <span class="material-icons">schedule</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="odoo-empty-kanban">
+            <span class="material-icons">search_off</span>
+            <p>No se encontraron miembros.</p>
         </div>
     {% endif %}
+</div>
 
-    <!-- 🔀 Conmutador de vista (lista / cuadrícula) -->
-    <div class="view-toggle no-print">
-        <span class="view-toggle-label">Vista:</span>
-        <button type="button" class="view-btn" data-view="lista">Lista</button>
-        <button type="button" class="view-btn" data-view="grid">Cuadrícula</button>
-    </div>
-
-    <!-- Vista LISTA (tabla clásica) -->
-    <div id="vista-lista">
-        <div class="table-wrapper">
-            <table class="table table-members">
-                <thead>
-                    <tr>
-                        <th>Código</th>
-                        <th>Miembro</th>
-                        <th>Edad</th>
-                        <th>Categoría</th>
-                        <th>Cédula</th>
-                        <th>Contacto</th>
-                        <th>Estado</th>
-                        <th>Bautismo</th>
-                        <th class="col-center no-print">Acciones</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                {% if miembros %}
-                    {% for m in miembros %}
-                    <tr class="{% if not m.activo %}row-inactive{% endif %}">
-
-                        <!-- 🔵 Código del miembro -->
-                        <td>
-                            <span style="font-weight:600; color:#1e3a8a;">
-                                {{ m.codigo_miembro }}
-                            </span>
-                        </td>
-
-                        <!-- Miembro -->
-                        <td>
-                            <div style="font-weight:600; font-size:13px;">
-                                {% if m.pk %}
-                                    <a href="{% url 'miembros_app:detalle' m.pk %}" class="no-print">
-                                        {{ m.nombres }} {{ m.apellidos }}
-                                    </a>
-                                    <span class="only-print">
-                                        {{ m.nombres }} {{ m.apellidos }}
-                                    </span>
-                                {% else %}
-                                    {{ m.nombres }} {{ m.apellidos }}
-                                {% endif %}
-                            </div>
-                            <div style="font-size:11px; color:#6b7280;">
-                                {{ m.profesion|default:"Sin profesión registrada" }}
-                            </div>
-                        </td>
-
-                        <!-- Edad -->
-                        <td>
-                            {% if m.calcular_edad %}
-                                {{ m.calcular_edad }} años
-                            {% else %}
-                                <span style="font-size:11px; color:#9ca3af;">—</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Categoría -->
-                        <td>
-                            {% if m.categoria_edad %}
-                                <span style="
-                                    font-size:11px;
-                                    padding:2px 6px;
-                                    border-radius:999px;
-                                    background:#eef2ff;
-                                    color:#3730a3;
-                                    font-weight:600;">
-                                    {{ m.get_categoria_edad_display }}
-                                </span>
-                            {% else %}
-                                <span style="font-size:11px; color:#9ca3af;">—</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Cédula -->
-                        <td>
-                            {% if m.cedula %}
-                                {{ m.cedula }}
-                            {% else %}
-                                <span style="font-size:11px; color:#9ca3af;">—</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Contacto -->
-                        <td>
-                            {% if m.telefono or m.whatsapp or m.email %}
-                                {% if m.telefono or m.whatsapp %}
-                                    <div style="font-size:12px;">
-                                        {% if m.telefono %}
-                                            {% with numero=m.telefono %}
-                                                {{ numero }}
-                                                <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
-                                                   target="_blank"
-                                                   title="Enviar WhatsApp"
-                                                   class="no-print-inline">
-                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                         width="13"
-                                                         height="13"
-                                                         viewBox="0 0 24 24"
-                                                         style="margin-left:6px; fill:#6b7280;">
-                                                        <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm0 18a7.93 7.93 0 0 1-4.062-1.129l-.289-.172-2.999.807.802-2.92-.188-.3A7.924 7.924 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8zm4.427-5.444c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
-                                                    </svg>
-                                                </a>
-                                            {% endwith %}
-                                        {% else %}
-                                            {% with numero=m.whatsapp %}
-                                                {{ numero }}
-                                                <a href="https://wa.me/{{ numero|cut:' '|cut:'-' }}"
-                                                   target="_blank"
-                                                   title="Enviar WhatsApp"
-                                                   class="no-print-inline">
-                                                    <i class="bi bi-whatsapp"
-                                                       style="font-size:1.25rem; margin-left:6px;">
-                                                    </i>
-                                                </a>
-                                            {% endwith %}
-                                        {% endif %}
-                                    </div>
-                                {% endif %}
-
-                                {% if m.email %}
-                                    <div style="font-size:12px;">{{ m.email }}</div>
-                                {% endif %}
-                            {% else %}
-                                <span style="font-size:11px; color:#6b7280;">Sin datos</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Estado -->
-                        <td>
-                            {% if not m.activo %}
-                                <div style="
-                                    display:inline-block;
-                                    padding:2px 6px;
-                                    border-radius:999px;
-                                    background:#fee2e2;
-                                    color:#b91c1c;
-                                    font-size:11px;
-                                    font-weight:600;">
-                                    Inactivo
-                                </div>
-
-                                {% if m.razon_salida %}
-                                    <div style="font-size:11px; color:#6b7280;">
-                                        {{ m.razon_salida }}
-                                    </div>
-                                {% endif %}
-
-                                {% if m.fecha_salida %}
-                                    <div style="font-size:11px; color:#6b7280;">
-                                        Salida: {{ m.fecha_salida|date:"d/m/Y" }}
-                                    </div>
-                                {% endif %}
-                            {% else %}
-                                {% if m.estado_miembro %}
-                                    <div style="font-size:12px; font-weight:600; color:#111827;">
-                                        {{ m.get_estado_miembro_display }}
-                                    </div>
-                                {% else %}
-                                    <div style="font-size:11px; color:#6b7280;">Sin estado</div>
-                                {% endif %}
-                            {% endif %}
-                        </td>
-
-                        <!-- Bautismo -->
-                        <td>
-                            {% if m.bautizado_confirmado %}
-                                <span class="pill pill-success">Sí</span>
-                                {% if m.fecha_bautismo %}
-                                    <div style="font-size:11px; color:#6b7280;">
-                                        {{ m.fecha_bautismo|date:"d/m/Y" }}
-                                    </div>
-                                {% endif %}
-                            {% else %}
-                                <span class="pill pill-muted">No</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Acciones (solo pantalla) -->
-                        <td class="col-center no-print">
-                            {% if m.pk %}
-                                <div style="display:flex; justify-content:center; gap:4px;">
-                                    <!-- Ver detalle -->
-                                    <a href="{% url 'miembros_app:detalle' m.pk %}"
-                                       class="btn-secondary"
-                                       style="padding:4px; min-width:auto;">
-                                        <span class="material-icons" style="font-size:18px;">visibility</span>
-                                    </a>
-                                    <!-- Editar -->
-                                    <a href="{% url 'miembros_app:editar' m.pk %}"
-                                       class="btn-secondary"
-                                       style="padding:4px; min-width:auto;">
-                                        <span class="material-icons" style="font-size:18px;">edit</span>
-                                    </a>
-                                </div>
-                            {% else %}
-                                <span style="font-size:11px; color:#9ca3af;">Sin acciones</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="9" class="table-empty">
-                            No se encontraron resultados.
-                        </td>
-                    </tr>
-                {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Vista CUADRÍCULA (tarjetas) -->
-    <div id="vista-cuadricula" class="no-print" style="display:none;">
-        {% if miembros %}
-            <div class="members-grid">
-                {% for m in miembros %}
-                    <article class="member-card {% if not m.activo %}member-card-inactive{% endif %}">
-                        <header class="member-card-header">
-                            <div class="member-avatar">
-                                <span class="material-icons" style="font-size:18px;">person</span>
-                            </div>
-                            <div class="member-header-text">
-                                <div class="member-name">
-                                    {% if m.pk %}
-                                        <a href="{% url 'miembros_app:detalle' m.pk %}">
-                                            {{ m.nombres }} {{ m.apellidos }}
-                                        </a>
-                                    {% else %}
-                                        {{ m.nombres }} {{ m.apellidos }}
-                                    {% endif %}
-                                </div>
-                                <div class="member-code">
-                                    {{ m.codigo_miembro }}
-                                </div>
-                            </div>
-                        </header>
-
-                        <div class="member-card-body">
-                            <div class="member-meta-row">
-                                <span class="meta-label">Edad</span>
-                                <span class="meta-value">
-                                    {% if m.calcular_edad %}
-                                        {{ m.calcular_edad }} años
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </span>
-                            </div>
-
-                            <div class="member-meta-row">
-                                <span class="meta-label">Categoría</span>
-                                <span class="meta-value">
-                                    {% if m.categoria_edad %}
-                                        {{ m.get_categoria_edad_display }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </span>
-                            </div>
-
-                            <div class="member-meta-row">
-                                <span class="meta-label">Estado</span>
-                                <span class="meta-value">
-                                    {% if not m.activo %}
-                                        Inactivo
-                                    {% else %}
-                                        {% if m.estado_miembro %}
-                                            {{ m.get_estado_miembro_display }}
-                                        {% else %}
-                                            Sin estado
-                                        {% endif %}
-                                    {% endif %}
-                                </span>
-                            </div>
-
-                            <div class="member-meta-row">
-                                <span class="meta-label">Bautismo</span>
-                                <span class="meta-value">
-                                    {% if m.bautizado_confirmado %}
-                                        Sí
-                                    {% else %}
-                                        No
-                                    {% endif %}
-                                </span>
-                            </div>
-
-                            <div class="member-meta-row">
-                                <span class="meta-label">Contacto</span>
-                                <span class="meta-value">
-                                    {% if m.telefono or m.whatsapp %}
-                                        {% if m.telefono %}
-                                            {{ m.telefono }}
-                                        {% else %}
-                                            {{ m.whatsapp }}
-                                        {% endif %}
-                                    {% elif m.email %}
-                                        {{ m.email }}
-                                    {% else %}
-                                        Sin datos
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </div>
-
-                        <footer class="member-card-footer">
-                            {% if m.pk %}
-                                <a href="{% url 'miembros_app:detalle' m.pk %}" class="btn-secondary member-card-btn">
-                                    <span class="material-icons" style="font-size:16px;">visibility</span>
-                                    Ver
-                                </a>
-                                <a href="{% url 'miembros_app:editar' m.pk %}" class="btn-secondary member-card-btn">
-                                    <span class="material-icons" style="font-size:16px;">edit</span>
-                                    Editar
-                                </a>
-                            {% else %}
-                                <span style="font-size:11px; color:#9ca3af;">Sin acciones</span>
-                            {% endif %}
-                        </footer>
-                    </article>
-                {% endfor %}
-            </div>
-        {% else %}
-            <p style="font-size:13px; color:#6b7280; margin-top:8px;">
-                No se encontraron resultados.
-            </p>
-        {% endif %}
-    </div>
-
-</section>
-
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   BARRA DE CONTROL SUPERIOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
 
+.odoo-control-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
+.odoo-control-center {
+    flex: 1;
+    max-width: 600px;
+}
 
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Botones */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: #016166;
+}
+
+.odoo-btn-text {
+    background: transparent;
+    color: #6c757d;
+}
+
+.odoo-btn-text:hover {
+    color: #495057;
+    background: #e9ecef;
+}
+
+/* Breadcrumb */
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-breadcrumb-title {
+    font-weight: 500;
+}
+
+.odoo-breadcrumb-icon {
+    font-size: 16px;
+    color: #6c757d;
+    cursor: pointer;
+}
+
+/* Barra de búsqueda */
+.odoo-search-form {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 0 8px;
+    gap: 8px;
+}
+
+.odoo-search-icon {
+    font-size: 20px;
+    color: #6c757d;
+}
+
+.odoo-search-filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.odoo-filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #e3f2fd;
+    color: #1565c0;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.odoo-filter-remove {
+    background: none;
+    border: none;
+    color: #1565c0;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+}
+
+.odoo-filter-remove:hover {
+    color: #0d47a1;
+}
+
+.odoo-search-input {
+    flex: 1;
+    border: none;
+    padding: 8px 0;
+    font-size: 14px;
+    outline: none;
+    min-width: 120px;
+}
+
+.odoo-filter-dropdown {
+    border-left: 1px solid #dee2e6;
+    padding-left: 8px;
+}
+
+.odoo-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    color: #6c757d;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.odoo-filter-btn:hover {
+    color: #495057;
+}
+
+.odoo-filter-btn .material-icons {
+    font-size: 18px;
+}
+
+/* Paginación */
+.odoo-pagination-info {
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.odoo-pagination-btns {
+    display: flex;
+    gap: 2px;
+}
+
+.odoo-page-btn {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+}
+
+.odoo-page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.odoo-page-btn .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+}
+
+/* Vista toggle */
+.odoo-view-toggle {
+    display: flex;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.odoo-view-btn {
+    background: white;
+    border: none;
+    padding: 6px 8px;
+    cursor: pointer;
+    display: flex;
+    border-right: 1px solid #dee2e6;
+}
+
+.odoo-view-btn:last-child {
+    border-right: none;
+}
+
+.odoo-view-btn .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+}
+
+.odoo-view-btn.active {
+    background: #e9ecef;
+}
+
+.odoo-view-btn.active .material-icons {
+    color: #495057;
+}
+
+/* Menú de acciones */
+.odoo-actions-menu {
+    position: relative;
+}
+
+.odoo-action-btn {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+}
+
+.odoo-action-btn .material-icons {
+    font-size: 20px;
+    color: #6c757d;
+}
+
+.odoo-actions-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 180px;
+    z-index: 200;
+    margin-top: 4px;
+}
+
+.odoo-actions-dropdown.show {
+    display: block;
+}
+
+.odoo-actions-dropdown button,
+.odoo-actions-dropdown a,
+.odoo-actions-dropdown label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #495057;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.odoo-actions-dropdown button:hover,
+.odoo-actions-dropdown a:hover,
+.odoo-actions-dropdown label:hover {
+    background: #f8f9fa;
+}
+
+.odoo-actions-dropdown .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+}
+
+.odoo-action-upload input[type="file"] {
+    display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL DE FILTROS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-filter-panel {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 16px;
+}
+
+.odoo-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.odoo-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.odoo-filter-group-wide {
+    grid-column: span 2;
+}
+
+.odoo-filter-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #495057;
+}
+
+.odoo-filter-group select,
+.odoo-filter-group input[type="number"] {
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background: white;
+}
+
+.odoo-filter-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-filter-range input {
+    width: 80px;
+}
+
+.odoo-filter-range span {
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.odoo-filter-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.odoo-filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #495057;
+    cursor: pointer;
+}
+
+.odoo-filter-checkbox input {
+    accent-color: #017e84;
+}
+
+.odoo-filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #dee2e6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLA ESTILO ODOO
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-list-container {
+    background: white;
+}
+
+.odoo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.odoo-table thead {
+    position: sticky;
+    top: 52px;
+    z-index: 50;
+}
+
+.odoo-table th {
+    background: #f8f9fa;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 500;
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.odoo-th-checkbox {
+    width: 40px;
+    text-align: center;
+}
+
+.odoo-th-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.odoo-th-sortable:hover {
+    background: #e9ecef;
+}
+
+.odoo-sort-icon {
+    font-size: 16px;
+    vertical-align: middle;
+    color: #adb5bd;
+}
+
+.odoo-th-main {
+    min-width: 200px;
+}
+
+.odoo-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: top;
+}
+
+.odoo-row:hover {
+    background: #f8f9fa;
+}
+
+.odoo-row-inactive {
+    background: #fef2f2;
+}
+
+.odoo-row-inactive:hover {
+    background: #fee2e2;
+}
+
+.odoo-td-checkbox {
+    text-align: center;
+}
+
+.odoo-td-code {
+    font-weight: 600;
+    color: #1e3a8a;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 12px;
+}
+
+.odoo-td-main {
+    min-width: 200px;
+}
+
+.odoo-member-name {
+    font-weight: 600;
+    color: #212529;
+}
+
+.odoo-member-name a {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-member-name a:hover {
+    text-decoration: underline;
+}
+
+.odoo-member-sub {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.odoo-td-contact {
+    font-size: 12px;
+}
+
+.odoo-contact-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.odoo-wa-link {
+    color: #6c757d;
+}
+
+.odoo-wa-link:hover {
+    color: #25d366;
+}
+
+.odoo-contact-email {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.odoo-empty {
+    color: #adb5bd;
+    font-size: 12px;
+}
+
+.odoo-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.odoo-badge-info {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.odoo-badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.odoo-badge-danger {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.odoo-badge-muted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.odoo-estado {
+    font-weight: 500;
+    color: #212529;
+}
+
+.odoo-sub-info {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.odoo-td-actions {
+    width: 80px;
+}
+
+.odoo-row-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.odoo-row:hover .odoo-row-actions {
+    opacity: 1;
+}
+
+.odoo-action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    color: #6c757d;
+    text-decoration: none;
+}
+
+.odoo-action-icon:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.odoo-action-icon .material-icons {
+    font-size: 18px;
+}
+
+.odoo-empty-row {
+    text-align: center;
+    padding: 40px !important;
+    color: #6c757d;
+}
+
+.odoo-empty-row .material-icons {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 8px;
+    color: #adb5bd;
+}
+
+.odoo-table-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    font-size: 13px;
+}
+
+.odoo-total-label {
+    color: #6c757d;
+}
+
+.odoo-total-value {
+    font-weight: 600;
+    color: #212529;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VISTA KANBAN (Estilo Odoo exacto)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-kanban-container {
+    padding: 16px;
+    background: #f8f9fa;
+    min-height: calc(100vh - 120px);
+}
+
+.odoo-kanban-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.odoo-kanban-card {
+    display: flex;
+    align-items: stretch;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+    height: 105px;
+}
+
+.odoo-kanban-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.odoo-kanban-card-inactive {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+/* Avatar cuadrado a la izquierda - tamaño fijo */
+.odoo-kanban-avatar {
+    width: 105px;
+    min-width: 105px;
+    height: 105px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.odoo-kanban-avatar img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.odoo-kanban-initial {
+    font-size: 42px;
+    font-weight: 500;
+    color: white;
+    line-height: 1;
+}
+
+/* Contenido a la derecha */
+.odoo-kanban-content {
+    flex: 1;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    height: 105px;
+    box-sizing: border-box;
+}
+
+.odoo-kanban-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+
+/* Filas de info con iconos */
+.odoo-kanban-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    overflow: hidden;
+}
+
+.odoo-kanban-info-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #495057;
+    line-height: 1.3;
+}
+
+.odoo-kanban-info-row .material-icons {
+    font-size: 13px;
+    color: #6c757d;
+    flex-shrink: 0;
+}
+
+.odoo-kanban-info-row span:last-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Footer con badges y acciones */
+.odoo-kanban-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 4px;
+    flex-shrink: 0;
+}
+
+.odoo-kanban-badges {
+    display: flex;
+    gap: 6px;
+}
+
+.odoo-kanban-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    font-size: 10px;
+    color: #495057;
+}
+
+.odoo-kanban-badge .material-icons {
+    font-size: 11px;
+}
+
+.odoo-kanban-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.odoo-kanban-action-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    color: #6c757d;
+    cursor: pointer;
+}
+
+.odoo-kanban-action-btn:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.odoo-kanban-action-btn .material-icons {
+    font-size: 16px;
+}
+
+.odoo-empty-kanban {
+    text-align: center;
+    padding: 60px;
+    color: #6c757d;
+}
+
+.odoo-empty-kanban .material-icons {
+    font-size: 64px;
+    color: #adb5bd;
+    display: block;
+    margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   IMPRESIÓN
+   ═══════════════════════════════════════════════════════════════════════════ */
 .only-print {
     display: none;
 }
 
 @media print {
-    /* Ocultar elementos de navegación y controles del sistema */
-    .topbar,
-    .main-nav,
-    .footer,
-    .page-header,
-    .form-grid,
-    .page-header-actions,
     .no-print {
         display: none !important;
     }
 
-    .layout {
-        margin: 0;
-        max-width: 100%;
-        padding: 0;
-    }
-
-    .page-section {
-        box-shadow: none;
-        border: none;
-        padding: 0;
-    }
-
-    .table th,
-    .table td {
-        font-size: 11px;
-        padding: 4px 4px;
-    }
-
-    /* Mostrar encabezado institucional solo en impresión */
     .only-print {
         display: block !important;
     }
+
+    .odoo-table thead {
+        position: static;
+    }
+
+    .odoo-table th,
+    .odoo-table td {
+        font-size: 10px;
+        padding: 4px 6px;
+    }
+
+    .odoo-row-actions {
+        display: none;
+    }
 }
 
-    /* Botones más compactos */
-    .small-btn {
-        padding: 4px 10px;
-        font-size: 13px;
-    }
-
-    .page-header-actions {
-        display: flex;
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+    .odoo-control-bar {
         flex-wrap: wrap;
-        gap: 6px;
-        align-items: center;
+        gap: 8px;
     }
 
-    /* Opcional: en pantallas muy pequeñas, que se vea más ligero */
-    @media (max-width: 480px) {
-        .page-header-actions .small-btn {
-            padding: 3px 8px;
-            font-size: 12px;
-        }
+    .odoo-control-center {
+        order: 3;
+        max-width: 100%;
+        flex-basis: 100%;
     }
+
+    .odoo-filter-group-wide {
+        grid-column: span 1;
+    }
+}
 
 @media (max-width: 640px) {
-
-    .table th,
-    .table td {
-        font-size: 11px;
-        padding: 4px 6px;
-        white-space: nowrap;
+    .odoo-control-left {
+        flex-wrap: wrap;
     }
 
-    /* Que la columna de Código se vea clara en móvil */
-    .table th:first-child,
-    .table td:first-child {
+    .odoo-breadcrumb {
+        display: none;
+    }
+
+    .odoo-table {
+        font-size: 11px;
+    }
+
+    .odoo-table th,
+    .odoo-table td {
+        padding: 8px 6px;
+    }
+
+    .odoo-td-code {
         position: sticky;
         left: 0;
-        background: #f9fafb;
+        background: inherit;
         z-index: 1;
     }
 }
-
-    /* ====== Filtros profesionales ====== */
-
-    .filters-card {
-        background: #f9fafb;
-        border-radius: 10px;
-        padding: 10px 12px;
-        margin-bottom: 10px;
-        border: 1px solid #e5e7eb;
-    }
-
-    .filters-main-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: flex-end;
-    }
-
-    .form-field-grow {
-        flex: 2 1 220px;
-    }
-
-    .filters-main-row .form-field {
-        flex: 1 1 150px;
-        min-width: 140px;
-    }
-
-    .filters-main-row label {
-        font-size: 12px;
-        color: #4b5563;
-        margin-bottom: 2px;
-        display: block;
-    }
-
-    .filters-main-row input[type="text"],
-    .filters-main-row select {
-        width: 100%;
-        font-size: 13px;
-        padding: 6px 8px;
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
-    }
-
-    .filters-actions {
-        display: flex;
-        align-items: flex-end;
-        margin-left: auto;
-    }
-
-    .filters-actions .btn-secondary {
-        white-space: nowrap;
-    }
-
-    /* Filtros avanzados (details/summary) */
-    .filters-advanced {
-        margin-top: 8px;
-        border-top: 1px dashed #e5e7eb;
-        padding-top: 8px;
-        font-size: 13px;
-    }
-
-.filters-advanced summary {
-    list-style: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    color: var(--color-text-main);
-    font-weight: 600;
-    padding: 6px 8px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px dashed rgba(148, 163, 184, 0.7);
-    backdrop-filter: blur(6px);
-}
-
-.summary-icon {
-    font-size: 16px;
-}
-
-.summary-hint {
-    font-size: 11px;
-    color: var(--color-text-muted);
-    margin-left: 4px;
-}
-
-/* Contenedor del botón borrar filtros */
-.filters-advanced-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 6px;
-    margin-bottom: 6px;
-}
-
-/* Botón mini borrar filtros */
-.clear-btn-mini {
-    background: rgba(248, 250, 252, 0.9);
-    border: 1px solid rgba(148, 163, 184, 0.9);
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: #374151;
-    cursor: pointer;
-    box-shadow: 0 2px 5px rgba(15, 23, 42, 0.08);
-}
-
-.clear-btn-mini:hover {
-    background: #fee2e2;
-    border-color: #fecaca;
-    color: #991b1b;
-}
-
-
-    .filters-advanced-body {
-        margin-top: 8px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .advanced-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: center;
-    }
-
-    .advanced-block {
-        min-width: 220px;
-    }
-
-    .edad-range-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .edad-range-row input[type="number"] {
-        width: 80px;
-        padding: 4px 6px;
-        font-size: 13px;
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
-    }
-
-    .edad-sep {
-        font-size: 12px;
-        color: #6b7280;
-    }
-
-    .hint-text {
-        font-size: 11px;
-        color: #6b7280;
-        margin-top: 3px;
-    }
-
-    .checkbox-inline {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        color: #4b5563;
-        cursor: pointer;
-    }
-
-    .checkbox-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .filters-advanced-actions {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 6px;
-        margin-bottom: 6px;
-    }
-
-.filters-tags {
-    margin-bottom: 10px;
-    font-size: 11px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-}
-
-.filters-tags-label {
-    font-weight: 600;
-    color: #0f172a;
-    margin-right: 4px;
-}
-
-.filter-chip {
-    background: linear-gradient(135deg, #e0f2fe, #ede9fe);
-    color: #111827;
-    border-radius: 999px;
-    padding: 3px 9px;
-    font-size: 11px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border: 1px solid rgba(129, 140, 248, 0.6);
-    box-shadow: 0 2px 4px rgba(148, 163, 184, 0.4);
-}
-
-
-    /* Botón mini borrar filtros */
-    .clear-btn-mini {
-        background: #f3f4f6;
-        border: 1px solid #e5e7eb;
-        padding: 4px 8px;
-        border-radius: 8px;
-        font-size: 12px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        color: #374151;
-        cursor: pointer;
-    }
-
-    .clear-btn-mini:hover {
-        background: #e5e7eb;
-    }
-
-    @media (max-width: 640px) {
-        .filters-main-row {
-            flex-direction: column;
-        }
-
-        .filters-actions {
-            margin-left: 0;
-            justify-content: flex-start;
-        }
-    }
-
-    /* ====== Tabla de miembros más profesional ====== */
-
-    .table-members {
-        border-collapse: separate;
-        border-spacing: 0;
-        width: 100%;
-        background: #ffffff;
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid #e5e7eb;
-    }
-
-    .table-members thead {
-        background: #f3f4f6;
-    }
-
-    .table-members thead th {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        font-weight: 600;
-        color: #6b7280;
-        padding: 6px 8px;
-        border-bottom: 1px solid #e5e7eb;
-        background: #f3f4f6;
-    }
-
-    .table-members tbody td {
-        font-size: 13px;
-        padding: 6px 8px;
-        border-bottom: 1px solid #f3f4f6;
-        vertical-align: top;
-    }
-
-    /* Filas tipo zebra + hover */
-    .table-members tbody tr:nth-child(odd) {
-        background: #fcfcfd;
-    }
-
-    .table-members tbody tr:nth-child(even) {
-        background: #ffffff;
-    }
-
-    .table-members tbody tr:hover {
-        background: #eff6ff;
-    }
-
-    /* Filas inactivas (clase aplicada en el <tr>) */
-    .table-members tbody tr.row-inactive {
-        background: #fef2f2;
-    }
-
-    .table-members tbody tr.row-inactive:hover {
-        background: #fee2e2;
-    }
-
-    /* Columna código más fuerte y compacta */
-    .table-members td:first-child span {
-        font-weight: 700;
-        font-size: 12px;
-        letter-spacing: 0.03em;
-    }
-
-    /* Nombre de miembro más protagonista */
-    .table-members td:nth-child(2) > div:first-child {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .table-members td:nth-child(2) > div:last-child {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    /* Centrar edad y estado visualmente */
-    .table-members td:nth-child(3),
-    .table-members td:nth-child(8),
-    .table-members td.col-center {
-        text-align: center;
-    }
-
-    /* Botones acciones más discretos */
-    .table-members td.col-center a.btn-secondary {
-        border-radius: 999px;
-        border: 1px solid #e5e7eb;
-    }
-
-    /* Ajuste en móvil: fuente un poco menor y celdas más compactas */
-    @media (max-width: 640px) {
-        .table-members tbody td {
-            font-size: 11px;
-            padding: 4px 6px;
-        }
-    }
-
-    /* ====== Vista toggle (lista / cuadrícula) ====== */
-
-    .view-toggle {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 8px;
-        font-size: 12px;
-        color: #4b5563;
-    }
-
-    .view-toggle-label {
-        font-weight: 500;
-    }
-
-    .view-btn {
-        border-radius: 999px;
-        border: 1px solid #e5e7eb;
-        padding: 4px 10px;
-        font-size: 12px;
-        background: #f9fafb;
-        cursor: pointer;
-    }
-
-    .view-btn.active {
-        background: #1d4ed8;
-        color: #ffffff;
-        border-color: #1d4ed8;
-    }
-
-    /* ====== Vista cuadrícula ====== */
-
-    .members-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-        gap: 10px;
-        margin-top: 4px;
-    }
-
-    .member-card {
-        background: #ffffff;
-        border-radius: 10px;
-        border: 1px solid #e5e7eb;
-        padding: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .member-card-inactive {
-        background: #fef2f2;
-        border-color: #fecaca;
-    }
-
-    .member-card-header {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-bottom: 4px;
-    }
-
-    .member-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        background: #eef2ff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #3730a3;
-    }
-
-    .member-header-text {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .member-name {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .member-name a {
-        color: inherit;
-        text-decoration: none;
-    }
-
-    .member-name a:hover {
-        text-decoration: underline;
-    }
-
-    .member-code {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    .member-card-body {
-        font-size: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .member-meta-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 4px;
-    }
-
-    .meta-label {
-        color: #6b7280;
-    }
-
-    .meta-value {
-        font-weight: 500;
-        color: #111827;
-        text-align: right;
-    }
-
-    .member-card-footer {
-        margin-top: 6px;
-        display: flex;
-        gap: 4px;
-        justify-content: flex-end;
-    }
-
-    .member-card-btn {
-        padding: 4px 8px;
-        font-size: 12px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        min-width: auto;
-        border-radius: 999px;
-    }
 </style>
 
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SCRIPTS
+     ══════════════════════════════════════════════════════════════════════════ -->
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const btnLista = document.querySelector('.view-btn[data-view="lista"]');
-    const btnGrid  = document.querySelector('.view-btn[data-view="grid"]');
+// Toggle panel de filtros
+function toggleFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+// Toggle menú de acciones
+function toggleActionsMenu() {
+    const dropdown = document.getElementById('actions-dropdown');
+    dropdown.classList.toggle('show');
+}
+
+// Cerrar dropdown al hacer clic fuera
+document.addEventListener('click', function(e) {
+    const actionsMenu = document.querySelector('.odoo-actions-menu');
+    const dropdown = document.getElementById('actions-dropdown');
+    
+    if (actionsMenu && !actionsMenu.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});
+
+// Remover filtro individual
+function removeFilter(filterName) {
+    const form = document.getElementById('main-search-form');
+    const input = form.querySelector(`input[name="${filterName}"]`);
+    if (input) {
+        input.value = '';
+        form.submit();
+    }
+}
+
+// Toggle de vistas (lista/cuadrícula)
+document.addEventListener('DOMContentLoaded', function() {
+    const btnLista = document.querySelector('.odoo-view-btn[data-view="lista"]');
+    const btnGrid = document.querySelector('.odoo-view-btn[data-view="grid"]');
     const vistaLista = document.getElementById('vista-lista');
-    const vistaGrid  = document.getElementById('vista-cuadricula');
+    const vistaGrid = document.getElementById('vista-cuadricula');
 
     if (!btnLista || !btnGrid || !vistaLista || !vistaGrid) return;
 
     function setView(view) {
         if (view === 'grid') {
             vistaLista.style.display = 'none';
-            vistaGrid.style.display  = '';
+            vistaGrid.style.display = '';
             btnGrid.classList.add('active');
             btnLista.classList.remove('active');
         } else {
             vistaLista.style.display = '';
-            vistaGrid.style.display  = 'none';
+            vistaGrid.style.display = 'none';
             btnLista.classList.add('active');
             btnGrid.classList.remove('active');
         }
@@ -1265,6 +1512,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {}
     }
 
+    // Cargar vista guardada
     let saved = null;
     try {
         saved = localStorage.getItem('miembros_vista');
@@ -1272,13 +1520,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
     setView(saved === 'grid' ? 'grid' : 'lista');
 
-    btnLista.addEventListener('click', function () {
+    btnLista.addEventListener('click', function() {
         setView('lista');
     });
 
-    btnGrid.addEventListener('click', function () {
+    btnGrid.addEventListener('click', function() {
         setView('grid');
     });
+});
+
+// Select all checkbox
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('select-all');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            rowCheckboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+        });
+    }
 });
 </script>
 
