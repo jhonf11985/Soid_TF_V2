@@ -537,24 +537,28 @@
                     <th>Acciones</th>
                 </tr>
             </thead>
+              <!-- NUEVO: aquí irán los que agregas sin recargar -->
+            <tbody id="familiares-pendientes"></tbody>
+
             <tbody>
-                {% for fam in familiares_existentes %} 
+            {% for rel in familiares %}
                 <tr>
-                    <td>{{ fam.nombre_completo }}</td>
-                    <td>{{ fam.get_tipo_relacion_display }}</td>
-                    <td>{% if fam.vive_junto %}Sí{% else %}No{% endif %}</td>
-                    <td>
-                        <a href="#" class="odoo-link-danger">
-                            <span class="material-icons">delete</span>
-                        </a>
-                    </td>
+                <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
+                <td>{{ rel.get_tipo_relacion_display }}</td>
+                <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
+                <td>
+                    <a href="#" class="odoo-link-danger">
+                    <span class="material-icons">delete</span>
+                    </a>
+                </td>
                 </tr>
-                {% empty %}
+            {% empty %}
                 <tr>
-                    <td colspan="4" class="odoo-empty-text">No hay familiares registrados.</td>
+                <td colspan="4" class="odoo-empty-text">No hay familiares registrados.</td>
                 </tr>
-                {% endfor %}
+            {% endfor %}
             </tbody>
+
         </table>
     </div>
 
@@ -576,6 +580,7 @@
   <div class="odoo-field-value autocomplete-wrapper" data-autocomplete-id="id_familiar_miembro">
     <!-- Campo hidden -->
     <input type="hidden" id="id_familiar_miembro" name="familiar_miembro" value="">
+    <div id="familiares-hidden-inputs"></div>
 
     <!-- Contenedor input + chip (MISMO estilo que ingreso) -->
     <div class="autocomplete-field">
@@ -662,9 +667,10 @@
 
             <div class="odoo-field odoo-field-full">
                 <div class="odoo-inline-actions">
-                    <button type="submit" name="agregar_familiar" value="1" class="odoo-btn-primary odoo-btn-sm">
-                        Guardar y cerrar
+                   <button type="button" class="odoo-btn-primary odoo-btn-sm" id="btn-add-familiar-line">
+                    Añadir a la lista
                     </button>
+
                     <button type="button" class="odoo-btn-secondary odoo-btn-sm" onclick="toggleFamiliarForm(false)">
                         Descartar
                     </button>
@@ -2053,5 +2059,157 @@ document.addEventListener('DOMContentLoaded', function() {
 {% load static %}
 <script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
 
+<script>
+(function () {
+  function q(sel, root=document){ return root.querySelector(sel); }
+  function qa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+
+  function escapeHtml(str){
+    return (str || "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function getSelectedMiembro(){
+    const wrapper = q('[data-autocomplete-id="id_familiar_miembro"]');
+    const hidden = wrapper ? q('#id_familiar_miembro', wrapper) : null;
+    const id = hidden ? (hidden.value || "").trim() : "";
+
+    const chipName = wrapper ? q('.autocomplete-chip .chip-name', wrapper) : null;
+    const chipCode = wrapper ? q('.autocomplete-chip .chip-code', wrapper) : null;
+
+    return {
+      id,
+      nombre: chipName ? chipName.textContent.trim() : "",
+      codigo: chipCode ? chipCode.textContent.trim() : "",
+      wrapper
+    };
+  }
+
+  function buildHiddenFromRows(){
+    const container = q('#familiares-hidden-inputs');
+    if (!container) return;
+    container.innerHTML = "";
+
+    const rows = qa('#familiares-pendientes tr');
+    rows.forEach(tr => {
+      const payload = JSON.parse(tr.getAttribute('data-payload'));
+      container.insertAdjacentHTML('beforeend', `
+        <input type="hidden" name="familiares_miembro_id[]" value="${payload.id}">
+        <input type="hidden" name="familiares_tipo_relacion[]" value="${payload.tipo_relacion}">
+        <input type="hidden" name="familiares_vive_junto[]" value="${payload.vive_junto ? '1':'0'}">
+        <input type="hidden" name="familiares_es_responsable[]" value="${payload.es_responsable ? '1':'0'}">
+        <input type="hidden" name="familiares_notas[]" value="${escapeHtml(payload.notas)}">
+      `);
+    });
+  }
+
+  function clearInline(){
+    const { wrapper } = getSelectedMiembro();
+    if (wrapper){
+      const hidden = q('#id_familiar_miembro', wrapper);
+      if (hidden) hidden.value = "";
+
+      const search = q('.autocomplete-search', wrapper);
+      if (search) search.value = "";
+
+      const chip = q('.autocomplete-chip', wrapper);
+      if (chip) chip.style.display = "none";
+    }
+
+    const rel = q('#id_tipo_relacion');
+    if (rel) rel.value = "";
+
+    const vive = q('input[name="vive_junto"]');
+    if (vive) vive.checked = false;
+
+    const resp = q('input[name="es_responsable"]');
+    if (resp) resp.checked = false;
+
+    const notas = q('input[name="notas_familiar"]');
+    if (notas) notas.value = "";
+  }
+
+  function addRow(payload){
+    const tbody = q('#familiares-pendientes');
+    if (!tbody) return;
+
+    if (tbody.querySelector(`tr[data-miembro-id="${payload.id}"]`)){
+      alert("Ese familiar ya está añadido en la lista.");
+      return;
+    }
+
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-miembro-id', payload.id);
+    tr.setAttribute('data-payload', JSON.stringify(payload));
+
+    tr.innerHTML = `
+      <td>
+        ${escapeHtml(payload.nombre || '—')}
+        ${payload.codigo ? `<div style="font-size:11px;color:#6c757d;">${escapeHtml(payload.codigo)}</div>` : ""}
+      </td>
+      <td>${escapeHtml(payload.tipo_relacion_label)}</td>
+      <td>${payload.vive_junto ? "Sí" : "No"}</td>
+      <td>
+        <a href="javascript:void(0)" class="odoo-link-danger js-remove-familiar-line" title="Quitar">
+          <span class="material-icons">delete</span>
+        </a>
+      </td>
+    `;
+
+    tbody.prepend(tr);
+    buildHiddenFromRows();
+  }
+
+  document.addEventListener('click', (e) => {
+    const rm = e.target.closest('.js-remove-familiar-line');
+    if (!rm) return;
+
+    const tr = rm.closest('tr');
+    if (tr) tr.remove();
+    buildHiddenFromRows();
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = q('#btn-add-familiar-line');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+      const sel = q('#id_tipo_relacion');
+      const vive = q('input[name="vive_junto"]');
+      const resp = q('input[name="es_responsable"]');
+      const notas = q('input[name="notas_familiar"]');
+
+      const { id, nombre, codigo } = getSelectedMiembro();
+      if (!id){
+        alert("Primero selecciona un miembro en el buscador.");
+        return;
+      }
+      if (!sel || !sel.value){
+        alert("Selecciona la relación.");
+        return;
+      }
+
+      const payload = {
+        id,
+        nombre,
+        codigo,
+        tipo_relacion: sel.value,
+        tipo_relacion_label: sel.options[sel.selectedIndex]?.textContent?.trim() || sel.value,
+        vive_junto: !!(vive && vive.checked),
+        es_responsable: !!(resp && resp.checked),
+        notas: notas ? notas.value.trim() : ""
+      };
+
+      addRow(payload);
+      clearInline();
+      toggleFamiliarForm(false);
+    });
+  });
+})();
+</script>
 
 {% endblock %}

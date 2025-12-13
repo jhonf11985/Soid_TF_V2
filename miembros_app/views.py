@@ -673,25 +673,24 @@ def miembro_crear(request):
 # -------------------------------------
 # EDITAR MIEMBRO
 # -------------------------------------
+# -------------------------------------
+# EDITAR MIEMBRO
+# -------------------------------------
 class MiembroUpdateView(View):
     def get(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
         form = MiembroForm(instance=miembro)
 
-        # Siempre tomar la edad mínima desde la configuración
         edad_minima = get_edad_minima_miembro_oficial()
 
-        # Usamos MiembroRelacion directamente para evitar problemas con related_name
         familiares_qs = (
             MiembroRelacion.objects
             .filter(miembro=miembro)
             .select_related("familiar")
         )
 
-        # IDs de familiares ya asignados
         familiares_ids = familiares_qs.values_list("familiar_id", flat=True)
 
-        # Lista filtrada para el combo (no mostrar al propio miembro ni a los familiares ya asignados)
         todos_miembros = (
             Miembro.objects
             .exclude(pk=miembro.pk)
@@ -704,18 +703,15 @@ class MiembroUpdateView(View):
             "miembro": miembro,
             "modo": "editar",
             "todos_miembros": todos_miembros,
-            "familiares": familiares_qs,  # para la pestaña Familiares
+            "familiares": familiares_qs,
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
         }
         return render(request, "miembros_app/miembro_form.html", context)
 
     def post(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
-
-        # Siempre tomamos la edad mínima desde la configuración
         edad_minima = get_edad_minima_miembro_oficial()
 
-        # ⚠️ Guardamos el estado ANTES de editar para saber si ahora se le da salida
         salida_antes = (not miembro.activo and miembro.fecha_salida is not None)
 
         # --- SI VIENE DEL BOTÓN "AGREGAR FAMILIAR" ---
@@ -731,7 +727,6 @@ class MiembroUpdateView(View):
                     for e in errs:
                         messages.error(request, f"{field}: {e}")
 
-            # Volver a la pestaña 'familiares'
             return redirect(f"{request.path}?tab=familiares")
 
         # --- GUARDADO NORMAL DEL MIEMBRO ---
@@ -740,7 +735,7 @@ class MiembroUpdateView(View):
         if form.is_valid():
             miembro_editado = form.save(commit=False)
 
-            # Lógica de edad: si es menor de la edad mínima oficial, se guarda SIN estado de miembro
+            # Lógica de edad mínima
             edad = None
             if miembro_editado.fecha_nacimiento:
                 hoy = date.today()
@@ -751,7 +746,7 @@ class MiembroUpdateView(View):
 
             if edad is not None and edad < edad_minima:
                 if miembro_editado.estado_miembro:
-                    miembro_editado.estado_miembro = ""  # sin estado
+                    miembro_editado.estado_miembro = ""
                     messages.info(
                         request,
                         (
@@ -760,55 +755,70 @@ class MiembroUpdateView(View):
                         ),
                     )
 
-            # 🔹 Guardamos los cambios
             miembro_editado.save()
 
-            # ⚠️ Detectar si AHORA se le ha dado salida
-            salida_despues = (
-                not miembro_editado.activo
-                and miembro_editado.fecha_salida is not None
-            )
+            # =============================
+            # GUARDAR FAMILIARES (líneas)
+            # =============================
+            ids = request.POST.getlist("familiares_miembro_id[]")
+            tipos = request.POST.getlist("familiares_tipo_relacion[]")
+            vive_list = request.POST.getlist("familiares_vive_junto[]")
+            resp_list = request.POST.getlist("familiares_es_responsable[]")
+            notas_list = request.POST.getlist("familiares_notas[]")
 
-            # Solo creamos notificación si ANTES no estaba de salida y AHORA sí
-            if salida_despues and not salida_antes:
-                # Construimos un mensaje bonito con razón y fecha
-                partes = []
-
-                if getattr(miembro_editado, "razon_salida", None):
-                    partes.append(f"Razón: {miembro_editado.razon_salida}")
-
-                if getattr(miembro_editado, "fecha_salida", None):
-                    partes.append(
-                        "Fecha: "
-                        + miembro_editado.fecha_salida.strftime("%d/%m/%Y")
+            if ids:
+                if not (len(ids) == len(tipos) == len(vive_list) == len(resp_list) == len(notas_list)):
+                    messages.error(request, "No se pudieron procesar los familiares: datos incompletos.")
+                else:
+                    existentes = set(
+                        MiembroRelacion.objects
+                        .filter(miembro=miembro_editado)
+                        .values_list("familiar_id", flat=True)
                     )
 
-                mensaje = " | ".join(partes) or "Se ha registrado la salida de este miembro."
+                    creados = 0
+                    for i in range(len(ids)):
+                        try:
+                            familiar_id = int(ids[i])
+                        except (TypeError, ValueError):
+                            continue
 
-                # Intentamos construir la URL del detalle para que la notificación sea clicable
-                try:
-                    detalle_path = reverse("miembros_app:detalle", args=[miembro_editado.pk])
-                except Exception:
-                    detalle_path = None
+                        if familiar_id == miembro_editado.pk or familiar_id in existentes:
+                            continue
 
+                        MiembroRelacion.objects.create(
+                            miembro=miembro_editado,
+                            familiar_id=familiar_id,
+                            tipo_relacion=tipos[i] or "otro",
+                            vive_junto=(vive_list[i] == "1"),
+                            es_responsable=(resp_list[i] == "1"),
+                            notas=(notas_list[i] or "").strip(),
+                        )
+                        existentes.add(familiar_id)
+                        creados += 1
+
+                    if creados:
+                        messages.success(request, f"Se añadieron {creados} familiar(es).")
+
+            salida_despues = (not miembro_editado.activo and miembro_editado.fecha_salida is not None)
+
+            if (not salida_antes) and salida_despues:
                 try:
                     crear_notificacion(
-                        usuario=request.user,
-                        titulo=f"Salida de miembro: {miembro_editado.nombres} {miembro_editado.apellidos}",
-                        mensaje=mensaje,
-                        # Le pasamos el path directo; si reverse falla dentro del util,
-                        # se guardará tal cual.
-                        url_name=detalle_path,
+                        request.user,
+                        titulo="Miembro dado de salida",
+                        mensaje=f"Se ha dado salida al miembro {miembro_editado.nombres} {miembro_editado.apellidos}.",
+                        url_name="miembros_app:detalle",
+                        kwargs={"pk": miembro_editado.pk},
                         tipo="warning",
                     )
                 except Exception:
-                    # No rompemos el guardado aunque falle la notificación
                     pass
 
             messages.success(request, "Miembro actualizado correctamente.")
             return redirect("miembros_app:lista")
 
-        # Si hay errores, volvemos a cargar el formulario con la lista filtrada
+        # Si hay errores, recargar pantalla
         familiares_qs = (
             MiembroRelacion.objects
             .filter(miembro=miembro)
