@@ -800,63 +800,65 @@ def transferencia_detalle(request, pk):
 
 @login_required
 def transferencia_anular(request, pk):
-    transferencia = get_object_or_404(MovimientoFinanciero, pk=pk)
+    """
+    Anula una transferencia completa (ambos movimientos).
+    Usa la plantilla unificada de anulación con estilo Odoo.
+    """
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
 
-    if not transferencia.es_transferencia:
+    # Validar que sea transferencia
+    if not movimiento.es_transferencia:
         messages.error(request, "Este movimiento no es una transferencia.")
         return redirect("finanzas_app:movimientos_listado")
 
-    try:
-        movimiento_par = transferencia.get_transferencia_par()
-    except Exception:
-        movimiento_par = None
-
-    if transferencia.estado == "anulado":
-        messages.warning(request, "Esta transferencia ya está anulada.")
+    # Obtener el par
+    movimiento_par = movimiento.get_transferencia_par()
+    if not movimiento_par:
+        messages.error(request, "No se encontró el movimiento vinculado de esta transferencia.")
         return redirect("finanzas_app:movimientos_listado")
+
+    # Determinar envío y recepción
+    if movimiento.tipo == "egreso":
+        mov_envio = movimiento
+        mov_recepcion = movimiento_par
+    else:
+        mov_envio = movimiento_par
+        mov_recepcion = movimiento
+
+    # Si ya está anulada (con que uno lo esté, consideramos la transferencia anulada)
+    if mov_envio.estado == "anulado" or mov_recepcion.estado == "anulado":
+        messages.warning(request, "Esta transferencia ya está anulada.")
+        return redirect("finanzas_app:transferencia_detalle", pk=mov_envio.pk)
+
+    back_url = redirect("finanzas_app:transferencia_detalle", pk=mov_envio.pk).url
 
     if request.method == "POST":
         motivo = (request.POST.get("motivo") or "").strip()
+
         if not motivo:
             messages.error(request, "Debes indicar el motivo de la anulación.")
-            return redirect("finanzas_app:transferencia_anular", pk=pk)
-
-        # anular ambos (si existe el par)
-        transferencia.estado = "anulado"
-        transferencia.motivo_anulacion = motivo
-        transferencia.anulado_por = request.user
-        transferencia.anulado_en = timezone.now()
-        transferencia.save()
-
-        if movimiento_par:
-            movimiento_par.estado = "anulado"
-            movimiento_par.motivo_anulacion = motivo
-            movimiento_par.anulado_por = request.user
-            movimiento_par.anulado_en = timezone.now()
-            movimiento_par.save()
-
-        messages.success(request, "Transferencia anulada correctamente.")
-        return redirect("finanzas_app:movimientos_listado")
-
-    # calcular origen/destino para mostrarlo bonito
-    if movimiento_par:
-        if transferencia.tipo == "egreso":
-            cuenta_origen = transferencia.cuenta.nombre
-            cuenta_destino = movimiento_par.cuenta.nombre
         else:
-            cuenta_origen = movimiento_par.cuenta.nombre
-            cuenta_destino = transferencia.cuenta.nombre
-    else:
-        cuenta_origen = "—"
-        cuenta_destino = "—"
+            # Anular ambos movimientos (misma auditoría)
+            for mov in (mov_envio, mov_recepcion):
+                mov.estado = "anulado"
+                # Si estos campos existen en tu modelo, se guardan:
+                if hasattr(mov, "motivo_anulacion"):
+                    mov.motivo_anulacion = motivo
+                if hasattr(mov, "anulado_por"):
+                    mov.anulado_por = request.user
+                if hasattr(mov, "fecha_anulacion"):
+                    mov.fecha_anulacion = timezone.now()
+                mov.save()
+
+            messages.success(request, "Transferencia anulada correctamente.")
+            return redirect("finanzas_app:transferencia_detalle", pk=mov_envio.pk)
 
     context = {
         "modo": "transferencia",
-        "transferencia": transferencia,
-        "movimiento_par": movimiento_par,
-        "cuenta_origen": cuenta_origen,
-        "cuenta_destino": cuenta_destino,
-        "back_url": reverse("finanzas_app:transferencia_detalle", kwargs={"pk": transferencia.pk}),
+        "transferencia": mov_envio,  # usamos el EGRESO como “cabecera” visual
+        "cuenta_origen": mov_envio.cuenta.nombre,
+        "cuenta_destino": mov_recepcion.cuenta.nombre,
+        "back_url": back_url,
     }
     return render(request, "finanzas_app/anulacion_confirmar.html", context)
 
