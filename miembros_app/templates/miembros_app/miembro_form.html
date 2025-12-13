@@ -570,25 +570,62 @@
         
         <div class="odoo-tab-grid">
             
-            <div class="odoo-field">
-                <label class="odoo-label">Buscar Miembro</label>
-                <div class="odoo-field-stack">
-                    <input
-                        type="text"
-                        id="familiar_search"
-                        class="odoo-input"
-                        placeholder="Escribe para filtrar..."
-                    >
-                    <select name="familiar" id="id_familiar" class="odoo-input" size="4" style="margin-top: 4px; border-bottom: none; background: #fff;">
-                        <option value="">-- Selecciona de la lista --</option>
-                        {% for m in todos_miembros %}
-                            {% if m.pk != miembro.pk %}
-                                <option value="{{ m.pk }}">{{ m.nombres }} {{ m.apellidos }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
+<div class="odoo-field-row">
+  <label>Buscar miembro</label>
+
+  <div class="odoo-field-value autocomplete-wrapper" data-autocomplete-id="id_familiar_miembro">
+    <!-- Campo hidden -->
+    <input type="hidden" id="id_familiar_miembro" name="familiar_miembro" value="">
+
+    <!-- Contenedor input + chip (MISMO estilo que ingreso) -->
+    <div class="autocomplete-field">
+      <div class="autocomplete-chip" style="display:none;">
+        <span class="chip-avatar">M</span>
+        <span class="chip-text">
+          <span class="chip-name"></span>
+          <span class="chip-code"></span>
+        </span>
+        <button type="button" class="chip-remove" title="Quitar">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <input
+        type="text"
+        class="autocomplete-search odoo-input"
+        placeholder="Escriba para buscar..."
+        autocomplete="off"
+        data-endpoint="{% url 'core:api_buscar_miembros' %}"
+      />
+
+      <button type="button" class="autocomplete-clear-btn" style="display:none;"></button>
+    </div>
+
+    <!-- Dropdown -->
+    <div class="autocomplete-dropdown">
+      <ul class="autocomplete-list"></ul>
+
+      <div class="autocomplete-loading" style="display:none;">
+        <span class="material-icons spinner">sync</span>
+        Buscando...
+      </div>
+
+      <div class="autocomplete-empty" style="display:none;">
+        <span class="material-icons">person_search</span>
+        No se encontraron miembros
+      </div>
+    </div>
+
+    <!-- Mantengo este bloque para el JS, pero lo ocultamos porque usaremos CHIP -->
+    <div class="autocomplete-selected" style="display:none;">
+      <strong class="selected-name"></strong>
+      <span class="selected-codigo"></span>
+      <button type="button" class="selected-remove">×</button>
+    </div>
+  </div>
+</div>
+
+
 
             <div class="odoo-field">
                 <label class="odoo-label">Relación</label>
@@ -1616,7 +1653,117 @@ select.odoo-input {
 #id_familiar option:hover {
     background-color: #e9ecef;
 }
+}/* ================================
+   AUTOCOMPLETE – ESTILO INGRESO
+   ================================ */
+
+.autocomplete-wrapper {
+    position: relative;
+    width: 100%;
 }
+
+.autocomplete-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.autocomplete-search {
+    width: 100%;
+}
+
+.autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,.08);
+    z-index: 1000;
+}
+
+.autocomplete-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.autocomplete-item {
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.autocomplete-item:hover {
+    background: #f3f4f6;
+}
+
+.autocomplete-item-main {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 500;
+}
+
+.autocomplete-item-codigo {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.autocomplete-item-meta {
+    margin-top: 2px;
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.autocomplete-loading,
+.autocomplete-empty {
+    padding: 14px;
+    font-size: 13px;
+    color: #6b7280;
+    text-align: center;
+}
+
+/* Selección (tarjeta) */
+.autocomplete-selected {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px dashed #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+}
+
+.autocomplete-selected .selected-name {
+    font-weight: 600;
+}
+
+.autocomplete-selected .selected-codigo {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.autocomplete-selected .selected-remove {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    color: #9ca3af;
+}
+
+.autocomplete-selected .selected-remove:hover {
+    color: #ef4444;
+}
+
 </style>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
@@ -1903,5 +2050,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFamiliarSearch();
 });
 </script>
+{% load static %}
+<script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
+
 
 {% endblock %}
