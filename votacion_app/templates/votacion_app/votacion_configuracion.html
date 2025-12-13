@@ -1,1048 +1,1432 @@
 {% extends "core/base.html" %}
 
-{% block title %}{{ titulo }} · Soid_Tf_2{% endblock %}
+{% block title %}{{ titulo }}{% endblock %}
 
 {% block content %}
 
-<!-- ===========================
-     ENCABEZADO
-=========================== -->
-<section class="page-header">
-    <div>
-        <h1 class="page-title">{{ titulo }}</h1>
-        <p class="page-subtitle">
-            Configura el tipo de elección, las reglas, las vueltas y el quórum de forma organizada.
-        </p>
-    </div>
+<form method="post" class="odoo-form" novalidate>
+    {% csrf_token %}
 
-    <div class="page-header-actions">
-        {% if not es_nueva and votacion %}
-
-            <!-- Duplicar -->
-            <form method="post"
-                  action="{% url 'votacion:duplicar_votacion' votacion.pk %}"
-                  style="display:inline-block; margin-right: 8px;">
-                {% csrf_token %}
-                <button type="submit" class="btn-secondary">
-                    <span class="material-icons" style="font-size: 18px;">content_copy</span>
-                    Duplicar
-                </button>
-            </form>
-
-            <!-- Eliminar -->
-            <form method="post"
-                  action="{% url 'votacion:eliminar_votacion' votacion.pk %}"
-                  onsubmit="return confirm('¿Seguro que deseas eliminar esta elección?')"
-                  style="display:inline-block; margin-right: 8px;">
-                {% csrf_token %}
-                <button type="submit" class="btn-danger">
-                    <span class="material-icons" style="font-size: 18px;">delete</span>
-                    Eliminar
-                </button>
-            </form>
-        {% endif %}
-
-        <!-- Volver -->
-        <a href="{% url 'votacion:lista_votaciones' %}" class="btn-secondary">
-            <span class="material-icons" style="font-size: 18px;">arrow_back</span>
-            Volver
-        </a>
-    </div>
-</section>
-
-<section class="votacion-config-wrapper">
-
-    <!-- MENSAJES -->
-    {% if messages %}
-        <div class="messages-container" style="margin-bottom:10px;">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
+    <!-- ══════════════════════════════════════════════════════════════════════════
+         BARRA SUPERIOR (Control Bar)
+         ══════════════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'votacion:lista_votaciones' %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                Votaciones
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">
+                {% if es_nueva %}Nueva{% else %}{{ votacion.nombre|truncatechars:30 }}{% endif %}
+            </span>
+            
+            {% if es_nueva %}
+            <span class="odoo-new-badge">Nuevo</span>
+            {% endif %}
         </div>
-    {% endif %}
-
-    <div class="votacion-card">
-
-        <!-- ENCABEZADO INTERNO -->
-<div class="votacion-card-header">
-    <div>
-        <h2>Ficha de configuración</h2>
-        <p class="votacion-card-subtitle">
-            Ajusta primero la configuración general. Luego revisa quórum, fechas y vueltas.
-        </p>
-    </div>
-
-    {% if votacion %}
-        <div class="estado-wrapper">
-            <!-- PILL SOLO LECTURA DEL ESTADO -->
-            <div class="votacion-status-pill">
-                <span class="status-dot
-                    {% if votacion.estado == 'ABIERTA' %} status-open
-                    {% elif votacion.estado == 'CERRADA' %} status-closed
-                    {% else %} status-draft
-                    {% endif %}
-                "></span>
+        
+        <div class="odoo-control-right">
+            {% if votacion %}
+            <div class="odoo-status-pill {% if votacion.estado == 'ABIERTA' %}odoo-status-success{% elif votacion.estado == 'CERRADA' %}odoo-status-muted{% else %}odoo-status-warning{% endif %}">
+                <span class="odoo-status-dot"></span>
                 {{ votacion.get_estado_display }}
             </div>
-
-            <!-- BOTONES DE CAMBIO DE ESTADO -->
-            <div class="estado-actions">
-                {% if votacion.estado == 'BORRADOR' %}
-                    <form method="post" action="{% url 'votacion:cambiar_estado' votacion.pk %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="nuevo_estado" value="ABIERTA">
-                        <button type="submit" class="btn-secondary btn-xs">
-                            Abrir votación
-                        </button>
-                    </form>
-                {% elif votacion.estado == 'ABIERTA' %}
-                    <form method="post" action="{% url 'votacion:cambiar_estado' votacion.pk %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="nuevo_estado" value="CERRADA">
-                        <button type="submit" class="btn-secondary btn-xs">
-                            Cerrar votación
-                        </button>
-                    </form>
-                {% elif votacion.estado == 'CERRADA' %}
-                    <form method="post" action="{% url 'votacion:cambiar_estado' votacion.pk %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="nuevo_estado" value="BORRADOR">
-                        <button type="submit" class="btn-secondary btn-xs">
-                            Volver a borrador
-                        </button>
-                    </form>
-                {% endif %}
+            {% else %}
+            <div class="odoo-status-pill odoo-status-warning">
+                <span class="odoo-status-dot"></span>
+                Nueva (borrador)
             </div>
+            {% endif %}
         </div>
-    {% else %}
-        <!-- Cuando aún no existe (creación) -->
-        <div class="votacion-status-pill">
-            <span class="status-dot status-draft"></span>
-            Nueva (borrador)
-        </div>
-    {% endif %}
-</div>
+    </div>
 
-
-        <!-- TABS -->
-<div class="votacion-tabs-bar">
-    <button type="button"
-            class="votacion-tab-btn active"
-            onclick="openVotacionTab('tab-config', this)">
-        Configuración general
-    </button>
-
-    <button type="button"
-            class="votacion-tab-btn"
-            onclick="openVotacionTab('tab-quorum', this)">
-        Quórum y asistencia
-    </button>
-
-    <button type="button"
-            class="votacion-tab-btn"
-            onclick="openVotacionTab('tab-fechas', this)">
-        Fechas y opciones
-    </button>
-
-    <button type="button"
-            class="votacion-tab-btn"
-            onclick="openVotacionTab('tab-cargar', this)">
-        Cargar candidatos
-    </button>
-
-    <button type="button"
-            class="votacion-tab-btn"
-            onclick="openVotacionTab('tab-vueltas', this)">
-        Vueltas
-    </button>   
-</div>
-
-
+    <!-- ══════════════════════════════════════════════════════════════════════════
+         CONTENIDO PRINCIPAL
+         ══════════════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-form-container">
         
-
-        <div class="votacion-layout">
-            <!-- CONTENIDO PRINCIPAL -->
-            <div class="votacion-main">
-
-                <!-- ========== FORM PRINCIPAL (Config + Quórum + Fechas) ========== -->
-                <form method="post" novalidate>
-                    {% csrf_token %}
-
-                    <!-- BARRA SUPERIOR DE GUARDAR -->
-                    <div class="form-actions form-actions-top">
-                        <div class="form-actions-main">
-                            <button type="submit"
-                                    name="accion"
-                                    value="guardar_votacion"
-                                    class="btn-primary"
-                                    style="justify-content:center; max-width:260px;">
-                                <span class="material-icons" style="font-size: 18px;">save</span>
-                                Guardar configuración
-                            </button>
-                            {% if es_nueva %}
-                                <p class="form-actions-help">
-                                    Guarda al menos una vez para poder gestionar las
-                                    <strong>vueltas</strong>.
-                                </p>
-                            {% else %}
-                                <p class="form-actions-help">
-                                    Puedes actualizar los datos generales y luego seguir con las vueltas.
-                                </p>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- ========== TAB: CONFIGURACIÓN GENERAL ========== -->
-                    <div id="tab-config" class="votacion-tab-content" style="display:block;">
-                        <h3 class="tab-title">Configuración general</h3>
-                        <p class="tab-description">
-                            Define el nombre de la elección, su tipo, estado y regla de ganador.
-                        </p>
-
-                        <!-- BLOQUE 1: DATOS BÁSICOS -->
-                        <div class="form-section">
-                            <h4 class="tab-subtitle">Datos básicos</h4>
-                            <div class="form-grid">
-                            <div class="form-grid grid-2">
-                                <div class="form-field">
-                                    <label>Nombre de la elección</label>
-                                    {{ form.nombre }}
-                                </div>
-
-                                <div class="form-field">
-                                    <label>Tipo de votación</label>
-                                    {{ form.tipo }}
-                                </div>
-                            </div>
-
-
-                                <div class="form-field">
-                                    <label for="id_regla_ganador" style="display:flex; align-items:center; gap:6px;">
-                                        Regla de votación
-                                        <a href="{% url 'votacion:documentacion_sistemas_votacion' %}"
-                                           class="info-badge"
-                                           target="_blank"
-                                           title="Ver explicación de los sistemas de votación">
-                                            ⓘ
-                                        </a>
-                                    </label>
-                                    {{ form.regla_ganador }}
-                                </div>
-
-                                <div class="form-field">
-                                    <label>Número de cargos</label>
-                                    {{ form.numero_cargos }}
-                                    <div class="field-help">Ej.: 3 diáconos, 2 líderes…</div>
-                                </div>
-
-                                {% if form.edad_minima_candidato %}
-                                <div class="form-field">
-                                    <label>Edad mínima del candidato</label>
-                                    {{ form.edad_minima_candidato }}
-                                    <div class="field-help">Ej.: 18 años</div>
-                                </div>
-                                {% endif %}
-
-                                <div class="form-field form-field-full">
-                                    <label>Observaciones internas</label>
-                                    {{ form.observaciones_internas }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ========== TAB: QUÓRUM Y ASISTENCIA (VERSIÓN SIMPLE) ========== -->
-                    <div id="tab-quorum" class="votacion-tab-content" style="display:none;">
-                        <h3 class="tab-title">Quórum y asistencia</h3>
-                        <p class="tab-description">
-                            Indica cuántos pueden votar, cuántos están presentes y el mínimo de votos requeridos.
-                        </p>
-
-                        <div class="quorum-simple-grid">
-
-                            <!-- TARJETA 1: HABILITADOS -->
-                            <div class="q-card q-card-highlight">
-                                <div class="q-card-label">Miembros con derecho a voto</div>
-                                <div class="q-card-value">
-                                    {{ form.total_habilitados.value|default:"—" }}
-                                </div>
-                                <div class="q-card-help">
-                                    Miembros oficiales activos que cumplen la edad mínima del sistema.
-                                </div>
-
-                                <!-- Campo real oculto para el POST -->
-                                <div style="display:none;">
-                                    {{ form.total_habilitados }}
-                                </div>
-                            </div>
-
-                            <!-- TARJETA 2: PRESENTES -->
-                            <div class="q-card">
-                                <div class="q-card-label">Miembros presentes hoy</div>
-                                <div class="q-card-field">
-                                    {{ form.miembros_presentes }}
-                                </div>
-                                <div class="q-card-help">
-                                    Cuántos de los habilitados están físicamente presentes en el local.
-                                </div>
-                            </div>
-
-                            <!-- TARJETA 3: REGLA DE QUÓRUM -->
-                            <div class="q-card q-card-full">
-                                <div class="q-card-header-row">
-                                    <div class="q-card-title">Regla de quórum</div>
-                                    <div class="q-card-pill">Define la base y el mínimo requerido</div>
-                                </div>
-
-                                <div class="q-card-grid">
-                                    <div class="form-field">
-                                        <label>Base</label>
-                                        {{ form.base_quorum }}
-                                        <div class="field-help">
-                                            Habilitados = todos los que pueden votar.  
-                                            Presentes = solo los que están hoy.
-                                        </div>
-                                    </div>
-
-                                    <div class="form-field">
-                                        <label>Tipo</label>
-                                        {{ form.tipo_quorum }}
-                                        <div class="field-help">
-                                            Porcentaje o cantidad fija de personas.
-                                        </div>
-                                    </div>
-
-                                    <div class="form-field">
-                                        <label>Valor</label>
-                                        {{ form.valor_quorum }}
-                                        <div class="field-help">
-                                            Si es porcentaje, número entre 1 y 100.  
-                                            Si es cantidad, cuántas personas mínimo.
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="q-card-result-row">
-                                    <div class="q-card-result-label">Votos mínimos requeridos</div>
-                                    <div class="q-card-result-field">
-                                        {{ form.votos_minimos_requeridos }}
-                                    </div>
-                                    <div class="q-card-result-help">
-                                        El sistema calculará aquí el mínimo de votos según la base y el valor configurados.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ========== TAB: FECHAS Y OPCIONES ADICIONALES ========== -->
-                    <div id="tab-fechas" class="votacion-tab-content" style="display:none;">
-                        <h3 class="tab-title">Fechas y opciones adicionales</h3>
-                        <p class="tab-description">
-                            Define el periodo de la elección y algunas opciones adicionales.
-                        </p>
-
-                        <div class="form-section">
-                            <div class="form-grid">
-                                <div class="form-field">
-                                    <label>Fecha inicio</label>
-                                    {{ form.fecha_inicio }}
-                                </div>
-
-                                <div class="form-field">
-                                    <label>Fecha cierre</label>
-                                    {{ form.fecha_fin }}
-                                </div>
-
-                                <div class="form-field">
-                                    <label>{{ form.permite_empates }} Permitir empates</label>
-                                </div>
-
-                                <div class="form-field">
-                                    <label>{{ form.permite_voto_remoto }} Permitir voto remoto</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-
-                <!-- ========== TAB: CARGAR CANDIDATOS ========== -->
-<div id="tab-cargar" class="votacion-tab-content" style="display:none;">
-
-    <h3 class="tab-title">Cargar candidatos desde una lista</h3>
-
-    <p class="tab-description">
-        Selecciona una lista de candidatos previamente creada y confirmada.
-        Todos los miembros de esa lista se cargarán como candidatos en esta elección.
-    </p>
-
-    {% if not votacion %}
-        <p class="section-help">
-            Guarda primero la votación para habilitar esta sección.
-        </p>
-    {% else %}
-
-        <form method="post" action="{% url 'votacion:cargar_candidatos_desde_lista' votacion.pk %}">
-            {% csrf_token %}
-
-            <div class="form-grid grid-2" style="margin-top:12px;">
-                <div class="form-field">
-                    <label for="id_lista_candidatos">Lista de candidatos</label>
-                    <select name="lista_candidatos_id" id="id_lista_candidatos">
-                        <option value="">Selecciona una lista…</option>
-                        {% for lista in listas_candidatos_disponibles %}
-                            <option value="{{ lista.pk }}">
-                                {{ lista.nombre }} — {{ lista.items.count }} miembros
-                            </option>
-                        {% empty %}
-                            <option value="">No hay listas confirmadas disponibles</option>
-                        {% endfor %}
-                    </select>
-                    <div class="field-help">
-                        Solo se muestran listas confirmadas.
+        <!-- ÁREA PRINCIPAL DEL FORMULARIO -->
+        <div class="odoo-form-main">
+            
+            <!-- ─────────────────────────────────────────────────────────────────────
+                 HEADER: Icono + Título + Info principal
+                 ───────────────────────────────────────────────────────────────────── -->
+            <div class="odoo-form-header">
+                
+                <!-- Icono de votación -->
+                <div class="odoo-avatar-section">
+                    <div class="odoo-avatar odoo-avatar-votacion">
+                        <span class="material-icons">how_to_vote</span>
                     </div>
                 </div>
 
-                <div class="form-field" style="align-self:flex-end;">
-                    <button type="submit" class="btn-secondary">
-                        <span class="material-icons" style="font-size:18px;">download</span>
-                        Cargar lista
+                <!-- Info principal -->
+                <div class="odoo-header-info">
+                    
+                    <!-- Tipo de votación -->
+                    <div class="odoo-radio-group">
+                        {% for radio in form.tipo %}
+                        <label class="odoo-radio">
+                            {{ radio.tag }}
+                            <span>{{ radio.choice_label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Nombre grande -->
+                    <div class="odoo-name-field">
+                        <input type="text" 
+                               name="nombre" 
+                               id="{{ form.nombre.id_for_label }}"
+                               value="{{ form.nombre.value|default:'' }}"
+                               placeholder="Nombre de la elección"
+                               class="odoo-name-input {% if form.nombre.errors %}odoo-input-error{% endif %}"
+                               required>
+                    </div>
+                    {% if form.nombre.errors %}
+                    <span class="odoo-error-inline">{{ form.nombre.errors.0 }}</span>
+                    {% endif %}
+
+                    <!-- Campos rápidos -->
+                    <div class="odoo-quick-fields">
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">event</span>
+                            <input type="date" 
+                                   name="fecha_inicio" 
+                                   id="{{ form.fecha_inicio.id_for_label }}"
+                                   value="{{ form.fecha_inicio.value|default:'' }}"
+                                   title="Fecha inicio">
+                        </div>
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">event_busy</span>
+                            <input type="date" 
+                                   name="fecha_fin" 
+                                   id="{{ form.fecha_fin.id_for_label }}"
+                                   value="{{ form.fecha_fin.value|default:'' }}"
+                                   title="Fecha cierre">
+                        </div>
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">people</span>
+                            <input type="number" 
+                                   name="numero_cargos" 
+                                   id="{{ form.numero_cargos.id_for_label }}"
+                                   value="{{ form.numero_cargos.value|default:'1' }}"
+                                   placeholder="Cargos"
+                                   min="1"
+                                   style="width: 80px;">
+                            <span class="odoo-quick-label">cargos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────────────────────────────────────────────
+                 TABS
+                 ───────────────────────────────────────────────────────────────────── -->
+            <div class="odoo-tabs-section">
+                <div class="odoo-tabs-bar">
+                    <button type="button" class="odoo-tab active" data-tab="config">
+                        Configuración
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="quorum">
+                        Quórum
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="opciones">
+                        Opciones
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="candidatos">
+                        Candidatos
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="vueltas">
+                        Vueltas
                     </button>
                 </div>
-            </div>
-        </form>
 
-    {% endif %}
-</div>
+                <div class="odoo-tabs-content">
 
+                    <!-- ═══════════════════════════════════════════════════════════
+                         TAB: CONFIGURACIÓN GENERAL
+                         ═══════════════════════════════════════════════════════════ -->
+                    <div id="tab-config" class="odoo-tab-panel active">
+                        <div class="odoo-tab-grid">
+                            
+                            <div class="odoo-field">
+                                <label class="odoo-label">
+                                    Regla de votación
+                                    <a href="{% url 'votacion:documentacion_sistemas_votacion' %}"
+                                       class="odoo-info-link"
+                                       target="_blank"
+                                       title="Ver explicación">ⓘ</a>
+                                </label>
+                                <div class="odoo-field-input">
+                                    {{ form.regla_ganador }}
+                                </div>
+                            </div>
+                            {% if form.regla_ganador.errors %}
+                            <div class="odoo-field-error">{{ form.regla_ganador.errors.0 }}</div>
+                            {% endif %}
 
-                <!-- ========== TAB: VUELTAS ========== -->
-                <div id="tab-vueltas" class="votacion-tab-content" style="display:none;">
-                    <h3 class="tab-title">Vueltas de esta elección</h3>
-                    <p class="tab-description">
-                        Cada vuelta representa una ronda de votación. Puedes agregar nuevas vueltas según las reglas definidas.
-                    </p>
+                            {% if form.edad_minima_candidato %}
+                            <div class="odoo-field">
+                                <label class="odoo-label">Edad mínima candidato</label>
+                                <div class="odoo-field-input">
+                                    {{ form.edad_minima_candidato }}
+                                </div>
+                            </div>
+                            {% endif %}
 
-                    {% if es_nueva or not votacion %}
-                        <p class="section-help">
-                            Primero debes <strong>guardar la configuración general</strong> de la votación
-                            usando el botón <strong>“Guardar configuración”</strong> de arriba para poder gestionar las vueltas.
-                        </p>
-                    {% else %}
-                        <div class="form-actions" style="justify-content:flex-end; margin-bottom:10px;">
-                            <form method="post" action="{% url 'votacion:agregar_ronda' votacion.pk %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-secondary">
-                                    <span class="material-icons" style="font-size:18px;">add</span>
-                                    Nueva vuelta
+                            <div class="odoo-field odoo-field-full">
+                                <label class="odoo-label">Observaciones internas</label>
+                                <div class="odoo-field-input">
+                                    <textarea name="observaciones_internas" 
+                                              id="{{ form.observaciones_internas.id_for_label }}"
+                                              class="odoo-textarea"
+                                              rows="3"
+                                              placeholder="Notas internas sobre esta elección...">{{ form.observaciones_internas.value|default:'' }}</textarea>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- ═══════════════════════════════════════════════════════════
+                         TAB: QUÓRUM Y ASISTENCIA
+                         ═══════════════════════════════════════════════════════════ -->
+                    <div id="tab-quorum" class="odoo-tab-panel">
+                        
+                        <div class="odoo-quorum-cards">
+                            
+                            <!-- Card: Habilitados -->
+                            <div class="odoo-quorum-card odoo-quorum-highlight">
+                                <div class="odoo-quorum-label">Miembros con derecho a voto</div>
+                                <div class="odoo-quorum-value">{{ form.total_habilitados.value|default:"—" }}</div>
+                                <div class="odoo-quorum-help">Miembros oficiales activos que cumplen la edad mínima.</div>
+                                <div style="display:none;">{{ form.total_habilitados }}</div>
+                            </div>
+
+                            <!-- Card: Presentes -->
+                            <div class="odoo-quorum-card">
+                                <div class="odoo-quorum-label">Miembros presentes hoy</div>
+                                <div class="odoo-quorum-field">
+                                    {{ form.miembros_presentes }}
+                                </div>
+                                <div class="odoo-quorum-help">Cuántos están físicamente presentes.</div>
+                            </div>
+
+                        </div>
+
+                        <!-- Regla de quórum -->
+                        <div class="odoo-subsection">
+                            <div class="odoo-subsection-title">Regla de quórum</div>
+                            
+                            <div class="odoo-tab-grid odoo-grid-3">
+                                <div class="odoo-field">
+                                    <label class="odoo-label">Base</label>
+                                    <div class="odoo-field-input">
+                                        {{ form.base_quorum }}
+                                    </div>
+                                    <span class="odoo-field-hint">Habilitados o presentes</span>
+                                </div>
+
+                                <div class="odoo-field">
+                                    <label class="odoo-label">Tipo</label>
+                                    <div class="odoo-field-input">
+                                        {{ form.tipo_quorum }}
+                                    </div>
+                                    <span class="odoo-field-hint">Porcentaje o cantidad fija</span>
+                                </div>
+
+                                <div class="odoo-field">
+                                    <label class="odoo-label">Valor</label>
+                                    <div class="odoo-field-input">
+                                        {{ form.valor_quorum }}
+                                    </div>
+                                    <span class="odoo-field-hint">Número o porcentaje</span>
+                                </div>
+                            </div>
+
+                            <div class="odoo-quorum-result">
+                                <label class="odoo-label">Votos mínimos requeridos</label>
+                                <div class="odoo-field-input">
+                                    {{ form.votos_minimos_requeridos }}
+                                </div>
+                                <span class="odoo-field-hint">Calculado según la base y el valor configurados.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ═══════════════════════════════════════════════════════════
+                         TAB: OPCIONES ADICIONALES
+                         ═══════════════════════════════════════════════════════════ -->
+                    <div id="tab-opciones" class="odoo-tab-panel">
+                        <div class="odoo-tab-grid">
+                            
+                            <div class="odoo-field-checkbox">
+                                <label>
+                                    {{ form.permite_empates }}
+                                    <span>Permitir empates</span>
+                                </label>
+                            </div>
+
+                            <div class="odoo-field-checkbox">
+                                <label>
+                                    {{ form.permite_voto_remoto }}
+                                    <span>Permitir voto remoto</span>
+                                </label>
+                            </div>
+
+                        </div>
+
+                        {% if votacion %}
+                        <div class="odoo-subsection">
+                            <div class="odoo-subsection-title">Cambiar estado</div>
+                            <div class="odoo-estado-actions">
+                                {% if votacion.estado == 'BORRADOR' %}
+                                <button type="submit" formaction="{% url 'votacion:cambiar_estado' votacion.pk %}" name="nuevo_estado" value="ABIERTA" class="odoo-btn odoo-btn-success">
+                                    <span class="material-icons">play_arrow</span>
+                                    Abrir votación
                                 </button>
-                            </form>
+                                {% elif votacion.estado == 'ABIERTA' %}
+                                <button type="submit" formaction="{% url 'votacion:cambiar_estado' votacion.pk %}" name="nuevo_estado" value="CERRADA" class="odoo-btn odoo-btn-secondary">
+                                    <span class="material-icons">stop</span>
+                                    Cerrar votación
+                                </button>
+                                {% elif votacion.estado == 'CERRADA' %}
+                                <button type="submit" formaction="{% url 'votacion:cambiar_estado' votacion.pk %}" name="nuevo_estado" value="BORRADOR" class="odoo-btn odoo-btn-secondary">
+                                    <span class="material-icons">edit</span>
+                                    Volver a borrador
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- ═══════════════════════════════════════════════════════════
+                         TAB: CARGAR CANDIDATOS
+                         ═══════════════════════════════════════════════════════════ -->
+                    <div id="tab-candidatos" class="odoo-tab-panel">
+                        {% if not votacion %}
+                        <div class="odoo-empty-state">
+                            <span class="material-icons">info</span>
+                            <p>Guarda primero la votación para habilitar esta sección.</p>
+                        </div>
+                        {% else %}
+                        <div class="odoo-tab-grid">
+                            <div class="odoo-field">
+                                <label class="odoo-label">Lista de candidatos</label>
+                                <div class="odoo-field-input">
+                                    <select name="lista_candidatos_id" id="id_lista_candidatos" class="odoo-select">
+                                        <option value="">Selecciona una lista…</option>
+                                        {% for lista in listas_candidatos_disponibles %}
+                                        <option value="{{ lista.pk }}">{{ lista.nombre }} — {{ lista.items.count }} miembros</option>
+                                        {% empty %}
+                                        <option value="">No hay listas confirmadas</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <span class="odoo-field-hint">Solo se muestran listas confirmadas.</span>
+                            </div>
+
+                            <div class="odoo-field" style="align-self: flex-end;">
+                                <button type="submit" formaction="{% url 'votacion:cargar_candidatos_desde_lista' votacion.pk %}" class="odoo-btn odoo-btn-secondary">
+                                    <span class="material-icons">download</span>
+                                    Cargar lista
+                                </button>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- ═══════════════════════════════════════════════════════════
+                         TAB: VUELTAS
+                         ═══════════════════════════════════════════════════════════ -->
+                    <div id="tab-vueltas" class="odoo-tab-panel">
+                        {% if es_nueva or not votacion %}
+                        <div class="odoo-empty-state">
+                            <span class="material-icons">info</span>
+                            <p>Primero guarda la configuración general para gestionar las vueltas.</p>
+                        </div>
+                        {% else %}
+                        
+                        <div class="odoo-add-line" style="margin-bottom: 16px;">
+                            <button type="submit" formaction="{% url 'votacion:agregar_ronda' votacion.pk %}" class="odoo-btn odoo-btn-secondary">
+                                <span class="material-icons">add</span>
+                                Nueva vuelta
+                            </button>
                         </div>
 
                         {% with votacion.rondas.all as rondas %}
-                            {% if rondas %}
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Nombre</th>
-                                            <th>Estado</th>
-                                            <th>Votos</th>
-                                            <th>Inicio</th>
-                                            <th>Cierre</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for ronda in rondas %}
-                                        <tr>
-                                            <td>{{ ronda.numero }}</td>
-                                            <td>
-                                                {% if ronda.numero == 1 %}
-                                                    Primera vuelta
-                                                {% elif ronda.numero == 2 %}
-                                                    Segunda vuelta
-                                                {% else %}
-                                                    Vuelta {{ ronda.numero }}
-                                                {% endif %}
-                                                {% if ronda.nombre %} - {{ ronda.nombre }}{% endif %}
-                                            </td>
-                                            <td>
-                                                {% if ronda.estado == "ABIERTA" %}
-                                                    <span class="badge-soft badge-soft-success">Abierta</span>
-                                                {% elif ronda.estado == "CERRADA" %}
-                                                    <span class="badge-soft badge-soft-muted">Cerrada</span>
-                                                {% else %}
-                                                    <span class="badge-soft badge-soft-warning">Borrador</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ ronda.votos.count }}</td>
-                                            <td>{{ ronda.fecha_inicio|default:"—" }}</td>
-                                            <td>{{ ronda.fecha_fin|default:"—" }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            {% else %}
-                                <p class="section-help">Aún no hay vueltas registradas.</p>
-                            {% endif %}
+                        {% if rondas %}
+                        <table class="odoo-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nombre</th>
+                                    <th>Estado</th>
+                                    <th>Votos</th>
+                                    <th>Inicio</th>
+                                    <th>Cierre</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ronda in rondas %}
+                                <tr>
+                                    <td>{{ ronda.numero }}</td>
+                                    <td>
+                                        {% if ronda.numero == 1 %}Primera vuelta
+                                        {% elif ronda.numero == 2 %}Segunda vuelta
+                                        {% else %}Vuelta {{ ronda.numero }}{% endif %}
+                                        {% if ronda.nombre %} - {{ ronda.nombre }}{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if ronda.estado == "ABIERTA" %}
+                                        <span class="odoo-badge odoo-badge-success">Abierta</span>
+                                        {% elif ronda.estado == "CERRADA" %}
+                                        <span class="odoo-badge odoo-badge-muted">Cerrada</span>
+                                        {% else %}
+                                        <span class="odoo-badge odoo-badge-warning">Borrador</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ ronda.votos.count }}</td>
+                                    <td>{{ ronda.fecha_inicio|default:"—" }}</td>
+                                    <td>{{ ronda.fecha_fin|default:"—" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="odoo-empty-text">Aún no hay vueltas registradas.</div>
+                        {% endif %}
                         {% endwith %}
-                    {% endif %}
+                        {% endif %}
+                    </div>
+
                 </div>
             </div>
 
-
-            <!-- ASIDE / AYUDA -->
-            <aside class="votacion-aside">
-                <div class="aside-card">
-                    <h4>Consejos rápidos</h4>
-                    <ul>
-                        <li>Primero define <strong>nombre, tipo y regla</strong> en Configuración general.</li>
-                        <li>Luego ajusta el <strong>quórum y la asistencia</strong>.</li>
-                        <li>Configura las <strong>fechas</strong> y opciones como empates o voto remoto.</li>
-                        <li>Después de guardar, pasa a <strong>Vueltas</strong>.</li>
-                    </ul>
-                </div>
-
-                <div class="aside-card">
-                    <h4>Estado de la elección</h4>
-                    <p class="votacion-card-subtitle" style="margin-bottom:6px;">
-                        Usa el estado <strong>Borrador</strong> mientras preparas todo.
-                    </p>
-                    <p class="votacion-card-subtitle">
-                        Cuando todo esté listo, cambia a <strong>Abierta</strong> para empezar la votación.
-                    </p>
-                </div>
-            </aside>
         </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════════════
+             PANEL LATERAL
+             ═══════════════════════════════════════════════════════════════════════ -->
+        <div class="odoo-form-aside">
+            
+            <!-- Botones de acción -->
+            <div class="odoo-aside-actions">
+                <button type="submit" name="accion" value="guardar_votacion" class="odoo-btn-save">
+                    <span class="material-icons">check</span>
+                    Guardar
+                </button>
+                <a href="{% url 'votacion:lista_votaciones' %}" class="odoo-btn-cancel">
+                    Descartar
+                </a>
+            </div>
+
+            {% if not es_nueva and votacion %}
+            <!-- Acciones adicionales -->
+            <div class="odoo-aside-extra">
+                <button type="submit" formaction="{% url 'votacion:duplicar_votacion' votacion.pk %}" class="odoo-btn-link">
+                    <span class="material-icons">content_copy</span>
+                    Duplicar elección
+                </button>
+                <button type="submit" formaction="{% url 'votacion:eliminar_votacion' votacion.pk %}" 
+                        onclick="return confirm('¿Seguro que deseas eliminar esta elección?')"
+                        class="odoo-btn-link odoo-btn-danger">
+                    <span class="material-icons">delete</span>
+                    Eliminar
+                </button>
+            </div>
+            {% endif %}
+
+            <!-- Consejos -->
+            <div class="odoo-aside-tips">
+                <div class="odoo-info-title">
+                    <span class="material-icons">lightbulb</span>
+                    Consejos
+                </div>
+                <ul class="odoo-tips-list">
+                    <li>Define <strong>nombre, tipo y regla</strong> primero.</li>
+                    <li>Ajusta el <strong>quórum</strong> según asistencia.</li>
+                    <li>Configura <strong>fechas</strong> y opciones.</li>
+                    <li>Después de guardar, gestiona las <strong>vueltas</strong>.</li>
+                </ul>
+            </div>
+
+            <!-- Info de estado -->
+            <div class="odoo-aside-info">
+                <div class="odoo-info-title">
+                    <span class="material-icons">info</span>
+                    Estado
+                </div>
+                <div class="odoo-info-content">
+                    <p>Usa <strong>Borrador</strong> mientras preparas.</p>
+                    <p>Cambia a <strong>Abierta</strong> para iniciar.</p>
+                </div>
+            </div>
+
+        </div>
+
     </div>
-</section>
 
-<script>
-    // Mantener scroll
-    if ('scrollRestoration' in history) {
-        history.scrollRestoration = 'manual';
-    }
-    window.addEventListener("beforeunload", function () {
-        localStorage.setItem("scrollPos", window.scrollY);
-    });
-    window.addEventListener("load", function () {
-        const pos = localStorage.getItem("scrollPos");
-        if (pos) window.scrollTo(0, parseInt(pos));
-    });
+</form>
 
-    // TABS
-    function openVotacionTab(tabId, btn) {
-        // Ocultar todas las tabs
-        document.querySelectorAll('.votacion-tab-content').forEach(function (tab) {
-            tab.style.display = 'none';
-        });
-
-        // Quitar active de todos los botones
-        document.querySelectorAll('.votacion-tab-btn').forEach(function (b) {
-            b.classList.remove('active');
-        });
-
-        // Mostrar tab seleccionada
-        const target = document.getElementById(tabId);
-        if (target) {
-            target.style.display = 'block';
-        }
-
-        // Activar botón
-        if (btn) {
-            btn.classList.add('active');
-        } else {
-            // Si viene de ?tab=..., intenta buscar el botón por su onclick
-            document.querySelectorAll('.votacion-tab-btn').forEach(function (b) {
-                const onclick = b.getAttribute('onclick') || "";
-                if (onclick.includes("'" + tabId + "'")) {
-                    b.classList.add('active');
-                }
-            });
-        }
-    }
-
-    // Permitir abrir una pestaña específica con ?tab=...
-    document.addEventListener('DOMContentLoaded', function () {
-        const params = new URLSearchParams(window.location.search);
-        const tabParam = params.get('tab');
-
-        if (tabParam === 'vueltas') {
-            openVotacionTab('tab-vueltas', null);
-        } else if (tabParam === 'quorum') {
-            openVotacionTab('tab-quorum', null);
-        } else if (tabParam === 'fechas') {
-            openVotacionTab('tab-fechas', null);
-        } else {
-            // Por defecto, configuración general
-            openVotacionTab('tab-config', null);
-        }
-    });
-</script>
-
-<script>
-    // ===== CÁLCULO PREVIO DEL QUÓRUM EN EL NAVEGADOR =====
-    function recalcularQuorumPreview() {
-        const baseField = document.getElementById("id_base_quorum");
-        const tipoField = document.getElementById("id_tipo_quorum");
-        const valorField = document.getElementById("id_valor_quorum");
-        const totalHabilitadosField = document.getElementById("id_total_habilitados");
-        const presentesField = document.getElementById("id_miembros_presentes");
-        const votosMinField = document.getElementById("id_votos_minimos_requeridos");
-
-        if (!baseField || !tipoField || !valorField || !votosMinField) {
-            return;
-        }
-
-        const base = baseField.value;
-        const tipo = tipoField.value;
-        const valor = parseFloat((valorField.value || "").replace(",", "."));
-
-        let baseNumero = 0;
-
-        if (base === "HABILITADOS" && totalHabilitadosField) {
-            baseNumero = parseInt(totalHabilitadosField.value || "0", 10);
-        } else if (base === "PRESENTES" && presentesField) {
-            baseNumero = parseInt(presentesField.value || "0", 10);
-        }
-
-        if (!tipo || tipo === "NINGUNO" || isNaN(valor) || baseNumero <= 0) {
-            votosMinField.value = "";
-            return;
-        }
-
-        let resultado = 0;
-
-        if (tipo === "PORCENTAJE") {
-            const porcentaje = Math.max(0, Math.min(valor, 100));
-            resultado = Math.ceil(baseNumero * (porcentaje / 100));
-        } else if (tipo === "CANTIDAD") {
-            resultado = Math.max(0, Math.floor(valor));
-        }
-
-        votosMinField.value = resultado;
-    }
-
-    document.addEventListener("DOMContentLoaded", function () {
-        const ids = [
-            "id_base_quorum",
-            "id_tipo_quorum",
-            "id_valor_quorum",
-            "id_total_habilitados",
-            "id_miembros_presentes"
-        ];
-
-        ids.forEach(function (id) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener("change", recalcularQuorumPreview);
-                el.addEventListener("keyup", recalcularQuorumPreview);
-            }
-        });
-
-        // Calcula una primera vez al cargar la página
-        recalcularQuorumPreview();
-    });
-</script>
-
-<!-- ===========================
-     ESTILOS LOCALES
-=========================== -->
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════════ -->
 <style>
-    .votacion-config-wrapper {
-        margin-top: 10px;
-    }
-
-    .votacion-card {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 18px 18px 20px;
-        box-shadow: 0 10px 25px rgba(15,23,42,0.08);
-        border: 1px solid #e5e7eb;
-    }
-
-    .votacion-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-
-    .votacion-card-header h2 {
-        margin: 0;
-        font-size: 18px;
-        color: #111827;
-    }
-
-    .votacion-card-subtitle {
-        margin: 4px 0 0;
-        font-size: 12px;
-        color: #6b7280;
-    }
-
-    .votacion-status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        font-size: 11px;
-        background: #eff6ff;
-        color: #1d4ed8;
-        border: 1px solid #bfdbfe;
-        white-space: nowrap;
-    }
-
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: #22c55e;
-    }
-
-    .votacion-tabs-bar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        background: #f3f4f6;
-        padding: 6px;
-        border-radius: 999px;
-        margin-bottom: 16px;
-    }
-
-    .votacion-tab-btn {
-        border: none;
-        background: transparent;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-size: 12px;
-        cursor: pointer;
-        color: #4b5563;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .votacion-tab-btn.active {
-        background: #ffffff;
-        color: #111827;
-        box-shadow: 0 2px 6px rgba(15,23,42,0.12);
-    }
-
-    .votacion-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 3fr) minmax(220px, 1.2fr);
-        gap: 18px;
-        align-items: flex-start;
-    }
-
-    .votacion-main {
-        min-width: 0;
-    }
-
-    .votacion-aside {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .aside-card {
-        background: #f9fafb;
-        border-radius: 12px;
-        padding: 10px 12px;
-        border: 1px solid #e5e7eb;
-        margin-bottom: 10px;
-        font-size: 12px;
-        color: #4b5563;
-    }
-
-    .aside-card h4 {
-        margin: 0 0 6px;
-        font-size: 13px;
-        color: #111827;
-    }
-
-    .aside-card ul {
-        padding-left: 18px;
-        margin: 0;
-    }
-
-    .aside-card ul li {
-        margin-bottom: 4px;
-    }
-
-    .tab-title {
-        margin: 0 0 4px;
-        font-size: 15px;
-        color: #111827;
-    }
-
-    .tab-description {
-        margin: 0 0 12px;
-        font-size: 12px;
-        color: #6b7280;
-    }
-
-    .tab-subtitle {
-        margin: 0 0 6px;
-        font-size: 13px;
-        color: #111827;
-    }
-
-    .form-section {
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 1px dashed #e5e7eb;
-    }
-
-    .form-section:last-of-type {
-        border-bottom: none;
-    }
-
-    .section-help {
-        font-size: 13px;
-        color: var(--color-text-muted, #6b7280);
-    }
-
-    .field-help {
-        font-size: 12px;
-        color: var(--color-text-muted, #6b7280);
-        margin-top: 2px;
-    }
-
-    /* Barra superior de guardar */
-    .form-actions-top {
-        display: flex;
-        justify-content: flex-start;
-        margin-bottom: 12px;
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-    }
-
-    .form-actions-main {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .form-actions-help {
-        font-size: 12px;
-        color: #6b7280;
-        margin: 0;
-    }
-
-    /* Botón info sistemas */
-    .info-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: rgba(25, 135, 84, 0.12);
-        color: var(--primary, #198754);
-        font-size: 12px;
-        font-weight: 700;
-        text-decoration: none;
-        cursor: pointer;
-        transition: 0.2s ease;
-    }
-
-    .info-badge:hover {
-        background: var(--primary, #198754);
-        color: #ffffff;
-    }
-
-    .subsection-title {
-        margin: 0 0 4px;
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    /* --- QUÓRUM SIMPLE --- */
-    .quorum-simple-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
-        grid-auto-rows: 1fr;
-        gap: 12px;
-        margin-top: 8px;
-    }
-
-    .q-card {
-        background: #f9fafb;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
-        padding: 10px 12px;
-        font-size: 12px;
-        color: #4b5563;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .q-card-highlight {
-        background: #eff6ff;
-        border-color: #bfdbfe;
-    }
-
-    .q-card-full {
-        grid-column: 1 / -1;
-    }
-
-    .q-card-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .q-card-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: #111827;
-        line-height: 1.1;
-    }
-
-    .q-card-field input,
-    .q-card-field select,
-    .q-card-grid select,
-    .q-card-grid input {
-        width: 100%;
-    }
-
-    .q-card-help {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    .q-card-header-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .q-card-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .q-card-pill {
-        font-size: 10px;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: #eef2ff;
-        color: #4338ca;
-        border: 1px solid #e0e7ff;
-        white-space: nowrap;
-    }
-
-    .q-card-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 4px;
-    }
-
-    .q-card-result-row {
-        margin-top: 10px;
-        padding-top: 8px;
-        border-top: 1px dashed #e5e7eb;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .q-card-result-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: #111827;
-    }
-
-    .q-card-result-field input {
-        width: 160px;
-        max-width: 100%;
-    }
-
-    .q-card-result-help {
-        font-size: 11px;
-        color: #6b7280;
-    }
-
-    /* Responsive */
-    @media (max-width: 900px) {
-        .votacion-layout {
-            grid-template-columns: 1fr;
-        }
-
-        .votacion-aside {
-            flex-direction: column-reverse;
-        }
-
-        .votacion-tabs-bar {
-            border-radius: 12px;
-        }
-
-        .votacion-card-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .form-actions-top {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .quorum-simple-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .q-card-full {
-            grid-column: 1 / 2;
-        }
-    }
-
-    .estado-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESET Y BASE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form {
+    background: #f8f9fa;
+    min-height: 100vh;
 }
 
-.estado-actions {
+/* ═══════════════════════════════════════════════════════════════════════════
+   BARRA DE CONTROL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
-.btn-xs {
+.odoo-control-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-breadcrumb-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #017e84;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.odoo-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-breadcrumb-link .material-icons {
+    font-size: 18px;
+}
+
+.odoo-breadcrumb-sep {
+    color: #6c757d;
+}
+
+.odoo-breadcrumb-current {
+    font-size: 13px;
+    color: #495057;
+    font-weight: 500;
+}
+
+.odoo-new-badge {
+    background: #d1fae5;
+    color: #065f46;
     font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 999px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
 }
 
-/* Colores según estado */
-.status-dot.status-open {
-    background: #22c55e; /* verde */
-}
-
-.status-dot.status-closed {
-    background: #6b7280; /* gris */
-}
-
-.status-dot.status-draft {
-    background: #f59e0b; /* naranja */
-}
-.form-grid.grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+.odoo-control-right {
+    display: flex;
+    align-items: center;
     gap: 12px;
 }
 
+.odoo-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
 
+.odoo-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.odoo-status-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+.odoo-status-success .odoo-status-dot {
+    background: #10b981;
+}
+
+.odoo-status-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+.odoo-status-warning .odoo-status-dot {
+    background: #f59e0b;
+}
+
+.odoo-status-muted {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+.odoo-status-muted .odoo-status-dot {
+    background: #6b7280;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTENEDOR PRINCIPAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-container {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    min-height: calc(100vh - 50px);
+}
+
+.odoo-form-main {
+    background: white;
+    padding: 0;
+    border-right: 1px solid #dee2e6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER DEL FORMULARIO
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-header {
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    border-bottom: 1px solid #e9ecef;
+    background: linear-gradient(180deg, #f8f9fa 0%, white 100%);
+}
+
+.odoo-avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-avatar {
+    width: 110px;
+    height: 110px;
+    border-radius: 8px;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.odoo-avatar-votacion {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+.odoo-avatar .material-icons {
+    font-size: 48px;
+    color: white;
+}
+
+.odoo-header-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Radio group */
+.odoo-radio-group {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.odoo-radio {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-radio input {
+    accent-color: #017e84;
+}
+
+/* Name field */
+.odoo-name-field {
+    display: flex;
+    gap: 12px;
+}
+
+.odoo-name-input {
+    flex: 1;
+    border: none;
+    border-bottom: 2px solid #e9ecef;
+    padding: 8px 0;
+    font-size: 24px;
+    font-weight: 500;
+    color: #212529;
+    background: transparent;
+    transition: border-color 0.2s ease;
+}
+
+.odoo-name-input:hover {
+    border-color: #adb5bd;
+}
+
+.odoo-name-input:focus {
+    outline: none;
+    border-color: #017e84;
+}
+
+.odoo-name-input::placeholder {
+    color: #adb5bd;
+    font-weight: 400;
+}
+
+.odoo-name-input.odoo-input-error {
+    border-color: #dc3545;
+}
+
+.odoo-error-inline {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: -8px;
+}
+
+/* Quick fields */
+.odoo-quick-fields {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.odoo-quick-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-quick-field .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+}
+
+.odoo-quick-field input {
+    border: none;
+    border-bottom: 1px solid transparent;
+    padding: 4px 0;
+    font-size: 14px;
+    color: #212529;
+    background: transparent;
+    transition: border-color 0.2s ease;
+}
+
+.odoo-quick-field input:hover {
+    border-color: #dee2e6;
+}
+
+.odoo-quick-field input:focus {
+    outline: none;
+    border-color: #017e84;
+}
+
+.odoo-quick-label {
+    font-size: 13px;
+    color: #6c757d;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-tabs-section {
+    padding: 0 24px 24px;
+}
+
+.odoo-tabs-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #dee2e6;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.odoo-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6c757d;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.odoo-tab:hover {
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.odoo-tab.active {
+    color: #017e84;
+    border-bottom-color: #017e84;
+}
+
+.odoo-tabs-content {
+    min-height: 200px;
+}
+
+.odoo-tab-panel {
+    display: none;
+}
+
+.odoo-tab-panel.active {
+    display: block;
+}
+
+.odoo-tab-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 32px;
+}
+
+.odoo-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.odoo-field-full {
+    grid-column: 1 / -1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FIELDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.odoo-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.odoo-info-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(1, 126, 132, 0.1);
+    color: #017e84;
+    font-size: 11px;
+    text-decoration: none;
+}
+
+.odoo-info-link:hover {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-field-input select,
+.odoo-field-input input,
+.odoo-select {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 0;
+    padding: 6px 0;
+    font-size: 14px;
+    font-family: inherit;
+    color: #212529;
+    background: transparent;
+    transition: border-color 0.2s ease;
+}
+
+.odoo-field-input select:hover,
+.odoo-field-input input:hover {
+    border-bottom-color: #adb5bd;
+}
+
+.odoo-field-input select:focus,
+.odoo-field-input input:focus {
+    outline: none;
+    border-bottom-color: #017e84;
+    border-bottom-width: 2px;
+    padding-bottom: 5px;
+}
+
+.odoo-textarea {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 0;
+    padding: 8px 0;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 60px;
+    background: transparent;
+    transition: border-color 0.2s ease;
+}
+
+.odoo-textarea:hover {
+    border-bottom-color: #adb5bd;
+}
+
+.odoo-textarea:focus {
+    outline: none;
+    border-bottom-color: #017e84;
+    border-bottom-width: 2px;
+}
+
+.odoo-field-hint {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.odoo-field-error {
+    color: #dc3545;
+    font-size: 12px;
+}
+
+/* Checkbox */
+.odoo-field-checkbox {
+    display: flex;
+    align-items: center;
+}
+
+.odoo-field-checkbox label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #212529;
+}
+
+.odoo-field-checkbox input {
+    accent-color: #017e84;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUÓRUM CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-quorum-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.odoo-quorum-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.odoo-quorum-highlight {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.odoo-quorum-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.odoo-quorum-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #212529;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.odoo-quorum-field input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid #dee2e6;
+    padding: 8px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #212529;
+    background: transparent;
+}
+
+.odoo-quorum-field input:focus {
+    outline: none;
+    border-bottom-color: #017e84;
+}
+
+.odoo-quorum-help {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.odoo-quorum-result {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed #dee2e6;
+}
+
+.odoo-quorum-result input {
+    width: 150px;
+    border: none;
+    border-bottom: 1px solid #dee2e6;
+    padding: 6px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #212529;
+    background: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUBSECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-subsection {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed #dee2e6;
+}
+
+.odoo-subsection-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLA
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.odoo-table th {
+    text-align: left;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 500;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.odoo-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9ecef;
+    color: #212529;
+}
+
+.odoo-table tr:hover td {
+    background: #f8f9fa;
+}
+
+/* Badges */
+.odoo-badge {
+    display: inline-flex;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.odoo-badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.odoo-badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.odoo-badge-muted {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+/* Empty state */
+.odoo-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #6c757d;
+    text-align: center;
+}
+
+.odoo-empty-state .material-icons {
+    font-size: 48px;
+    opacity: 0.5;
+    margin-bottom: 8px;
+}
+
+.odoo-empty-text {
+    color: #6c757d;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOTONES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-secondary {
+    background: white;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.odoo-btn-secondary:hover {
+    background: #e9ecef;
+}
+
+.odoo-btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.odoo-btn-success:hover {
+    background: #059669;
+}
+
+.odoo-estado-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL LATERAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-aside {
+    background: #f8f9fa;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Botones de acción */
+.odoo-aside-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-btn-save {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px 16px;
+    background: #017e84;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-family: inherit;
+}
+
+.odoo-btn-save:hover {
+    background: #016166;
+}
+
+.odoo-btn-save .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-cancel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 16px;
+    background: white;
+    color: #495057;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.odoo-btn-cancel:hover {
+    background: #e9ecef;
+}
+
+/* Extra actions */
+.odoo-aside-extra {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 8px;
+    border-top: 1px solid #dee2e6;
+}
+
+.odoo-btn-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0;
+    background: none;
+    border: none;
+    color: #017e84;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.odoo-btn-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-btn-link .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-danger {
+    color: #dc3545;
+}
+
+/* Info cards */
+.odoo-aside-info,
+.odoo-aside-tips {
+    background: white;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.odoo-info-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.odoo-info-title .material-icons {
+    font-size: 16px;
+    color: #017e84;
+}
+
+.odoo-info-content {
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.odoo-info-content p {
+    margin: 0 0 4px;
+}
+
+/* Tips */
+.odoo-tips-list {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 12px;
+    color: #6c757d;
+    line-height: 1.6;
+}
+
+.odoo-tips-list li {
+    margin-bottom: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1200px) {
+    .odoo-form-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .odoo-form-main {
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .odoo-form-aside {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    
+    .odoo-aside-actions {
+        flex-direction: row;
+        width: 100%;
+    }
+    
+    .odoo-btn-save,
+    .odoo-btn-cancel {
+        flex: 1;
+    }
+    
+    .odoo-aside-info,
+    .odoo-aside-tips {
+        flex: 1;
+        min-width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-form-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .odoo-quick-fields {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .odoo-tab-grid,
+    .odoo-grid-3 {
+        grid-template-columns: 1fr;
+    }
+    
+    .odoo-quorum-cards {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     SCRIPTS
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+// Tabs
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.odoo-tab');
+    const panels = document.querySelectorAll('.odoo-tab-panel');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetId = 'tab-' + this.dataset.tab;
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            panels.forEach(p => p.classList.remove('active'));
+            
+            this.classList.add('active');
+            document.getElementById(targetId)?.classList.add('active');
+        });
+    });
+    
+    // URL params
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+        const targetTab = document.querySelector(`[data-tab="${tabParam}"]`);
+        if (targetTab) targetTab.click();
+    }
+});
+
+// Cálculo de quórum
+function recalcularQuorumPreview() {
+    const baseField = document.getElementById("id_base_quorum");
+    const tipoField = document.getElementById("id_tipo_quorum");
+    const valorField = document.getElementById("id_valor_quorum");
+    const totalHabilitadosField = document.getElementById("id_total_habilitados");
+    const presentesField = document.getElementById("id_miembros_presentes");
+    const votosMinField = document.getElementById("id_votos_minimos_requeridos");
+
+    if (!baseField || !tipoField || !valorField || !votosMinField) return;
+
+    const base = baseField.value;
+    const tipo = tipoField.value;
+    const valor = parseFloat((valorField.value || "").replace(",", "."));
+
+    let baseNumero = 0;
+    if (base === "HABILITADOS" && totalHabilitadosField) {
+        baseNumero = parseInt(totalHabilitadosField.value || "0", 10);
+    } else if (base === "PRESENTES" && presentesField) {
+        baseNumero = parseInt(presentesField.value || "0", 10);
+    }
+
+    if (!tipo || tipo === "NINGUNO" || isNaN(valor) || baseNumero <= 0) {
+        votosMinField.value = "";
+        return;
+    }
+
+    let resultado = 0;
+    if (tipo === "PORCENTAJE") {
+        const porcentaje = Math.max(0, Math.min(valor, 100));
+        resultado = Math.ceil(baseNumero * (porcentaje / 100));
+    } else if (tipo === "CANTIDAD") {
+        resultado = Math.max(0, Math.floor(valor));
+    }
+
+    votosMinField.value = resultado;
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const ids = ["id_base_quorum", "id_tipo_quorum", "id_valor_quorum", "id_total_habilitados", "id_miembros_presentes"];
+    ids.forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener("change", recalcularQuorumPreview);
+            el.addEventListener("keyup", recalcularQuorumPreview);
+        }
+    });
+    recalcularQuorumPreview();
+});
+</script>
 
 {% endblock %}
