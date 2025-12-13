@@ -524,102 +524,121 @@
                     </div>
 
                     <!-- TAB: Familiares -->
-                    <div class="odoo-tab-panel" id="tab-familiares">
-                        {% if modo == "editar" and miembro %}
-                            {% if familiares %}
-                            <table class="odoo-table">
-                                <thead>
-                                    <tr>
-                                        <th>Familiar</th>
-                                        <th>Relación</th>
-                                        <th>Vive en casa</th>
-                                        <th>Responsable</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for rel in familiares %}
-                                    <tr>
-                                        <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
-                                        <td>{{ rel.get_tipo_relacion_display }}</td>
-                                        <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
-                                        <td>{% if rel.es_responsable %}Sí{% else %}No{% endif %}</td>
-                                        <td>
-                                            <a href="{% url 'miembros_app:eliminar_familiar' rel.pk %}"
-                                               class="odoo-link-danger"
-                                               onclick="return confirm('¿Quitar este familiar?')">
-                                                <span class="material-icons">close</span>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+<div class="odoo-tab-panel" id="tab-familiares">
+    
+    <div class="odoo-field-full">
+        <label class="odoo-separator">Familiares registrados</label>
+        
+        <table class="odoo-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Relación</th>
+                    <th>Vive junto</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fam in familiares_existentes %} 
+                <tr>
+                    <td>{{ fam.nombre_completo }}</td>
+                    <td>{{ fam.get_tipo_relacion_display }}</td>
+                    <td>{% if fam.vive_junto %}Sí{% else %}No{% endif %}</td>
+                    <td>
+                        <a href="#" class="odoo-link-danger">
+                            <span class="material-icons">delete</span>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="odoo-empty-text">No hay familiares registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="odoo-add-line" id="btn-add-familiar">
+        <a href="javascript:void(0)" class="odoo-add-link" onclick="toggleFamiliarForm(true)">
+            <span class="material-icons">add</span>
+            Agregar familiar
+        </a>
+    </div>
+
+    <div class="odoo-inline-edit-box" id="familiar-form" style="display:none;">
+        <h5 class="odoo-inline-title">Nuevo familiar</h5>
+        
+        <div class="odoo-tab-grid">
+            
+            <div class="odoo-field">
+                <label class="odoo-label">Buscar Miembro</label>
+                <div class="odoo-field-stack">
+                    <input
+                        type="text"
+                        id="familiar_search"
+                        class="odoo-input"
+                        placeholder="Escribe para filtrar..."
+                    >
+                    <select name="familiar" id="id_familiar" class="odoo-input" size="4" style="margin-top: 4px; border-bottom: none; background: #fff;">
+                        <option value="">-- Selecciona de la lista --</option>
+                        {% for m in todos_miembros %}
+                            {% if m.pk != miembro.pk %}
+                                <option value="{{ m.pk }}">{{ m.nombres }} {{ m.apellidos }}</option>
                             {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
 
-                            <div class="odoo-add-line">
-                                <a href="#" class="odoo-add-link" onclick="toggleFamiliarForm(); return false;">
-                                    <span class="material-icons">add</span>
-                                    Agregar familiar
-                                </a>
-                            </div>
+            <div class="odoo-field">
+                <label class="odoo-label">Relación</label>
+                <div class="odoo-field-stack">
+                    <select name="tipo_relacion" id="id_tipo_relacion" class="odoo-input">
+                        <option value="">Seleccione tipo...</option>
+                        <option value="padre">Padre</option>
+                        <option value="madre">Madre</option>
+                        <option value="hijo">Hijo / Hija</option>
+                        <option value="hermano">Hermano / Hermana</option>
+                        <option value="conyuge">Cónyuge</option>
+                        <option value="otro">Otro</option>
+                    </select>
 
-                            <div class="odoo-inline-form" id="familiar-form" style="display: none;">
-                                <div class="odoo-tab-grid">
-                                    <div class="odoo-field">
-                                        <label class="odoo-label">Miembro</label>
-                                        <!-- Buscador para filtrar la lista -->
-                                        <input type="text" id="familiar_search" class="odoo-input"
-                                               placeholder="Buscar por nombre..." style="margin-bottom: 6px;">
-                                        <select name="familiar" id="id_familiar" class="odoo-input" size="5">
-                                            <option value="">Seleccione un miembro</option>
-                                            {% for m in todos_miembros %}
-                                                {% if m.pk != miembro.pk %}
-                                                <option value="{{ m.pk }}">{{ m.nombres }} {{ m.apellidos }}</option>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="odoo-field">
-                                        <label class="odoo-label">Relación</label>
-                                        <select name="tipo_relacion" id="id_tipo_relacion" class="odoo-input">
-                                            <option value="">Seleccione</option>
-                                            <option value="padre">Padre</option>
-                                            <option value="madre">Madre</option>
-                                            <option value="hijo">Hijo / Hija</option>
-                                            <option value="hermano">Hermano / Hermana</option>
-                                            <option value="conyuge">Cónyuge</option>
-                                            <option value="otro">Abuelo / Abuela</option>
-                                            <option value="otro">Tutor / Encargado</option>
-                                            <option value="otro">Otro familiar</option>
-                                        </select>
-                                    </div>
-                                    <div class="odoo-field odoo-field-checkboxes">
-                                        <label class="odoo-checkbox-label">
-                                            <input type="checkbox" name="vive_junto">
-                                            <span>Vive en la misma casa</span>
-                                        </label>
-                                        <label class="odoo-checkbox-label">
-                                            <input type="checkbox" name="es_responsable">
-                                            <span>Responsable principal</span>
-                                        </label>
-                                    </div>
-                                    <div class="odoo-field odoo-field-full">
-                                        <label class="odoo-label">Notas</label>
-                                        <textarea name="notas_familiar" id="id_notas_familiar" rows="2" 
-                                                  class="odoo-textarea" placeholder="Notas sobre esta relación (opcional)"></textarea>
-                                    </div>
-                                    <div class="odoo-field odoo-field-full">
-                                        <button type="submit" name="agregar_familiar" value="1" class="odoo-btn-link">
-                                            + Agregar familiar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        {% else %}
-                            <p class="odoo-empty-text">Guarda primero el miembro para gestionar familiares.</p>
-                        {% endif %}
+                    <div class="odoo-field-row" style="margin-top: 8px;">
+                        <label class="odoo-checkbox-label">
+                            <input type="checkbox" name="vive_junto">
+                            <span>Vive junto</span>
+                        </label>
+                        <label class="odoo-checkbox-label" style="margin-left: 15px;">
+                            <input type="checkbox" name="es_responsable">
+                            <span>Es responsable</span>
+                        </label>
                     </div>
+                </div>
+            </div>
+
+            <div class="odoo-field odoo-field-full">
+                <label class="odoo-label">Notas</label>
+                <input type="text" name="notas_familiar" 
+                       placeholder="Observaciones sobre la relación..." 
+                       class="odoo-input">
+            </div>
+
+            <div class="odoo-field odoo-field-full">
+                <div class="odoo-inline-actions">
+                    <button type="submit" name="agregar_familiar" value="1" class="odoo-btn-primary odoo-btn-sm">
+                        Guardar y cerrar
+                    </button>
+                    <button type="button" class="odoo-btn-secondary odoo-btn-sm" onclick="toggleFamiliarForm(false)">
+                        Descartar
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 
                     <!-- TAB: Intereses y Habilidades -->
                     <div class="odoo-tab-panel" id="tab-intereses">
@@ -739,6 +758,7 @@
      ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
+
 /* ═══════════════════════════════════════════════════════════════════════════
    RESET Y BASE - Estilo Odoo
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1532,6 +1552,71 @@ select.odoo-input {
     .odoo-tab-grid {
         grid-template-columns: 1fr;
     }
+    /* Separador de sección limpio (texto azulado/gris) */
+.odoo-separator {
+    display: block;
+    color: #017e84;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 4px;
+    width: 100%;
+}
+
+/* Enlace "Agregar línea" */
+.odoo-add-line {
+    padding: 10px 0;
+}
+
+.odoo-add-link {
+    color: #017e84;
+    text-decoration: none;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.2s;
+}
+
+.odoo-add-link:hover {
+    color: #015c61;
+    text-decoration: underline;
+}
+
+/* Caja de edición inline (Fondo gris suave, sin bordes pesados) */
+.odoo-inline-edit-box {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 16px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    /* Sin border-radius exagerado, Odoo es bastante cuadrado */
+    border-radius: 2px; 
+}
+
+.odoo-inline-title {
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    color: #495057;
+    font-weight: 600;
+}
+
+/* Botones pequeños para acciones inline */
+.odoo-btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+    height: 30px;
+}
+
+/* Ajuste para el select múltiple visual */
+#id_familiar option {
+    padding: 4px;
+    cursor: pointer;
+}
+#id_familiar option:hover {
+    background-color: #e9ecef;
+}
 }
 </style>
 
