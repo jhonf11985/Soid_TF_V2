@@ -1,238 +1,272 @@
-// core/static/js/autocomplete-miembro.js
-// Componente de autocomplete reutilizable para buscar miembros
+// core/static/core/js/autocomplete-miembro.js
+// Autocomplete estándar Soid_tf_2 (igual a Ingreso/Egreso: chip + dropdown bonito)
 
-class AutocompleteMiembro {
-    constructor(wrapperSelector) {
-        this.wrapper = document.querySelector(wrapperSelector);
-        if (!this.wrapper) return;
+(function () {
+  "use strict";
 
-        this.campoId = this.wrapper.dataset.autocompleteId;
-        this.inputSearch = this.wrapper.querySelector('.autocomplete-search');
-        this.dropdownEl = this.wrapper.querySelector('.autocomplete-dropdown');
-        this.listEl = this.wrapper.querySelector('.autocomplete-list');
-        this.emptyEl = this.wrapper.querySelector('.autocomplete-empty');
-        this.loadingEl = this.wrapper.querySelector('.autocomplete-loading');
-        this.clearBtn = this.wrapper.querySelector('.autocomplete-clear-btn');
-        this.selectedDiv = this.wrapper.querySelector('.autocomplete-selected');
-        this.selectedRemoveBtn = this.wrapper.querySelector('.selected-remove');
-        this.hiddenInput = this.wrapper.querySelector(`#${this.campoId}`);
+  const DEFAULTS = {
+    endpoint: "/api/buscar-miembros/",
+    filtro: "activos",
+    limit: 15,
+    minChars: 2,
+    debounce: 300,
+  };
 
-        this.debounceTimer = null;
-        this.debounceDelay = 300;
-        this.minChars = 2;
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return "";
+    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+    return String(text).replace(/[&<>"']/g, (m) => map[m]);
+  }
 
-        this.attachEventListeners();
+  function getInitials(nombre) {
+    if (!nombre) return "?";
+    const parts = nombre.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return nombre.trim().substring(0, 2).toUpperCase();
+  }
+
+  class AutocompleteMiembro {
+    constructor(wrapper) {
+      this.wrapper = wrapper;
+
+      // Config por dataset (opcional)
+      this.endpoint = wrapper.dataset.endpoint || DEFAULTS.endpoint;
+      this.filtro = wrapper.dataset.filtro || DEFAULTS.filtro;
+      this.limit = parseInt(wrapper.dataset.limit || DEFAULTS.limit, 10);
+      this.minChars = parseInt(wrapper.dataset.minChars || DEFAULTS.minChars, 10);
+      this.debounceDelay = parseInt(wrapper.dataset.debounce || DEFAULTS.debounce, 10);
+
+      // Elementos básicos por clases (estándar)
+      this.searchInput = wrapper.querySelector(".autocomplete-search");
+      this.dropdown = wrapper.querySelector(".autocomplete-dropdown");
+      this.listEl = wrapper.querySelector(".autocomplete-list");
+      this.emptyEl = wrapper.querySelector(".autocomplete-empty");
+      this.loadingEl = wrapper.querySelector(".autocomplete-loading");
+      this.clearBtn = wrapper.querySelector(".autocomplete-clear-btn"); // opcional
+      this.fieldContainer = wrapper.querySelector(".autocomplete-field");
+
+      // Hidden input:
+      // 1) si existe .autocomplete-hidden, úsalo
+      // 2) si no, usa data-autocomplete-id como id del hidden (tu forma actual)
+      this.hiddenInput =
+        wrapper.querySelector(".autocomplete-hidden") ||
+        (wrapper.dataset.autocompleteId
+          ? document.getElementById(wrapper.dataset.autocompleteId)
+          : null) ||
+        wrapper.querySelector('input[type="hidden"]');
+
+      // Chip (modo ingreso/egreso)
+      this.chip = wrapper.querySelector(".autocomplete-chip");
+      this.chipAvatar = wrapper.querySelector(".chip-avatar");
+      this.chipName = wrapper.querySelector(".chip-name");
+      this.chipCode = wrapper.querySelector(".chip-code");
+      this.chipRemove = wrapper.querySelector(".chip-remove");
+      this.hasChip = !!this.chip;
+
+      this.debounceTimer = null;
+
+      if (!this.searchInput || !this.dropdown || !this.listEl || !this.hiddenInput) {
+        // Markup incompleto
+        return;
+      }
+
+      this.bind();
     }
 
-    attachEventListeners() {
-        // Búsqueda con debounce
-        this.inputSearch.addEventListener('input', (e) => {
-            clearTimeout(this.debounceTimer);
-            this.debounceTimer = setTimeout(() => {
-                this.search(e.target.value);
-            }, this.debounceDelay);
-        });
+    bind() {
+      this.searchInput.addEventListener("input", (e) => {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => {
+          this.search(e.target.value || "");
+        }, this.debounceDelay);
+      });
 
-        // Click fuera cierra dropdown
-        document.addEventListener('click', (e) => {
-            if (!this.wrapper.contains(e.target)) {
-                this.closeDropdown();
-            }
-        });
-
-        // Botón limpiar
-        this.clearBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.clearSelection();
-        });
-
-        // Botón quitar selección
-        if (this.selectedRemoveBtn) {
-            this.selectedRemoveBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.clearSelection();
-            });
+      this.searchInput.addEventListener("focus", () => {
+        if ((this.searchInput.value || "").length >= this.minChars) {
+          this.openDropdown();
         }
+      });
 
-        // Focus en input abre dropdown si hay contenido
-        this.inputSearch.addEventListener('focus', () => {
-            if (this.inputSearch.value.length >= this.minChars) {
-                this.dropdownEl.classList.add('open');
-            }
-        });
+      this.searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          this.closeDropdown();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          const firstItem = this.listEl.querySelector(".autocomplete-item");
+          if (firstItem) {
+            this.selectMiembro(firstItem.dataset.id, firstItem.dataset.nombre, firstItem.dataset.codigo);
+          }
+        }
+      });
 
-        // Navegar con teclado (Enter para seleccionar, Escape para cerrar)
-        this.inputSearch.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeDropdown();
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                const firstItem = this.listEl.querySelector('.autocomplete-item');
-                if (firstItem) {
-                    this.selectItem(
-                        parseInt(firstItem.dataset.id),
-                        firstItem.dataset.nombre,
-                        firstItem.dataset.codigo
-                    );
-                }
-            }
+      if (this.chipRemove) {
+        this.chipRemove.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.clearSelection();
         });
+      }
+
+      // OJO: este botón es opcional, nunca debe romper
+      if (this.clearBtn) {
+        this.clearBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.clearSelection();
+        });
+      }
+
+      document.addEventListener("click", (e) => {
+        if (!this.wrapper.contains(e.target)) this.closeDropdown();
+      });
     }
 
     async search(query) {
-        query = query.trim();
+      query = (query || "").trim();
 
-        // Si es muy corto, cerrar
-        if (query.length < this.minChars) {
-            this.closeDropdown();
-            return;
+      if (query.length < this.minChars) {
+        this.closeDropdown();
+        return;
+      }
+
+      this.showLoading();
+
+      try {
+        const url =
+          `${this.endpoint}?q=${encodeURIComponent(query)}` +
+          `&filtro=${encodeURIComponent(this.filtro)}` +
+          `&limit=${encodeURIComponent(this.limit)}`;
+
+        const response = await fetch(url, {
+          credentials: "same-origin",
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+
+        if (data.success && Array.isArray(data.resultados) && data.resultados.length > 0) {
+          this.renderResults(data.resultados);
+        } else {
+          this.showEmpty();
         }
-
-        // Mostrar loading
-        this.showLoading();
-        this.openDropdown();
-
-        try {
-            const endpoint = this.inputSearch.dataset.endpoint || '/api/buscar-miembros/';
-            const filtro = this.inputSearch.dataset.filtro || 'activos';
-
-            const response = await fetch(
-                `${endpoint}?q=${encodeURIComponent(query)}&filtro=${filtro}&limit=15`,
-                {
-                    credentials: 'same-origin',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (data.success && data.resultados.length > 0) {
-                this.renderResults(data.resultados);
-            } else {
-                this.showEmpty();
-            }
-        } catch (error) {
-            console.error('Error en búsqueda:', error);
-            this.showEmpty();
-        }
+      } catch (err) {
+        console.error("AutocompleteMiembro error:", err);
+        this.showEmpty();
+      }
     }
 
     renderResults(resultados) {
-        this.listEl.innerHTML = '';
+      this.listEl.innerHTML = "";
 
-        resultados.forEach((miembro) => {
-            const item = document.createElement('li');
-            item.className = 'autocomplete-item';
-            item.dataset.id = miembro.id;
-            item.dataset.nombre = miembro.nombre;
-            item.dataset.codigo = miembro.codigo;
+      resultados.forEach((miembro) => {
+        const li = document.createElement("li");
+        li.className = "autocomplete-item";
+        li.dataset.id = String(miembro.id);
+        li.dataset.nombre = miembro.nombre || "";
+        li.dataset.codigo = miembro.codigo || "";
 
-            item.innerHTML = `
-                <div class="autocomplete-item-main">
-                    <span class="autocomplete-item-nombre">${this.escapeHtml(miembro.nombre)}</span>
-                    ${miembro.codigo ? `<span class="autocomplete-item-codigo">${this.escapeHtml(miembro.codigo)}</span>` : ''}
-                </div>
-                <div class="autocomplete-item-meta">
-                    ${miembro.edad ? `<span><span class="material-icons" style="font-size: 14px;">person</span>${miembro.edad} años</span>` : ''}
-                    ${miembro.telefono ? `<span><span class="material-icons" style="font-size: 14px;">phone</span>${this.escapeHtml(miembro.telefono)}</span>` : ''}
-                </div>
-            `;
+        const initials = getInitials(miembro.nombre || "");
 
-            item.addEventListener('click', () => {
-                this.selectItem(miembro.id, miembro.nombre, miembro.codigo);
-            });
+        // HTML idéntico a Ingreso/Egreso
+        li.innerHTML = `
+          <div class="autocomplete-item-avatar">${escapeHtml(initials)}</div>
+          <div class="autocomplete-item-info">
+            <div class="autocomplete-item-name">${escapeHtml(miembro.nombre || "")}</div>
+            <div class="autocomplete-item-meta">
+              ${miembro.codigo ? `<span class="autocomplete-item-code">${escapeHtml(miembro.codigo)}</span>` : ""}
+              ${miembro.telefono && miembro.telefono !== "—" ? `<span>${escapeHtml(miembro.telefono)}</span>` : ""}
+            </div>
+          </div>
+        `;
 
-            this.listEl.appendChild(item);
+        li.addEventListener("click", () => {
+          this.selectMiembro(miembro.id, miembro.nombre, miembro.codigo);
         });
 
-        this.emptyEl.style.display = 'none';
-        this.loadingEl.style.display = 'none';
-        this.listEl.style.display = 'block';
+        this.listEl.appendChild(li);
+      });
+
+      if (this.loadingEl) this.loadingEl.style.display = "none";
+      if (this.emptyEl) this.emptyEl.style.display = "none";
+      this.listEl.style.display = "block";
+      this.openDropdown();
     }
 
-    selectItem(id, nombre, codigo) {
-        // Guardar ID en campo hidden
-        this.hiddenInput.value = id;
+    selectMiembro(id, nombre, codigo) {
+      this.hiddenInput.value = String(id);
 
-        // Mostrar confirmación
-        this.inputSearch.value = nombre;
-        this.closeDropdown();
-        this.showSelected(nombre, codigo);
+      if (this.hasChip) {
+        if (this.chipAvatar) this.chipAvatar.textContent = getInitials(nombre || "");
+        if (this.chipName) this.chipName.textContent = nombre || "";
+        if (this.chipCode) this.chipCode.textContent = (codigo || "Sin código");
 
-        // Disparar evento personalizado para que otros componentes reaccionen
-        this.wrapper.dispatchEvent(
-            new CustomEvent('miembroSeleccionado', {
-                detail: { id, nombre, codigo },
-            })
-        );
+        this.chip.style.display = "inline-flex";
+        this.searchInput.value = "";
+        this.searchInput.style.display = "none";
+        if (this.fieldContainer) this.fieldContainer.classList.add("has-selection");
+      } else {
+        // Si no hay chip, rellenamos input
+        this.searchInput.value = nombre || "";
+      }
+
+      this.closeDropdown();
+
+      this.wrapper.dispatchEvent(
+        new CustomEvent("miembroSeleccionado", { detail: { id, nombre, codigo } })
+      );
     }
 
     clearSelection() {
-        this.hiddenInput.value = '';
-        this.inputSearch.value = '';
-        this.selectedDiv.style.display = 'none';
-        this.listEl.innerHTML = '';
-        this.closeDropdown();
-        this.inputSearch.focus();
+      this.hiddenInput.value = "";
 
-        // Disparar evento
-        this.wrapper.dispatchEvent(
-            new CustomEvent('miembroLimpiado', {
-                detail: {},
-            })
-        );
-    }
+      if (this.hasChip && this.chip) {
+        this.chip.style.display = "none";
+        this.searchInput.style.display = "";
+        if (this.fieldContainer) this.fieldContainer.classList.remove("has-selection");
+      }
 
-    showSelected(nombre, codigo) {
-        this.selectedDiv.style.display = 'block';
-        this.selectedDiv.querySelector('.selected-name').textContent = nombre;
-        this.selectedDiv.querySelector('.selected-codigo').textContent = codigo || 'Sin código';
+      this.searchInput.value = "";
+      this.listEl.innerHTML = "";
+      this.closeDropdown();
+      this.searchInput.focus();
+
+      this.wrapper.dispatchEvent(new CustomEvent("miembroLimpiado", { detail: {} }));
     }
 
     showLoading() {
-        this.listEl.innerHTML = '';
-        this.listEl.style.display = 'none';
-        this.emptyEl.style.display = 'none';
-        this.loadingEl.style.display = 'block';
+      this.listEl.innerHTML = "";
+      this.listEl.style.display = "none";
+      if (this.emptyEl) this.emptyEl.style.display = "none";
+      if (this.loadingEl) this.loadingEl.style.display = "block";
+      this.openDropdown();
     }
 
     showEmpty() {
-        this.listEl.innerHTML = '';
-        this.listEl.style.display = 'none';
-        this.loadingEl.style.display = 'none';
-        this.emptyEl.style.display = 'block';
+      this.listEl.innerHTML = "";
+      this.listEl.style.display = "none";
+      if (this.loadingEl) this.loadingEl.style.display = "none";
+      if (this.emptyEl) this.emptyEl.style.display = "block";
+      this.openDropdown();
     }
 
     openDropdown() {
-        this.dropdownEl.classList.add('open');
+      this.dropdown.classList.add("open");
     }
 
     closeDropdown() {
-        this.dropdownEl.classList.remove('open');
+      this.dropdown.classList.remove("open");
+      if (this.loadingEl) this.loadingEl.style.display = "none";
+      if (this.emptyEl) this.emptyEl.style.display = "none";
     }
+  }
 
-    escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;',
-        };
-        return text.replace(/[&<>"']/g, (m) => map[m]);
-    }
-}
-
-// Inicializar todos los autocompletes en la página
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-autocomplete-id]').forEach((wrapper) => {
-        new AutocompleteMiembro(`[data-autocomplete-id="${wrapper.dataset.autocompleteId}"]`);
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("[data-autocomplete-id]").forEach((wrapper) => {
+      if (wrapper.dataset.autocompleteInit === "1") return;
+      wrapper.dataset.autocompleteInit = "1";
+      new AutocompleteMiembro(wrapper);
     });
-});
+  });
+})();
