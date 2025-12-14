@@ -177,14 +177,41 @@
                                        value="{{ form.codigo_postal.value|default:'' }}"
                                        placeholder="C.P." class="odoo-input odoo-input-small">
                             </div>
-                            <select name="nacionalidad" id="{{ form.nacionalidad.id_for_label }}" class="odoo-input">
-                                <option value="">País</option>
-                                {% for value, label in form.nacionalidad.field.choices %}
-                                    <option value="{{ value }}" {% if form.nacionalidad.value == value %}selected{% endif %}>
-                                        {{ label }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                                <div class="odoo-field">
+                                    <label class="odoo-label">País</label>
+
+                                    <input
+                                        type="text"
+                                        name="nacionalidad"
+                                        id="{{ form.nacionalidad.id_for_label }}"
+                                        class="odoo-input"
+                                        placeholder="Escribe y selecciona (ej.: República Dominicana)"
+                                        autocomplete="off"
+                                        list="lista_paises"
+                                        value="{% if form.nacionalidad.value %}{{ form.nacionalidad.value }}{% elif modo != 'editar' %}República Dominicana{% endif %}"
+                                    >
+
+                                    <datalist id="lista_paises">
+                                        <option value="República Dominicana">
+<option value="Estados Unidos">
+<option value="España">
+<option value="México">
+<option value="Colombia">
+<option value="Venezuela">
+<option value="Puerto Rico">
+<option value="Haiti"></option>
+
+                                        {# Si tu form trae choices, los reutilizamos. Si no, al menos queda el input manual funcionando. #}
+                                        {% for value, label in form.nacionalidad.field.choices %}
+                                            {% if value %}
+                                                <option value="{{ value }}">{{ label }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </datalist>
+
+                                    
+                                </div>
+
                         </div>
                     </div>
                 </div>
@@ -525,42 +552,62 @@
                     <!-- TAB: Familiares -->
 <div class="odoo-tab-panel" id="tab-familiares">
     
-    <div class="odoo-field-full">
-        <label class="odoo-separator">Familiares registrados</label>
-        
-        <table class="odoo-table">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Relación</th>
-                    <th>Vive junto</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-              <!-- NUEVO: aquí irán los que agregas sin recargar -->
-            <tbody id="familiares-pendientes"></tbody>
+<div class="odoo-field-full">
+  <label class="odoo-separator">Familiares registrados</label>
 
-            <tbody>
-            {% for rel in familiares %}
-                <tr>
-                <td>{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}</td>
-                <td>{{ rel.get_tipo_relacion_display }}</td>
-                <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
-                <td>
-                    <a href="#" class="odoo-link-danger">
-                    <span class="material-icons">delete</span>
-                    </a>
-                </td>
-                </tr>
-            {% empty %}
-                <tr>
-                <td colspan="4" class="odoo-empty-text">No hay familiares registrados.</td>
-                </tr>
-            {% endfor %}
-            </tbody>
+  <!-- Flag para que el backend sepa que debe sincronizar -->
+  <input type="hidden" name="familiares_sync" value="1">
 
-        </table>
-    </div>
+  <table class="odoo-table" data-current-miembro-id="{{ miembro.id }}">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Relación</th>
+        <th>Vive junto</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <!-- ✅ ÚNICO tbody: aquí van tanto los existentes como los nuevos -->
+    <tbody id="familiares-pendientes">
+      {% for rel in familiares %}
+        <tr
+          data-miembro-id="{{ rel.familiar_id }}"
+          data-payload='{
+            "id":"{{ rel.familiar_id }}",
+            "nombre":"{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}",
+            "codigo":"{{ rel.familiar.codigo|default_if_none:"" }}",
+            "tipo_relacion":"{{ rel.tipo_relacion }}",
+            "tipo_relacion_label":"{{ rel.get_tipo_relacion_display }}",
+            "vive_junto":{{ rel.vive_junto|yesno:"true,false" }},
+            "es_responsable":{{ rel.es_responsable|yesno:"true,false" }},
+            "notas":"{{ rel.notas|default_if_none:""|escapejs }}"
+          }'
+        >
+          <td>
+            {{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}
+            {% if rel.familiar.codigo %}
+              <div style="font-size:11px;color:#6c757d;">{{ rel.familiar.codigo }}</div>
+            {% endif %}
+          </td>
+          <td>{{ rel.get_tipo_relacion_display }}</td>
+          <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
+          <td>
+            <!-- ✅ ahora SI borra -->
+            <a href="javascript:void(0)" class="odoo-link-danger js-remove-familiar-line" title="Quitar">
+              <span class="material-icons">delete</span>
+            </a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr id="familiares-empty-row">
+          <td colspan="4" class="odoo-empty-text">No hay familiares registrados.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 
     <div class="odoo-add-line" id="btn-add-familiar">
         <a href="javascript:void(0)" class="odoo-add-link" onclick="toggleFamiliarForm(true)">
@@ -2663,6 +2710,49 @@ function clearInline(){
             this.value = ''; // Reset para permitir seleccionar el mismo archivo
         });
     }
+    function addRow(payload){
+    const tbody = q('#familiares-pendientes');
+    if (!tbody) return;
+
+    const currentId = parseInt(q('table.odoo-table[data-current-miembro-id]')?.dataset.currentMiembroId || "0", 10);
+    const payloadId = parseInt(payload.id, 10);
+
+    if (currentId && payloadId === currentId){
+        alert("No puedes agregarte a ti mismo como familiar.");
+        return;
+    }
+
+    if (tbody.querySelector(`tr[data-miembro-id="${payload.id}"]`)){
+        alert("Ese familiar ya está añadido en la lista.");
+        return;
+    }
+
+    // Si estaba el mensaje de “No hay familiares…”, lo quitamos
+    const emptyRow = q('#familiares-empty-row');
+    if (emptyRow) emptyRow.remove();
+
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-miembro-id', payload.id);
+    tr.setAttribute('data-payload', JSON.stringify(payload));
+
+    tr.innerHTML = `
+        <td>
+        ${escapeHtml(payload.nombre || '—')}
+        ${payload.codigo ? `<div style="font-size:11px;color:#6c757d;">${escapeHtml(payload.codigo)}</div>` : ""}
+        </td>
+        <td>${escapeHtml(payload.tipo_relacion_label)}</td>
+        <td>${payload.vive_junto ? "Sí" : "No"}</td>
+        <td>
+        <a href="javascript:void(0)" class="odoo-link-danger js-remove-familiar-line" title="Quitar">
+            <span class="material-icons">delete</span>
+        </a>
+        </td>
+    `;
+
+    tbody.prepend(tr);
+    buildHiddenFromRows();
+    }
+     buildHiddenFromRows();
 })();
 
 
