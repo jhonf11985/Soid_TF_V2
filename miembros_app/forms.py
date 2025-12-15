@@ -6,7 +6,7 @@ from django.db.models import Max
 from core.utils_config import get_edad_minima_miembro_oficial, get_config
 from .models import Miembro, MiembroRelacion
 
-
+from .models import Miembro, RazonSalidaMiembro
 
    
 
@@ -598,3 +598,21 @@ class EnviarFichaMiembroEmailForm(forms.Form):
         required=False,
         help_text="Opcional: selecciona un archivo PDF para adjuntar."
     )
+
+
+
+class MiembroSalidaForm(forms.ModelForm):
+    class Meta:
+        model = Miembro
+        fields = ["razon_salida", "fecha_salida", "comentario_salida"]
+        widgets = {
+            "fecha_salida": forms.DateInput(attrs={"type": "date"}),
+            "comentario_salida": forms.Textarea(attrs={"rows": 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Solo razones activas
+        self.fields["razon_salida"].queryset = RazonSalidaMiembro.objects.filter(activo=True).order_by("orden", "nombre")
+        # Texto útil (opcional)
+        self.fields["razon_salida"].empty_label = "— Selecciona una razón —"

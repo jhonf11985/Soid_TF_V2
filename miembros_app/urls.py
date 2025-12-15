@@ -110,6 +110,7 @@ path(
         name="importar_miembros_excel",
     ),
 
+    path("salida/<int:pk>/", views.miembro_dar_salida, name="miembro_dar_salida"),
 
 ]
 

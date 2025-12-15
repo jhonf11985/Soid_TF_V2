@@ -29,6 +29,13 @@
             <span class="material-icons">description</span>
             Ficha
         </a>
+        {% if miembro.activo and can_dar_salida %}
+            <a href="{% url 'miembros_app:miembro_dar_salida' miembro.pk %}" class="odoo-btn odoo-btn-secondary" style="border-color:#f1c40f;">
+                <span class="material-icons">person_off</span>
+                Dar salida
+            </a>
+        {% endif %}
+
         <a href="{% url 'miembros_app:editar' miembro.pk %}" class="odoo-btn odoo-btn-primary">
             <span class="material-icons">edit</span>
             Editar
@@ -469,21 +476,80 @@
             {% endif %}
         </div>
 
-                {% if MODULOS_ACTIVOS.finanzas %}
-        <!-- TAB: Finanzas -->
-        <div class="odoo-tab-content" id="tab-finanzas">
-            <div class="odoo-fields-grid">
-                <div class="odoo-field odoo-field-full">
-                    <label>Finanzas</label>
-                    <span class="odoo-muted">Aquí mostraremos el récord financiero del miembro.</span>
-                </div>
-            </div>
+{% if MODULOS_ACTIVOS.Finanzas %}
+<!-- TAB: Finanzas -->
+<div class="odoo-tab-content" id="tab-finanzas">
 
-            <p class="odoo-empty" style="margin-top:12px;">
-                Aún no hay movimientos vinculados a este miembro.
-            </p>
+    <div class="odoo-fields-grid">
+        <div class="odoo-field">
+            <label>Total aportado</label>
+            <span>RD$ {{ total_aportes|floatformat:2 }}</span>
         </div>
+        <div class="odoo-field">
+            <label>Movimientos</label>
+            <span>{{ movimientos_financieros|length }}</span>
+        </div>
+    </div>
+
+    {% if movimientos_financieros %}
+        <div class="odoo-table-container" style="margin-top:12px;">
+            <table class="odoo-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Categoría</th>
+                        <th>Monto</th>
+                        <th>Referencia</th>
+                    </tr>
+                </thead>
+<tbody>
+  {% for mov in movimientos_financieros %}
+  <tr>
+    <td>{{ mov.fecha|date:"d/m/Y" }}</td>
+    <td>{{ mov.get_tipo_display }}</td>
+    <td>{{ mov.categoria }}</td>
+    <td>RD$ {{ mov.monto|floatformat:2 }}</td>
+    <td>{{ mov.referencia|default:"—" }}</td>
+
+    <td style="text-align:right;">
+      {% if mov.es_transferencia %}
+        <a class="odoo-icon-link"
+           href="{% url 'finanzas_app:transferencia_detalle' mov.pk %}"
+           title="Ver transferencia">
+          <span class="material-icons" style="font-size:18px;">visibility</span>
+        </a>
+      {% else %}
+        {% if mov.tipo == 'ingreso' %}
+          <a class="odoo-icon-link"
+             href="{% url 'finanzas_app:ingreso_detalle' mov.pk %}"
+             title="Ver ingreso">
+            <span class="material-icons" style="font-size:18px;">visibility</span>
+          </a>
+        {% else %}
+          <a class="odoo-icon-link"
+             href="{% url 'finanzas_app:movimiento_editar' mov.pk %}"
+             title="Ver egreso">
+            <span class="material-icons" style="font-size:18px;">visibility</span>
+          </a>
         {% endif %}
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+
+            </table>
+        </div>
+    {% else %}
+        <p class="odoo-empty" style="margin-top:12px;">
+            Aún no hay movimientos vinculados a este miembro.
+        </p>
+    {% endif %}
+
+</div>
+{% endif %}
+
 
         
         <!-- TAB: Otros -->
@@ -523,6 +589,9 @@
      ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
+
+
+
 /* ═══════════════════════════════════════════════════════════════════════════
    BARRA DE CONTROL
    ═══════════════════════════════════════════════════════════════════════════ */

@@ -32,6 +32,9 @@ from openpyxl import Workbook
 from datetime import date, timedelta, datetime
 from openpyxl import Workbook, load_workbook
 from notificaciones_app.utils import crear_notificacion
+from finanzas_app.models import MovimientoFinanciero
+from django.db.models import Sum
+from .forms import MiembroSalidaForm
 
 
 
@@ -698,6 +701,8 @@ class MiembroUpdateView(View):
             .order_by("nombres", "apellidos")
         )
 
+
+
         context = {
             "form": form,
             "miembro": miembro,
@@ -705,6 +710,7 @@ class MiembroUpdateView(View):
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+            
         }
         return render(request, "miembros_app/miembro_form.html", context)
 
@@ -851,6 +857,24 @@ class MiembroDetailView(View):
     def get(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
 
+
+        movimientos_financieros = (
+            MovimientoFinanciero.objects
+            .filter(persona_asociada=miembro)
+            .exclude(estado="anulado")   # ✅ tu modelo usa "estado"
+            .order_by("-fecha", "-creado_en")
+        )
+        can_dar_salida = (
+            request.user.is_authenticated
+            and request.user.has_perm("miembros_app.change_miembro")
+        )
+
+        # Totales (ajusta tipos si usas otros)
+        total_aportes = movimientos_financieros.filter(
+            tipo="ingreso"
+        ).aggregate(total=Sum("monto"))["total"] or 0
+
+
         # Traemos todas las relaciones donde participa este miembro
         relaciones_qs = (
             MiembroRelacion.objects
@@ -882,6 +906,9 @@ class MiembroDetailView(View):
             "miembro": miembro,
             "relaciones_familia": relaciones_familia,
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+             "movimientos_financieros": movimientos_financieros,
+             "total_aportes": total_aportes,
+             "can_dar_salida": can_dar_salida, 
         }
         return render(request, "miembros_app/miembros_detalle.html", context)
 
@@ -2457,3 +2484,56 @@ def importar_miembros_excel(request):
         f"Importación completada. Miembros creados: {creados}. Filas omitidas: {omitidos}.",
     )
     return redirect("miembros_app:lista")
+
+
+def miembro_dar_salida(request, pk):
+    """
+    Registrar salida de un miembro:
+    - Marca activo=False
+    - Guarda razon_salida, fecha_salida, comentario_salida
+    - Limpia estado_miembro (opcional)
+    Protegido por permisos.
+    """
+    miembro = get_object_or_404(Miembro, pk=pk)
+
+    # ✅ Protección (simple y segura)
+    # Si tienes un permiso custom, cámbialo aquí:
+    #   "miembros_app.dar_salida_miembro"
+    if not (request.user.is_superuser or request.user.has_perm("miembros_app.change_miembro")):
+        return HttpResponseForbidden("No tienes permisos para dar salida a miembros.")
+
+    # Si ya está inactivo, no tiene sentido repetir
+    if not miembro.activo:
+        messages.info(request, "Este miembro ya está inactivo. No se puede registrar una salida de nuevo.")
+        return redirect("miembros_app:detalle", pk=miembro.pk)
+
+    if request.method == "POST":
+        form = MiembroSalidaForm(request.POST, instance=miembro)
+        if form.is_valid():
+            miembro_editado = form.save(commit=False)
+
+            # Marcar inactivo
+            miembro_editado.activo = False
+
+            # Si no eligieron fecha, ponemos hoy
+            if not miembro_editado.fecha_salida:
+                miembro_editado.fecha_salida = timezone.localdate()
+
+            # (Opcional) limpiar estado pastoral cuando sale
+            miembro_editado.estado_miembro = ""
+
+            miembro_editado.save()
+
+            messages.success(request, "Salida registrada correctamente. El miembro ha quedado inactivo.")
+            return redirect("miembros_app:detalle", pk=miembro_editado.pk)
+        else:
+            messages.error(request, "Hay errores en el formulario. Revisa los campos marcados.")
+    else:
+        # Fecha por defecto hoy
+        form = MiembroSalidaForm(instance=miembro, initial={"fecha_salida": timezone.localdate()})
+
+    context = {
+        "miembro": miembro,
+        "form": form,
+    }
+    return render(request, "miembros_app/miembro_salida_form.html", context)
