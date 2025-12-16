@@ -1,0 +1,94 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'core/css/recibos.css' %}">
+
+{% block recibo_contenido %}
+
+<!-- CABECERA -->
+<div class="receipt-head">
+  <div class="receipt-org">IGLESIA TORRE FUERTE</div>
+  <div class="receipt-title">RECIBO DE INGRESO</div>
+  <div class="receipt-divider"></div>
+
+  <div class="receipt-meta">
+    <div><span class="k">No.</span> <span class="v mono">ING-{{ ingreso.id|stringformat:"04d" }}</span></div>
+    <div><span class="k">Fecha</span> <span class="v">{{ ingreso.fecha|date:"d/m/Y" }}</span></div>
+  </div>
+</div>
+
+<!-- MONTO -->
+<div class="receipt-amount-box">
+  <div class="receipt-amount-label">Monto recibido</div>
+  <div class="receipt-amount">RD$ {{ ingreso.monto|floatformat:2 }}</div>
+</div>
+
+<!-- DETALLE -->
+<div class="receipt-section">
+  <div class="receipt-section-title">Detalle del movimiento</div>
+
+  <div class="receipt-row">
+    <span class="k">Cuenta</span>
+    <span class="v">{{ ingreso.cuenta.nombre|default:"—" }}</span>
+  </div>
+
+  <div class="receipt-row">
+    <span class="k">Categoría</span>
+    <span class="v">{{ ingreso.categoria.nombre|default:"—" }}</span>
+  </div>
+
+  <div class="receipt-row">
+    <span class="k">Forma de pago</span>
+    <span class="v">{{ ingreso.get_forma_pago_display|default:"—" }}</span>
+  </div>
+
+  {% if ingreso.referencia %}
+  <div class="receipt-row">
+    <span class="k">Referencia</span>
+    <span class="v mono">{{ ingreso.referencia }}</span>
+  </div>
+  {% endif %}
+</div>
+
+{% if ingreso.persona_asociada %}
+<!-- PERSONA -->
+<div class="receipt-section">
+  <div class="receipt-section-title">Persona asociada</div>
+
+  <div class="receipt-row">
+    <span class="k">Nombre</span>
+    <span class="v">{{ ingreso.persona_asociada }}</span>
+  </div>
+
+  {% if ingreso.persona_asociada.codigo_tf %}
+  <div class="receipt-row">
+    <span class="k">Código</span>
+    <span class="v mono">{{ ingreso.persona_asociada.codigo_tf }}</span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- AUDITORÍA -->
+<div class="receipt-section">
+  <div class="receipt-section-title">Auditoría</div>
+
+  <div class="receipt-row">
+    <span class="k">Registrado por</span>
+    <span class="v">
+      {{ ingreso.creado_por.get_full_name|default:ingreso.creado_por.username|default:"Sistema" }}
+    </span>
+  </div>
+
+  <div class="receipt-row">
+    <span class="k">Fecha / hora</span>
+    <span class="v">
+      {{ ingreso.creado_en|date:"d/m/Y H:i"|default:"—" }}
+    </span>
+  </div>
+</div>
+
+<!-- PIE -->
+<div class="receipt-footer">
+  Documento interno · Generado por Soid_tf_2
+</div>
+
+{% endblock %}

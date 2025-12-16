@@ -1039,3 +1039,16 @@ def listar_adjuntos(request, movimiento_id):
     }
     
     return JsonResponse(data)
+
+@login_required
+def ingreso_recibo(request, pk):
+    """
+    Vista SOLO para imprimir el recibo de un ingreso (formato 80mm).
+    """
+    ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso")
+
+    context = {
+        "ingreso": ingreso,
+        "auto_print": True,  # para que el template pueda disparar window.print()
+    }
+    return render(request, "finanzas_app/recibos/ingreso_recibo.html", context)

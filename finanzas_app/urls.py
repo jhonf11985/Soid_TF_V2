@@ -48,4 +48,7 @@ urlpatterns = [
     path("adjuntos/<int:adjunto_id>/descargar/", views.descargar_adjunto, name="descargar_adjunto"),
     path("adjuntos/movimiento/<int:movimiento_id>/listar/", views.listar_adjuntos, name="listar_adjuntos"),
 
+    path("ingresos/<int:pk>/recibo/", views.ingreso_recibo, name="ingreso_recibo"),
+
+
 ]
