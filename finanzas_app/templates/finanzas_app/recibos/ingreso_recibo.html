@@ -1,34 +1,26 @@
-{% load static %}
-<link rel="stylesheet" href="{% static 'core/css/recibos.css' %}">
+{% extends "core/print/base_recibo.html" %}
+
+{% block titulo %}Recibo · Ingreso ING-{{ ingreso.id|stringformat:"04d" }}{% endblock %}
 
 {% block recibo_contenido %}
 
-<!-- CABECERA -->
 <div class="receipt-head">
   <div class="receipt-org">IGLESIA TORRE FUERTE</div>
   <div class="receipt-title">RECIBO DE INGRESO</div>
-  <div class="receipt-divider"></div>
-
-  <div class="receipt-meta">
-    <div><span class="k">No.</span> <span class="v mono">ING-{{ ingreso.id|stringformat:"04d" }}</span></div>
-    <div><span class="k">Fecha</span> <span class="v">{{ ingreso.fecha|date:"d/m/Y" }}</span></div>
-  </div>
 </div>
 
-<!-- MONTO -->
+<div class="receipt-meta">
+  <div><span class="k">No. Documento</span> <span class="v mono">ING-{{ ingreso.id|stringformat:"04d" }}</span></div>
+  <div><span class="k">Fecha Movimiento</span> <span class="v">{{ ingreso.fecha|date:"d/m/Y" }}</span></div>
+</div>
+
 <div class="receipt-amount-box">
-  <div class="receipt-amount-label">Monto recibido</div>
+  <div class="receipt-amount-label">Monto Total Recibido</div>
   <div class="receipt-amount">RD$ {{ ingreso.monto|floatformat:2 }}</div>
 </div>
 
-<!-- DETALLE -->
 <div class="receipt-section">
-  <div class="receipt-section-title">Detalle del movimiento</div>
-
-  <div class="receipt-row">
-    <span class="k">Cuenta</span>
-    <span class="v">{{ ingreso.cuenta.nombre|default:"—" }}</span>
-  </div>
+  <div class="receipt-section-title">Detalle del Movimiento</div>
 
   <div class="receipt-row">
     <span class="k">Categoría</span>
@@ -40,18 +32,30 @@
     <span class="v">{{ ingreso.get_forma_pago_display|default:"—" }}</span>
   </div>
 
+  <div class="receipt-row">
+    <span class="k">Cuenta Destino</span>
+    <span class="v">{{ ingreso.cuenta.nombre|default:"—" }}</span>
+  </div>
+
   {% if ingreso.referencia %}
   <div class="receipt-row">
-    <span class="k">Referencia</span>
+    <span class="k">Referencia / No. Cheque</span>
     <span class="v mono">{{ ingreso.referencia }}</span>
   </div>
   {% endif %}
+
+  {% if ingreso.concepto %}
+  <div class="receipt-row">
+    <span class="k">Concepto</span>
+    <span class="v">{{ ingreso.concepto }}</span>
+  </div>
+  {% endif %}
+
 </div>
 
 {% if ingreso.persona_asociada %}
-<!-- PERSONA -->
 <div class="receipt-section">
-  <div class="receipt-section-title">Persona asociada</div>
+  <div class="receipt-section-title">Recibido de</div>
 
   <div class="receipt-row">
     <span class="k">Nombre</span>
@@ -60,35 +64,42 @@
 
   {% if ingreso.persona_asociada.codigo_tf %}
   <div class="receipt-row">
-    <span class="k">Código</span>
+    <span class="k">Código Persona</span>
     <span class="v mono">{{ ingreso.persona_asociada.codigo_tf }}</span>
   </div>
   {% endif %}
 </div>
 {% endif %}
 
-<!-- AUDITORÍA -->
 <div class="receipt-section">
-  <div class="receipt-section-title">Auditoría</div>
+  <div class="receipt-section-title">Auditoría del Sistema</div>
 
   <div class="receipt-row">
     <span class="k">Registrado por</span>
-    <span class="v">
-      {{ ingreso.creado_por.get_full_name|default:ingreso.creado_por.username|default:"Sistema" }}
-    </span>
+    <span class="v">{{ ingreso.creado_por.get_full_name|default:ingreso.creado_por.username|default:"Sistema" }}</span>
   </div>
 
   <div class="receipt-row">
-    <span class="k">Fecha / hora</span>
-    <span class="v">
-      {{ ingreso.creado_en|date:"d/m/Y H:i"|default:"—" }}
-    </span>
+    <span class="k">Fecha de Registro</span>
+    <span class="v">{{ ingreso.creado_en|date:"d/m/Y H:i"|default:"—" }}</span>
   </div>
+
+  {% if ingreso.estado %}
+  <div class="receipt-row">
+    <span class="k">Estado</span>
+    <span class="v">{{ ingreso.estado }}</span>
+  </div>
+  {% endif %}
 </div>
 
-<!-- PIE -->
 <div class="receipt-footer">
-  Documento interno · Generado por Soid_tf_2
+  Documento interno no fiscal · Generado por Soid_tf_2
 </div>
 
+{% endblock %}
+
+{% block auto_print %}
+<script>
+  window.print();
+</script>
 {% endblock %}
