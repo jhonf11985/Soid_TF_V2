@@ -463,8 +463,11 @@ def movimientos_listado(request):
     fecha_desde = request.GET.get("fecha_desde")
     fecha_hasta = request.GET.get("fecha_hasta")
 
-    if tipo in ["ingreso", "egreso"]:
-        movimientos = movimientos.filter(tipo=tipo)
+    if tipo == "transferencia":
+        movimientos = movimientos.filter(es_transferencia=True)
+    elif tipo in ["ingreso", "egreso"]:
+        movimientos = movimientos.filter(tipo=tipo).exclude(es_transferencia=True)
+
 
     if cuenta_id:
         movimientos = movimientos.filter(cuenta_id=cuenta_id)
