@@ -59,6 +59,11 @@ urlpatterns = [
 
     path("movimientos/imprimir/", views.movimientos_listado_print, name="movimientos_listado_print"),
 
-
+path("reportes/resumen-mensual/", views.reporte_resumen_mensual, name="reporte_resumen_mensual"),
+# Reportes (HOME)
+path("reportes/", views.reportes_home, name="reportes_home"),
+path("reportes/resumen-por-cuenta/", views.reporte_resumen_por_cuenta, name="reporte_resumen_por_cuenta"),
+path("reportes/resumen-por-categoria/", views.reporte_resumen_por_categoria, name="reporte_resumen_por_categoria"),
+path("reportes/anulados/", views.reporte_movimientos_anulados, name="reporte_movimientos_anulados"),
 
 ]

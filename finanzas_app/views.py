@@ -1193,3 +1193,402 @@ def movimientos_listado_print(request):
         "auto_print": True,
     }
     return render(request, "finanzas_app/reportes/movimientos_listado_print.html", context)
+
+@login_required
+def reporte_resumen_mensual(request):
+    """
+    Reporte imprimible: Cierre mensual (ingresos, egresos, balance).
+    Filtros:
+      - year, month (obligatorio por defecto al mes actual)
+      - cuenta (opcional)
+      - incluir_transferencias=1 (opcional)
+      - agrupar=1 (opcional: muestra resumen por categoría)
+      - print=1 (opcional: dispara window.print())
+    """
+    hoy = timezone.now().date()
+
+    # ---- filtros base ----
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    cuenta_id = (request.GET.get("cuenta") or "").strip()
+
+    incluir_transferencias = request.GET.get("incluir_transferencias") in ("1", "true", "True", "on")
+    agrupar = request.GET.get("agrupar") in ("1", "true", "True", "on")
+
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+
+    try:
+        year = int(year) if year else hoy.year
+        month = int(month) if month else hoy.month
+        if month < 1 or month > 12:
+            raise ValueError
+    except Exception:
+        year = hoy.year
+        month = hoy.month
+
+    # ---- query del mes (excluyendo anulados) ----
+    qs_mes = MovimientoFinanciero.objects.filter(
+        fecha__year=year,
+        fecha__month=month,
+    ).exclude(estado="anulado")
+
+    # filtro por cuenta (si viene)
+    cuenta_obj = None
+    if cuenta_id:
+        qs_mes = qs_mes.filter(cuenta_id=cuenta_id)
+        cuenta_obj = CuentaFinanciera.objects.filter(pk=cuenta_id).first()
+
+    # ---- ingresos/egresos (operativo vs incluyendo transferencias) ----
+    if incluir_transferencias:
+        qs_balance = qs_mes
+    else:
+        qs_balance = qs_mes.exclude(es_transferencia=True)
+
+    totales = qs_balance.aggregate(
+        ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+        egresos=Sum("monto", filter=Q(tipo="egreso")),
+    )
+
+    ingresos_mes = totales.get("ingresos") or Decimal("0")
+    egresos_mes = totales.get("egresos") or Decimal("0")
+    balance_mes = ingresos_mes - egresos_mes
+
+    # ---- transferencias del mes (informativo) ----
+    qs_transf = qs_mes.filter(es_transferencia=True)
+    transf_totales = qs_transf.aggregate(
+        transf_egreso=Sum("monto", filter=Q(tipo="egreso")),
+        transf_ingreso=Sum("monto", filter=Q(tipo="ingreso")),
+    )
+    transf_egreso = transf_totales.get("transf_egreso") or Decimal("0")
+    transf_ingreso = transf_totales.get("transf_ingreso") or Decimal("0")
+
+    # ---- agrupación por categoría (opcional) ----
+    resumen_por_categoria = []
+    if agrupar:
+        # OJO: si NO incluimos transferencias, también las excluimos aquí para coherencia
+        qs_cat = qs_balance.values("tipo", "categoria__nombre").annotate(total=Sum("monto")).order_by("tipo", "-total")
+        for row in qs_cat:
+            resumen_por_categoria.append({
+                "tipo": row["tipo"],
+                "categoria": row["categoria__nombre"] or "Sin categoría",
+                "total": row["total"] or Decimal("0"),
+            })
+
+    # ---- combos para el form ----
+    cuentas = CuentaFinanciera.objects.filter(esta_activa=True).order_by("nombre")
+
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    mes_label = f"{NOMBRES_MESES[month]} {year}"
+
+    CFG = get_config()
+
+    context = {
+        "CFG": CFG,
+        "auto_print": auto_print,
+        "fecha_hoy": hoy,
+
+        # filtros actuales
+        "year": year,
+        "month": month,
+        "mes_label": mes_label,
+        "cuenta_id": cuenta_id,
+        "cuenta_obj": cuenta_obj,
+        "incluir_transferencias": incluir_transferencias,
+        "agrupar": agrupar,
+
+        # datos
+        "ingresos_mes": ingresos_mes,
+        "egresos_mes": egresos_mes,
+        "balance_mes": balance_mes,
+        "transf_ingreso": transf_ingreso,
+        "transf_egreso": transf_egreso,
+        "resumen_por_categoria": resumen_por_categoria,
+
+        # selects
+        "cuentas": cuentas,
+        "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
+    }
+    return render(request, "finanzas_app/reportes/resumen_mensual.html", context)
+
+@login_required
+def reportes_home(request):
+    """
+    Home de reportes del módulo Finanzas (estilo tarjetas).
+    """
+    return render(request, "finanzas_app/reportes/reportes_home.html")
+
+
+@login_required
+def reporte_resumen_por_cuenta(request):
+    """
+    Reporte: Resumen por cuenta (ingresos, egresos, balance) por mes/año.
+    Filtros:
+      - year, month (por defecto mes actual)
+      - incluir_transferencias=1 (opcional)
+      - print=1 (opcional)
+    """
+    hoy = timezone.now().date()
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    incluir_transferencias = request.GET.get("incluir_transferencias") in ("1", "true", "True", "on")
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+
+    try:
+        year = int(year) if year else hoy.year
+        month = int(month) if month else hoy.month
+        if month < 1 or month > 12:
+            raise ValueError
+    except Exception:
+        year = hoy.year
+        month = hoy.month
+
+    qs = MovimientoFinanciero.objects.filter(
+        fecha__year=year,
+        fecha__month=month,
+    ).exclude(estado="anulado")
+
+    if not incluir_transferencias:
+        qs = qs.exclude(es_transferencia=True)
+
+    # Agrupar por cuenta + sumar por tipo
+    filas = (qs.values("cuenta_id", "cuenta__nombre")
+               .annotate(
+                    ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+                    egresos=Sum("monto", filter=Q(tipo="egreso")),
+                )
+               .order_by("cuenta__nombre"))
+
+    data = []
+    total_ing = Decimal("0")
+    total_egr = Decimal("0")
+
+    for f in filas:
+        ing = f["ingresos"] or Decimal("0")
+        egr = f["egresos"] or Decimal("0")
+        bal = ing - egr
+
+        total_ing += ing
+        total_egr += egr
+
+        data.append({
+            "cuenta": f["cuenta__nombre"] or "Sin cuenta",
+            "ingresos": ing,
+            "egresos": egr,
+            "balance": bal,
+        })
+
+    total_balance = total_ing - total_egr
+
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    mes_label = f"{NOMBRES_MESES[month]} {year}"
+
+    CFG = get_config()
+
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+
+        "year": year,
+        "month": month,
+        "mes_label": mes_label,
+        "incluir_transferencias": incluir_transferencias,
+        "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
+
+        "data": data,
+        "total_ingresos": total_ing,
+        "total_egresos": total_egr,
+        "total_balance": total_balance,
+    }
+    return render(request, "finanzas_app/reportes/resumen_por_cuenta.html", context)
+
+
+@login_required
+def reporte_resumen_por_categoria(request):
+    """
+    Reporte: Resumen por categoría (totales de ingresos y egresos agrupados).
+    Filtros:
+      - year, month (por defecto mes actual)
+      - cuenta (opcional)
+      - incluir_transferencias=1 (opcional)
+      - print=1 (opcional)
+    """
+    hoy = timezone.now().date()
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    cuenta_id = (request.GET.get("cuenta") or "").strip()
+
+    incluir_transferencias = request.GET.get("incluir_transferencias") in ("1", "true", "True", "on")
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+
+    try:
+        year = int(year) if year else hoy.year
+        month = int(month) if month else hoy.month
+        if month < 1 or month > 12:
+            raise ValueError
+    except Exception:
+        year = hoy.year
+        month = hoy.month
+
+    qs = MovimientoFinanciero.objects.filter(
+        fecha__year=year,
+        fecha__month=month,
+    ).exclude(estado="anulado")
+
+    cuenta_obj = None
+    if cuenta_id:
+        qs = qs.filter(cuenta_id=cuenta_id)
+        cuenta_obj = CuentaFinanciera.objects.filter(pk=cuenta_id).first()
+
+    if not incluir_transferencias:
+        qs = qs.exclude(es_transferencia=True)
+
+    # Agrupar por categoría + sumar por tipo
+    filas = (
+        qs.values("categoria_id", "categoria__nombre")
+          .annotate(
+              ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+              egresos=Sum("monto", filter=Q(tipo="egreso")),
+          )
+          .order_by("categoria__nombre")
+    )
+
+    data = []
+    total_ing = Decimal("0")
+    total_egr = Decimal("0")
+
+    for f in filas:
+        ing = f["ingresos"] or Decimal("0")
+        egr = f["egresos"] or Decimal("0")
+        bal = ing - egr
+
+        total_ing += ing
+        total_egr += egr
+
+        data.append({
+            "categoria": f["categoria__nombre"] or "Sin categoría",
+            "ingresos": ing,
+            "egresos": egr,
+            "balance": bal,
+        })
+
+    total_balance = total_ing - total_egr
+
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    mes_label = f"{NOMBRES_MESES[month]} {year}"
+
+    cuentas = CuentaFinanciera.objects.filter(esta_activa=True).order_by("nombre")
+    CFG = get_config()
+
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+
+        "year": year,
+        "month": month,
+        "mes_label": mes_label,
+        "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
+
+        "cuentas": cuentas,
+        "cuenta_id": cuenta_id,
+        "cuenta_obj": cuenta_obj,
+
+        "incluir_transferencias": incluir_transferencias,
+
+        "data": data,
+        "total_ingresos": total_ing,
+        "total_egresos": total_egr,
+        "total_balance": total_balance,
+    }
+    return render(request, "finanzas_app/reportes/resumen_por_categoria.html", context)
+
+
+@login_required
+def reporte_movimientos_anulados(request):
+    """
+    Reporte: Movimientos anulados (auditoría).
+    Filtros:
+      - year, month (por defecto mes actual)
+      - tipo (opcional: ingreso/egreso/transferencia)
+      - cuenta (opcional)
+      - print=1 (opcional)
+    """
+    hoy = timezone.now().date()
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    tipo = (request.GET.get("tipo") or "").strip()
+    cuenta_id = (request.GET.get("cuenta") or "").strip()
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+
+    try:
+        year = int(year) if year else hoy.year
+        month = int(month) if month else hoy.month
+        if month < 1 or month > 12:
+            raise ValueError
+    except Exception:
+        year = hoy.year
+        month = hoy.month
+
+    qs = MovimientoFinanciero.objects.select_related(
+        "cuenta", "categoria", "creado_por", "anulado_por"
+    ).filter(
+        estado="anulado",
+        fecha__year=year,
+        fecha__month=month,
+    ).order_by("-anulado_en", "-fecha", "-id")
+
+    # filtro por cuenta
+    cuenta_obj = None
+    if cuenta_id:
+        qs = qs.filter(cuenta_id=cuenta_id)
+        cuenta_obj = CuentaFinanciera.objects.filter(pk=cuenta_id).first()
+
+    # filtro por tipo
+    # - ingreso / egreso (campo tipo)
+    # - transferencia (es_transferencia=True)
+    if tipo in ("ingreso", "egreso"):
+        qs = qs.filter(tipo=tipo, es_transferencia=False)
+    elif tipo == "transferencia":
+        qs = qs.filter(es_transferencia=True)
+
+    # combos
+    cuentas = CuentaFinanciera.objects.filter(esta_activa=True).order_by("nombre")
+    CFG = get_config()
+
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    mes_label = f"{NOMBRES_MESES[month]} {year}"
+
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+
+        "year": year,
+        "month": month,
+        "mes_label": mes_label,
+        "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
+
+        "cuentas": cuentas,
+        "cuenta_id": cuenta_id,
+        "cuenta_obj": cuenta_obj,
+
+        "tipo": tipo,
+        "qs": qs,
+    }
+    return render(request, "finanzas_app/reportes/movimientos_anulados.html", context)

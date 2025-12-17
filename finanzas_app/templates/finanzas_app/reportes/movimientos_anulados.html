@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Auditoría: Movimientos Anulados - {{ mes_label }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #1e293b;
+      --accent: #f59e0b; /* Color ámbar/alerta para auditoría */
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --bg: #f8fafc;
+      --border: #e2e8f0;
+    }
+
+    @page { size: A4 landscape; margin: 10mm; } /* Paisaje para que quepan todas las columnas */
+
+    body { 
+      font-family: 'Inter', -apple-system, sans-serif; 
+      color: var(--primary); 
+      background-color: var(--bg);
+      margin: 0;
+      padding: 20px;
+      font-size: 13px;
+    }
+
+    .report-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+
+    /* Impresión */
+    .print-only { display: none; }
+    @media print {
+      body { background: white; padding: 0; }
+      .report-container { box-shadow: none; padding: 0; border-radius: 0; max-width: 100%; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      .table { border: 1px solid #eee; font-size: 10px; }
+      .pill { border: 1px solid #ccc !important; }
+    }
+
+    /* Encabezado */
+    .header { 
+      display: flex; 
+      justify-content: space-between;
+      align-items: center; 
+      border-bottom: 2px solid var(--bg); 
+      padding-bottom: 20px; 
+      margin-bottom: 24px; 
+    }
+    .h-title { margin: 0; font-size: 20px; font-weight: 800; color: #991b1b; } /* Título en tono rojo auditoría */
+    .muted { color: #64748b; font-size: 12px; }
+
+    /* Filtros */
+    .filters-form { 
+      display: flex; 
+      gap: 12px; 
+      flex-wrap: wrap; 
+      align-items: flex-end; 
+      padding: 18px; 
+      background: #f1f5f9;
+      border-radius: 12px; 
+      margin-bottom: 25px;
+    }
+    .f-group { display: flex; flex-direction: column; gap: 4px; }
+    .f-group label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; }
+    .f-control { 
+      padding: 8px 10px; 
+      border: 1px solid var(--border); 
+      border-radius: 6px; 
+      font-size: 13px;
+    }
+
+    /* Botones */
+    .btn { 
+      padding: 8px 16px; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 6px;
+      border: 1px solid var(--border);
+      background: white;
+    }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+
+    /* Tabla de Auditoría */
+    .table-wrapper { overflow-x: auto; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .table th { 
+      background: #f8fafc; 
+      text-align: left; 
+      padding: 12px 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #64748b;
+      border-bottom: 2px solid var(--border);
+    }
+    .table td { 
+      padding: 12px 10px; 
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    
+    /* Pillas / Badges */
+    .pill {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .pill-blue { background: #eff6ff; color: #1d4ed8; }
+    .pill-red { background: #fef2f2; color: #b91c1c; }
+    .pill-amber { background: #fffbe6; color: #92400e; }
+
+    .right { text-align: right; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .motivo-box { color: #475569; font-style: italic; max-width: 200px; font-size: 12px; }
+    .user-info { display: flex; align-items: center; gap: 5px; font-weight: 500; }
+  </style>
+</head>
+
+<body>
+
+  <div class="report-container">
+    
+    <div class="header no-print">
+      <div>
+        <h1 class="h-title">Auditoría: Movimientos Anulados</h1>
+        <div class="muted">Registro histórico de transacciones canceladas y motivos de anulación</div>
+      </div>
+      <span class="material-icons" style="font-size: 40px; color: #cbd5e1;">gavel</span>
+    </div>
+
+    <div class="no-print">
+      <form method="get" class="filters-form">
+        <div class="f-group">
+          <label>Año</label>
+          <input class="f-control" type="number" name="year" value="{{ year }}" style="width:90px;">
+        </div>
+
+        <div class="f-group">
+          <label>Mes</label>
+          <select class="f-control" name="month">
+            {% for m, nombre in meses %}
+              <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="f-group">
+          <label>Tipo</label>
+          <select class="f-control" name="tipo">
+            <option value="">Todos</option>
+            <option value="ingreso" {% if tipo == 'ingreso' %}selected{% endif %}>Ingreso</option>
+            <option value="egreso" {% if tipo == 'egreso' %}selected{% endif %}>Egreso</option>
+            <option value="transferencia" {% if tipo == 'transferencia' %}selected{% endif %}>Transferencia</option>
+          </select>
+        </div>
+
+        <div class="f-group">
+          <label>Cuenta</label>
+          <select class="f-control" name="cuenta" style="min-width:180px;">
+            <option value="">Todas</option>
+            {% for c in cuentas %}
+              <option value="{{ c.id }}" {% if cuenta_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="flex-grow: 1;"></div>
+
+        <button type="submit" class="btn"><span class="material-icons" style="font-size:16px">search</span></button>
+        <button type="submit" name="print" value="1" class="btn btn-primary"><span class="material-icons" style="font-size:16px">print</span> Imprimir</button>
+      </form>
+    </div>
+
+    <div class="header print-only">
+      <div>
+        <h1 class="h-title">REPORTE DE AUDITORÍA: MOVIMIENTOS ANULADOS</h1>
+        <div class="muted">
+          Periodo: <strong>{{ mes_label }} {{ year }}</strong> 
+          <span style="margin: 0 8px">|</span>
+          Generado: {{ fecha_hoy|date:"d/m/Y" }}
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Fecha Mov.</th>
+            <th>Tipo</th>
+            <th>Descripción / Cuenta</th>
+            <th class="right">Monto</th>
+            <th>Anulado por</th>
+            <th>Fecha Anulación</th>
+            <th>Motivo de la Anulación</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in qs %}
+            <tr>
+              <td>{{ m.fecha|date:"d/m/Y" }}</td>
+              <td>
+                {% if m.es_transferencia %}
+                  <span class="pill pill-amber">Transferencia</span>
+                {% else %}
+                  {% if m.tipo == 'ingreso' %}
+                    <span class="pill pill-blue">Ingreso</span>
+                  {% else %}
+                    <span class="pill pill-red">Egreso</span>
+                  {% endif %}
+                {% endif %}
+              </td>
+              <td>
+                <strong>{{ m.descripcion|default:"Sin descripción" }}</strong><br>
+                <small style="color: #64748b">{{ m.cuenta.nombre|default:"—" }} · {{ m.categoria.nombre|default:"General" }}</small>
+              </td>
+              <td class="right">{{ m.monto }}</td>
+              <td>
+                <div class="user-info">
+                    <span class="material-icons" style="font-size:14px; color:#94a3b8">person</span>
+                    {% if m.anulado_por %}{{ m.anulado_por.get_full_name|default:m.anulado_por.username }}{% else %}—{% endif %}
+                </div>
+              </td>
+              <td>{{ m.anulado_en|date:"d/m/Y" }}</td>
+              <td class="motivo-box">{{ m.motivo_anulacion|default:"No especificado" }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                <span class="material-icons" style="display: block; font-size: 32px; margin-bottom: 10px;">check_circle_outline</span>
+                No se encontraron movimientos anulados en este periodo.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  {% if auto_print %}
+    <script>window.addEventListener('load', () => window.print());</script>
+  {% endif %}
+</body>
+</html>
