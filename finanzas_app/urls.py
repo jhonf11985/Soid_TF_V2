@@ -49,6 +49,15 @@ urlpatterns = [
     path("adjuntos/movimiento/<int:movimiento_id>/listar/", views.listar_adjuntos, name="listar_adjuntos"),
 
     path("ingresos/<int:pk>/recibo/", views.ingreso_recibo, name="ingreso_recibo"),
+     path("ingresos/<int:pk>/general-pdf/", views.ingreso_general_pdf, name="ingreso_general_pdf"),
+     path(
+    "transferencias/<int:pk>/general-pdf/",
+    views.transferencia_general_pdf,
+    name="transferencia_general_pdf"
+    ),
+    path("egresos/<int:pk>/", views.egreso_detalle, name="egreso_detalle"),
+
+
 
 
 ]

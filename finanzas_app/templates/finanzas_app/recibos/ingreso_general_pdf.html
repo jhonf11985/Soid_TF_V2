@@ -1,0 +1,90 @@
+{% extends 'core/reporte_base.html' %}
+
+{% block title %}General PDF · Ingreso ING-{{ ingreso.id|stringformat:"04d" }}{% endblock %}
+
+{% block content %}
+{% now "d/m/Y H:i" as fecha_impresion %}
+
+<section class="no-print" style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;">
+  <div>
+    <h1 style="margin:0;font-size:18px;font-weight:700;">General PDF · Ingreso</h1>
+    <p style="margin:4px 0 0;color:#6b7280;font-size:12px;">
+      Documento imprimible (Guardar como PDF). Generado: {{ fecha_impresion }}
+    </p>
+  </div>
+
+  <button type="button" onclick="window.print()"
+          style="border:1px solid #e5e7eb;background:#111827;color:#fff;padding:8px 12px;border-radius:10px;font-weight:600;cursor:pointer;">
+    <span class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:4px;">print</span>
+    Imprimir
+  </button>
+</section>
+
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 8px 20px rgba(0,0,0,0.06);">
+
+  <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+    <div>
+      <h2 style="margin:0;font-size:16px;font-weight:800;">
+        ING-{{ ingreso.id|stringformat:"04d" }}
+      </h2>
+      <div style="margin-top:4px;color:#6b7280;font-size:12px;">
+        Fecha: {{ ingreso.fecha|date:"d/m/Y" }} · Estado: {{ ingreso.estado|default:"—" }}
+      </div>
+    </div>
+
+    <div style="text-align:right;">
+      <div style="font-size:12px;color:#6b7280;">Monto</div>
+      <div style="font-size:22px;font-weight:900;">
+        RD$ {{ ingreso.monto|floatformat:2 }}
+      </div>
+    </div>
+  </div>
+
+  <hr style="border:none;height:1px;background:#e5e7eb;margin:12px 0;">
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+    <div>
+      <div style="font-size:11px;color:#6b7280;font-weight:700;text-transform:uppercase;">Categoría</div>
+      <div style="margin-top:2px;">{{ ingreso.categoria.nombre|default:"—" }}</div>
+    </div>
+
+    <div>
+      <div style="font-size:11px;color:#6b7280;font-weight:700;text-transform:uppercase;">Cuenta</div>
+      <div style="margin-top:2px;">{{ ingreso.cuenta.nombre|default:"—" }}</div>
+    </div>
+
+    <div>
+      <div style="font-size:11px;color:#6b7280;font-weight:700;text-transform:uppercase;">Forma de pago</div>
+      <div style="margin-top:2px;">{{ ingreso.get_forma_pago_display|default:ingreso.forma_pago|default:"—" }}</div>
+    </div>
+
+    <div>
+      <div style="font-size:11px;color:#6b7280;font-weight:700;text-transform:uppercase;">Referencia</div>
+      <div style="margin-top:2px;">{{ ingreso.referencia|default:"—" }}</div>
+    </div>
+  </div>
+
+  <hr style="border:none;height:1px;background:#e5e7eb;margin:12px 0;">
+
+  <div>
+    <div style="font-size:11px;color:#6b7280;font-weight:700;text-transform:uppercase;">Descripción</div>
+    <div style="margin-top:6px;line-height:1.6;">
+      {{ ingreso.descripcion|default:"Sin descripción registrada."|linebreaks }}
+    </div>
+  </div>
+
+  {% if ingreso.persona_asociada %}
+  <hr style="border:none;height:1px;background:#e5e7eb;margin:12px 0;">
+  <div>
+    <div style="font-size:11px;color:#6b7280;font-weight:700;text-transform:uppercase;">Persona asociada</div>
+    <div style="margin-top:6px;">
+      {{ ingreso.persona_asociada }}
+      {% if ingreso.persona_asociada.codigo_tf %}
+        <span style="color:#6b7280;">· {{ ingreso.persona_asociada.codigo_tf }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

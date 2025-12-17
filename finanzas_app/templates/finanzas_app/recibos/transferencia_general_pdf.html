@@ -1,0 +1,81 @@
+{% extends 'core/reporte_base.html' %}
+
+{% block title %}
+General PDF · Transferencia {{ transferencia.transferencia_id|slice:":8" }}
+{% endblock %}
+
+{% block content %}
+{% now "d/m/Y H:i" as fecha_impresion %}
+
+<!-- CABECERA SOLO PANTALLA -->
+<section class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div>
+        <h1 style="margin:0;font-size:18px;font-weight:700;">General PDF · Transferencia</h1>
+        <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">
+            Documento imprimible · Generado {{ fecha_impresion }}
+        </p>
+    </div>
+
+    <button onclick="window.print()"
+            style="background:#111827;color:#fff;border:none;padding:8px 14px;border-radius:10px;font-weight:600;">
+        <span class="material-icons" style="font-size:18px;vertical-align:middle;">print</span>
+        Imprimir
+    </button>
+</section>
+
+<!-- CONTENIDO IMPRIMIBLE -->
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;">
+
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+            <strong>ID Transferencia</strong><br>
+            <code>{{ transferencia.transferencia_id }}</code>
+        </div>
+        <div>
+            <strong>Fecha</strong><br>
+            {{ transferencia.fecha|date:"d/m/Y" }}
+        </div>
+        <div>
+            <strong>Monto</strong><br>
+            {{ mov_envio.cuenta.moneda }} {{ mov_envio.monto|floatformat:2 }}
+        </div>
+    </div>
+
+    <hr style="margin:14px 0;">
+
+    <h3 style="margin-bottom:6px;">Cuenta Origen</h3>
+    <p>
+        <strong>{{ mov_envio.cuenta.nombre }}</strong><br>
+        {{ mov_envio.cuenta.get_tipo_display }}<br>
+        <span style="color:#dc2626;">
+            - {{ mov_envio.cuenta.moneda }} {{ mov_envio.monto|floatformat:2 }}
+        </span>
+    </p>
+
+    <hr>
+
+    <h3 style="margin-bottom:6px;">Cuenta Destino</h3>
+    <p>
+        <strong>{{ mov_recepcion.cuenta.nombre }}</strong><br>
+        {{ mov_recepcion.cuenta.get_tipo_display }}<br>
+        <span style="color:#059669;">
+            + {{ mov_recepcion.cuenta.moneda }} {{ mov_recepcion.monto|floatformat:2 }}
+        </span>
+    </p>
+
+    {% if transferencia.descripcion %}
+    <hr>
+    <strong>Descripción</strong>
+    <p>{{ transferencia.descripcion|linebreaks }}</p>
+    {% endif %}
+
+    <hr>
+
+    <div style="font-size:12px;color:#6b7280;">
+        Registrado por:
+        {{ transferencia.creado_por.get_full_name|default:transferencia.creado_por.username|default:"Sistema" }}<br>
+        Creado: {{ transferencia.creado_en|date:"d/m/Y H:i" }}
+    </div>
+
+</div>
+{% endblock %}

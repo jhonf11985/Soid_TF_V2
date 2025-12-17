@@ -9,6 +9,10 @@ from decimal import Decimal
 import json
 import datetime
 from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404, render
+from core.utils_config import get_config
+from .models import MovimientoFinanciero
+
 
 from .models import MovimientoFinanciero, CuentaFinanciera, CategoriaMovimiento
 from .forms import (
@@ -1052,3 +1056,52 @@ def ingreso_recibo(request, pk):
         "auto_print": True,  # para que el template pueda disparar window.print()
     }
     return render(request, "finanzas_app/recibos/ingreso_recibo.html", context)
+
+
+
+def ingreso_general_pdf(request, pk):
+    ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso")
+    CFG = get_config()
+    return render(request, "finanzas_app/recibos/ingreso_general_pdf.html", {"ingreso": ingreso, "CFG": CFG})
+
+@login_required
+def transferencia_general_pdf(request, pk):
+    """
+    Vista GENERAL PDF de una transferencia.
+    Usa la misma lógica que transferencia_detalle,
+    pero renderiza la plantilla limpia de reporte.
+    """
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
+
+    if not movimiento.es_transferencia:
+        messages.warning(request, "Este movimiento no es una transferencia.")
+        return redirect("finanzas_app:movimientos_listado")
+
+    movimiento_par = movimiento.get_transferencia_par()
+
+    if movimiento.tipo == "egreso":
+        mov_envio = movimiento
+        mov_recepcion = movimiento_par
+    else:
+        mov_envio = movimiento_par
+        mov_recepcion = movimiento
+
+    CFG = get_config()
+
+    return render(
+        request,
+        "finanzas_app/recibos/transferencia_general_pdf.html",
+        {
+            "transferencia": movimiento,
+            "mov_envio": mov_envio,
+            "mov_recepcion": mov_recepcion,
+            "CFG": CFG,
+        },
+    )
+
+
+@login_required
+def egreso_detalle(request, pk):
+    egreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="egreso")
+    return render(request, "finanzas_app/egreso_detalle.html", {"egreso": egreso})
+
