@@ -1,0 +1,307 @@
+{% extends 'estructura_app/base_estructura.html' %}
+
+
+{% block title %}Dashboard · Estructura{% endblock %}
+
+{% block estructura_content %}
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+    <div class="odoo-control-left">
+        <a href="/admin/estructura_app/unidad/add/" class="odoo-btn odoo-btn-primary">
+            <span class="material-icons">add</span>
+            Nueva unidad
+        </a>
+
+        <div class="odoo-breadcrumb">
+            <span class="odoo-breadcrumb-title">Dashboard</span>
+            <span class="material-icons odoo-breadcrumb-icon">account_tree</span>
+        </div>
+    </div>
+
+    <div class="odoo-control-right">
+        <a href="/admin/estructura_app/unidad/" class="odoo-btn odoo-btn-secondary">
+            <span class="material-icons">list</span>
+            Ver unidades
+        </a>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTENIDO DEL DASHBOARD
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-dashboard">
+
+    <!-- KPIs -->
+    <div class="odoo-kpi-row">
+        <div class="odoo-kpi-card">
+            <div class="odoo-kpi-icon" style="background: #e0f2fe; color: #0284c7;">
+                <span class="material-icons">account_tree</span>
+            </div>
+            <div class="odoo-kpi-content">
+                <div class="odoo-kpi-value">{{ total_unidades|default:"0" }}</div>
+                <div class="odoo-kpi-label">Unidades registradas</div>
+                <div class="odoo-kpi-sub">Ministerios, grupos, equipos, etc.</div>
+            </div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="odoo-kpi-icon" style="background: #d1fae5; color: #059669;">
+                <span class="material-icons">category</span>
+            </div>
+            <div class="odoo-kpi-content">
+                <div class="odoo-kpi-value">{{ total_tipos|default:"0" }}</div>
+                <div class="odoo-kpi-label">Tipos activos</div>
+                <div class="odoo-kpi-sub">Clasificación de unidades</div>
+            </div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="odoo-kpi-icon" style="background: #fef3c7; color: #d97706;">
+                <span class="material-icons">badge</span>
+            </div>
+            <div class="odoo-kpi-content">
+                <div class="odoo-kpi-value">{{ total_roles|default:"0" }}</div>
+                <div class="odoo-kpi-label">Roles activos</div>
+                <div class="odoo-kpi-sub">Cargos y funciones</div>
+            </div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="odoo-kpi-icon" style="background: #ede9fe; color: #5b21b6;">
+                <span class="material-icons">supervisor_account</span>
+            </div>
+            <div class="odoo-kpi-content">
+                <div class="odoo-kpi-value">{{ lideres_vigentes|default:"0" }}</div>
+                <div class="odoo-kpi-label">Líderes vigentes</div>
+                <div class="odoo-kpi-sub">Cargos de liderazgo activos</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRID -->
+    <div class="odoo-dashboard-grid">
+
+        <!-- Columna izquierda -->
+        <div class="odoo-dashboard-column">
+
+            <!-- Estado general -->
+            <div class="odoo-panel">
+                <div class="odoo-panel-header">
+                    <h2>Estado general</h2>
+                    <span class="odoo-panel-badge">{{ unidades_activas|default:"0" }} activas</span>
+                </div>
+
+                <div class="odoo-alerts-grid">
+                    <div class="odoo-alert-item" style="background:#ecfdf5;">
+                        <span class="material-icons" style="color:#059669;">check_circle</span>
+                        <div class="odoo-alert-info">
+                            <div class="odoo-alert-value" style="color:#065f46;">{{ unidades_activas|default:"0" }}</div>
+                            <div class="odoo-alert-label" style="color:#065f46;">Unidades activas</div>
+                        </div>
+                    </div>
+
+                    <div class="odoo-alert-item" style="background:#f3f4f6;">
+                        <span class="material-icons" style="color:#6b7280;">pause_circle</span>
+                        <div class="odoo-alert-info">
+                            <div class="odoo-alert-value" style="color:#374151;">{{ unidades_inactivas|default:"0" }}</div>
+                            <div class="odoo-alert-label" style="color:#374151;">Unidades inactivas</div>
+                        </div>
+                    </div>
+
+                    <div class="odoo-alert-item">
+                        <span class="material-icons">warning_amber</span>
+                        <div class="odoo-alert-info">
+                            <div class="odoo-alert-value">{{ unidades_sin_lider|default:"0" }}</div>
+                            <div class="odoo-alert-label">Sin líder</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distribución por tipo -->
+            <div class="odoo-panel">
+                <div class="odoo-panel-header">
+                    <h2>Distribución por tipo</h2>
+                    <span class="odoo-panel-sub">Unidades registradas</span>
+                </div>
+
+                {% if distribucion_por_tipo %}
+                <div class="odoo-etapas-list">
+                    {% for t in distribucion_por_tipo %}
+                        {% if total_unidades %}
+                            {% widthratio t.total total_unidades 100 as pct %}
+                        {% endif %}
+                        <div class="odoo-etapa-row">
+                            <div class="odoo-etapa-info">
+                                <span class="odoo-etapa-name">{{ t.nombre }}</span>
+                                <span class="odoo-etapa-count">{{ t.total }}</span>
+                            </div>
+                            <div class="odoo-etapa-bar-wrap">
+                                <div class="odoo-etapa-bar" style="width:{% if total_unidades %}{{ pct }}{% else %}0{% endif %}%;"></div>
+                            </div>
+                            <span class="odoo-etapa-pct">{% if total_unidades %}{{ pct }}{% else %}0{% endif %}%</span>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="odoo-empty">No hay tipos configurados.</p>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <!-- Columna derecha -->
+        <div class="odoo-dashboard-column">
+
+            <!-- Acciones rápidas -->
+            <div class="odoo-panel">
+                <div class="odoo-panel-header">
+                    <h2>Acciones rápidas</h2>
+                </div>
+
+                <div class="odoo-quick-actions">
+                    <a href="/admin/estructura_app/tipounidad/" class="odoo-quick-action">
+                        <span class="material-icons">category</span>
+                        <div>
+                            <div class="odoo-qa-title">Tipos de unidad</div>
+                            <div class="odoo-qa-sub">Ministerio, grupo, equipo…</div>
+                        </div>
+                        <span class="material-icons odoo-qa-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="/admin/estructura_app/rolunidad/" class="odoo-quick-action">
+                        <span class="material-icons">badge</span>
+                        <div>
+                            <div class="odoo-qa-title">Roles</div>
+                            <div class="odoo-qa-sub">Líder, co-líder, secretario…</div>
+                        </div>
+                        <span class="material-icons odoo-qa-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="/admin/estructura_app/unidad/" class="odoo-quick-action">
+                        <span class="material-icons">account_tree</span>
+                        <div>
+                            <div class="odoo-qa-title">Unidades</div>
+                            <div class="odoo-qa-sub">Crear y organizar estructura</div>
+                        </div>
+                        <span class="material-icons odoo-qa-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="/admin/estructura_app/unidadcargo/?vigente__exact=1" class="odoo-quick-action">
+                        <span class="material-icons">supervisor_account</span>
+                        <div>
+                            <div class="odoo-qa-title">Liderazgo vigente</div>
+                            <div class="odoo-qa-sub">Cargos activos</div>
+                        </div>
+                        <span class="material-icons odoo-qa-arrow">chevron_right</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Top unidades por miembros -->
+            <div class="odoo-panel">
+                <div class="odoo-panel-header">
+                    <h2>Unidades con más miembros</h2>
+                    <span class="odoo-panel-sub">Miembros activos</span>
+                </div>
+
+                {% if top_unidades %}
+                <ul class="odoo-recent-list">
+                    {% for u in top_unidades %}
+                    <li class="odoo-recent-item">
+                        <div class="odoo-recent-avatar" style="background:#017e84;">
+                            {{ u.nombre|slice:":1"|upper }}
+                        </div>
+                        <div class="odoo-recent-info">
+                            <div class="odoo-recent-name">{{ u.nombre }}</div>
+                            <div class="odoo-recent-sub">{{ u.tipo.nombre }} · {{ u.total_miembros }} miembros</div>
+                        </div>
+                        <span class="odoo-recent-badge odoo-badge-new">{{ u.total_miembros }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="odoo-empty">Aún no hay membresías registradas.</p>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+/* Copiado/ajustado del dashboard de miembros para mantener el MISMO look & feel */
+.odoo-control-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#f8f9fa;border-bottom:1px solid #dee2e6}
+.odoo-control-left,.odoo-control-right{display:flex;align-items:center;gap:12px}
+.odoo-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;font-size:13px;font-weight:500;border:none;border-radius:4px;cursor:pointer;text-decoration:none;transition:all .15s ease}
+.odoo-btn .material-icons{font-size:18px}
+.odoo-btn-primary{background:#017e84;color:#fff}
+.odoo-btn-primary:hover{background:#016166}
+.odoo-btn-secondary{background:#fff;color:#495057;border:1px solid #dee2e6}
+.odoo-btn-secondary:hover{background:#e9ecef}
+.odoo-breadcrumb{display:flex;align-items:center;gap:6px;padding:4px 10px;background:#fff;border:1px solid #dee2e6;border-radius:4px;font-size:13px}
+.odoo-breadcrumb-title{font-weight:500;color:#495057}
+.odoo-breadcrumb-icon{font-size:16px;color:#6c757d}
+
+.odoo-dashboard{padding:16px;background:#f8f9fa;min-height:calc(100vh - 120px);display:flex;flex-direction:column;gap:16px}
+
+.odoo-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.odoo-kpi-card{background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:16px;display:flex;align-items:center;gap:16px}
+.odoo-kpi-icon{width:48px;height:48px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.odoo-kpi-icon .material-icons{font-size:24px}
+.odoo-kpi-content{flex:1;min-width:0}
+.odoo-kpi-value{font-size:28px;font-weight:700;color:#212529;line-height:1}
+.odoo-kpi-label{font-size:13px;font-weight:500;color:#495057;margin-top:4px}
+.odoo-kpi-sub{font-size:11px;color:#6c757d;margin-top:2px}
+
+.odoo-dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.odoo-dashboard-column{display:flex;flex-direction:column;gap:16px}
+
+.odoo-panel{background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:16px}
+.odoo-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e9ecef}
+.odoo-panel-header h2{font-size:14px;font-weight:600;color:#212529;margin:0}
+.odoo-panel-badge{font-size:11px;background:#e9ecef;color:#495057;padding:2px 8px;border-radius:10px}
+.odoo-panel-sub{font-size:11px;color:#6c757d}
+.odoo-empty{font-size:13px;color:#6c757d;text-align:center;padding:20px}
+
+.odoo-etapas-list{display:flex;flex-direction:column;gap:10px}
+.odoo-etapa-row{display:flex;align-items:center;gap:12px}
+.odoo-etapa-info{width:140px;flex-shrink:0;display:flex;justify-content:space-between;align-items:center}
+.odoo-etapa-name{font-size:12px;color:#495057}
+.odoo-etapa-count{font-size:12px;font-weight:600;color:#212529}
+.odoo-etapa-bar-wrap{flex:1;height:6px;background:#e9ecef;border-radius:3px;overflow:hidden}
+.odoo-etapa-bar{height:100%;background:linear-gradient(90deg,#017e84,#0ea5e9);border-radius:3px}
+.odoo-etapa-pct{width:40px;text-align:right;font-size:11px;font-weight:500;color:#6c757d}
+
+.odoo-quick-actions{display:flex;flex-direction:column;gap:8px}
+.odoo-quick-action{display:flex;align-items:center;gap:12px;padding:10px 12px;background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;text-decoration:none;transition:all .15s ease}
+.odoo-quick-action:hover{background:#e9ecef;border-color:#dee2e6}
+.odoo-quick-action>.material-icons:first-child{font-size:20px;color:#017e84}
+.odoo-quick-action>div{flex:1}
+.odoo-qa-title{font-size:13px;font-weight:500;color:#212529}
+.odoo-qa-sub{font-size:11px;color:#6c757d}
+.odoo-qa-arrow{font-size:18px;color:#adb5bd}
+
+.odoo-alerts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.odoo-alert-item{display:flex;align-items:center;gap:10px;padding:12px;background:#fef2f2;border-radius:6px}
+.odoo-alert-item .material-icons{font-size:20px;color:#dc2626}
+.odoo-alert-value{font-size:18px;font-weight:700;color:#991b1b}
+.odoo-alert-label{font-size:11px;color:#991b1b}
+
+.odoo-recent-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.odoo-recent-item{display:flex;align-items:center;gap:12px;padding:8px;background:#f8f9fa;border-radius:6px}
+.odoo-recent-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;flex-shrink:0;overflow:hidden}
+.odoo-recent-info{flex:1;min-width:0}
+.odoo-recent-name{font-size:13px;font-weight:500;color:#212529;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.odoo-recent-sub{font-size:11px;color:#6c757d}
+.odoo-recent-badge{font-size:10px;font-weight:500;padding:2px 8px;border-radius:10px;flex-shrink:0}
+.odoo-badge-new{background:#d1fae5;color:#065f46}
+
+@media (max-width:1200px){.odoo-kpi-row{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:992px){.odoo-dashboard-grid{grid-template-columns:1fr}.odoo-alerts-grid{grid-template-columns:1fr}}
+@media (max-width:640px){.odoo-kpi-row{grid-template-columns:1fr}.odoo-control-bar{flex-wrap:wrap;gap:8px}}
+</style>
+
+{% endblock %}

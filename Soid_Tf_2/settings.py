@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "notificaciones_app",
     'votacion_app',
     'finanzas_app',
+    'estructura_app',
 
 ]
 

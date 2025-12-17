@@ -26,6 +26,7 @@ urlpatterns = [
     
     # 👇 API para búsqueda de miembros (usado por autocomplete)
     path("api/buscar-miembros/", ajax_views.buscar_miembros, name="buscar_miembros"),
+     path("estructura/", include("estructura_app.urls")),
 ]
 
 # Para servir fotos y archivos subidos
