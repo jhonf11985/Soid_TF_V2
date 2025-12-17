@@ -12,8 +12,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, render
 from core.utils_config import get_config
 from .models import MovimientoFinanciero
-
-
+from collections import defaultdict
 from .models import MovimientoFinanciero, CuentaFinanciera, CategoriaMovimiento
 from .forms import (
     MovimientoFinancieroForm, 
@@ -1592,3 +1591,106 @@ def reporte_movimientos_anulados(request):
         "qs": qs,
     }
     return render(request, "finanzas_app/reportes/movimientos_anulados.html", context)
+
+
+@login_required
+def reporte_transferencias(request):
+    """
+    Reporte de auditoría de transferencias.
+    Cada transferencia se muestra como una sola fila
+    (origen -> destino) usando transferencia_id.
+    """
+    hoy = timezone.now().date()
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    cuenta_id = (request.GET.get("cuenta") or "").strip()
+    estado = (request.GET.get("estado") or "").strip()  # activo / anulado / ""
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+
+    try:
+        year = int(year) if year else hoy.year
+        month = int(month) if month else hoy.month
+        if month < 1 or month > 12:
+            raise ValueError
+    except Exception:
+        year = hoy.year
+        month = hoy.month
+
+    # Base: solo transferencias
+    qs = (
+        MovimientoFinanciero.objects
+        .select_related("cuenta", "creado_por", "anulado_por")
+        .filter(
+            es_transferencia=True,
+            fecha__year=year,
+            fecha__month=month,
+        )
+        .order_by("transferencia_id", "tipo")
+    )
+
+    if cuenta_id:
+        qs = qs.filter(cuenta_id=cuenta_id)
+
+    if estado == "activo":
+        qs = qs.exclude(estado="anulado")
+    elif estado == "anulado":
+        qs = qs.filter(estado="anulado")
+
+    # Agrupar por transferencia_id
+    agrupadas = defaultdict(dict)
+
+    for mov in qs:
+        grupo = agrupadas[mov.transferencia_id]
+        grupo["fecha"] = mov.fecha
+        grupo["referencia"] = mov.referencia
+        grupo["descripcion"] = mov.descripcion
+        grupo["creado_por"] = mov.creado_por
+        grupo["estado"] = mov.estado
+        grupo["anulado_en"] = mov.anulado_en
+        grupo["anulado_por"] = mov.anulado_por
+
+        if mov.tipo == "egreso":
+            grupo["origen"] = mov.cuenta
+            grupo["monto"] = mov.monto
+        elif mov.tipo == "ingreso":
+            grupo["destino"] = mov.cuenta
+            grupo["monto"] = mov.monto
+
+    transferencias = []
+    for tid, data in agrupadas.items():
+        transferencias.append({
+            "id": tid,
+            **data,
+        })
+
+    cuentas = CuentaFinanciera.objects.filter(esta_activa=True).order_by("nombre")
+    CFG = get_config()
+
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    mes_label = f"{NOMBRES_MESES[month]} {year}"
+
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+
+        "year": year,
+        "month": month,
+        "mes_label": mes_label,
+        "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
+
+        "cuentas": cuentas,
+        "cuenta_id": cuenta_id,
+        "estado": estado,
+
+        "transferencias": transferencias,
+    }
+    return render(
+        request,
+        "finanzas_app/reportes/transferencias.html",
+        context
+    )

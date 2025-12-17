@@ -65,5 +65,10 @@ path("reportes/", views.reportes_home, name="reportes_home"),
 path("reportes/resumen-por-cuenta/", views.reporte_resumen_por_cuenta, name="reporte_resumen_por_cuenta"),
 path("reportes/resumen-por-categoria/", views.reporte_resumen_por_categoria, name="reporte_resumen_por_categoria"),
 path("reportes/anulados/", views.reporte_movimientos_anulados, name="reporte_movimientos_anulados"),
+path(
+    "reportes/transferencias/",
+    views.reporte_transferencias,
+    name="reporte_transferencias",
+),
 
 ]

@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Auditoría de Transferencias - {{ mes_label }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #1e293b;
+      --accent: #8b5cf6; /* Tono violeta para diferenciar transferencias */
+      --success: #10b981;
+      --danger: #ef4444;
+      --bg: #f8fafc;
+      --border: #e2e8f0;
+    }
+
+    @page { size: A4 landscape; margin: 10mm; }
+
+    body { 
+      font-family: 'Inter', -apple-system, sans-serif; 
+      color: var(--primary); 
+      background-color: var(--bg);
+      margin: 0;
+      padding: 20px;
+    }
+
+    .report-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+
+    /* Visibilidad */
+    .print-only { display: none; }
+    @media print {
+      body { background: white; padding: 0; }
+      .report-container { box-shadow: none; padding: 0; border-radius: 0; max-width: 100%; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      .table { border: 1px solid #eee; }
+    }
+
+    /* Encabezado */
+    .header { 
+      display: flex; 
+      justify-content: space-between;
+      align-items: center; 
+      border-bottom: 2px solid var(--bg); 
+      padding-bottom: 20px; 
+      margin-bottom: 24px; 
+    }
+    .h-title { margin: 0; font-size: 22px; font-weight: 800; }
+    .muted { color: #64748b; font-size: 13px; }
+
+    /* Filtros */
+    .filters-form { 
+      display: flex; 
+      gap: 12px; 
+      flex-wrap: wrap; 
+      align-items: flex-end; 
+      padding: 20px; 
+      background: #f1f5f9;
+      border-radius: 12px; 
+      margin-bottom: 25px;
+    }
+    .f-group { display: flex; flex-direction: column; gap: 4px; }
+    .f-group label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; }
+    .f-control { 
+      padding: 8px 10px; 
+      border: 1px solid var(--border); 
+      border-radius: 8px; 
+      font-size: 13px;
+    }
+
+    /* Botones */
+    .btn { 
+      padding: 9px 16px; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 6px;
+      border: 1px solid var(--border);
+      background: white;
+    }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+
+    /* Tabla */
+    .table-wrapper { overflow-x: auto; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .table th { 
+      background: #f8fafc; 
+      text-align: left; 
+      padding: 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #64748b;
+      border-bottom: 2px solid var(--border);
+    }
+    .table td { 
+      padding: 12px; 
+      border-bottom: 1px solid var(--border);
+      font-size: 13px; 
+    }
+    .right { text-align: right; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    
+    /* Pillas / Badges */
+    .pill {
+      padding: 4px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .pill-ok { background: #ecfdf5; color: #059669; }
+    .pill-anul { background: #fef2f2; color: #dc2626; }
+
+    .route-info { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+    .route-arrow { color: var(--accent); font-weight: 900; }
+  </style>
+</head>
+
+<body>
+
+  <div class="report-container">
+    
+    <div class="header no-print">
+      <div>
+        <h1 class="h-title">Auditoría de Transferencias</h1>
+        <div class="muted">Historial detallado de movimientos entre cuentas financieras</div>
+      </div>
+      <span class="material-icons" style="font-size: 40px; color: var(--accent); opacity: 0.5;">compare_arrows</span>
+    </div>
+
+    <div class="no-print">
+      <form method="get" class="filters-form">
+        <div class="f-group">
+          <label>Año</label>
+          <input class="f-control" type="number" name="year" value="{{ year }}" style="width:90px;">
+        </div>
+
+        <div class="f-group">
+          <label>Mes</label>
+          <select class="f-control" name="month">
+            {% for m, nombre in meses %}
+              <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="f-group">
+          <label>Cuenta vinculada</label>
+          <select class="f-control" name="cuenta" style="min-width:180px;">
+            <option value="">Todas las cuentas</option>
+            {% for c in cuentas %}
+              <option value="{{ c.id }}" {% if cuenta_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="f-group">
+          <label>Estado</label>
+          <select class="f-control" name="estado">
+            <option value="">Cualquier estado</option>
+            <option value="activo" {% if estado == "activo" %}selected{% endif %}>Activas</option>
+            <option value="anulado" {% if estado == "anulado" %}selected{% endif %}>Anuladas</option>
+          </select>
+        </div>
+
+        <div style="flex-grow: 1;"></div>
+
+        <button type="submit" class="btn"><span class="material-icons" style="font-size:18px">refresh</span></button>
+        <button type="submit" name="print" value="1" class="btn btn-primary"><span class="material-icons" style="font-size:18px">print</span> Imprimir</button>
+      </form>
+    </div>
+
+    <div class="header print-only">
+      <div>
+        <h1 class="h-title">REPORTE DE TRANSFERENCIAS ENTRE CUENTAS</h1>
+        <div class="muted">
+          Periodo: <strong>{{ mes_label }} {{ year }}</strong> 
+          <span style="margin: 0 10px">|</span>
+          Generado: {{ fecha_hoy|date:"d/m/Y" }}
+        </div>
+      </div>
+      <div class="right muted">
+        {% if CFG.nombre_organizacion %}{{ CFG.nombre_organizacion }}{% endif %}
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 100px;">Fecha</th>
+            <th>Flujo (Origen → Destino)</th>
+            <th class="right">Monto</th>
+            <th>Referencia / Nota</th>
+            <th>Usuario</th>
+            <th style="text-align: center;">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in transferencias %}
+            <tr>
+              <td>{{ t.fecha|date:"d/m/Y" }}</td>
+              <td>
+                <div class="route-info">
+                    <span>{{ t.origen.nombre|default:"—" }}</span>
+                    <span class="route-arrow">→</span>
+                    <span>{{ t.destino.nombre|default:"—" }}</span>
+                </div>
+              </td>
+              <td class="right">{{ t.monto }}</td>
+              <td style="color: #64748b;">{{ t.referencia|default:"—" }}</td>
+              <td>
+                <small style="display: flex; align-items: center; gap: 4px;">
+                    <span class="material-icons" style="font-size:14px; color:#94a3b8">person</span>
+                    {% if t.creado_por %}{{ t.creado_por.get_full_name|default:t.creado_por.username }}{% else %}—{% endif %}
+                </small>
+              </td>
+              <td style="text-align: center;">
+                {% if t.estado == "anulado" %}
+                  <span class="pill pill-anul">Anulada</span>
+                {% else %}
+                  <span class="pill pill-ok">Activa</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                No se registraron transferencias en este periodo.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  {% if auto_print %}
+    <script>window.addEventListener('load', () => window.print());</script>
+  {% endif %}
+</body>
+</html>
