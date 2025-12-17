@@ -1,0 +1,93 @@
+{% extends "core/reporte_base.html" %}
+
+
+{% block content %}
+
+<div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:12px;">
+  <div>
+    <h2 style="margin:0;">Listado de Movimientos</h2>
+    <div style="font-size:13px; opacity:0.85; margin-top:4px;">
+      {% if f_fecha_desde or f_fecha_hasta %}
+        <strong>Rango:</strong>
+        {{ f_fecha_desde|default:"—" }} a {{ f_fecha_hasta|default:"—" }}
+        &nbsp;·&nbsp;
+      {% endif %}
+
+      {% if f_tipo %}
+        <strong>Tipo:</strong> {{ f_tipo|capfirst }}
+        &nbsp;·&nbsp;
+      {% endif %}
+
+      {% if cuenta_obj %}
+        <strong>Cuenta:</strong> {{ cuenta_obj.nombre }}
+        &nbsp;·&nbsp;
+      {% endif %}
+
+      {% if categoria_obj %}
+        <strong>Categoría:</strong> {{ categoria_obj.nombre }}
+        &nbsp;·&nbsp;
+      {% endif %}
+
+      {% if f_q %}
+        <strong>Búsqueda:</strong> “{{ f_q }}”
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="min-width:240px; text-align:right;">
+    <div style="font-size:13px; opacity:0.85;">Totales</div>
+    <div style="margin-top:6px;">
+      <div><strong>Ingresos:</strong> {{ total_ingresos }}</div>
+      <div><strong>Egresos:</strong> {{ total_egresos }}</div>
+      <div style="margin-top:6px;"><strong>Balance:</strong> {{ balance }}</div>
+    </div>
+  </div>
+</div>
+
+<div style="overflow:hidden; border:1px solid rgba(0,0,0,0.12); border-radius:10px;">
+  <table style="width:100%; border-collapse:collapse; font-size:13px;">
+    <thead>
+      <tr style="background:rgba(0,0,0,0.04);">
+        <th style="text-align:left; padding:10px;">Fecha</th>
+        <th style="text-align:left; padding:10px;">Tipo</th>
+        <th style="text-align:left; padding:10px;">Cuenta</th>
+        <th style="text-align:left; padding:10px;">Categoría</th>
+        <th style="text-align:left; padding:10px;">Descripción</th>
+        <th style="text-align:right; padding:10px;">Monto</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for mov in movimientos %}
+        <tr style="border-top:1px solid rgba(0,0,0,0.08);">
+          <td style="padding:10px; white-space:nowrap;">{{ mov.fecha|date:"d/m/Y" }}</td>
+          <td style="padding:10px; white-space:nowrap;">{{ mov.tipo|capfirst }}</td>
+          <td style="padding:10px;">{{ mov.cuenta.nombre }}</td>
+          <td style="padding:10px;">{{ mov.categoria.nombre }}</td>
+          <td style="padding:10px;">
+            {{ mov.descripcion|default:"" }}
+            {% if mov.referencia %}
+              <div style="font-size:12px; opacity:0.75;">Ref: {{ mov.referencia }}</div>
+            {% endif %}
+          </td>
+          <td style="padding:10px; text-align:right; white-space:nowrap;">{{ mov.monto }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="6" style="padding:14px; text-align:center; opacity:0.75;">
+            No hay movimientos para los filtros seleccionados.
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    {% if auto_print %}
+      window.print();
+    {% endif %}
+  });
+</script>
+
+{% endblock %}

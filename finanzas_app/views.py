@@ -1105,3 +1105,88 @@ def egreso_detalle(request, pk):
     egreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="egreso")
     return render(request, "finanzas_app/egreso_detalle.html", {"egreso": egreso})
 
+@login_required
+def movimientos_listado_print(request):
+    """
+    Vista SOLO para imprimir el listado de movimientos según los filtros actuales.
+    Reutiliza la misma lógica de filtros que movimientos_listado.
+    """
+    movimientos = MovimientoFinanciero.objects.select_related(
+        "cuenta", "categoria", "creado_por"
+    ).exclude(estado="anulado").order_by("-fecha", "-creado_en")
+
+    # --------- FILTROS (MISMA LÓGICA) ----------
+    tipo = request.GET.get("tipo")
+    cuenta_id = request.GET.get("cuenta")
+    categoria_id = request.GET.get("categoria")
+    q = request.GET.get("q")
+    fecha_desde = request.GET.get("fecha_desde")
+    fecha_hasta = request.GET.get("fecha_hasta")
+
+    if tipo in ["ingreso", "egreso"]:
+        movimientos = movimientos.filter(tipo=tipo)
+
+    if cuenta_id:
+        movimientos = movimientos.filter(cuenta_id=cuenta_id)
+
+    if categoria_id:
+        movimientos = movimientos.filter(categoria_id=categoria_id)
+
+    if q:
+        movimientos = movimientos.filter(
+            Q(descripcion__icontains=q) |
+            Q(referencia__icontains=q) |
+            Q(persona_asociada__nombres__icontains=q) |
+            Q(persona_asociada__apellidos__icontains=q) |
+            Q(persona_asociada__codigo_miembro__icontains=q)
+        )
+
+    if fecha_desde:
+        movimientos = movimientos.filter(fecha__gte=fecha_desde)
+
+    if fecha_hasta:
+        movimientos = movimientos.filter(fecha__lte=fecha_hasta)
+
+    # --------- TOTALES ----------
+    totales = movimientos.aggregate(
+        total_ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+        total_egresos=Sum("monto", filter=Q(tipo="egreso")),
+    )
+
+    total_ingresos = totales.get("total_ingresos") or 0
+    total_egresos = totales.get("total_egresos") or 0
+    balance = total_ingresos - total_egresos
+
+    # Para mostrar etiquetas bonitas de filtros (opcional pero pro)
+    cuenta_obj = None
+    categoria_obj = None
+    if cuenta_id:
+        cuenta_obj = CuentaFinanciera.objects.filter(pk=cuenta_id).first()
+    if categoria_id:
+        categoria_obj = CategoriaMovimiento.objects.filter(pk=categoria_id).first()
+
+    # Config general (tu base de reporte suele necesitarlo)
+    CFG = get_config()
+
+    context = {
+        "movimientos": movimientos,
+        "total_ingresos": total_ingresos,
+        "total_egresos": total_egresos,
+        "balance": balance,
+
+        # filtros para el encabezado
+        "f_tipo": tipo or "",
+        "f_cuenta": cuenta_id or "",
+        "f_categoria": categoria_id or "",
+        "f_q": q or "",
+        "f_fecha_desde": fecha_desde or "",
+        "f_fecha_hasta": fecha_hasta or "",
+
+        # objetos para mostrar nombres (bonito)
+        "cuenta_obj": cuenta_obj,
+        "categoria_obj": categoria_obj,
+
+        "CFG": CFG,
+        "auto_print": True,
+    }
+    return render(request, "finanzas_app/reportes/movimientos_listado_print.html", context)

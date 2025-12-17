@@ -57,6 +57,7 @@ urlpatterns = [
     ),
     path("egresos/<int:pk>/", views.egreso_detalle, name="egreso_detalle"),
 
+    path("movimientos/imprimir/", views.movimientos_listado_print, name="movimientos_listado_print"),
 
 
 
