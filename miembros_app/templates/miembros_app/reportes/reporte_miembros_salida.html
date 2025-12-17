@@ -1,199 +1,164 @@
-{% extends 'core/base_modulo.html' %}
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
 
-{% block title %}Miembros que se fueron{% endblock %}
+{% block title %}Reporte de Salidas{% endblock %}
 
-{% block breadcrumb %}
-Miembros / Reportes / Salidas y traslados
-{% endblock %}
+{% block miembros_content %}
 
-{% block content %}
-
-<section class="page-header no-print">
-    <div>
-        <h1 class="page-title">Miembros que ya no pertenecen a la congregación</h1>
-        <p class="page-subtitle">
-            Reporte de miembros que ya no están activos en Torre Fuerte
-            (inactivos por traslado, distancia u otra razón de salida).
-        </p>
+<div class="odoo-control-bar no-print">
+    <div class="odoo-control-left">
+        <div class="odoo-breadcrumb">
+            <span class="odoo-breadcrumb-title">Reportes</span>
+            <span class="material-icons odoo-breadcrumb-icon">chevron_right</span>
+            <span class="odoo-breadcrumb-title">Miembros que se fueron</span>
+        </div>
     </div>
-</section>
 
-<section class="page-section">
+    <div class="odoo-control-center">
+        <form method="get" class="odoo-search-form" id="main-search-form">
+            <span class="material-icons odoo-search-icon">search</span>
+            
+            <div class="odoo-search-filters">
+                {% if razon_salida_obj %}
+                <span class="odoo-filter-tag">
+                    Razón: {{ razon_salida_obj.nombre }}
+                    <button type="button" onclick="resetField('razon_salida')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                {% if fecha_desde or fecha_hasta %}
+                <span class="odoo-filter-tag">
+                    Filtro de fecha activo
+                    <button type="button" onclick="resetFechas()" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+            </div>
+            
+            <input type="text" 
+                   name="q" 
+                   class="odoo-search-input" 
+                   placeholder="Buscar por nombre, teléfono..."
+                   value="{{ query }}">
+            
+            <input type="hidden" name="fecha_desde" id="hidden_fecha_desde" value="{{ fecha_desde }}">
+            <input type="hidden" name="fecha_hasta" id="hidden_fecha_hasta" value="{{ fecha_hasta }}">
+            <input type="hidden" name="razon_salida" id="hidden_razon_salida" value="{{ razon_salida_id }}">
+            
+            <div class="odoo-filter-dropdown">
+                <button type="button" class="odoo-filter-btn" onclick="toggleFilterPanel()">
+                    <span class="material-icons">filter_list</span>
+                    Filtros
+                    <span class="material-icons">arrow_drop_down</span>
+                </button>
+            </div>
+        </form>
+    </div>
 
-    {# 🔹 CABEZAL INSTITUCIONAL: SOLO SE VE AL IMPRIMIR #}
-    <div class="only-print" style="text-align:center; margin-bottom:12px;">
-
-        {% if CFG.logo %}
-            <img src="{{ CFG.logo.url }}"
-                 alt="{{ CFG.nombre_iglesia|default:'Logo iglesia' }}"
-                 style="max-height:70px; margin-bottom:6px;">
-        {% endif %}
-
-        <h2 style="margin:0; font-size:18px; font-weight:700; letter-spacing:0.04em;">
-            {% if CFG.nombre_iglesia %}
-                {{ CFG.nombre_iglesia|upper }}
+    <div class="odoo-control-right">
+        <span class="odoo-pagination-info">
+            {% if miembros %}
+                Total: {{ miembros|length }}
             {% else %}
-                IGLESIA TORRE FUERTE
+                0 registros
             {% endif %}
-        </h2>
-
-        {% if CFG.denominacion %}
-            <div style="font-size:12px; color:#4b5563; margin-top:2px;">
-                {{ CFG.denominacion }}
-            </div>
-        {% endif %}
-
-        {% if CFG.lema %}
-            <div style="font-size:12px; color:#6b7280; margin-top:4px; font-style:italic;">
-                “{{ CFG.lema }}”
-            </div>
-        {% endif %}
-
-        {% if CFG.direccion %}
-            <div style="font-size:11px; color:#6b7280; margin-top:4px;">
-                {{ CFG.direccion }}
-            </div>
-        {% endif %}
-
-        <div style="font-size:11px; color:#6b7280; margin-top:6px;">
-            Reporte: Miembros que se fueron · Fecha: {{ hoy|date:"d/m/Y" }}
+        </span>
+        
+        <div class="odoo-view-toggle">
+            <button type="button" class="odoo-view-btn active" data-view="lista" title="Vista lista">
+                <span class="material-icons">view_list</span>
+            </button>
+            <button type="button" class="odoo-view-btn" data-view="grid" title="Vista tarjetas">
+                <span class="material-icons">grid_view</span>
+            </button>
         </div>
 
-        <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
+        <button type="button" class="odoo-btn odoo-btn-text" onclick="window.print()" title="Imprimir">
+            <span class="material-icons">print</span>
+        </button>
     </div>
+</div>
 
-    <!-- Filtros del reporte -->
-    <form method="get" class="form-grid no-print" style="margin-bottom: 12px; align-items: flex-end;">
-
-        <!-- Buscar -->
-        <div class="form-field form-field-full">
-            <label for="id_q">Buscar</label>
-            <input
-                id="id_q"
-                type="text"
-                name="q"
-                placeholder="Nombre, apellido, teléfono o correo…"
-                value="{{ query }}"
-            >
-        </div>
-
-        <!-- Rango de fechas de salida -->
-        <div class="form-field form-field-full">
-            <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
-
-                <div>
-                    <label for="id_fecha_desde">Fecha de salida desde</label>
-                    <input
-                        id="id_fecha_desde"
-                        type="date"
-                        name="fecha_desde"
-                        value="{{ fecha_desde }}"
-                    >
+<div class="odoo-filter-panel no-print" id="filter-panel" style="display: none;">
+    <form method="get" class="odoo-filter-form">
+        <input type="hidden" name="q" value="{{ query }}">
+        
+        <div class="odoo-filter-grid">
+            <div class="odoo-filter-group odoo-filter-group-wide">
+                <label>Fecha de salida</label>
+                <div class="odoo-filter-range">
+                    <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="odoo-input">
+                    <span>hasta</span>
+                    <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="odoo-input">
                 </div>
-
-                <div>
-                    <label for="id_fecha_hasta">Fecha de salida hasta</label>
-                    <input
-                        id="id_fecha_hasta"
-                        type="date"
-                        name="fecha_hasta"
-                        value="{{ fecha_hasta }}"
-                    >
-                </div>
-
-                <!-- Razón de salida -->
-                <div>
-                    <label for="id_razon_salida">Razón de salida</label>
-                    <select id="id_razon_salida" name="razon_salida">
-                        <option value="">Todas las razones</option>
-                        {% for r in razones_disponibles %}
-                            <option value="{{ r.id }}"
-                                {% if razon_salida_id == r.id %}
-                                    selected
-                                {% endif %}
-                            >
-                                {{ r.nombre }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    <p style="font-size:11px; color:#6b7280; margin-top:2px;">
-                        Puedes filtrar, por ejemplo: solo Traslados, solo Distancia, etc.
-                    </p>
-                </div>
-
             </div>
 
-            <p style="font-size:11px; color:#6b7280; margin-top:2px;">
-                Si no eliges fechas, se mostrarán todos los miembros inactivos.
-            </p>
+            <div class="odoo-filter-group">
+                <label>Razón de salida</label>
+                <select name="razon_salida">
+                    <option value="">Todas las razones</option>
+                    {% for r in razones_disponibles %}
+                        <option value="{{ r.id }}" {% if razon_salida_id == r.id %}selected{% endif %}>
+                            {{ r.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
 
-        <!-- Botones -->
-        <div class="form-actions" style="justify-content:flex-start; border-top:none; padding-top:0;">
-            <button type="submit" class="btn-secondary">
-                <span class="material-icons" style="font-size:16px;">search</span>
+        <div class="odoo-filter-actions">
+            <a href="{{ request.path }}" class="odoo-btn odoo-btn-text">
+                Limpiar filtros
+            </a>
+            <button type="submit" class="odoo-btn odoo-btn-primary">
                 Aplicar filtros
             </button>
-            <button type="button" class="btn-secondary" onclick="window.print()">
-                <span class="material-icons" style="font-size:16px;">print</span>
-                Imprimir
-            </button>
-        </div>
-
-        <!-- Resumen -->
-        <div class="form-field form-field-full" style="margin-top:-4px; font-size:12px; color:#6b7280;">
-            {% if miembros %}
-                {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }}
-                inactivo{{ miembros|length|pluralize:"s" }}
-                encontrado{{ miembros|length|pluralize:"s" }}
-                {% if razon_salida_obj %}
-                    por razón: <strong>{{ razon_salida_obj.nombre }}</strong>
-                {% endif %}.
-            {% else %}
-                No se encontraron miembros con los filtros seleccionados.
-            {% endif %}
         </div>
     </form>
+</div>
 
-    <!-- Tabla -->
-    <div class="table-wrapper">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Miembro</th>
-                    <th>Contacto</th>
-                    <th>Último estado</th>
-                    <th>Razón de salida</th>
-                    <th>Fecha de salida</th>
-                    <th class="col-center no-print">Acciones</th>
-                </tr>
-            </thead>
+<div class="only-print" style="text-align:center; margin-bottom:12px;">
+    {% if CFG.logo %}
+        <img src="{{ CFG.logo.url }}" alt="Logo" style="max-height:70px; margin-bottom:6px;">
+    {% endif %}
+    <h2 style="margin:0; font-size:18px; font-weight:700;">
+        {% if CFG.nombre_iglesia %}{{ CFG.nombre_iglesia|upper }}{% else %}IGLESIA TORRE FUERTE{% endif %}
+    </h2>
+    <div style="font-size:11px; color:#6b7280; margin-top:6px;">
+        Reporte: Miembros que se fueron · Fecha: {{ hoy|date:"d/m/Y" }}
+        {% if fecha_desde or fecha_hasta %}
+            (Desde {{ fecha_desde|default:"Inicio" }} hasta {{ fecha_hasta|default:"Hoy" }})
+        {% endif %}
+    </div>
+    <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
+</div>
 
-            <tbody>
+<div class="odoo-list-container" id="vista-lista">
+    <table class="odoo-table">
+        <thead>
+            <tr>
+                <th class="odoo-th-checkbox no-print">#</th>
+                <th class="odoo-th-main">Miembro</th>
+                <th>Contacto</th>
+                <th>Último Estado</th>
+                <th>Razón Salida</th>
+                <th>Fecha Salida</th>
+                <th class="no-print">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
             {% if miembros %}
                 {% for m in miembros %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
+                <tr class="odoo-row" onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'" style="cursor: pointer;">
+                    
+                    <td class="odoo-td-checkbox no-print" style="font-size:11px; color:#9ca3af;">
+                        {{ forloop.counter }}
+                    </td>
 
-                    <!-- Miembro (ICONO CARTA + NOMBRE + CATEGORÍA) -->
-                    <td>
-                        <div style="display:flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:#111827;">
-                            <!-- Icono de carta delante del nombre -->
-                            <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}"
-                               class="btn-secondary no-print"
-                               style="padding:2px 4px; min-width:auto;">
-                                <span class="material-icons" style="font-size:16px;">description</span>
-                            </a>
-
-                            <!-- Nombre -->
-                            <span>
-                                {{ m.nombres }} {{ m.apellidos }}
-                            </span>
+                    <td class="odoo-td-main">
+                        <div class="odoo-member-name">
+                            <span class="no-print" style="color:#017e84;">{{ m.nombres }} {{ m.apellidos }}</span>
+                            <span class="only-print">{{ m.nombres }} {{ m.apellidos }}</span>
                         </div>
-
-                        <!-- Categoría -->
-                        <div style="font-size:11px; color:#6b7280;">
+                        <div class="odoo-member-sub">
                             {% if m.categoria_edad %}
                                 {{ m.get_categoria_edad_display }}
                             {% else %}
@@ -202,126 +167,301 @@ Miembros / Reportes / Salidas y traslados
                         </div>
                     </td>
 
-                    <!-- Contacto -->
-                    <td>
+                    <td class="odoo-td-contact">
                         {% if m.telefono %}
-                            <div style="font-size:12px;">{{ m.telefono }}</div>
+                            <div class="odoo-contact-line">
+                                <span class="material-icons no-print" style="font-size:12px;">phone</span>
+                                {{ m.telefono }}
+                            </div>
                         {% endif %}
                         {% if m.email %}
-                            <div style="font-size:12px;">{{ m.email }}</div>
+                            <div class="odoo-contact-email">{{ m.email }}</div>
                         {% endif %}
                         {% if not m.telefono and not m.email %}
-                            <span style="font-size:11px; color:#6b7280;">Sin datos</span>
+                            <span class="odoo-empty">Sin datos</span>
                         {% endif %}
                     </td>
 
-                    <!-- Último estado -->
                     <td>
                         {% if m.estado_miembro %}
-                            <div style="font-size:12px; font-weight:600; color:#111827;">
+                             <span class="odoo-badge odoo-badge-muted">
                                 {{ m.get_estado_miembro_display }}
-                            </div>
+                            </span>
                         {% else %}
-                            <div style="font-size:11px; color:#6b7280;">Sin estado</div>
+                            <span class="odoo-empty">—</span>
                         {% endif %}
                     </td>
 
-                    <!-- Razón de salida -->
                     <td>
                         {% if m.razon_salida %}
-                            <div style="font-size:12px;">
+                            <span class="odoo-badge odoo-badge-danger">
                                 {{ m.razon_salida.nombre }}
-                            </div>
+                            </span>
                         {% else %}
-                            <span style="font-size:11px; color:#6b7280;">No especificada</span>
+                            <span class="odoo-empty">No especificada</span>
                         {% endif %}
                     </td>
 
-                    <!-- Fecha de salida -->
                     <td>
                         {% if m.fecha_salida %}
-                            {{ m.fecha_salida|date:"d/m/Y" }}
+                            <div style="font-weight:500; color:#374151;">
+                                {{ m.fecha_salida|date:"d/m/Y" }}
+                            </div>
+                            <div class="odoo-member-sub">{{ m.fecha_salida|timesince }} atrás</div>
                         {% else %}
-                            <span style="font-size:11px; color:#6b7280;">—</span>
+                            <span class="odoo-empty">—</span>
                         {% endif %}
                     </td>
 
-                    <!-- Acciones -->
-                    <td class="col-center no-print" style="display:flex; justify-content:center; gap:4px;">
-                        <a href="{% url 'miembros_app:detalle' m.pk %}"
-                           class="btn-secondary"
-                           style="padding:4px; min-width:auto;">
-                            <span class="material-icons" style="font-size:18px;">visibility</span>
-                        </a>
-
-                        <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}"
-                           class="btn-secondary"
-                           style="padding:4px; min-width:auto;">
-                            <span class="material-icons" style="font-size:18px;">description</span>
-                        </a>
+                    <td class="odoo-td-actions no-print" onclick="event.stopPropagation();">
+                        <div class="odoo-row-actions" style="opacity: 1;"> <a href="{% url 'miembros_app:detalle' m.pk %}" 
+                               class="odoo-action-icon" title="Ver detalles">
+                                <span class="material-icons">visibility</span>
+                            </a>
+                            <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}" 
+                               class="odoo-action-icon" title="Carta de salida">
+                                <span class="material-icons">description</span>
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
             {% else %}
                 <tr>
-                    <td colspan="7" class="table-empty">
+                    <td colspan="7" class="odoo-empty-row">
+                        <span class="material-icons">person_off</span>
                         No se encontraron miembros inactivos con los filtros seleccionados.
                     </td>
                 </tr>
             {% endif %}
-            </tbody>
-        </table>
-    </div>
+        </tbody>
+    </table>
+</div>
 
-</section>
+<div class="odoo-kanban-container no-print" id="vista-cuadricula" style="display: none;">
+    {% if miembros %}
+        <div class="odoo-kanban-grid">
+            {% for m in miembros %}
+            <article class="odoo-kanban-card odoo-kanban-card-inactive"
+                     onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'">
+                
+                <div class="odoo-kanban-avatar" style="background: #ef4444;">
+                    {% if m.foto %}
+                        <img src="{{ m.foto.url }}" alt="{{ m.nombres }}">
+                    {% else %}
+                        <span class="odoo-kanban-initial">{{ m.nombres|slice:":1"|upper }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="odoo-kanban-content">
+                    <div class="odoo-kanban-name">
+                        {{ m.nombres }} {{ m.apellidos }}
+                    </div>
+
+                    <div class="odoo-kanban-info">
+                        <div class="odoo-kanban-info-row" style="color:#b91c1c; font-weight:500;">
+                            <span class="material-icons" style="color:#b91c1c;">logout</span>
+                            <span>{{ m.razon_salida.nombre|default:"Salida" }}</span>
+                        </div>
+                        
+                        {% if m.fecha_salida %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">calendar_today</span>
+                            <span>{{ m.fecha_salida|date:"d/m/Y" }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if m.telefono %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">phone</span>
+                            <span>{{ m.telefono }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="odoo-kanban-footer">
+                        <div class="odoo-kanban-badges">
+                            <span class="odoo-kanban-badge">
+                                Inactivo
+                            </span>
+                        </div>
+                        
+                        <div class="odoo-kanban-actions" onclick="event.stopPropagation();">
+                            <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}" 
+                               class="odoo-kanban-action-btn" title="Carta">
+                                <span class="material-icons">description</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="odoo-empty-kanban">
+            <span class="material-icons">search_off</span>
+            <p>No se encontraron registros.</p>
+        </div>
+    {% endif %}
+</div>
 
 <style>
-.only-print {
-    display: none;
+/* BARRA DE CONTROL */
+.odoo-control-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 16px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; position: sticky; top: 0; z-index: 100; }
+.odoo-control-left, .odoo-control-right { display: flex; align-items: center; gap: 12px; }
+.odoo-control-center { flex: 1; max-width: 600px; }
+.odoo-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; font-size: 13px; font-weight: 500; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; transition: all 0.15s ease; }
+.odoo-btn .material-icons { font-size: 18px; }
+.odoo-btn-primary { background: #017e84; color: white; }
+.odoo-btn-primary:hover { background: #016166; }
+.odoo-btn-text { background: transparent; color: #6c757d; }
+.odoo-btn-text:hover { color: #495057; background: #e9ecef; }
+
+/* BREADCRUMB */
+.odoo-breadcrumb { display: flex; align-items: center; gap: 6px; padding: 4px 10px; background: white; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px; color: #495057; }
+.odoo-breadcrumb-title { font-weight: 500; }
+.odoo-breadcrumb-icon { font-size: 16px; color: #6c757d; }
+
+/* SEARCH & FILTERS */
+.odoo-search-form { display: flex; align-items: center; background: white; border: 1px solid #dee2e6; border-radius: 4px; padding: 0 8px; gap: 8px; }
+.odoo-search-icon { font-size: 20px; color: #6c757d; }
+.odoo-search-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.odoo-filter-tag { display: inline-flex; align-items: center; gap: 4px; background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 3px; font-size: 12px; }
+.odoo-filter-remove { background: none; border: none; color: #1565c0; cursor: pointer; font-size: 14px; padding: 0; }
+.odoo-search-input { flex: 1; border: none; padding: 8px 0; font-size: 14px; outline: none; min-width: 120px; }
+.odoo-filter-dropdown { border-left: 1px solid #dee2e6; padding-left: 8px; }
+.odoo-filter-btn { display: flex; align-items: center; gap: 2px; background: none; border: none; color: #6c757d; font-size: 13px; cursor: pointer; padding: 4px; }
+.odoo-filter-btn:hover { color: #495057; }
+
+/* PANEL DE FILTROS */
+.odoo-filter-panel { background: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: 16px; }
+.odoo-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.odoo-filter-group { display: flex; flex-direction: column; gap: 4px; }
+.odoo-filter-group-wide { grid-column: span 2; }
+.odoo-filter-group label { font-size: 12px; font-weight: 500; color: #495057; }
+.odoo-filter-group select, .odoo-filter-group input { padding: 6px 10px; font-size: 13px; border: 1px solid #dee2e6; border-radius: 4px; background: white; }
+.odoo-filter-range { display: flex; align-items: center; gap: 8px; }
+.odoo-filter-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #dee2e6; }
+
+/* TABLE */
+.odoo-list-container { background: white; }
+.odoo-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.odoo-table thead { position: sticky; top: 52px; z-index: 50; }
+.odoo-table th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 500; color: #495057; border-bottom: 1px solid #dee2e6; white-space: nowrap; }
+.odoo-table td { padding: 10px 12px; border-bottom: 1px solid #e9ecef; vertical-align: top; }
+.odoo-row:hover { background: #f8f9fa; }
+.odoo-member-name { font-weight: 600; color: #212529; }
+.odoo-member-sub { font-size: 11px; color: #6c757d; margin-top: 2px; }
+.odoo-td-contact { font-size: 12px; }
+.odoo-contact-line { display: flex; align-items: center; gap: 6px; }
+.odoo-contact-email { font-size: 11px; color: #6c757d; margin-top: 2px; }
+.odoo-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; }
+.odoo-badge-danger { background: #fee2e2; color: #b91c1c; }
+.odoo-badge-muted { background: #f3f4f6; color: #6b7280; }
+.odoo-empty { color: #adb5bd; font-size: 12px; }
+.odoo-row-actions { display: flex; gap: 4px; }
+.odoo-action-icon { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 4px; color: #6c757d; text-decoration: none; }
+.odoo-action-icon:hover { background: #e9ecef; color: #495057; }
+.odoo-empty-row { text-align: center; padding: 40px !important; color: #6c757d; }
+
+/* KANBAN */
+.odoo-kanban-container { padding: 16px; background: #f8f9fa; min-height: calc(100vh - 120px); }
+.odoo-kanban-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.odoo-kanban-card { display: flex; align-items: stretch; background: white; border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; cursor: pointer; transition: box-shadow 0.15s ease; height: 105px; }
+.odoo-kanban-card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+.odoo-kanban-card-inactive { background: #fef2f2; border-color: #fecaca; }
+.odoo-kanban-avatar { width: 105px; min-width: 105px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+.odoo-kanban-avatar img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; }
+.odoo-kanban-initial { font-size: 42px; font-weight: 500; color: white; }
+.odoo-kanban-content { flex: 1; padding: 10px 12px; display: flex; flex-direction: column; overflow: hidden; }
+.odoo-kanban-name { font-size: 13px; font-weight: 600; color: #212529; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.odoo-kanban-info { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.odoo-kanban-info-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #495057; }
+.odoo-kanban-info-row .material-icons { font-size: 13px; }
+.odoo-kanban-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 4px; }
+.odoo-kanban-badge { background: #e9ecef; border-radius: 3px; padding: 2px 6px; font-size: 10px; color: #495057; }
+.odoo-kanban-action-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: none; border: none; border-radius: 4px; color: #6c757d; cursor: pointer; }
+.odoo-kanban-action-btn:hover { background: #e9ecef; }
+.odoo-empty-kanban { text-align: center; padding: 60px; color: #6c757d; }
+
+/* TOGGLE VIEW */
+.odoo-view-toggle { display: flex; border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; }
+.odoo-view-btn { background: white; border: none; padding: 6px 8px; cursor: pointer; border-right: 1px solid #dee2e6; }
+.odoo-view-btn:last-child { border-right: none; }
+.odoo-view-btn.active { background: #e9ecef; }
+
+/* PAGINATION INFO */
+.odoo-pagination-info { font-size: 13px; color: #6c757d; }
+
+/* PRINT */
+.only-print { display: none; }
+@media print {
+    .no-print { display: none !important; }
+    .only-print { display: block !important; }
+    .odoo-table th, .odoo-table td { font-size: 10px; padding: 4px 6px; }
 }
 
-@media print {
-    .topbar,
-    .main-nav,
-    .footer,
-    .form-actions,
-    .page-header,
-    .page-header-actions,
-    .no-print {
-        display: none !important;
-    }
-
-    .layout {
-        margin: 0;
-        max-width: 100%;
-        padding: 0;
-    }
-
-    .page-section {
-        box-shadow: none;
-        border: none;
-        padding: 0;
-    }
-
-    .page-title {
-        font-size: 18px;
-        margin-bottom: 4px;
-    }
-
-    .page-subtitle {
-        font-size: 11px;
-    }
-
-    .table th,
-    .table td {
-        font-size: 11px;
-        padding: 4px 4px;
-    }
-
-    .only-print {
-        display: block !important;
-    }
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .odoo-control-bar { flex-wrap: wrap; gap: 8px; }
+    .odoo-control-center { order: 3; max-width: 100%; flex-basis: 100%; }
 }
 </style>
+
+<script>
+// Toggle panel de filtros
+function toggleFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+// Resetear filtro específico y enviar
+function resetField(fieldName) {
+    document.getElementById('hidden_' + fieldName).value = '';
+    // También limpiar el input del panel si existe
+    const panelInput = document.querySelector(`[name="${fieldName}"]`);
+    if(panelInput) panelInput.value = '';
+    
+    document.getElementById('main-search-form').submit();
+}
+
+// Resetear solo fechas
+function resetFechas() {
+    document.getElementById('hidden_fecha_desde').value = '';
+    document.getElementById('hidden_fecha_hasta').value = '';
+    document.getElementById('main-search-form').submit();
+}
+
+// Lógica de Vistas (Lista vs Grid)
+document.addEventListener('DOMContentLoaded', function() {
+    const btnLista = document.querySelector('.odoo-view-btn[data-view="lista"]');
+    const btnGrid = document.querySelector('.odoo-view-btn[data-view="grid"]');
+    const vistaLista = document.getElementById('vista-lista');
+    const vistaGrid = document.getElementById('vista-cuadricula');
+
+    function setView(view) {
+        if (view === 'grid') {
+            vistaLista.style.display = 'none';
+            vistaGrid.style.display = '';
+            if(btnGrid) btnGrid.classList.add('active');
+            if(btnLista) btnLista.classList.remove('active');
+        } else {
+            vistaLista.style.display = '';
+            vistaGrid.style.display = 'none';
+            if(btnLista) btnLista.classList.add('active');
+            if(btnGrid) btnGrid.classList.remove('active');
+        }
+        try { localStorage.setItem('reporte_salida_vista', view); } catch (e) {}
+    }
+
+    // Cargar vista guardada
+    let saved = 'lista';
+    try { saved = localStorage.getItem('reporte_salida_vista') || 'lista'; } catch(e) {}
+    setView(saved);
+
+    if(btnLista) btnLista.addEventListener('click', () => setView('lista'));
+    if(btnGrid) btnGrid.addEventListener('click', () => setView('grid'));
+});
+</script>
 
 {% endblock %}
