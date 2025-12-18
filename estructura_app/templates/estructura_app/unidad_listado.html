@@ -1,0 +1,192 @@
+{% extends 'estructura_app/base_estructura.html' %}
+
+{% block title %}Lista de Unidades{% endblock %}
+
+{% block breadcrumb %}
+Estructura / Unidades
+{% endblock %}
+
+{% block estructura_content %}
+
+<section class="page-header no-print">
+    <div>
+        <h1 class="page-title">Listado general de unidades</h1>
+        <p class="page-subtitle"></p>
+    </div>
+
+    <div class="page-header-actions">
+        <button type="button" class="btn-secondary" onclick="window.print()">
+            <span class="material-icons" style="font-size:16px;">print</span>
+            Imprimir
+        </button>
+
+        <a href="{% url 'estructura_app:unidad_crear' %}"
+           class="btn-primary"
+           style="display:inline-flex; align-items:center; gap:4px;">
+            <span class="material-icons" style="font-size:16px;">add</span>
+            Nueva unidad
+        </a>
+    </div>
+</section>
+
+<section class="page-section">
+
+    <!-- Barra de búsqueda + resumen -->
+    <div class="form-grid" style="margin-bottom: 16px; align-items: center;">
+        <div class="form-field form-field-full">
+            <form method="get" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+
+                <input
+                    type="text"
+                    name="q"
+                    placeholder="Buscar por nombre o código…"
+                    value="{{ query }}"
+                    style="flex:1; min-width:230px;"
+                >
+
+                <button type="submit" class="btn-secondary">
+                    <span class="material-icons" style="font-size:16px;">search</span>
+                    Buscar
+                </button>
+
+            </form>
+        </div>
+
+        <div class="form-field form-field-full" style="margin-top: -4px; font-size:12px; color:#6b7280;">
+            {% if unidades %}
+                {{ unidades|length }} unidad{{ unidades|length|pluralize:"es" }} encontrada{{ unidades|length|pluralize:"s" }}
+            {% else %}
+                No se encontraron unidades con el criterio indicado.
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Unidad</th>
+                    <th>Tipo</th>
+                    <th>Categoría</th>
+                    <th>Unidad padre</th>
+                    <th>Estado</th>
+                    <th class="col-center">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% if unidades %}
+                {% for u in unidades %}
+                <tr>
+                    <!-- Columna Unidad -->
+                    <td>
+                        <div class="unit-main">
+                            <div class="unit-avatar">
+                                <span>
+                                    {{ u.nombre|default:""|first|upper }}
+                                </span>
+                            </div>
+
+                            <div>
+                                <div class="unit-name">
+                                    <a href="{% url 'estructura_app:unidad_detalle' u.pk %}">
+                                        {{ u.nombre }}
+                                    </a>
+                                </div>
+
+                                <div class="unit-subtext">
+                                    Código: {{ u.codigo|default:"—" }}
+                                </div>
+
+                                {% if u.descripcion %}
+                                    <div class="unit-subtext">
+                                        {{ u.descripcion|truncatechars:60 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Tipo -->
+                    <td>
+                        {{ u.tipo_unidad.nombre|default:"—" }}
+                    </td>
+
+                    <!-- Categoría -->
+                    <td>
+                        {{ u.categoria|default:"—" }}
+                    </td>
+
+                    <!-- Unidad padre -->
+                    <td>
+                        {{ u.unidad_padre.nombre|default:"—" }}
+                    </td>
+
+                    <!-- Estado -->
+                    <td>
+                        {% if u.activa %}
+                            <span class="pill pill-success">Activa</span>
+                        {% else %}
+                            <span class="pill pill-muted" style="background:#fee2e2; color:#b91c1c;">Inactiva</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Acciones -->
+                    <td class="col-center">
+                        <a href="{% url 'estructura_app:unidad_detalle' u.pk %}"
+                           class="btn-secondary"
+                           style="padding:4px 10px; font-size:12px;">
+                            <span class="material-icons" style="font-size:16px;">visibility</span>
+                            Ver
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="table-empty">
+                        No se encontraron unidades.
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</section>
+
+<style>
+    /* Igual idea que tu miembros_lista: bloque visual “main + avatar + subtext” */
+    .unit-main {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .unit-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        color: #374151;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .unit-name {
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .unit-subtext {
+        font-size: 11px;
+        color: #6b7280;
+    }
+</style>
+
+{% endblock %}

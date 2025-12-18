@@ -122,3 +122,22 @@ def unidad_editar(request, pk):
         "unidad": unidad,
     }
     return render(request, "estructura_app/unidad_form.html", context)
+
+
+
+def unidad_listado(request):
+    query = request.GET.get('q', '').strip()
+
+    unidades = Unidad.objects.all().order_by('nombre')
+    if query:
+        unidades = unidades.filter(nombre__icontains=query) | unidades.filter(codigo__icontains=query)
+
+    return render(request, 'estructura_app/unidad_listado.html', {
+        'unidades': unidades,
+        'query': query,
+    })
+
+def unidad_detalle(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+    return render(request, 'estructura_app/unidad_detalle.html', {'unidad': unidad})
+

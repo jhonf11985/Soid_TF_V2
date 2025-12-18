@@ -2,551 +2,1157 @@
 {% load static %}
 
 {% block title %}
-  {% if modo == "editar" and unidad %}
-    {{ unidad.nombre }} · Estructura
-  {% else %}
-    Nueva unidad · Estructura
-  {% endif %}
+    {% if modo == "editar" and unidad %}
+        {{ unidad.nombre }} · Estructura
+    {% else %}
+        Nueva unidad · Estructura
+    {% endif %}
 {% endblock %}
 
 {% block estructura_content %}
 
 <form method="post" class="odoo-form">
-  {% csrf_token %}
+    {% csrf_token %}
 
-  <!-- ══════════════════════════════════════════════════════════════════
-       BARRA SUPERIOR (Control Bar) - MISMO ESTILO QUE MIEMBRO
-       ══════════════════════════════════════════════════════════════════ -->
-  <div class="odoo-control-bar">
-    <div class="odoo-control-left">
-      <a href="{% url 'estructura_app:dashboard' %}" class="odoo-breadcrumb-link">
-        <span class="material-icons">arrow_back</span>
-        Estructura
-      </a>
-      <span class="odoo-breadcrumb-sep">/</span>
-      <span class="odoo-breadcrumb-current">
-        {% if modo == "editar" %}Editar{% else %}Nuevo{% endif %}
-      </span>
-
-      {% if not modo == "editar" %}
-        <span class="odoo-new-badge">Nuevo</span>
-      {% endif %}
-    </div>
-
-    <div class="odoo-control-right">
-      <div class="odoo-member-code">
-        <span class="material-icons">account_tree</span>
-        {% if unidad %}
-          ID {{ unidad.id }}
-        {% else %}
-          Nueva unidad
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════════════
-       CONTENIDO PRINCIPAL
-       ══════════════════════════════════════════════════════════════════ -->
-  <div class="odoo-form-container">
-
-    <!-- ÁREA PRINCIPAL -->
-    <div class="odoo-form-main">
-
-      <!-- ─────────────────────────────────────────────────────────
-           HEADER (Avatar/Icono + Nombre grande)
-           ───────────────────────────────────────────────────────── -->
-      <div class="odoo-form-header">
-
-        <div class="odoo-avatar-section">
-          <div class="odoo-avatar">
-            <span class="material-icons">account_tree</span>
-          </div>
-        </div>
-
-        <div class="odoo-header-info">
-
-          <!-- Nombre grande -->
-          <div class="odoo-name-field">
-            <input
-              type="text"
-              name="nombre"
-              id="{{ form.nombre.id_for_label }}"
-              value="{{ form.nombre.value|default:'' }}"
-              placeholder="Nombre de la unidad"
-              class="odoo-name-input"
-              required
-            >
-          </div>
-
-          <!-- Campos rápidos (NO TOCAR): tipo / padre (tal cual estaban) -->
-          <div class="odoo-quick-fields" style="margin-top:6px;">
-            <div class="odoo-quick-field">
-              <span class="material-icons">category</span>
-              <select name="tipo" id="{{ form.tipo.id_for_label }}" class="odoo-input" style="max-width: 360px;">
-                {% for value, label in form.tipo.field.choices %}
-                  <option value="{{ value }}" {% if form.tipo.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
-                    {{ label }}
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <div class="odoo-quick-field">
-              <span class="material-icons">subdirectory_arrow_right</span>
-              <select name="padre" id="{{ form.padre.id_for_label }}" class="odoo-input" style="max-width: 360px;">
-                <option value="">— Sin unidad padre —</option>
-                {% for value, label in form.padre.field.choices %}
-                  {% if value %}
-                    <option value="{{ value }}" {% if form.padre.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
-                      {{ label }}
-                    </option>
-                  {% endif %}
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ─────────────────────────────────────────────────────────
-           BODY (Dos columnas estilo Odoo)
-           ───────────────────────────────────────────────────────── -->
-      <div class="odoo-form-body">
-
-        <!-- Columna Izquierda (la mantenemos vacía por ahora) -->
-        <div class="odoo-form-column">
-        </div>
-
-        <!-- Columna Derecha (mantengo tu checkbox original + fechas edición) -->
-        <div class="odoo-form-column">
-
-          <div class="odoo-field odoo-field-checkbox">
-            <label class="odoo-checkbox-label">
-              <input type="checkbox" name="activa" id="{{ form.activa.id_for_label }}"
-                     {% if form.activa.value %}checked{% endif %}>
-              <span>Unidad activa</span>
-            </label>
-          </div>
-
-          {% if modo == "editar" and unidad %}
-            <div class="odoo-field">
-              <label class="odoo-label">Creada</label>
-              <input type="text" class="odoo-input" value="{{ unidad.creado_en|date:'d/m/Y H:i' }}" readonly>
-            </div>
-            <div class="odoo-field">
-              <label class="odoo-label">Actualizada</label>
-              <input type="text" class="odoo-input" value="{{ unidad.actualizado_en|date:'d/m/Y H:i' }}" readonly>
-            </div>
-          {% endif %}
-
-        </div>
-      </div>
-
-      <!-- ─────────────────────────────────────────────────────────
-           TABS
-           ───────────────────────────────────────────────────────── -->
-      <div class="odoo-tabs-section">
-
-        <div class="odoo-tabs-bar">
-          <button type="button" class="odoo-tab active" data-tab="general">General</button>
-          <button type="button" class="odoo-tab" data-tab="miembros">Miembros</button>
-          <button type="button" class="odoo-tab" data-tab="cargos">Cargos</button>
-          <button type="button" class="odoo-tab" data-tab="control">Control</button>
-          <button type="button" class="odoo-tab" data-tab="notas">Notas</button>
-        </div>
-
-        <div class="odoo-tabs-content">
-
-          <!-- TAB: General -->
-          <div class="odoo-tab-panel active" id="tab-general">
-            <div class="odoo-tab-grid">
-
-              <div class="odoo-field">
-                <label class="odoo-label">Categoría</label>
-                {{ form.categoria }}
-              </div>
-
-              <div class="odoo-field">
-                <label class="odoo-label">Tipo</label>
-                {{ form.tipo_estructura }}
-              </div>
-
-              <div class="odoo-field odoo-field-full">
-                <label class="odoo-label">Descripción</label>
-                {{ form.descripcion }}
-              </div>
-
-              <div class="odoo-field">
-                <label class="odoo-label">Código</label>
-                {{ form.codigo }}
-              </div>
-
-              <div class="odoo-field">
-                <label class="odoo-label">Orden</label>
-                {{ form.orden }}
-              </div>
-
-              <div class="odoo-field odoo-field-full">
-                <label class="odoo-label">Ruta</label>
-                <input type="text" class="odoo-input" readonly
-                       value="{% if unidad %}{{ unidad.ruta }}{% else %}—{% endif %}">
-              </div>
-
-            </div>
-          </div>
-
-          <!-- TAB: Miembros -->
-          <div class="odoo-tab-panel" id="tab-miembros">
-            {% if modo != "editar" %}
-              <div class="odoo-alert odoo-alert-warning">
-                Guarda la unidad primero para poder gestionar miembros.
-              </div>
-            {% else %}
-              <div class="odoo-empty-text">
-                Aquí irá la lista de miembros (UnidadMembresia) y el botón “Agregar miembro”.
-              </div>
+    <!-- ══════════════════════════════════════════════════════════════════
+         BARRA SUPERIOR (Control Bar)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'estructura_app:unidad_listado' %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                Unidades
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">
+                {% if modo == "editar" %}Editar{% else %}Nuevo{% endif %}
+            </span>
+            
+            {% if not modo == "editar" %}
+            <span class="odoo-new-badge">Nuevo</span>
             {% endif %}
-          </div>
-
-          <!-- TAB: Cargos -->
-          <div class="odoo-tab-panel" id="tab-cargos">
-            {% if modo != "editar" %}
-              <div class="odoo-alert odoo-alert-warning">
-                Guarda la unidad primero para asignar cargos y liderazgo.
-              </div>
-            {% else %}
-              <div class="odoo-empty-text">
-                Aquí irá la lista de cargos (UnidadCargo) y el botón “Asignar cargo”.
-              </div>
-            {% endif %}
-          </div>
-
-          <!-- TAB: Control -->
-          <div class="odoo-tab-panel" id="tab-control">
-            <div class="odoo-tab-grid">
-
-              <div class="odoo-field">
-                <label class="odoo-label">Visible</label>
-                {{ form.visible }}
-              </div>
-
-              <div class="odoo-field">
-                <label class="odoo-label">Fecha cierre</label>
-                {{ form.fecha_cierre }}
-              </div>
-
-              <div class="odoo-field odoo-field-full">
-                <label class="odoo-label">Motivo cierre</label>
-                {{ form.motivo_cierre }}
-              </div>
-
-            </div>
-          </div>
-
-          <!-- TAB: Notas -->
-          <div class="odoo-tab-panel" id="tab-notas">
-            <div class="odoo-field odoo-field-full">
-              <label class="odoo-label">Notas internas</label>
-              {{ form.notas }}
-            </div>
-          </div>
-
         </div>
-      </div>
-
+        
+        <div class="odoo-control-right">
+            <div class="odoo-member-code">
+                <span class="material-icons">account_tree</span>
+                {% if unidad %}ID {{ unidad.id }}{% else %}Nueva{% endif %}
+            </div>
+        </div>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════════
-         ASIDE DERECHO
+         CONTENIDO PRINCIPAL
          ══════════════════════════════════════════════════════════════════ -->
-    <div class="odoo-form-aside">
+    <div class="odoo-form-container">
+        
+        <!-- ÁREA PRINCIPAL DEL FORMULARIO -->
+        <div class="odoo-form-main">
+            
+            <!-- ─────────────────────────────────────────────────────────
+                 HEADER: Icono + Nombre + Campos principales
+                 ───────────────────────────────────────────────────────── -->
+            <div class="odoo-form-header">
+                
+                <!-- Icono de la unidad -->
+                <div class="odoo-avatar-section">
+                    <div class="odoo-avatar odoo-avatar-unit">
+                        <span class="material-icons" id="unit-icon">account_tree</span>
+                    </div>
+                </div>
 
-      <div class="odoo-aside-actions">
-        {% if modo == "editar" %}
-          <button type="submit" class="odoo-btn odoo-btn-primary">
-            <span class="material-icons">save</span>
-            Guardar cambios
-          </button>
-        {% else %}
-          <button type="submit" name="guardar" value="1" class="odoo-btn odoo-btn-primary">
-            <span class="material-icons">check</span>
-            Guardar
-          </button>
-          <button type="submit" name="guardar_y_nuevo" value="1" class="odoo-btn odoo-btn-secondary">
-            <span class="material-icons">add</span>
-            Guardar y nuevo
-          </button>
-        {% endif %}
-      </div>
+                <!-- Info principal -->
+                <div class="odoo-header-info">
+                    
+                    <!-- Radio: Tipo de Unidad -->
+                    <div class="odoo-radio-group">
+                        {% for value, label in form.tipo.field.choices %}
+                            {% if value %}
+                            <label class="odoo-radio">
+                                <input type="radio" name="tipo" value="{{ value }}"
+                                    {% if form.tipo.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}>
+                                <span>{{ label }}</span>
+                            </label>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
 
-      <div class="odoo-aside-info">
-        <div class="odoo-info-item">
-          <span class="odoo-info-label">Tipo</span>
-          <span class="odoo-info-value">
-            {% if unidad %}{{ unidad.tipo }}{% else %}—{% endif %}
-          </span>
+                    <!-- Nombre grande -->
+                    <div class="odoo-name-field">
+                        <input type="text" 
+                               name="nombre" 
+                               id="{{ form.nombre.id_for_label }}"
+                               value="{{ form.nombre.value|default:'' }}"
+                               placeholder="Por ejemplo, Ministerio de Alabanza"
+                               class="odoo-name-input"
+                               required>
+                    </div>
+
+                    <!-- Campos de info rápida -->
+                    <div class="odoo-quick-fields">
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">category</span>
+                            <select name="categoria" id="{{ form.categoria.id_for_label }}" class="odoo-quick-select">
+                                <option value="">Seleccionar categoría...</option>
+                                {% for value, label in form.categoria.field.choices %}
+                                    {% if value %}
+                                    <option value="{{ value }}" {% if form.categoria.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">subdirectory_arrow_right</span>
+                            <select name="padre" id="{{ form.padre.id_for_label }}" class="odoo-quick-select">
+                                <option value="">Sin unidad padre</option>
+                                {% for value, label in form.padre.field.choices %}
+                                    {% if value %}
+                                    <option value="{{ value }}" {% if form.padre.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">tag</span>
+                            <input type="text" 
+                                   name="codigo" 
+                                   id="{{ form.codigo.id_for_label }}"
+                                   value="{{ form.codigo.value|default:'' }}"
+                                   placeholder="Código (ej. MIN-ALAB)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────────────────────────────────
+                 BODY: Campos en dos columnas estilo Odoo
+                 ───────────────────────────────────────────────────────── -->
+            <div class="odoo-form-body">
+                
+                <!-- Columna Izquierda -->
+                <div class="odoo-form-column">
+                    
+                    <div class="odoo-field">
+                        <label class="odoo-label">Orden</label>
+                        <input type="number" name="orden" id="{{ form.orden.id_for_label }}"
+                               value="{{ form.orden.value|default:'0' }}"
+                               placeholder="0" class="odoo-input">
+                    </div>
+
+                    <div class="odoo-field">
+                        <label class="odoo-label">Ruta</label>
+                        <span class="odoo-field-text odoo-text-muted">
+                            {% if unidad %}{{ unidad.ruta }}{% else %}Se generará al guardar{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha -->
+                <div class="odoo-form-column">
+
+                    <div class="odoo-field">
+                        <label class="odoo-label">Estado</label>
+                        <span class="odoo-field-text">
+                            {% if unidad %}
+                                {% if unidad.activa %}
+                                    <span class="odoo-status-badge odoo-status-active">Activa</span>
+                                {% else %}
+                                    <span class="odoo-status-badge odoo-status-inactive">Inactiva</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="odoo-status-badge odoo-status-active">Activa</span>
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="odoo-field odoo-field-checkbox">
+                        <label class="odoo-checkbox-label">
+                            <input type="checkbox" name="activa" id="id_activa"
+                                   {% if not unidad or unidad.activa %}checked{% endif %}>
+                            <span>Unidad activa</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────────────────────────────────
+                 TABS: Pestañas inferiores estilo Odoo
+                 ───────────────────────────────────────────────────────── -->
+            <div class="odoo-tabs-section">
+                
+                <!-- Tab buttons -->
+                <div class="odoo-tabs-bar">
+                    <button type="button" class="odoo-tab active" data-tab="miembros">
+                        Miembros
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="cargos">
+                        Cargos
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="descripcion">
+                        Descripción
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="notas">
+                        Notas
+                    </button>
+                </div>
+
+                <!-- Tab contents -->
+                <div class="odoo-tabs-content">
+                    
+                    <!-- TAB: Miembros -->
+                    <div class="odoo-tab-panel active" id="tab-miembros">
+                        {% if modo != "editar" %}
+                            <div class="odoo-empty-state">
+                                <span class="material-icons">info</span>
+                                <span>Guarda la unidad primero para gestionar miembros.</span>
+                            </div>
+                        {% else %}
+                            <div class="odoo-add-line">
+                                <a href="#" class="odoo-add-link">
+                                    <span class="material-icons">add</span>
+                                    Agregar miembro
+                                </a>
+                            </div>
+                            <!-- Tabla de miembros aquí -->
+                        {% endif %}
+                    </div>
+
+                    <!-- TAB: Cargos -->
+                    <div class="odoo-tab-panel" id="tab-cargos">
+                        {% if modo != "editar" %}
+                            <div class="odoo-empty-state">
+                                <span class="material-icons">info</span>
+                                <span>Guarda la unidad primero para asignar cargos.</span>
+                            </div>
+                        {% else %}
+                            <div class="odoo-add-line">
+                                <a href="#" class="odoo-add-link">
+                                    <span class="material-icons">add</span>
+                                    Asignar cargo
+                                </a>
+                            </div>
+                            <!-- Tabla de cargos aquí -->
+                        {% endif %}
+                    </div>
+
+                    <!-- TAB: Descripción -->
+                    <div class="odoo-tab-panel" id="tab-descripcion">
+                        <div class="odoo-field odoo-field-full">
+                            <textarea name="descripcion" id="{{ form.descripcion.id_for_label }}"
+                                      rows="6" class="odoo-textarea"
+                                      placeholder="Descripción de la unidad...">{{ form.descripcion.value|default:'' }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Notas -->
+                    <div class="odoo-tab-panel" id="tab-notas">
+                        <div class="odoo-field odoo-field-full">
+                            <textarea name="notas" id="{{ form.notas.id_for_label }}"
+                                      rows="6" class="odoo-textarea"
+                                      placeholder="Notas internas...">{{ form.notas.value|default:'' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="odoo-info-item">
-          <span class="odoo-info-label">Activa</span>
-          <span class="odoo-info-value">
-            {% if unidad %}
-              {% if unidad.activa %}Sí{% else %}No{% endif %}
-            {% else %}
-              —
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             PANEL LATERAL (Chatter / Acciones)
+             ══════════════════════════════════════════════════════════════════ -->
+        <div class="odoo-form-aside">
+            
+            <!-- Botones de acción -->
+            <div class="odoo-aside-actions">
+                {% if modo == "editar" %}
+                    <button type="submit" class="odoo-btn odoo-btn-primary">
+                        <span class="material-icons">save</span>
+                        Guardar cambios
+                    </button>
+                {% else %}
+                    <button type="submit" name="guardar" value="1" class="odoo-btn odoo-btn-primary">
+                        <span class="material-icons">check</span>
+                        Guardar
+                    </button>
+                    <button type="submit" name="guardar_y_nuevo" value="1" class="odoo-btn odoo-btn-secondary">
+                        <span class="material-icons">add</span>
+                        Guardar y nuevo
+                    </button>
+                {% endif %}
+                <a href="{% url 'estructura_app:unidad_listado' %}" class="odoo-btn odoo-btn-secondary">
+                    Descartar
+                </a>
+            </div>
+
+            <!-- Info rápida -->
+            <div class="odoo-aside-info">
+                <div class="odoo-info-item">
+                    <span class="odoo-info-label">Estado</span>
+                    {% if unidad and unidad.activa or not unidad %}
+                        <span class="odoo-info-badge">Activa</span>
+                    {% else %}
+                        <span class="odoo-info-badge odoo-badge-inactive">Inactiva</span>
+                    {% endif %}
+                </div>
+                {% if unidad %}
+                <div class="odoo-info-item">
+                    <span class="odoo-info-label">Creado</span>
+                    <span class="odoo-info-value">{{ unidad.creado_en|date:'d/m/Y' }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tips -->
+            <div class="odoo-aside-tips">
+                <h4 class="odoo-aside-title">Consejos</h4>
+                <ul class="odoo-tips-list">
+                    <li>El código es opcional pero ayuda a identificar rápidamente la unidad</li>
+                    <li>Asigna una unidad padre para crear jerarquías organizativas</li>
+                    <li>El orden determina la posición en listados</li>
+                </ul>
+            </div>
+
+            <!-- Actividad reciente -->
+            {% if modo == "editar" %}
+            <div class="odoo-aside-activity">
+                <h4 class="odoo-aside-title">Actividad</h4>
+                <div class="odoo-activity-item">
+                    <div class="odoo-activity-avatar">
+                        <span class="material-icons">person</span>
+                    </div>
+                    <div class="odoo-activity-content">
+                        <span class="odoo-activity-text">Última actualización</span>
+                        <span class="odoo-activity-date">{{ unidad.actualizado_en|date:'d/m/Y H:i' }}</span>
+                    </div>
+                </div>
+            </div>
             {% endif %}
-          </span>
         </div>
-        <div class="odoo-info-item">
-          <span class="odoo-info-label">Miembros</span>
-          <span class="odoo-info-badge">—</span>
-        </div>
-      </div>
-
-      <div class="odoo-aside-tips">
-        <h4 class="odoo-aside-title">Consejos</h4>
-        <ul class="odoo-tips-list">
-          <li>Define bien la <strong>Categoría</strong> para mantener el orden de la estructura.</li>
-          <li>Usa <strong>Unidad padre</strong> para construir la jerarquía.</li>
-          <li>Guarda primero y luego asigna <strong>Miembros</strong> y <strong>Cargos</strong>.</li>
-        </ul>
-      </div>
-
-      <div class="odoo-aside-activity">
-        <h4 class="odoo-aside-title">Actividad</h4>
-        {% if modo == "editar" and unidad %}
-          <div class="odoo-activity-item">
-            <div class="odoo-activity-avatar">
-              <span class="material-icons">account_tree</span>
-            </div>
-            <div class="odoo-activity-content">
-              <span class="odoo-activity-text">Unidad creada</span>
-              <span class="odoo-activity-date">{{ unidad.creado_en|date:"d M Y" }}</span>
-            </div>
-          </div>
-        {% else %}
-          <div class="odoo-activity-item">
-            <div class="odoo-activity-avatar">
-              <span class="material-icons">add_circle</span>
-            </div>
-            <div class="odoo-activity-content">
-              <span class="odoo-activity-text">Creando nueva unidad...</span>
-              <span class="odoo-activity-date">Ahora</span>
-            </div>
-          </div>
-        {% endif %}
-      </div>
-
     </div>
-  </div>
 </form>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     ESTILOS (MISMO BLOQUE BASE QUE TENÍAS)
+     ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
-/* Base + Control bar + Layout: copiado del patrón de miembro_form */
-.odoo-form { background:#fff; min-height:calc(100vh - 60px); }
-
-.odoo-control-bar{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:8px 16px; background:#f8f9fa; border-bottom:1px solid #dee2e6;
-  position:sticky; top:0; z-index:100;
-}
-.odoo-control-left{ display:flex; align-items:center; gap:8px; }
-.odoo-breadcrumb-link{
-  display:flex; align-items:center; gap:4px; color:#017e84;
-  text-decoration:none; font-size:14px; font-weight:500;
-}
-.odoo-breadcrumb-link:hover{ text-decoration:underline; }
-.odoo-breadcrumb-link .material-icons{ font-size:18px; }
-.odoo-breadcrumb-sep{ color:#6c757d; }
-.odoo-breadcrumb-current{ color:#495057; font-size:14px; }
-.odoo-new-badge{
-  background:#017e84; color:#fff; font-size:11px; font-weight:600;
-  padding:2px 8px; border-radius:3px; margin-left:8px;
-}
-.odoo-member-code{
-  display:flex; align-items:center; gap:6px;
-  font-family:'Roboto Mono', monospace; font-size:13px; color:#6c757d;
-  background:#e9ecef; padding:4px 10px; border-radius:4px;
-}
-.odoo-member-code .material-icons{ font-size:16px; }
-
-.odoo-form-container{
-  display:grid; grid-template-columns:1fr 280px; gap:0;
-  min-height:calc(100vh - 110px);
-}
-.odoo-form-main{ padding:24px 32px; border-right:1px solid #dee2e6; }
-
-.odoo-form-header{
-  display:flex; gap:24px; padding-bottom:24px;
-  border-bottom:1px solid #e9ecef; margin-bottom:24px;
-}
-.odoo-avatar{ width:110px; height:110px;
-  background:linear-gradient(135deg,#e8f4f4 0%,#d4e8e8 100%);
-  border-radius:4px; display:flex; align-items:center; justify-content:center;
-  overflow:hidden; border:1px solid #dee2e6;
-}
-.odoo-avatar .material-icons{ font-size:56px; color:#017e84; opacity:.6; }
-.odoo-header-info{ flex:1; display:flex; flex-direction:column; gap:8px; }
-
-.odoo-name-field{ display:flex; gap:12px; }
-.odoo-name-input{
-  flex:1; font-size:28px; font-weight:400; color:#212529; border:none;
-  border-bottom:1px solid transparent; background:#fff0f3;
-  padding:8px 12px; border-radius:4px; transition:all .2s ease;
-}
-.odoo-name-input:hover{ background:#ffe4e9; }
-.odoo-name-input:focus{ outline:none; background:#fff; border-bottom-color:#017e84; }
-.odoo-name-input::placeholder{ color:#adb5bd; font-weight:300; }
-
-.odoo-quick-fields{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
-.odoo-quick-field{ display:flex; align-items:center; gap:8px; }
-.odoo-quick-field .material-icons{ font-size:18px; color:#6c757d; width:20px; }
-
-.odoo-form-body{
-  display:grid; grid-template-columns:1fr 1fr; gap:32px 48px;
-  padding-bottom:24px; border-bottom:1px solid #e9ecef; margin-bottom:24px;
-}
-.odoo-form-column{ display:flex; flex-direction:column; gap:12px; }
-.odoo-field{ display:flex; align-items:flex-start; gap:12px; }
-
-.odoo-label{
-  width:120px; flex-shrink:0; font-size:13px; color:#495057;
-  padding-top:6px; text-align:right;
+/* ═══════════════════════════════════════════════════════════════════════════
+   VARIABLES Y RESET
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form {
+    background: #fff;
 }
 
-.odoo-input{
-  flex:1; border:none; border-bottom:1px solid #dee2e6; padding:6px 0;
-  font-size:14px; color:#212529; background:transparent;
-  transition:border-color .2s ease;
-}
-.odoo-input:hover{ border-bottom-color:#adb5bd; }
-.odoo-input:focus{ outline:none; border-bottom-color:#017e84; }
-
-select.odoo-input{
-  cursor:pointer;
-  background:transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='%236c757d' d='M6 8L1 3h10z'/%3e%3c/svg%3e") no-repeat right center;
-  padding-right:20px;
-  -webkit-appearance:none; -moz-appearance:none; appearance:none;
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTROL BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    min-height: 46px;
 }
 
-.odoo-textarea{
-  width:100%; border:1px solid #dee2e6; border-radius:4px;
-  padding:8px 12px; font-size:14px; font-family:inherit; resize:vertical;
-  transition:border-color .2s ease;
-}
-.odoo-textarea:focus{ outline:none; border-color:#017e84; }
-
-.odoo-field-checkbox{ padding-left:132px; }
-.odoo-checkbox-label{
-  display:flex; align-items:center; gap:8px; cursor:pointer;
-  font-size:13px; color:#495057;
-}
-.odoo-checkbox-label input[type="checkbox"]{ accent-color:#017e84; width:16px; height:16px; }
-
-.odoo-alert{ padding:10px 14px; border-radius:4px; font-size:13px; margin:8px 0; }
-.odoo-alert-warning{ background:#fff7ed; color:#c2410c; border-left:3px solid #f97316; }
-
-.odoo-tabs-bar{ display:flex; gap:0; border-bottom:1px solid #dee2e6; flex-wrap:wrap; }
-.odoo-tab{
-  padding:10px 16px; font-size:13px; font-weight:500; color:#6c757d;
-  background:transparent; border:none; border-bottom:2px solid transparent;
-  cursor:pointer; transition:all .2s ease;
-}
-.odoo-tab:hover{ color:#495057; background:#f8f9fa; }
-.odoo-tab.active{ color:#017e84; border-bottom-color:#017e84; }
-
-.odoo-tabs-content{ padding:20px 0; }
-.odoo-tab-panel{ display:none; }
-.odoo-tab-panel.active{ display:block; }
-.odoo-tab-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px 32px; }
-.odoo-field-full{ grid-column:1 / -1; }
-
-.odoo-empty-text{ color:#6c757d; font-size:13px; font-style:italic; }
-
-.odoo-form-aside{
-  background:#f8f9fa; padding:16px; display:flex; flex-direction:column; gap:20px;
-}
-.odoo-aside-actions{ display:flex; flex-direction:column; gap:8px; }
-.odoo-btn{
-  display:flex; align-items:center; justify-content:center; gap:6px;
-  padding:10px 16px; font-size:14px; font-weight:500;
-  border:none; border-radius:4px; cursor:pointer; transition:all .2s ease;
-}
-.odoo-btn .material-icons{ font-size:18px; }
-.odoo-btn-primary{ background:#017e84; color:#fff; }
-.odoo-btn-primary:hover{ background:#016166; }
-.odoo-btn-secondary{ background:#fff; color:#495057; border:1px solid #dee2e6; }
-.odoo-btn-secondary:hover{ background:#e9ecef; }
-
-.odoo-aside-info{
-  background:#fff; border-radius:4px; padding:12px;
-  display:flex; flex-direction:column; gap:8px;
-}
-.odoo-info-item{ display:flex; justify-content:space-between; align-items:center; }
-.odoo-info-label{ font-size:12px; color:#6c757d; }
-.odoo-info-value{ font-size:14px; font-weight:600; color:#212529; }
-.odoo-info-badge{
-  font-size:11px; font-weight:500; background:#d4edda; color:#155724;
-  padding:2px 8px; border-radius:10px;
+.odoo-control-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.odoo-aside-tips, .odoo-aside-activity{ background:#fff; border-radius:4px; padding:12px; }
-.odoo-aside-title{
-  font-size:13px; font-weight:600; color:#495057; margin-bottom:10px;
-  padding-bottom:8px; border-bottom:1px solid #e9ecef;
+.odoo-breadcrumb-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #212529;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
 }
-.odoo-tips-list{ margin:0; padding-left:16px; font-size:12px; color:#6c757d; line-height:1.6; }
-.odoo-activity-item{ display:flex; gap:10px; }
-.odoo-activity-avatar{
-  width:32px; height:32px; background:#017e84; border-radius:50%;
-  display:flex; align-items:center; justify-content:center; flex-shrink:0;
-}
-.odoo-activity-avatar .material-icons{ font-size:18px; color:#fff; }
-.odoo-activity-content{ display:flex; flex-direction:column; gap:2px; }
-.odoo-activity-text{ font-size:13px; color:#212529; }
-.odoo-activity-date{ font-size:11px; color:#6c757d; }
 
-@media (max-width:1200px){
-  .odoo-form-container{ grid-template-columns:1fr; }
-  .odoo-form-main{ border-right:none; border-bottom:1px solid #dee2e6; }
-  .odoo-form-aside{ flex-direction:row; flex-wrap:wrap; gap:16px; }
-  .odoo-aside-actions{ flex-direction:row; }
-  .odoo-aside-info, .odoo-aside-tips, .odoo-aside-activity{ flex:1; min-width:200px; }
+.odoo-breadcrumb-link:hover {
+    text-decoration: underline;
 }
-@media (max-width:768px){
-  .odoo-form-header{ flex-direction:column; align-items:center; text-align:center; }
-  .odoo-name-field{ flex-direction:column; }
-  .odoo-form-body{ grid-template-columns:1fr; }
-  .odoo-field{ flex-direction:column; align-items:stretch; }
-  .odoo-label{ width:auto; text-align:left; padding-top:0; margin-bottom:4px; }
-  .odoo-field-checkbox{ padding-left:0; }
-  .odoo-tab-grid{ grid-template-columns:1fr; }
+
+.odoo-breadcrumb-link .material-icons {
+    font-size: 18px;
+}
+
+.odoo-breadcrumb-sep {
+    color: #6c757d;
+}
+
+.odoo-breadcrumb-current {
+    color: #495057;
+    font-size: 14px;
+}
+
+.odoo-new-badge {
+    background: #017e84;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+.odoo-member-code {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 13px;
+    color: #6c757d;
+    background: #e9ecef;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.odoo-member-code .material-icons {
+    font-size: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTENEDOR PRINCIPAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-container {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 0;
+    min-height: calc(100vh - 110px);
+}
+
+.odoo-form-main {
+    padding: 24px 32px;
+    border-right: 1px solid #dee2e6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER DEL FORMULARIO (Avatar + Nombre)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-header {
+    display: flex;
+    gap: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 24px;
+}
+
+.odoo-avatar-section {
+    flex-shrink: 0;
+}
+
+.odoo-avatar {
+    width: 110px;
+    height: 110px;
+    background: linear-gradient(135deg, #e8f4f4 0%, #d4e8e8 100%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+}
+
+.odoo-avatar-unit {
+    background: linear-gradient(135deg, #e8f4f4 0%, #d4e8e8 100%);
+}
+
+.odoo-avatar .material-icons {
+    font-size: 56px;
+    color: #017e84;
+    opacity: 0.6;
+}
+
+.odoo-header-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Radio group */
+.odoo-radio-group {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.odoo-radio {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-radio input[type="radio"] {
+    accent-color: #017e84;
+}
+
+/* Campo de nombre grande */
+.odoo-name-field {
+    display: flex;
+    gap: 12px;
+}
+
+.odoo-name-input {
+    flex: 1;
+    font-size: 28px;
+    font-weight: 400;
+    color: #212529;
+    border: none;
+    border-bottom: 1px solid transparent;
+    background: #fff0f3;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.odoo-name-input:hover {
+    background: #ffe4e9;
+}
+
+.odoo-name-input:focus {
+    outline: none;
+    background: #fff;
+    border-bottom-color: #017e84;
+}
+
+.odoo-name-input::placeholder {
+    color: #adb5bd;
+    font-weight: 300;
+}
+
+/* Campos de info rápida */
+.odoo-quick-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.odoo-quick-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-quick-field .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+    width: 20px;
+}
+
+.odoo-quick-field input,
+.odoo-quick-select {
+    flex: 1;
+    max-width: 320px;
+    border: none;
+    border-bottom: 1px dashed #dee2e6;
+    padding: 4px 0;
+    font-size: 14px;
+    color: #495057;
+    background: transparent;
+}
+
+.odoo-quick-field input:hover,
+.odoo-quick-select:hover {
+    border-bottom-color: #adb5bd;
+}
+
+.odoo-quick-field input:focus,
+.odoo-quick-select:focus {
+    outline: none;
+    border-bottom: 1px solid #017e84;
+}
+
+.odoo-quick-field input::placeholder {
+    color: #adb5bd;
+}
+
+.odoo-quick-select {
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='%236c757d' d='M6 8L1 3h10z'/%3e%3c/svg%3e") no-repeat right center;
+    padding-right: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BODY DEL FORMULARIO (Dos columnas)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px 48px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 24px;
+}
+
+.odoo-form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Campos estilo Odoo */
+.odoo-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.odoo-field-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.odoo-label {
+    width: 120px;
+    flex-shrink: 0;
+    font-size: 13px;
+    color: #495057;
+    padding-top: 6px;
+    text-align: right;
+}
+
+.odoo-input {
+    flex: 1;
+    border: none;
+    border-bottom: 1px solid #dee2e6;
+    padding: 6px 0;
+    font-size: 14px;
+    color: #212529;
+    background: transparent;
+    transition: border-color 0.2s ease;
+}
+
+.odoo-input:hover {
+    border-bottom-color: #adb5bd;
+}
+
+.odoo-input:focus {
+    outline: none;
+    border-bottom-color: #017e84;
+}
+
+.odoo-input::placeholder {
+    color: #adb5bd;
+}
+
+.odoo-input-small {
+    max-width: 80px;
+}
+
+select.odoo-input {
+    cursor: pointer;
+    background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='%236c757d' d='M6 8L1 3h10z'/%3e%3c/svg%3e") no-repeat right center;
+    padding-right: 20px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* Stack de campos */
+.odoo-field-stack {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.odoo-field-row {
+    display: flex;
+    gap: 12px;
+}
+
+/* Field text (para campos de solo lectura) */
+.odoo-field-text {
+    flex: 1;
+    padding: 6px 0;
+    font-size: 14px;
+    color: #212529;
+}
+
+.odoo-text-muted {
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Status badges */
+.odoo-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.odoo-status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.odoo-status-inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Checkbox */
+.odoo-field-checkbox {
+    padding-left: 132px;
+}
+
+.odoo-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-checkbox-label input[type="checkbox"] {
+    accent-color: #017e84;
+    width: 16px;
+    height: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-tabs-section {
+    margin-top: 8px;
+}
+
+.odoo-tabs-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #dee2e6;
+    flex-wrap: wrap;
+}
+
+.odoo-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6c757d;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.odoo-tab:hover {
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.odoo-tab.active {
+    color: #017e84;
+    border-bottom-color: #017e84;
+}
+
+.odoo-tabs-content {
+    padding: 20px 0;
+}
+
+.odoo-tab-panel {
+    display: none;
+}
+
+.odoo-tab-panel.active {
+    display: block;
+}
+
+.odoo-field-full {
+    grid-column: 1 / -1;
+}
+
+.odoo-textarea {
+    width: 100%;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s ease;
+}
+
+.odoo-textarea:focus {
+    outline: none;
+    border-color: #017e84;
+}
+
+/* Empty state */
+.odoo-empty-state {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.odoo-empty-state .material-icons {
+    font-size: 18px;
+    color: #adb5bd;
+}
+
+/* Add line */
+.odoo-add-line {
+    padding: 8px 0;
+}
+
+.odoo-add-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #017e84;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.odoo-add-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-add-link .material-icons {
+    font-size: 18px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL LATERAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-aside {
+    background: #f8f9fa;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.odoo-aside-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: #016166;
+}
+
+.odoo-btn-secondary {
+    background: white;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.odoo-btn-secondary:hover {
+    background: #e9ecef;
+}
+
+/* Info lateral */
+.odoo-aside-info {
+    background: white;
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.odoo-info-label {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.odoo-info-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.odoo-info-badge {
+    font-size: 11px;
+    font-weight: 500;
+    background: #d4edda;
+    color: #155724;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.odoo-badge-inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Tips */
+.odoo-aside-tips {
+    background: white;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.odoo-aside-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.odoo-tips-list {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 12px;
+    color: #6c757d;
+    line-height: 1.6;
+}
+
+.odoo-tips-list li {
+    margin-bottom: 4px;
+}
+
+/* Actividad */
+.odoo-aside-activity {
+    background: white;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.odoo-activity-item {
+    display: flex;
+    gap: 10px;
+}
+
+.odoo-activity-avatar {
+    width: 32px;
+    height: 32px;
+    background: #017e84;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.odoo-activity-avatar .material-icons {
+    font-size: 18px;
+    color: white;
+}
+
+.odoo-activity-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.odoo-activity-text {
+    font-size: 13px;
+    color: #212529;
+}
+
+.odoo-activity-date {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1200px) {
+    .odoo-form-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .odoo-form-main {
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .odoo-form-aside {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    
+    .odoo-aside-actions {
+        flex-direction: row;
+    }
+    
+    .odoo-aside-info,
+    .odoo-aside-tips,
+    .odoo-aside-activity {
+        flex: 1;
+        min-width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-form-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .odoo-name-field {
+        flex-direction: column;
+    }
+    
+    .odoo-form-body {
+        grid-template-columns: 1fr;
+    }
+    
+    .odoo-field,
+    .odoo-field-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .odoo-label {
+        width: auto;
+        text-align: left;
+        padding-top: 0;
+        margin-bottom: 4px;
+    }
+    
+    .odoo-field-checkbox {
+        padding-left: 0;
+    }
+    
+    .odoo-field-row {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .odoo-input-small {
+        max-width: none;
+    }
+    
+    .odoo-radio-group {
+        justify-content: center;
+    }
+    
+    .odoo-quick-field input,
+    .odoo-quick-select {
+        max-width: none;
+    }
 }
 </style>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     SCRIPTS (Tabs)
+     JAVASCRIPT
      ══════════════════════════════════════════════════════════════════════════ -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const tabs = document.querySelectorAll('.odoo-tab');
-  const panels = document.querySelectorAll('.odoo-tab-panel');
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', function() {
-      const targetId = 'tab-' + this.dataset.tab;
-      tabs.forEach(t => t.classList.remove('active'));
-      panels.forEach(p => p.classList.remove('active'));
-      this.classList.add('active');
-      const panel = document.getElementById(targetId);
-      if (panel) panel.classList.add('active');
-    });
-  });
+    initTabs();
+    initTypeSelector();
 });
+
+/**
+ * Sistema de tabs
+ */
+function initTabs() {
+    const tabs = document.querySelectorAll('.odoo-tab');
+    const panels = document.querySelectorAll('.odoo-tab-panel');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const targetId = 'tab-' + this.dataset.tab;
+            
+            // Remove active from all
+            tabs.forEach(t => t.classList.remove('active'));
+            panels.forEach(p => p.classList.remove('active'));
+            
+            // Add active to current
+            this.classList.add('active');
+            const targetPanel = document.getElementById(targetId);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+        });
+    });
+}
+
+/**
+ * Selector de tipo - cambia el icono según el tipo
+ */
+function initTypeSelector() {
+    const radios = document.querySelectorAll('.odoo-radio input[type="radio"][name="tipo"]');
+    const icon = document.getElementById('unit-icon');
+    
+    const typeIcons = {
+        'ministerio': 'groups',
+        'departamento': 'folder',
+        'celula': 'home',
+        'comite': 'people',
+        'equipo': 'group_work',
+        'otro': 'account_tree'
+    };
+    
+    radios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (icon) {
+                const selectedType = this.value.toLowerCase();
+                icon.textContent = typeIcons[selectedType] || 'account_tree';
+            }
+        });
+        
+        // Set initial icon
+        if (radio.checked && icon) {
+            const selectedType = radio.value.toLowerCase();
+            icon.textContent = typeIcons[selectedType] || 'account_tree';
+        }
+    });
+}
 </script>
 
 {% endblock %}

@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import TipoUnidad, RolUnidad, Unidad, UnidadMembresia, UnidadCargo
-
+from .models import CategoriaUnidad, TipoUnidad, RolUnidad, Unidad, UnidadMembresia, UnidadCargo
 
 @admin.register(TipoUnidad)
 class TipoUnidadAdmin(admin.ModelAdmin):
@@ -42,7 +41,16 @@ class UnidadAdmin(admin.ModelAdmin):
     ordering = ("tipo__orden", "nombre")
     inlines = (UnidadCargoInline, UnidadMembresiaInline)
     autocomplete_fields = ("padre",)
-
+    
     def ruta_admin(self, obj):
-        return obj.ruta()
+        return obj.ruta
     ruta_admin.short_description = "Ruta"
+
+
+@admin.register(CategoriaUnidad)
+class CategoriaUnidadAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "codigo", "orden", "activo")
+    list_editable = ("orden", "activo")
+    search_fields = ("nombre", "codigo")
+    ordering = ("orden", "nombre")
+
