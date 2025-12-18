@@ -95,6 +95,14 @@ class Unidad(models.Model):
     motivo_cierre = models.CharField(max_length=180, blank=True, default="")
     notas = models.TextField(blank=True)
 
+      # 🔴🔴🔴 AQUÍ ESTÁ LO QUE FALTABA 🔴🔴🔴
+    reglas = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Reglas de membresía, acceso y restricciones de la unidad"
+    )
+
+
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
