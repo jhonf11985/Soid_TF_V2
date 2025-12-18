@@ -11,10 +11,12 @@ class TipoUnidadAdmin(admin.ModelAdmin):
 
 @admin.register(RolUnidad)
 class RolUnidadAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "es_liderazgo", "orden", "activo")
-    list_editable = ("es_liderazgo", "orden", "activo")
-    search_fields = ("nombre",)
+    list_display = ("nombre", "tipo", "orden", "activo")
+    list_editable = ("tipo", "orden", "activo")
+    search_fields = ("nombre", "descripcion")
+    list_filter = ("tipo", "activo")
     ordering = ("orden", "nombre")
+
 
 
 class UnidadMembresiaInline(admin.TabularInline):

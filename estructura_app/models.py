@@ -1,9 +1,39 @@
 from django.conf import settings
 from django.db import models
 
+class RolUnidad(models.Model):
+    TIPO_LIDERAZGO = "LIDERAZGO"
+    TIPO_PARTICIPACION = "PARTICIPACION"
+    TIPO_TRABAJO = "TRABAJO"
+
+    TIPOS = (
+        (TIPO_LIDERAZGO, "Liderazgo"),
+        (TIPO_PARTICIPACION, "Miembro (participación)"),
+        (TIPO_TRABAJO, "Trabajo (servicio)"),
+    )
+
+    nombre = models.CharField(max_length=60, unique=True)
+    tipo = models.CharField(max_length=20, choices=TIPOS, default=TIPO_PARTICIPACION)
+    descripcion = models.TextField(blank=True)
+    orden = models.PositiveIntegerField(default=10)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Rol"
+        verbose_name_plural = "Roles"
+        ordering = ["orden", "nombre"]
+
+    def __str__(self):
+        return self.nombre
+
 
 class TipoUnidad(models.Model):
     nombre = models.CharField(max_length=60, unique=True)
+    icono = models.CharField(
+        max_length=40,
+        default="account_tree",
+        help_text="Nombre del icono Material Icons (ej: groups, folder)"
+    )
     orden = models.PositiveIntegerField(default=10)
     activo = models.BooleanField(default=True)
 
@@ -14,8 +44,6 @@ class TipoUnidad(models.Model):
 
     def __str__(self):
         return self.nombre
-
-
 class CategoriaUnidad(models.Model):
     codigo = models.SlugField(max_length=30, unique=True)
     nombre = models.CharField(max_length=60, unique=True)
@@ -31,19 +59,6 @@ class CategoriaUnidad(models.Model):
         return self.nombre
 
 
-class RolUnidad(models.Model):
-    nombre = models.CharField(max_length=60, unique=True)
-    es_liderazgo = models.BooleanField(default=True)
-    orden = models.PositiveIntegerField(default=10)
-    activo = models.BooleanField(default=True)
-
-    class Meta:
-        verbose_name = "Rol"
-        verbose_name_plural = "Roles"
-        ordering = ["orden", "nombre"]
-
-    def __str__(self):
-        return self.nombre
 
 
 class Unidad(models.Model):

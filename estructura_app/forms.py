@@ -1,5 +1,8 @@
 from django import forms
-from .models import Unidad
+
+from .models import Unidad, RolUnidad
+
+
 
 
 class UnidadForm(forms.ModelForm):
@@ -60,3 +63,12 @@ class UnidadForm(forms.ModelForm):
 
         # Padre opcional
         self.fields["padre"].required = False
+
+class RolUnidadForm(forms.ModelForm):
+    class Meta:
+        model = RolUnidad
+        fields = ["nombre", "tipo", "descripcion", "orden", "activo"]
+        widgets = {
+            "descripcion": forms.Textarea(attrs={"rows": 3}),
+        }
+
