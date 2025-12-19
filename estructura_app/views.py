@@ -170,7 +170,7 @@ def _reglas_mvp_from_post(post):
         except ValueError:
             return default
 
-    solo_activos = is_on("regla_solo_activos", default=True)
+    solo_activos = is_on("regla_solo_activos", default=False)
 
     permite_menores = False if solo_activos else is_on("regla_perm_menores", default=False)
     permite_observacion = False if solo_activos else is_on("regla_perm_observacion", default=False)
@@ -243,7 +243,6 @@ def asignacion_unidad(request):
         "personas": [],
     })
 
-
 @login_required
 def asignacion_unidad_contexto(request):
     unidad_id = (request.GET.get("unidad_id") or "").strip()
@@ -260,41 +259,51 @@ def asignacion_unidad_contexto(request):
         .values_list("miembo_fk_id", flat=True)
     )
 
-    qs = Miembro.objects.filter(activo=True)
+    # ✅ IMPORTANTE: no filtramos por Miembro.activo=True
+    # porque tu participación depende del ESTADO (estado_miembro)
+    qs = Miembro.objects.all()
 
     # =====================================================
-    # APLICAR REGLAS DE MEMBRESÍA (CORRECTAS)
+    # APLICAR REGLAS DE MEMBRESÍA (POR ESTADO)
     # =====================================================
     if solo_activos:
         qs = qs.filter(estado_miembro="activo")
     else:
-        permitidos = set()
+        # ✅ activos SIEMPRE incluidos
+        estados_permitidos = ["activo"]
 
         if reglas.get("permite_observacion"):
-            permitidos.add("observacion")
+            estados_permitidos.append("observacion")
+
+        if reglas.get("permite_pasivos"):
+            estados_permitidos.append("pasivo")
+
+        if reglas.get("permite_disciplina"):
+            estados_permitidos.append("disciplina")
 
         if reglas.get("permite_catecumenos"):
-            permitidos.add("catecumeno")
+            estados_permitidos.append("catecumeno")
 
-        if reglas.get("permite_nuevos"):
-            # nuevos creyentes = flag booleano
-            qs = qs.filter(nuevo_creyente=True)
-
+        # OJO: visitantes SOLO si de verdad existe ese estado en tu modelo
         if reglas.get("permite_visitantes"):
-            permitidos.add("visitante")  # solo si luego lo usas
+            estados_permitidos.append("visitante")
 
-        permite_menores = bool(reglas.get("permite_menores"))
+        q = Q(estado_miembro__in=estados_permitidos)
 
-        q = Q()
+        # Nuevos creyentes (si lo usas como extra aparte del estado)
+        if reglas.get("permite_nuevos"):
+            q |= Q(nuevo_creyente=True)
 
-        if permitidos:
-            q |= Q(estado_miembro__in=list(permitidos))
+        # Menores: tú dijiste que "estado vacío" representa menores
+        # tu código actual usa categoria_edad; lo dejamos, pero añadimos estado vacío también
+        if reglas.get("permite_menores"):
+            q |= Q(estado_miembro__isnull=True) | Q(estado_miembro="")
+            q |= Q(categoria_edad__in=["infante", "nino", "adolescente"])
 
-        if permite_menores:
-            # menores = NO miembros oficiales
-            q |= Q(categoria_edad__in=["infante", "nino"])
+        # Nunca descarriados (si ese estado existe)
+        q &= ~Q(estado_miembro="descarriado")
 
-        qs = qs.filter(q) if q else qs.none()
+        qs = qs.filter(q)
 
     qs = qs.order_by("nombres", "apellidos")
 
@@ -303,10 +312,10 @@ def asignacion_unidad_contexto(request):
         personas.append({
             "id": p.id,
             "nombre": f"{p.nombres} {p.apellidos}",
-            "codigo": p.codigo_miembro,
+            "codigo": p.codigo_miembro or "",
             "estado": p.get_estado_miembro_display() if p.estado_miembro else "",
             "estado_slug": p.estado_miembro or "vacio",
-            "categoria": p.categoria_edad or "",
+            "categoria": p.get_categoria_edad_display() if p.categoria_edad else "",
             "ya_en_unidad": p.id in miembros_actuales_ids,
         })
 
@@ -315,10 +324,21 @@ def asignacion_unidad_contexto(request):
         "unidad": {
             "id": unidad.id,
             "nombre": unidad.nombre,
-            "tipo": str(getattr(unidad, "tipo", "")) if getattr(unidad, "tipo", None) else "—",
+            "tipo": str(unidad.tipo) if unidad.tipo else "—",
             "miembros_actuales": len(miembros_actuales_ids),
+            "reglas_aplicadas": {
+                "solo_activos": solo_activos,
+                "permite_observacion": reglas.get("permite_observacion", False),
+                "permite_pasivos": reglas.get("permite_pasivos", False),
+                "permite_disciplina": reglas.get("permite_disciplina", False),
+                "permite_catecumenos": reglas.get("permite_catecumenos", False),
+                "permite_nuevos": reglas.get("permite_nuevos", False),
+                "permite_visitantes": reglas.get("permite_visitantes", False),
+                "permite_menores": reglas.get("permite_menores", False),
+            }
         },
         "personas": personas,
+        "total_elegibles": len(personas),
     })
 
 
@@ -343,3 +363,4 @@ def asignacion_guardar_contexto(request):
     get_object_or_404(RolUnidad, pk=rol_id)
 
     return JsonResponse({"ok": True})
+
