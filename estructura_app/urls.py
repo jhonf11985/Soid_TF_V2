@@ -20,4 +20,6 @@ urlpatterns = [
     # ROLES
     path("roles/", views.rol_listado, name="rol_listado"),
     path("roles/nuevo/", views.rol_crear, name="rol_crear"),
+    path("asignacion/aplicar/", views.asignacion_aplicar, name="asignacion_aplicar"),
+
 ]

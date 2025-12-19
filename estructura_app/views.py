@@ -434,3 +434,155 @@ def _to_int_from_post(post, name, default=None):
         return int(raw)
     except ValueError:
         return default
+
+@login_required
+@require_POST
+def asignacion_aplicar(request):
+    """
+    Recibe: unidad_id, rol_id, miembro_ids[]
+    Aplica la asignación según el tipo de rol:
+    - LIDERAZGO -> UnidadCargo (vigente=True) + asegura UnidadMembresia activa
+    - PARTICIPACIÓN/TRABAJO -> UnidadMembresia (activo=True)
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"ok": False, "error": "JSON inválido"}, status=400)
+
+    unidad_id = str(payload.get("unidad_id", "")).strip()
+    rol_id = str(payload.get("rol_id", "")).strip()
+    miembro_ids = payload.get("miembro_ids") or []
+
+    if not unidad_id or not rol_id:
+        return JsonResponse({"ok": False, "error": "Falta unidad o rol"}, status=400)
+
+    if not isinstance(miembro_ids, list) or not miembro_ids:
+        return JsonResponse({"ok": False, "error": "No hay miembros seleccionados"}, status=400)
+
+    unidad = get_object_or_404(Unidad, pk=unidad_id)
+    rol = get_object_or_404(RolUnidad, pk=rol_id)
+
+    # Sanitizar IDs (solo ints válidos)
+    clean_ids = []
+    for x in miembro_ids:
+        try:
+            clean_ids.append(int(x))
+        except Exception:
+            pass
+
+    if not clean_ids:
+        return JsonResponse({"ok": False, "error": "Selección inválida"}, status=400)
+
+    miembros = Miembro.objects.filter(id__in=clean_ids)
+
+    creados = 0
+    reactivados = 0
+    ya_existian = 0
+
+    # Para no reventar si viene algo raro
+    tipo = getattr(rol, "tipo", None)
+
+    # ------------------------------------------------------------
+    # 1) ROLES DE LIDERAZGO => UnidadCargo + asegurar membresía
+    # ------------------------------------------------------------
+    if tipo == RolUnidad.TIPO_LIDERAZGO:
+        for m in miembros:
+            # A) Crear/activar membresía si no existe (regla tuya)
+            memb, created_memb = UnidadMembresia.objects.get_or_create(
+                unidad=unidad,
+                miembo_fk=m,
+                defaults={"activo": True}
+            )
+            if not created_memb and not memb.activo:
+                memb.activo = True
+                memb.save(update_fields=["activo"])
+                reactivados += 1
+
+            # B) Cargo vigente para (unidad, rol, miembro)
+            cargo, created_cargo = UnidadCargo.objects.get_or_create(
+                unidad=unidad,
+                rol=rol,
+                miembro=m,  # AJUSTA este nombre de FK si en tu modelo se llama distinto
+                defaults={
+                    "vigente": True,
+                    "fecha_inicio": timezone.now().date() if hasattr(timezone.now(), "date") else timezone.now()
+                }
+            )
+
+            if created_cargo:
+                creados += 1
+            else:
+                if not cargo.vigente:
+                    cargo.vigente = True
+                    # si tienes fecha_fin, límpiala
+                    if hasattr(cargo, "fecha_fin"):
+                        cargo.fecha_fin = None
+                    cargo.save()
+                    reactivados += 1
+                else:
+                    ya_existian += 1
+
+        return JsonResponse({
+            "ok": True,
+            "modo": "liderazgo",
+            "creados": creados,
+            "reactivados": reactivados,
+            "ya_existian": ya_existian,
+        })
+
+    # ------------------------------------------------------------
+    # 2) PARTICIPACIÓN / TRABAJO => UnidadMembresia
+    # ------------------------------------------------------------
+    for m in miembros:
+        memb, created_memb = UnidadMembresia.objects.get_or_create(
+            unidad=unidad,
+            miembo_fk=m,
+            defaults={"activo": True}
+        )
+
+        if created_memb:
+            creados += 1
+        else:
+            if not memb.activo:
+                memb.activo = True
+                memb.save(update_fields=["activo"])
+                reactivados += 1
+            else:
+                ya_existian += 1
+
+        # (Opcional) Si quieres guardar el rol también en membresía y tu modelo lo tiene:
+        # if hasattr(memb, "rol") and memb.rol_id != rol.id:
+        #     memb.rol = rol
+        #     memb.save(update_fields=["rol"])
+
+    return JsonResponse({
+        "ok": True,
+        "modo": "membresia",
+        "creados": creados,
+        "reactivados": reactivados,
+        "ya_existian": ya_existian,
+    })
+
+@login_required
+def unidad_detalle(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    miembros_asignados = (
+        UnidadMembresia.objects
+        .filter(unidad=unidad, activo=True)
+        .select_related("miembo_fk")
+        .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
+    )
+
+    lideres_asignados = (
+        UnidadCargo.objects
+        .filter(unidad=unidad, vigente=True)
+        .select_related("miembo_fk", "rol")   # ✅ NO "miembro"
+        .order_by("rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")  # ✅ NO "miembro__"
+    )
+
+    return render(request, "estructura_app/unidad_detalle.html", {
+        "unidad": unidad,
+        "miembros_asignados": miembros_asignados,
+        "lideres_asignados": lideres_asignados,
+    })

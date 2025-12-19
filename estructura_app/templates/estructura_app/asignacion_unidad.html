@@ -72,16 +72,28 @@
                 </div>
             </div>
 
-            <div class="config-actions">
-                <button type="button" class="btn-assign" id="btn-guardar" disabled>
-                    <span class="material-icons">save</span>
-                    Guardar unidad y rol
-                </button>
+<div class="config-actions">
+    <!-- Guardar contexto -->
+    <button type="button" class="btn-assign" id="btn-guardar" disabled>
+        <span class="material-icons">save</span>
+        Guardar unidad y rol
+    </button>
 
-                <div class="selected-count">
-                    <span id="count-selected">0</span> personas seleccionadas
-                </div>
-            </div>
+    <!-- Asignar seleccionados -->
+    <button type="button"
+            class="btn-assign"
+            id="btn-asignar"
+            disabled
+            style="margin-top:10px;">
+        <span class="material-icons">done_all</span>
+        Asignar seleccionados
+    </button>
+
+    <div class="selected-count">
+        <span id="count-selected">0</span> personas seleccionadas
+    </div>
+</div>
+
         </div>
 
         <!-- Panel derecho: Lista de personas -->
@@ -156,10 +168,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const infoMiembros = document.getElementById('info-miembros');
 
   const btnGuardar = document.getElementById('btn-guardar');
+  const btnAsignar = document.getElementById('btn-asignar');
 
-  // Buscador + filtro dropdown (a la derecha del buscador)
+  const countSelected = document.getElementById('count-selected');
+  const checkAll = document.getElementById('check-all');
+
+  // Buscador + filtro
   const searchInput = document.querySelector('.search-input');
   const viewSelect = document.getElementById('view-filter-select');
+
+  // Selección
+  const selectedIds = new Set();
 
   function getCookie(name) {
     const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
@@ -169,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderEmpty(msg) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="4">
+        <td colspan="5">
           <div class="empty-state">
             <span class="material-icons">touch_app</span>
             <p>${msg}</p>
@@ -183,8 +202,25 @@ document.addEventListener('DOMContentLoaded', () => {
     btnGuardar.disabled = !(selectUnidad.value && selectRol.value);
   }
 
+  function updateSelectedUI() {
+    const n = selectedIds.size;
+    if (countSelected) countSelected.textContent = String(n);
+
+    // btnAsignar solo se habilita si hay unidad, rol y seleccionados
+    if (btnAsignar) {
+      btnAsignar.disabled = !(selectUnidad.value && selectRol.value && n > 0);
+    }
+  }
+
+  function clearSelection() {
+    selectedIds.clear();
+    // quitar checks visuales
+    tbody.querySelectorAll('.custom-check.checked').forEach(el => el.classList.remove('checked'));
+    if (checkAll) checkAll.classList.remove('checked');
+    updateSelectedUI();
+  }
+
   function normalizeEstadoSlug(slug) {
-    // Si el backend manda vacío para menores, normalizamos a "menor"
     if (!slug || slug === 'null' || slug === 'undefined') return 'menor';
     return slug;
   }
@@ -203,31 +239,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function buildViewFilterOptions(reglasAplicadas, personas) {
-    // Estados permitidos según reglas (siempre incluimos activo)
     const allowed = new Set(['activo']);
-
     const r = reglasAplicadas || {};
 
-    // Mapeo regla -> estado_slug
     if (r.permite_observacion) allowed.add('observacion');
     if (r.permite_pasivos) allowed.add('pasivo');
     if (r.permite_disciplina) allowed.add('disciplina');
     if (r.permite_catecumenos) allowed.add('catecumeno');
     if (r.permite_menores) allowed.add('menor');
 
-    // "Nuevos creyentes" depende de cómo lo envíes en JSON.
-    // Para hacerlo robusto, si en la lista viene algún estado_slug "nuevo", lo agregamos.
     (personas || []).forEach(p => {
       const st = normalizeEstadoSlug(p.estado_slug);
       if (st === 'nuevo') allowed.add('nuevo');
       if (st === 'menor') allowed.add('menor');
     });
 
-    // Orden bonito de opciones (solo las que estén en allowed)
     const ordered = ['activo', 'observacion', 'pasivo', 'disciplina', 'catecumeno', 'menor', 'nuevo']
       .filter(x => allowed.has(x));
 
-    // Render options
     if (!viewSelect) return { ordered, defaultValue: 'todos' };
 
     const baseOptions = [
@@ -245,9 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ...stateOptions.map(o => `<option value="${o.value}">${o.label}</option>`),
     ].join('');
 
-    // Default inteligente:
-    // Si hay EXACTAMENTE 1 estado adicional además de activo (por ejemplo catecumeno),
-    // lo seleccionamos para que la lista salga "corta" al cargar.
     const nonActive = ordered.filter(x => x !== 'activo');
     const defaultValue = (nonActive.length === 1) ? nonActive[0] : 'todos';
 
@@ -263,10 +289,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const st = (row.dataset.estado || '').toLowerCase();
       const text = (row.innerText || '').toLowerCase();
 
-      // 1) búsqueda
       const matchSearch = !q || text.includes(q);
 
-      // 2) filtro dropdown
       let matchView = true;
       if (mode === 'todos') matchView = true;
       else if (mode === 'no_activo') matchView = (st !== 'activo');
@@ -274,46 +298,125 @@ document.addEventListener('DOMContentLoaded', () => {
 
       row.style.display = (matchSearch && matchView) ? '' : 'none';
     });
+
+    // Recalcular check-all solo con filas visibles
+    if (checkAll) {
+      const visible = Array.from(document.querySelectorAll('#personas-tbody tr[data-id]'))
+        .filter(r => r.style.display !== 'none');
+      const allSelected = visible.length > 0 && visible.every(r => selectedIds.has(r.dataset.id));
+      if (allSelected) checkAll.classList.add('checked');
+      else checkAll.classList.remove('checked');
+    }
   }
-function rowHTML(p) {
-  const estadoSlug = normalizeEstadoSlug(p.estado_slug);
-  const extra = p.ya_en_unidad
-    ? '<span class="status-badge status-activo">Ya en unidad</span>'
-    : '';
 
-  return `
-    <tr data-id="${p.id}" data-estado="${estadoSlug}">
-      <td class="check-cell">
-        <div class="custom-check" data-check="${p.id}"></div>
-      </td>
+  function rowHTML(p) {
+    const estadoSlug = normalizeEstadoSlug(p.estado_slug);
+    const extra = p.ya_en_unidad
+      ? '<span class="status-badge status-activo">Ya en unidad</span>'
+      : '';
 
-      <td>
-        <div class="person-cell">
-          <div class="person-avatar"><span class="material-icons">person</span></div>
-          <div>
-            <div class="person-name">${p.nombre || '—'}</div>
-            <div class="person-code">${p.codigo || ''}</div>
+    return `
+      <tr data-id="${p.id}" data-estado="${estadoSlug}">
+        <td class="check-cell">
+          <div class="custom-check" data-check="${p.id}"></div>
+        </td>
+
+        <td>
+          <div class="person-cell">
+            <div class="person-avatar"><span class="material-icons">person</span></div>
+            <div>
+              <div class="person-name">${p.nombre || '—'}</div>
+              <div class="person-code">${p.codigo || ''}</div>
+            </div>
           </div>
-        </div>
-      </td>
+        </td>
 
-      <!-- ✅ EDAD -->
-      <td style="font-size: 13px; color: #495057;">
-        ${p.edad !== null ? p.edad + ' años' : '—'}
-      </td>
+        <td style="font-size: 13px; color: #495057;">
+          ${p.edad !== null && p.edad !== undefined ? (p.edad + ' años') : '—'}
+        </td>
 
-      <td>
-        <span class="status-badge status-${estadoSlug}">${p.estado || '—'}</span>
-        ${extra}
-      </td>
+        <td>
+          <span class="status-badge status-${estadoSlug}">${p.estado || '—'}</span>
+          ${extra}
+        </td>
 
-      <td style="color: #6c757d; font-size: 13px;">
-        ${p.categoria || '—'}
-      </td>
-    </tr>
-  `;
-}
+        <td style="color: #6c757d; font-size: 13px;">
+          ${p.categoria || '—'}
+        </td>
+      </tr>
+    `;
+  }
 
+  function attachSelectionHandlers() {
+    // Click en checkbox individual
+    tbody.querySelectorAll('.custom-check[data-check]').forEach(chk => {
+      chk.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const id = chk.dataset.check;
+        if (!id) return;
+
+        if (chk.classList.contains('checked')) {
+          chk.classList.remove('checked');
+          selectedIds.delete(id);
+        } else {
+          chk.classList.add('checked');
+          selectedIds.add(id);
+        }
+        updateSelectedUI();
+        applyFilters(); // para actualizar check-all
+      });
+    });
+
+    // Click en fila completa (más cómodo)
+    tbody.querySelectorAll('tr[data-id]').forEach(row => {
+      row.addEventListener('click', () => {
+        const id = row.dataset.id;
+        const chk = row.querySelector(`.custom-check[data-check="${id}"]`);
+        if (!chk) return;
+
+        if (chk.classList.contains('checked')) {
+          chk.classList.remove('checked');
+          selectedIds.delete(id);
+        } else {
+          chk.classList.add('checked');
+          selectedIds.add(id);
+        }
+        updateSelectedUI();
+        applyFilters();
+      });
+    });
+
+    // Seleccionar todo (solo visibles)
+    if (checkAll) {
+      checkAll.addEventListener('click', () => {
+        const visibleRows = Array.from(tbody.querySelectorAll('tr[data-id]'))
+          .filter(r => r.style.display !== 'none');
+
+        const allSelected = visibleRows.length > 0 && visibleRows.every(r => selectedIds.has(r.dataset.id));
+
+        visibleRows.forEach(r => {
+          const id = r.dataset.id;
+          const chk = r.querySelector(`.custom-check[data-check="${id}"]`);
+          if (!chk) return;
+
+          if (allSelected) {
+            chk.classList.remove('checked');
+            selectedIds.delete(id);
+          } else {
+            chk.classList.add('checked');
+            selectedIds.add(id);
+          }
+        });
+
+        if (allSelected) checkAll.classList.remove('checked');
+        else checkAll.classList.add('checked');
+
+        updateSelectedUI();
+      });
+    }
+
+    updateSelectedUI();
+  }
 
   async function guardarYcargar() {
     const unidadId = selectUnidad.value;
@@ -333,6 +436,7 @@ function rowHTML(p) {
 
     const data1 = await res1.json();
     if (!data1.ok) {
+      clearSelection();
       renderEmpty(data1.error || "No se pudo guardar el contexto.");
       if (viewSelect) {
         viewSelect.disabled = true;
@@ -346,6 +450,7 @@ function rowHTML(p) {
     const data2 = await res2.json();
 
     if (!data2.ok) {
+      clearSelection();
       renderEmpty(data2.error || "No se pudo cargar la lista.");
       if (viewSelect) {
         viewSelect.disabled = true;
@@ -359,7 +464,9 @@ function rowHTML(p) {
     infoMiembros.textContent = data2.unidad?.miembros_actuales ?? 0;
 
     const personas = data2.personas || [];
-    tbody.innerHTML = personas.map(rowHTML).join("") || "";
+    tbody.innerHTML = personas.map(rowHTML).join("");
+
+    clearSelection();
 
     if (!personas.length) {
       renderEmpty("No hay personas disponibles según las reglas de esta unidad.");
@@ -370,21 +477,75 @@ function rowHTML(p) {
       return;
     }
 
-    // Construir el filtro según reglas (y lo que vino en lista)
     if (viewSelect) {
       viewSelect.disabled = false;
       const { defaultValue } = buildViewFilterOptions(data2.unidad?.reglas_aplicadas, personas);
-
       viewSelect.value = defaultValue;
     }
 
-    // Aplicar filtro + búsqueda
     applyFilters();
+    attachSelectionHandlers();
   }
 
+  async function aplicarAsignacion() {
+    const unidadId = selectUnidad.value;
+    const rolId = selectRol.value;
+
+    if (!unidadId || !rolId) {
+      alert("Selecciona unidad y rol.");
+      return;
+    }
+
+    const ids = Array.from(selectedIds);
+    if (!ids.length) {
+      alert("Selecciona al menos una persona.");
+      return;
+    }
+
+    btnAsignar.disabled = true;
+
+    const urlAplicar = "{% url 'estructura_app:asignacion_aplicar' %}";
+    const res = await fetch(urlAplicar, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify({
+        unidad_id: unidadId,
+        rol_id: rolId,
+        miembro_ids: ids
+      })
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      alert("Respuesta inválida del servidor.");
+      updateSelectedUI();
+      return;
+    }
+
+    if (!data.ok) {
+      alert(data.error || "No se pudo asignar.");
+      updateSelectedUI();
+      return;
+    }
+
+    // Recargar para que se actualicen badges "Ya en unidad" y conteos
+    await guardarYcargar();
+
+    alert(`Listo.\nCreados: ${data.creados}\nReactivados: ${data.reactivados}\nYa existían: ${data.ya_existian}`);
+  }
+
+  // Eventos select
   selectUnidad.addEventListener('change', () => {
     updateGuardarState();
     unitInfo.style.display = selectUnidad.value ? "block" : "none";
+    clearSelection();
+
     renderEmpty("Selecciona un rol y pulsa “Guardar unidad y rol” para cargar la lista.");
 
     if (viewSelect) {
@@ -396,6 +557,8 @@ function rowHTML(p) {
 
   selectRol.addEventListener('change', () => {
     updateGuardarState();
+    clearSelection();
+
     renderEmpty("Pulsa “Guardar unidad y rol” para cargar la lista según reglas.");
 
     if (viewSelect) {
@@ -406,14 +569,20 @@ function rowHTML(p) {
   });
 
   btnGuardar.addEventListener('click', guardarYcargar);
+  if (btnAsignar) btnAsignar.addEventListener('click', aplicarAsignacion);
 
-  if (viewSelect) viewSelect.addEventListener('change', applyFilters);
-  if (searchInput) searchInput.addEventListener('input', applyFilters);
+  if (viewSelect) viewSelect.addEventListener('change', () => {
+    applyFilters();
+  });
+  if (searchInput) searchInput.addEventListener('input', () => {
+    applyFilters();
+  });
 
   // Estado inicial
   unitInfo.style.display = "none";
   renderEmpty("Selecciona una unidad y un rol, luego pulsa “Guardar” para cargar la lista.");
   updateGuardarState();
+  clearSelection();
 
   if (viewSelect) {
     viewSelect.disabled = true;
