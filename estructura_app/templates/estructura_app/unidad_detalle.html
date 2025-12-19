@@ -1,16 +1,228 @@
 {% extends 'estructura_app/base_estructura.html' %}
 
-{% block title %}Detalle de unidad{% endblock %}
+{% block title %}{{ unidad.nombre }} - Detalle{% endblock %}
 
 {% block estructura_content %}
-<div style="padding:16px;">
-    <h2 style="margin:0 0 10px 0;">{{ unidad.nombre }}</h2>
-    <div><b>Código:</b> {{ unidad.codigo|default:"—" }}</div>
-    <div><b>Tipo:</b> {{ unidad.tipo_unidad.nombre|default:"—" }}</div>
-    <div><b>Categoría:</b> {{ unidad.categoria|default:"—" }}</div>
-    <div><b>Unidad padre:</b> {{ unidad.unidad_padre.nombre|default:"—" }}</div>
-    <div style="margin-top:12px;">
-        <a href="{% url 'estructura_app:unidad_listado' %}">← Volver al listado</a>
+<style>
+    .odoo-detail-page {
+        background: #f8f9fa;
+        min-height: 100vh;
+    }
+    .odoo-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        background: #fff;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .odoo-topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .odoo-back-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        color: #495057;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+    .odoo-back-link:hover {
+        background: #e9ecef;
+        color: #212529;
+    }
+    .odoo-page-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #212529;
+        margin: 0;
+    }
+    .odoo-topbar-actions {
+        display: flex;
+        gap: 8px;
+    }
+    .odoo-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+        background: #fff;
+        color: #495057;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .odoo-btn:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        color: #212529;
+    }
+    .odoo-btn-primary {
+        background: #714B67;
+        border-color: #714B67;
+        color: #fff;
+    }
+    .odoo-btn-primary:hover {
+        background: #5d3d54;
+        border-color: #5d3d54;
+        color: #fff;
+    }
+    .odoo-form-container {
+        background: #fff;
+        margin: 16px 20px;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+    .odoo-form-sheet {
+        padding: 24px 32px;
+    }
+    .odoo-record-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #212529;
+        margin: 0 0 24px 0;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .odoo-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px 48px;
+        margin-bottom: 24px;
+    }
+    @media (max-width: 768px) {
+        .odoo-group {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+    }
+    .odoo-field-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .odoo-field-row label {
+        flex: 0 0 120px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #6c757d;
+        padding-top: 4px;
+    }
+    .odoo-field-value {
+        flex: 1;
+        font-size: 0.9375rem;
+        color: #212529;
+        padding: 4px 0;
+    }
+    .odoo-field-value a {
+        color: #714B67;
+        text-decoration: none;
+    }
+    .odoo-field-value a:hover {
+        text-decoration: underline;
+    }
+    .odoo-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        border-radius: 4px;
+        background: #e9ecef;
+        color: #495057;
+    }
+    .odoo-badge-primary {
+        background: #714B67;
+        color: #fff;
+    }
+    .odoo-section-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 24px 0 16px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e9ecef;
+    }
+</style>
+
+<div class="odoo-detail-page">
+    <!-- Barra superior -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a href="{% url 'estructura_app:unidad_listado' %}" class="odoo-back-link" title="Volver al listado">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <h1 class="odoo-page-title">Detalle de Unidad</h1>
+        </div>
+        <div class="odoo-topbar-actions">
+            <a href="{% url 'estructura_app:unidad_editar' unidad.pk %}" class="odoo-btn odoo-btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Editar
+            </a>
+        </div>
+    </div>
+
+    <!-- Contenido del formulario -->
+    <div class="odoo-form-container">
+        <div class="odoo-form-sheet">
+            <h2 class="odoo-record-title">{{ unidad.nombre }}</h2>
+
+            <div class="odoo-group">
+                <div class="odoo-field-row">
+                    <label>Código</label>
+                    <div class="odoo-field-value">
+                        {% if unidad.codigo %}
+                            <span class="odoo-badge">{{ unidad.codigo }}</span>
+                        {% else %}
+                            <span style="color:#adb5bd;">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="odoo-field-row">
+                    <label>Tipo</label>
+                    <div class="odoo-field-value">
+                        {% if unidad.tipo_unidad %}
+                            <span class="odoo-badge odoo-badge-primary">{{ unidad.tipo_unidad.nombre }}</span>
+                        {% else %}
+                            <span style="color:#adb5bd;">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="odoo-field-row">
+                    <label>Categoría</label>
+                    <div class="odoo-field-value">{{ unidad.categoria|default:"—" }}</div>
+                </div>
+
+                <div class="odoo-field-row">
+                    <label>Unidad padre</label>
+                    <div class="odoo-field-value">
+                        {% if unidad.unidad_padre %}
+                            <a href="{% url 'estructura_app:unidad_detalle' unidad.unidad_padre.pk %}">{{ unidad.unidad_padre.nombre }}</a>
+                        {% else %}
+                            <span style="color:#adb5bd;">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
 </div>
 {% endblock %}

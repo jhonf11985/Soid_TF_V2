@@ -275,41 +275,45 @@ document.addEventListener('DOMContentLoaded', () => {
       row.style.display = (matchSearch && matchView) ? '' : 'none';
     });
   }
+function rowHTML(p) {
+  const estadoSlug = normalizeEstadoSlug(p.estado_slug);
+  const extra = p.ya_en_unidad
+    ? '<span class="status-badge status-activo">Ya en unidad</span>'
+    : '';
 
-  function rowHTML(p) {
-    const estadoSlug = normalizeEstadoSlug(p.estado_slug);
-    const extra = p.ya_en_unidad
-      ? '<span class="status-badge status-activo">Ya en unidad</span>'
-      : '';
+  return `
+    <tr data-id="${p.id}" data-estado="${estadoSlug}">
+      <td class="check-cell">
+        <div class="custom-check" data-check="${p.id}"></div>
+      </td>
 
-    return `
-      <tr data-id="${p.id}" data-estado="${estadoSlug}">
-        <td class="check-cell">
-          <div class="custom-check" data-check="${p.id}"></div>
-        </td>
-        <td>
-          <div class="person-cell">
-            <div class="person-avatar"><span class="material-icons">person</span></div>
-            <div>
-              <div class="person-name">${p.nombre || '—'}</div>
-              <div class="person-code">${p.codigo || ''}</div>
-            </div>
+      <td>
+        <div class="person-cell">
+          <div class="person-avatar"><span class="material-icons">person</span></div>
+          <div>
+            <div class="person-name">${p.nombre || '—'}</div>
+            <div class="person-code">${p.codigo || ''}</div>
           </div>
-        </td>
-        <td>
+        </div>
+      </td>
+
+      <!-- ✅ EDAD -->
       <td style="font-size: 13px; color: #495057;">
         ${p.edad !== null ? p.edad + ' años' : '—'}
       </td>
 
-          <span class="status-badge status-${estadoSlug}">${p.estado || '—'}</span>
-          ${extra}
-        </td>
-        <td style="color: #6c757d; font-size: 13px;">
-          ${p.categoria || '—'}
-        </td>
-      </tr>
-    `;
-  }
+      <td>
+        <span class="status-badge status-${estadoSlug}">${p.estado || '—'}</span>
+        ${extra}
+      </td>
+
+      <td style="color: #6c757d; font-size: 13px;">
+        ${p.categoria || '—'}
+      </td>
+    </tr>
+  `;
+}
+
 
   async function guardarYcargar() {
     const unidadId = selectUnidad.value;
