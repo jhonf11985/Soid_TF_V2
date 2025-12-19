@@ -8,215 +8,622 @@ Estructura / Unidades
 
 {% block estructura_content %}
 
-<section class="page-header no-print">
-    <div>
-        <h1 class="page-title">Listado general de unidades</h1>
-        <p class="page-subtitle"></p>
-    </div>
-
-    <div class="page-header-actions">
-        <button type="button" class="btn-secondary" onclick="window.print()">
-            <span class="material-icons" style="font-size:16px;">print</span>
+<!-- Barra superior estilo Odoo -->
+<div class="odoo-control-panel">
+    <div class="cp-left">
+        <a href="{% url 'estructura_app:unidad_crear' %}" class="btn-odoo-primary">
+            Nuevo
+        </a>
+        <button type="button" class="btn-odoo-secondary" onclick="window.print()">
             Imprimir
         </button>
-
-        <a href="{% url 'estructura_app:unidad_crear' %}"
-           class="btn-primary"
-           style="display:inline-flex; align-items:center; gap:4px;">
-            <span class="material-icons" style="font-size:16px;">add</span>
-            Nueva unidad
-        </a>
     </div>
-</section>
 
-<section class="page-section">
+    <div class="cp-center">
+        <h2 class="cp-title">Unidades</h2>
+    </div>
 
-    <!-- Barra de búsqueda + resumen -->
-    <div class="form-grid" style="margin-bottom: 16px; align-items: center;">
-        <div class="form-field form-field-full">
-            <form method="get" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
-
-                <input
-                    type="text"
-                    name="q"
-                    placeholder="Buscar por nombre o código…"
-                    value="{{ query }}"
-                    style="flex:1; min-width:230px;"
-                >
-
-                <button type="submit" class="btn-secondary">
-                    <span class="material-icons" style="font-size:16px;">search</span>
-                    Buscar
-                </button>
-
+    <div class="cp-right">
+        <div class="cp-searchbar">
+            <form method="get" style="display:flex; align-items:center; gap:0;">
+                <span class="material-icons search-icon">search</span>
+                <input type="text" name="q" placeholder="Buscar..." value="{{ query }}" class="search-input">
             </form>
         </div>
 
-        <div class="form-field form-field-full" style="margin-top: -4px; font-size:12px; color:#6b7280;">
-            {% if unidades %}
-                {{ unidades|length }} unidad{{ unidades|length|pluralize:"es" }} encontrada{{ unidades|length|pluralize:"s" }}
-            {% else %}
-                No se encontraron unidades con el criterio indicado.
-            {% endif %}
+        <div class="cp-pager">
+            <span class="pager-text">
+                {% if unidades %}1-{{ unidades|length }} / {{ unidades|length }}{% else %}0{% endif %}
+            </span>
+            <button class="pager-btn" disabled><span class="material-icons">chevron_left</span></button>
+            <button class="pager-btn" disabled><span class="material-icons">chevron_right</span></button>
+        </div>
+
+        <div class="cp-view-switcher">
+            <button class="view-btn active" data-view="list" title="Vista Lista">
+                <span class="material-icons">format_list_bulleted</span>
+            </button>
+            <button class="view-btn" data-view="kanban" title="Vista Kanban">
+                <span class="material-icons">view_kanban</span>
+            </button>
         </div>
     </div>
+</div>
 
-    <!-- Tabla -->
-    <div class="table-wrapper">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Unidad</th>
-                    <th>Tipo</th>
-                    <th>Categoría</th>
-                    <th>Unidad padre</th>
-                    <th>Estado</th>
-                    <th class="col-center">Acciones</th>
-                </tr>
-            </thead>
-
-            <tbody>
-            {% if unidades %}
-                {% for u in unidades %}
-                <tr>
-                    <!-- Columna Unidad -->
-                    <td>
-                        <div class="unit-main">
-                            <div class="unit-avatar">
-                                <span>
-                                    {{ u.nombre|default:""|first|upper }}
-                                </span>
-                            </div>
-
-                            <div>
-                                <div class="unit-name">
-                                    <a href="{% url 'estructura_app:unidad_detalle' u.pk %}">
-                                        {{ u.nombre }}
-                                    </a>
-                                </div>
-
-                                <div class="unit-subtext">
-                                    Código: {{ u.codigo|default:"—" }}
-                                </div>
-
-                                {% if u.descripcion %}
-                                    <div class="unit-subtext">
-                                        {{ u.descripcion|truncatechars:60 }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </td>
-
-                    <!-- Tipo -->
-                    <td>
-                        {{ u.tipo.nombre|default:"—" }}
-
-                    </td>
-
-                    <!-- Categoría -->
-                    <td>
-                        {{ u.categoria|default:"—" }}
-                    </td>
-
-                    <!-- Unidad padre -->
-                    <td>
-                        {{ u.padre.nombre|default:"—" }}
-
-                    </td>
-
-                    <!-- Estado -->
-                    <td>
-                        {% if u.activa %}
-                            <span class="pill pill-success">Activa</span>
-                        {% else %}
-                            <span class="pill pill-muted" style="background:#fee2e2; color:#b91c1c;">Inactiva</span>
-                        {% endif %}
-                    </td>
-
-                    <!-- Acciones -->
-                    <td class="col-center">
-                        <a href="{% url 'estructura_app:unidad_detalle' u.pk %}"
-                           class="btn-secondary"
-                           style="padding:4px 10px; font-size:12px;">
-                            <span class="material-icons" style="font-size:16px;">visibility</span>
-                            Ver
+<!-- Vista Lista (por defecto) -->
+<div id="view-list" class="odoo-view active">
+    <table class="odoo-table">
+        <thead>
+            <tr>
+                <th class="col-checkbox"><input type="checkbox" id="select-all"></th>
+                <th>Unidad</th>
+                <th>Tipo</th>
+                <th>Categoría</th>
+                <th>Unidad padre</th>
+                <th>Estado</th>
+                <th class="col-actions"></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% if unidades %}
+            {% for u in unidades %}
+            <tr>
+                <td class="col-checkbox"><input type="checkbox" name="selected" value="{{ u.pk }}"></td>
+                <td>
+                    <a href="{% url 'estructura_app:unidad_detalle' u.pk %}" class="cell-link">
+                        {{ u.nombre }}
+                    </a>
+                    {% if u.codigo %}
+                        <span class="cell-subtext">{{ u.codigo }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ u.tipo.nombre|default:"—" }}</td>
+                <td>{{ u.categoria|default:"—" }}</td>
+                <td>
+                    {% if u.padre %}
+                        <a href="{% url 'estructura_app:unidad_detalle' u.padre.pk %}" class="cell-link-secondary">
+                            {{ u.padre.nombre }}
                         </a>
-                        <td class="col-center">
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if u.activa %}
+                        <span class="badge badge-success">Activa</span>
+                    {% else %}
+                        <span class="badge badge-danger">Inactiva</span>
+                    {% endif %}
+                </td>
+                <td class="col-actions">
+                    <a href="{% url 'estructura_app:unidad_editar' u.pk %}" class="row-action" title="Editar">
+                        <span class="material-icons">edit</span>
+                    </a>
+                    <a href="{% url 'estructura_app:asignacion_unidad' %}?unidad={{ u.pk }}" class="row-action" title="Asignar personas">
+                        <span class="material-icons">group_add</span>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="7" class="empty-row">No se encontraron unidades.</td>
+            </tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
 
-    <!-- Ver -->
-    <a href="{% url 'estructura_app:unidad_detalle' u.pk %}"
-       class="btn-secondary"
-       style="padding:4px 10px; font-size:12px;">
-        <span class="material-icons" style="font-size:16px;">visibility</span>
-        Ver
-    </a>
-
-    <!-- Editar -->
-    <a href="{% url 'estructura_app:unidad_editar' u.pk %}"
-       class="btn-secondary"
-       style="padding:4px 10px; font-size:12px; margin-left:4px;">
-        <span class="material-icons" style="font-size:16px;">edit</span>
-        Editar
-    </a>
-
-    <!-- Asignar personas -->
-    <a href="{% url 'estructura_app:asignacion_unidad' %}?unidad={{ u.pk }}"
-       class="btn-secondary"
-       style="padding:4px 10px; font-size:12px; margin-left:4px;">
-        <span class="material-icons" style="font-size:16px;">group_add</span>
-        Asignar
-    </a>
-
-</td>
-
-                    </td>
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr>
-                    <td colspan="6" class="table-empty">
-                        No se encontraron unidades.
-                    </td>
-                </tr>
-            {% endif %}
-            </tbody>
-        </table>
+<!-- Vista Kanban -->
+<div id="view-kanban" class="odoo-view">
+    <div class="kanban-container">
+        {% if unidades %}
+            {% for u in unidades %}
+            <div class="kanban-card">
+                <div class="kanban-card-header">
+                    <div class="kanban-title">
+                        <a href="{% url 'estructura_app:unidad_detalle' u.pk %}">{{ u.nombre }}</a>
+                    </div>
+                    {% if u.activa %}
+                        <span class="badge badge-success">Activa</span>
+                    {% else %}
+                        <span class="badge badge-danger">Inactiva</span>
+                    {% endif %}
+                </div>
+                <div class="kanban-card-body">
+                    <div class="kanban-field">
+                        <span class="kanban-label">Código:</span>
+                        <span class="kanban-value">{{ u.codigo|default:"—" }}</span>
+                    </div>
+                    <div class="kanban-field">
+                        <span class="kanban-label">Tipo:</span>
+                        <span class="kanban-value">{{ u.tipo.nombre|default:"—" }}</span>
+                    </div>
+                    {% if u.padre %}
+                    <div class="kanban-field">
+                        <span class="kanban-label">Padre:</span>
+                        <span class="kanban-value">{{ u.padre.nombre }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="kanban-card-footer">
+                    <a href="{% url 'estructura_app:unidad_editar' u.pk %}" class="kanban-action">
+                        <span class="material-icons">edit</span> Editar
+                    </a>
+                    <a href="{% url 'estructura_app:asignacion_unidad' %}?unidad={{ u.pk }}" class="kanban-action">
+                        <span class="material-icons">group_add</span> Asignar
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="kanban-empty">No se encontraron unidades.</div>
+        {% endif %}
     </div>
-
-</section>
+</div>
 
 <style>
-    /* Igual idea que tu miembros_lista: bloque visual “main + avatar + subtext” */
-    .unit-main {
-        display: flex;
-        align-items: center;
-        gap: 10px;
+/* ========== Control Panel Odoo ========== */
+.odoo-control-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.cp-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cp-center {
+    flex: 1;
+    min-width: 0;
+}
+
+.cp-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cp-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Botones estilo Odoo */
+.btn-odoo-primary {
+    background: #714B67;
+    color: #fff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-odoo-primary:hover {
+    background: #5a3c52;
+    color: #fff;
+}
+
+.btn-odoo-secondary {
+    background: #fff;
+    color: #212529;
+    border: 1px solid #ced4da;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.btn-odoo-secondary:hover {
+    background: #f8f9fa;
+}
+
+/* Barra de búsqueda */
+.cp-searchbar {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 10px;
+    font-size: 18px;
+    color: #6c757d;
+    pointer-events: none;
+}
+
+.search-input {
+    padding: 6px 12px 6px 36px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+    width: 200px;
+    background: #fff;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #714B67;
+    box-shadow: 0 0 0 2px rgba(113, 75, 103, 0.1);
+}
+
+/* Paginador */
+.cp-pager {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #495057;
+}
+
+.pager-text {
+    margin-right: 8px;
+}
+
+.pager-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: #6c757d;
+    border-radius: 4px;
+}
+
+.pager-btn:hover:not(:disabled) {
+    background: #f1f3f5;
+}
+
+.pager-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.pager-btn .material-icons {
+    font-size: 20px;
+}
+
+/* Switcher de vistas */
+.cp-view-switcher {
+    display: flex;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.view-btn {
+    background: #fff;
+    border: none;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: #6c757d;
+    border-right: 1px solid #ced4da;
+}
+
+.view-btn:last-child {
+    border-right: none;
+}
+
+.view-btn:hover {
+    background: #f8f9fa;
+}
+
+.view-btn.active {
+    background: #714B67;
+    color: #fff;
+}
+
+.view-btn .material-icons {
+    font-size: 18px;
+}
+
+/* ========== Vistas ========== */
+.odoo-view {
+    display: none;
+}
+
+.odoo-view.active {
+    display: block;
+}
+
+/* ========== Vista Lista ========== */
+.odoo-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    font-size: 13px;
+}
+
+.odoo-table thead {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.odoo-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 500;
+    color: #495057;
+    white-space: nowrap;
+}
+
+.odoo-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f3f5;
+    vertical-align: middle;
+}
+
+.odoo-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.col-checkbox {
+    width: 40px;
+    text-align: center;
+}
+
+.col-actions {
+    width: 80px;
+    text-align: right;
+}
+
+.cell-link {
+    color: #714B67;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.cell-link:hover {
+    text-decoration: underline;
+}
+
+.cell-link-secondary {
+    color: #714B67;
+    text-decoration: none;
+}
+
+.cell-link-secondary:hover {
+    text-decoration: underline;
+}
+
+.cell-subtext {
+    display: block;
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.row-action {
+    color: #6c757d;
+    padding: 4px;
+    border-radius: 4px;
+    display: inline-flex;
+    text-decoration: none;
+}
+
+.row-action:hover {
+    background: #e9ecef;
+    color: #212529;
+}
+
+.row-action .material-icons {
+    font-size: 18px;
+}
+
+.empty-row {
+    text-align: center;
+    color: #6c757d;
+    padding: 40px !important;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* ========== Vista Kanban ========== */
+.kanban-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    padding: 16px;
+}
+
+.kanban-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.kanban-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.kanban-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f3f5;
+    background: #fafbfc;
+}
+
+.kanban-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.kanban-title a {
+    color: #212529;
+    text-decoration: none;
+}
+
+.kanban-title a:hover {
+    color: #714B67;
+}
+
+.kanban-card-body {
+    padding: 12px 16px;
+}
+
+.kanban-field {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.kanban-field:last-child {
+    margin-bottom: 0;
+}
+
+.kanban-label {
+    color: #6c757d;
+    min-width: 60px;
+}
+
+.kanban-value {
+    color: #212529;
+}
+
+.kanban-card-footer {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid #f1f3f5;
+    background: #fafbfc;
+}
+
+.kanban-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #6c757d;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.kanban-action:hover {
+    background: #e9ecef;
+    color: #212529;
+}
+
+.kanban-action .material-icons {
+    font-size: 16px;
+}
+
+.kanban-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 768px) {
+    .odoo-control-panel {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
     }
 
-    .unit-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        background: #e5e7eb;
-        display: flex;
-        align-items: center;
+    .cp-left, .cp-center, .cp-right {
         justify-content: center;
-        font-size: 13px;
-        color: #374151;
-        overflow: hidden;
-        flex-shrink: 0;
     }
 
-    .unit-name {
-        font-weight: 600;
-        font-size: 13px;
+    .cp-right {
+        flex-wrap: wrap;
     }
 
-    .unit-subtext {
-        font-size: 11px;
-        color: #6b7280;
+    .search-input {
+        width: 100%;
     }
+}
+
+@media print {
+    .odoo-control-panel {
+        display: none;
+    }
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const viewBtns = document.querySelectorAll('.view-btn');
+    const views = document.querySelectorAll('.odoo-view');
+
+    viewBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const viewType = this.dataset.view;
+
+            // Toggle buttons
+            viewBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            // Toggle views
+            views.forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + viewType).classList.add('active');
+
+            // Save preference
+            localStorage.setItem('unidades_view', viewType);
+        });
+    });
+
+    // Restore saved view preference
+    const savedView = localStorage.getItem('unidades_view');
+    if (savedView) {
+        const btn = document.querySelector('.view-btn[data-view="' + savedView + '"]');
+        if (btn) btn.click();
+    }
+
+    // Select all checkbox
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('input[name="selected"]').forEach(cb => {
+                cb.checked = this.checked;
+            });
+        });
+    }
+});
+</script>
 
 {% endblock %}
