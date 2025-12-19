@@ -93,11 +93,21 @@
                     <span class="material-icons">search</span>
                     <input type="text" class="search-input" placeholder="Buscar por nombre o código...">
                 </div>
-                <div class="filter-chips">
-                    <span class="filter-chip active" data-filter="todos">Todos</span>
-                    <span class="filter-chip" data-filter="activo">Activos</span>
-                    <span class="filter-chip" data-filter="observacion">Observación</span>
+                <div class="view-filter">
+                    <label class="view-filter-label" for="view-filter-select">Mostrar</label>
+                    <select class="view-filter-select" id="view-filter-select" disabled>
+                        <option value="todos">Todos (según reglas)</option>
+                        <option value="no_activo">Ocultar activos</option>
+                        <option value="activo">Solo Activos</option>
+                        <option value="observacion">Solo Observación</option>
+                        <option value="pasivo">Solo Pasivos</option>
+                        <option value="disciplina">Solo Disciplina</option>
+                        <option value="catecumeno">Solo Catecúmenos</option>
+                        <option value="menor">Solo Menores</option>
+                        <option value="nuevo">Solo Nuevos creyentes</option>
+                    </select>
                 </div>
+
             </div>
 
             <!-- Tabla -->
@@ -132,7 +142,6 @@
         </div>
     </div>
 </div>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const selectUnidad = document.getElementById('select-unidad');
@@ -144,6 +153,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const infoMiembros = document.getElementById('info-miembros');
 
   const btnGuardar = document.getElementById('btn-guardar');
+
+  // Buscador + filtro dropdown (a la derecha del buscador)
+  const searchInput = document.querySelector('.search-input');
+  const viewSelect = document.getElementById('view-filter-select');
+
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return m ? decodeURIComponent(m[2]) : '';
+  }
 
   function renderEmpty(msg) {
     tbody.innerHTML = `
@@ -162,10 +180,107 @@ document.addEventListener('DOMContentLoaded', () => {
     btnGuardar.disabled = !(selectUnidad.value && selectRol.value);
   }
 
+  function normalizeEstadoSlug(slug) {
+    // Si el backend manda vacío para menores, normalizamos a "menor"
+    if (!slug || slug === 'null' || slug === 'undefined') return 'menor';
+    return slug;
+  }
+
+  function labelForEstadoSlug(slug) {
+    const map = {
+      activo: 'Solo Activos',
+      observacion: 'Solo Observación',
+      pasivo: 'Solo Pasivos',
+      disciplina: 'Solo Disciplina',
+      catecumeno: 'Solo Catecúmenos',
+      menor: 'Solo Menores',
+      nuevo: 'Solo Nuevos creyentes',
+    };
+    return map[slug] || `Solo ${slug}`;
+  }
+
+  function buildViewFilterOptions(reglasAplicadas, personas) {
+    // Estados permitidos según reglas (siempre incluimos activo)
+    const allowed = new Set(['activo']);
+
+    const r = reglasAplicadas || {};
+
+    // Mapeo regla -> estado_slug
+    if (r.permite_observacion) allowed.add('observacion');
+    if (r.permite_pasivos) allowed.add('pasivo');
+    if (r.permite_disciplina) allowed.add('disciplina');
+    if (r.permite_catecumenos) allowed.add('catecumeno');
+    if (r.permite_menores) allowed.add('menor');
+
+    // "Nuevos creyentes" depende de cómo lo envíes en JSON.
+    // Para hacerlo robusto, si en la lista viene algún estado_slug "nuevo", lo agregamos.
+    (personas || []).forEach(p => {
+      const st = normalizeEstadoSlug(p.estado_slug);
+      if (st === 'nuevo') allowed.add('nuevo');
+      if (st === 'menor') allowed.add('menor');
+    });
+
+    // Orden bonito de opciones (solo las que estén en allowed)
+    const ordered = ['activo', 'observacion', 'pasivo', 'disciplina', 'catecumeno', 'menor', 'nuevo']
+      .filter(x => allowed.has(x));
+
+    // Render options
+    if (!viewSelect) return { ordered, defaultValue: 'todos' };
+
+    const baseOptions = [
+      { value: 'todos', label: 'Todos (según reglas)' },
+      { value: 'no_activo', label: 'Ocultar activos' },
+    ];
+
+    const stateOptions = ordered.map(slug => ({
+      value: slug,
+      label: labelForEstadoSlug(slug),
+    }));
+
+    viewSelect.innerHTML = [
+      ...baseOptions.map(o => `<option value="${o.value}">${o.label}</option>`),
+      ...stateOptions.map(o => `<option value="${o.value}">${o.label}</option>`),
+    ].join('');
+
+    // Default inteligente:
+    // Si hay EXACTAMENTE 1 estado adicional además de activo (por ejemplo catecumeno),
+    // lo seleccionamos para que la lista salga "corta" al cargar.
+    const nonActive = ordered.filter(x => x !== 'activo');
+    const defaultValue = (nonActive.length === 1) ? nonActive[0] : 'todos';
+
+    return { ordered, defaultValue };
+  }
+
+  function applyFilters() {
+    const q = (searchInput?.value || '').trim().toLowerCase();
+    const mode = viewSelect ? viewSelect.value : 'todos';
+
+    const rows = document.querySelectorAll('#personas-tbody tr[data-estado]');
+    rows.forEach(row => {
+      const st = (row.dataset.estado || '').toLowerCase();
+      const text = (row.innerText || '').toLowerCase();
+
+      // 1) búsqueda
+      const matchSearch = !q || text.includes(q);
+
+      // 2) filtro dropdown
+      let matchView = true;
+      if (mode === 'todos') matchView = true;
+      else if (mode === 'no_activo') matchView = (st !== 'activo');
+      else matchView = (st === mode);
+
+      row.style.display = (matchSearch && matchView) ? '' : 'none';
+    });
+  }
+
   function rowHTML(p) {
-    const extra = p.ya_en_unidad ? '<span class="status-badge status-activo">Ya en unidad</span>' : '';
+    const estadoSlug = normalizeEstadoSlug(p.estado_slug);
+    const extra = p.ya_en_unidad
+      ? '<span class="status-badge status-activo">Ya en unidad</span>'
+      : '';
+
     return `
-      <tr data-id="${p.id}" data-estado="${p.estado_slug}">
+      <tr data-id="${p.id}" data-estado="${estadoSlug}">
         <td class="check-cell">
           <div class="custom-check" data-check="${p.id}"></div>
         </td>
@@ -179,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </td>
         <td>
-          <span class="status-badge status-${p.estado_slug}">${p.estado || '—'}</span>
+          <span class="status-badge status-${estadoSlug}">${p.estado || '—'}</span>
           ${extra}
         </td>
         <td style="color: #6c757d; font-size: 13px;">
@@ -192,7 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
   async function guardarYcargar() {
     const unidadId = selectUnidad.value;
     const rolId = selectRol.value;
-
     if (!unidadId || !rolId) return;
 
     const urlGuardar = "{% url 'estructura_app:asignacion_guardar_contexto' %}";
@@ -200,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRFToken": (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "",
+        "X-CSRFToken": getCookie("csrftoken"),
         "X-Requested-With": "XMLHttpRequest",
       },
       body: JSON.stringify({ unidad_id: unidadId, rol_id: rolId })
@@ -209,6 +323,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const data1 = await res1.json();
     if (!data1.ok) {
       renderEmpty(data1.error || "No se pudo guardar el contexto.");
+      if (viewSelect) {
+        viewSelect.disabled = true;
+        viewSelect.innerHTML = `<option value="todos">Todos (según reglas)</option>`;
+      }
       return;
     }
 
@@ -218,37 +336,82 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!data2.ok) {
       renderEmpty(data2.error || "No se pudo cargar la lista.");
+      if (viewSelect) {
+        viewSelect.disabled = true;
+        viewSelect.innerHTML = `<option value="todos">Todos (según reglas)</option>`;
+      }
       return;
     }
 
     unitInfo.style.display = "block";
-    infoTipo.textContent = data2.unidad.tipo || "—";
-    infoMiembros.textContent = data2.unidad.miembros_actuales ?? 0;
+    infoTipo.textContent = data2.unidad?.tipo || "—";
+    infoMiembros.textContent = data2.unidad?.miembros_actuales ?? 0;
 
-    tbody.innerHTML = data2.personas.map(rowHTML).join("") || "";
-    if (!data2.personas.length) {
+    const personas = data2.personas || [];
+    tbody.innerHTML = personas.map(rowHTML).join("") || "";
+
+    if (!personas.length) {
       renderEmpty("No hay personas disponibles según las reglas de esta unidad.");
+      if (viewSelect) {
+        viewSelect.disabled = true;
+        viewSelect.innerHTML = `<option value="todos">Todos (según reglas)</option>`;
+      }
+      return;
     }
+
+    // Construir el filtro según reglas (y lo que vino en lista)
+    if (viewSelect) {
+      viewSelect.disabled = false;
+      const { defaultValue } = buildViewFilterOptions(data2.unidad?.reglas_aplicadas, personas);
+
+      viewSelect.value = defaultValue;
+    }
+
+    // Aplicar filtro + búsqueda
+    applyFilters();
   }
 
   selectUnidad.addEventListener('change', () => {
     updateGuardarState();
     unitInfo.style.display = selectUnidad.value ? "block" : "none";
     renderEmpty("Selecciona un rol y pulsa “Guardar unidad y rol” para cargar la lista.");
+
+    if (viewSelect) {
+      viewSelect.disabled = true;
+      viewSelect.innerHTML = `<option value="todos">Todos (según reglas)</option>`;
+      viewSelect.value = 'todos';
+    }
   });
 
   selectRol.addEventListener('change', () => {
     updateGuardarState();
     renderEmpty("Pulsa “Guardar unidad y rol” para cargar la lista según reglas.");
+
+    if (viewSelect) {
+      viewSelect.disabled = true;
+      viewSelect.innerHTML = `<option value="todos">Todos (según reglas)</option>`;
+      viewSelect.value = 'todos';
+    }
   });
 
   btnGuardar.addEventListener('click', guardarYcargar);
 
+  if (viewSelect) viewSelect.addEventListener('change', applyFilters);
+  if (searchInput) searchInput.addEventListener('input', applyFilters);
+
+  // Estado inicial
   unitInfo.style.display = "none";
   renderEmpty("Selecciona una unidad y un rol, luego pulsa “Guardar” para cargar la lista.");
   updateGuardarState();
+
+  if (viewSelect) {
+    viewSelect.disabled = true;
+    viewSelect.innerHTML = `<option value="todos">Todos (según reglas)</option>`;
+    viewSelect.value = 'todos';
+  }
 });
 </script>
+
 
 <style>
 /* AQUÍ van tus estilos (igual que los tenías) */

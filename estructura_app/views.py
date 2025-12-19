@@ -151,13 +151,12 @@ def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
     return render(request, "estructura_app/unidad_detalle.html", {"unidad": unidad})
 
-
 def _reglas_mvp_from_post(post):
     """
     Lee reglas MVP desde request.POST y devuelve un dict listo para guardar en JSONField.
-    'solo_activos' por defecto: True.
-    Si 'solo_activos' está activo, BLOQUEA (fuerza False) las demás reglas de membresía.
+    'solo_activos' bloquea todas las demás reglas de membresía.
     """
+
     def is_on(name, default=False):
         if name not in post:
             return default
@@ -174,27 +173,27 @@ def _reglas_mvp_from_post(post):
 
     solo_activos = is_on("regla_solo_activos", default=False)
 
-    permite_menores = False if solo_activos else is_on("regla_perm_menores", default=False)
-    permite_observacion = False if solo_activos else is_on("regla_perm_observacion", default=False)
-    permite_nuevos = False if solo_activos else is_on("regla_perm_nuevos", default=False)
-    permite_catecumenos = False if solo_activos else is_on("regla_perm_catecumenos", default=False)
-    permite_visitantes = False if solo_activos else is_on("regla_perm_visitantes", default=False)
-
-    return {
+    reglas = {
         "solo_activos": solo_activos,
-        "permite_menores": permite_menores,
-        "permite_observacion": permite_observacion,
-        "permite_nuevos": permite_nuevos,
-        "permite_catecumenos": permite_catecumenos,
-        "permite_visitantes": permite_visitantes,
 
-        "capacidad_maxima": to_int("regla_capacidad_maxima", default=None),
+        # ── Reglas de estado ──
+        "permite_observacion": False if solo_activos else is_on("regla_perm_observacion"),
+        "permite_pasivos": False if solo_activos else is_on("regla_perm_pasivos"),
+        "permite_disciplina": False if solo_activos else is_on("regla_perm_disciplina"),
+        "permite_catecumenos": False if solo_activos else is_on("regla_perm_catecumenos"),
+        "permite_nuevos": False if solo_activos else is_on("regla_perm_nuevos"),
+        "permite_menores": False if solo_activos else is_on("regla_perm_menores"),
+
+        # ── Estructura ──
+        "capacidad_maxima": to_int("regla_capacidad_maxima"),
         "permite_subunidades": is_on("regla_perm_subunidades", default=True),
 
-        "requiere_aprobacion_lider": is_on("regla_req_aprob_lider", default=False),
-        "unidad_privada": is_on("regla_unidad_privada", default=False),
+        # ── Control ──
+        "requiere_aprobacion_lider": is_on("regla_req_aprob_lider"),
+        "unidad_privada": is_on("regla_unidad_privada"),
     }
 
+    return reglas
 
 # ============================================================
 # ROLES
@@ -286,9 +285,6 @@ def asignacion_unidad_contexto(request):
         if reglas.get("permite_catecumenos"):
             estados_permitidos.append("catecumeno")
 
-        # OJO: visitantes SOLO si de verdad existe ese estado en tu modelo
-        if reglas.get("permite_visitantes"):
-            estados_permitidos.append("visitante")
 
         q = Q(estado_miembro__in=estados_permitidos)
 
@@ -335,7 +331,6 @@ def asignacion_unidad_contexto(request):
                 "permite_disciplina": reglas.get("permite_disciplina", False),
                 "permite_catecumenos": reglas.get("permite_catecumenos", False),
                 "permite_nuevos": reglas.get("permite_nuevos", False),
-                "permite_visitantes": reglas.get("permite_visitantes", False),
                 "permite_menores": reglas.get("permite_menores", False),
             }
         },
