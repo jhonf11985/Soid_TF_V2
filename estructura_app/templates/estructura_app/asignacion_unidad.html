@@ -5,7 +5,253 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/estructura.css' %}">
+{% endblock %}
+
+{% block estructura_content %}
+<div class="assign-container">
+
+    <!-- Header -->
+    <div class="assign-header">
+        <h1>Asignar personas a unidad</h1>
+        <a href="{% url 'estructura_app:unidad_listado' %}" class="assign-back">
+            <span class="material-icons">arrow_back</span>
+            Volver a unidades
+        </a>
+    </div>
+
+    <div class="assign-layout">
+        
+        <!-- Panel izquierdo: Configuración -->
+        <div class="assign-config">
+            
+            <div class="config-section">
+                <div class="config-title">Unidad destino</div>
+                <div class="config-field">
+                    <label class="config-label">Seleccionar unidad</label>
+                    <select class="config-select" id="select-unidad">
+                        <option value="">Selecciona una unidad...</option>
+
+                        {% if unidades %}
+                            {% for unidad in unidades %}
+                                <option value="{{ unidad.id }}">{{ unidad.nombre }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No hay unidades disponibles</option>
+                        {% endif %}
+                    </select>
+                </div>
+                
+                <!-- Info de la unidad (se muestra cuando seleccionan) -->
+                <div class="unit-info" id="unit-info" style="display: none;">
+                    <div class="unit-info-row">
+                        <span class="unit-info-label">Tipo</span>
+                        <span class="unit-info-value" id="info-tipo">—</span>
+                    </div>
+                    <div class="unit-info-row">
+                        <span class="unit-info-label">Miembros actuales</span>
+                        <span class="unit-info-value" id="info-miembros">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <div class="config-title">Rol a asignar</div>
+                <div class="config-field">
+                    <label class="config-label">Seleccionar rol</label>
+                    <select class="config-select" id="select-rol">
+                        <option value="">Selecciona un rol...</option>
+
+                        {% if roles %}
+                            {% for rol in roles %}
+                                <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No hay roles disponibles</option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="config-actions">
+                <button type="button" class="btn-assign" id="btn-guardar" disabled>
+                    <span class="material-icons">save</span>
+                    Guardar unidad y rol
+                </button>
+
+                <div class="selected-count">
+                    <span id="count-selected">0</span> personas seleccionadas
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel derecho: Lista de personas -->
+        <div class="assign-list">
+            
+            <!-- Toolbar -->
+            <div class="list-toolbar">
+                <div class="search-box">
+                    <span class="material-icons">search</span>
+                    <input type="text" class="search-input" placeholder="Buscar por nombre o código...">
+                </div>
+                <div class="filter-chips">
+                    <span class="filter-chip active" data-filter="todos">Todos</span>
+                    <span class="filter-chip" data-filter="activo">Activos</span>
+                    <span class="filter-chip" data-filter="observacion">Observación</span>
+                </div>
+            </div>
+
+            <!-- Tabla -->
+            <table class="list-table">
+                <thead>
+                    <tr>
+                        <th class="check-cell">
+                            <div class="custom-check" id="check-all"></div>
+                        </th>
+                        <th>Persona</th>
+                        <th style="width: 120px;">Estado</th>
+                        <th style="width: 140px;">Categoría</th>
+                    </tr>
+                </thead>
+
+                <tbody id="personas-tbody">
+                    <tr>
+                        <td colspan="4">
+                            <div class="empty-state">
+                                <span class="material-icons">touch_app</span>
+                                <p>Selecciona una unidad para cargar las personas</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Footer -->
+            <div class="list-footer">
+                <span>Mostrando {{ personas|length }} personas</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const selectUnidad = document.getElementById('select-unidad');
+  const selectRol = document.getElementById('select-rol');
+  const tbody = document.getElementById('personas-tbody');
+
+  const unitInfo = document.getElementById('unit-info');
+  const infoTipo = document.getElementById('info-tipo');
+  const infoMiembros = document.getElementById('info-miembros');
+
+  const btnGuardar = document.getElementById('btn-guardar');
+
+  function renderEmpty(msg) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4">
+          <div class="empty-state">
+            <span class="material-icons">touch_app</span>
+            <p>${msg}</p>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  function updateGuardarState() {
+    btnGuardar.disabled = !(selectUnidad.value && selectRol.value);
+  }
+
+  function rowHTML(p) {
+    const extra = p.ya_en_unidad ? '<span class="status-badge status-activo">Ya en unidad</span>' : '';
+    return `
+      <tr data-id="${p.id}" data-estado="${p.estado_slug}">
+        <td class="check-cell">
+          <div class="custom-check" data-check="${p.id}"></div>
+        </td>
+        <td>
+          <div class="person-cell">
+            <div class="person-avatar"><span class="material-icons">person</span></div>
+            <div>
+              <div class="person-name">${p.nombre || '—'}</div>
+              <div class="person-code">${p.codigo || ''}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="status-badge status-${p.estado_slug}">${p.estado || '—'}</span>
+          ${extra}
+        </td>
+        <td style="color: #6c757d; font-size: 13px;">
+          ${p.categoria || '—'}
+        </td>
+      </tr>
+    `;
+  }
+
+  async function guardarYcargar() {
+    const unidadId = selectUnidad.value;
+    const rolId = selectRol.value;
+
+    if (!unidadId || !rolId) return;
+
+    const urlGuardar = "{% url 'estructura_app:asignacion_guardar_contexto' %}";
+    const res1 = await fetch(urlGuardar, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify({ unidad_id: unidadId, rol_id: rolId })
+    });
+
+    const data1 = await res1.json();
+    if (!data1.ok) {
+      renderEmpty(data1.error || "No se pudo guardar el contexto.");
+      return;
+    }
+
+    const urlLista = "{% url 'estructura_app:asignacion_unidad_contexto' %}" + `?unidad_id=${unidadId}&rol_id=${rolId}`;
+    const res2 = await fetch(urlLista, { headers: { "X-Requested-With": "XMLHttpRequest" }});
+    const data2 = await res2.json();
+
+    if (!data2.ok) {
+      renderEmpty(data2.error || "No se pudo cargar la lista.");
+      return;
+    }
+
+    unitInfo.style.display = "block";
+    infoTipo.textContent = data2.unidad.tipo || "—";
+    infoMiembros.textContent = data2.unidad.miembros_actuales ?? 0;
+
+    tbody.innerHTML = data2.personas.map(rowHTML).join("") || "";
+    if (!data2.personas.length) {
+      renderEmpty("No hay personas disponibles según las reglas de esta unidad.");
+    }
+  }
+
+  selectUnidad.addEventListener('change', () => {
+    updateGuardarState();
+    unitInfo.style.display = selectUnidad.value ? "block" : "none";
+    renderEmpty("Selecciona un rol y pulsa “Guardar unidad y rol” para cargar la lista.");
+  });
+
+  selectRol.addEventListener('change', () => {
+    updateGuardarState();
+    renderEmpty("Pulsa “Guardar unidad y rol” para cargar la lista según reglas.");
+  });
+
+  btnGuardar.addEventListener('click', guardarYcargar);
+
+  unitInfo.style.display = "none";
+  renderEmpty("Selecciona una unidad y un rol, luego pulsa “Guardar” para cargar la lista.");
+  updateGuardarState();
+});
+</script>
+
 <style>
+/* AQUÍ van tus estilos (igual que los tenías) */
 /* ═══════════════════════════════════════════════════════════════════════════
    ASIGNACIÓN - DISEÑO MINIMALISTA
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -436,259 +682,8 @@
     }
 }
 </style>
-{% endblock %}
-
-{% block estructura_content %}
-<div class="assign-container">
-
-    <!-- Header -->
-    <div class="assign-header">
-        <h1>Asignar personas a unidad</h1>
-        <a href="{% url 'estructura_app:unidad_listado' %}" class="assign-back">
-            <span class="material-icons">arrow_back</span>
-            Volver a unidades
-        </a>
-    </div>
-
-    <div class="assign-layout">
-        
-        <!-- Panel izquierdo: Configuración -->
-        <div class="assign-config">
-            
-            <div class="config-section">
-                <div class="config-title">Unidad destino</div>
-                <div class="config-field">
-                    <label class="config-label">Seleccionar unidad</label>
-                <select class="config-select" id="select-unidad">
-                    <option value="">Selecciona una unidad...</option>
-
-                    {% if unidades %}
-                        {% for unidad in unidades %}
-                            <option value="{{ unidad.id }}">{{ unidad.nombre }}</option>
-                        {% endfor %}
-                    {% else %}
-                        <option value="" disabled>No hay unidades disponibles</option>
-                    {% endif %}
-                </select>
-
-                </div>
-                
-                <!-- Info de la unidad (se muestra cuando seleccionan) -->
-                <div class="unit-info" id="unit-info" style="display: none;">
-                    <div class="unit-info-row">
-                        <span class="unit-info-label">Tipo</span>
-                        <span class="unit-info-value" id="info-tipo">—</span>
-                    </div>
-                    <div class="unit-info-row">
-                        <span class="unit-info-label">Miembros actuales</span>
-                        <span class="unit-info-value" id="info-miembros">0</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="config-section">
-                <div class="config-title">Rol a asignar</div>
-                <div class="config-field">
-                    <label class="config-label">Seleccionar rol</label>
-              <select class="config-select" id="select-rol">
-                  <option value="">Selecciona un rol...</option>
-
-                  {% if roles %}
-                      {% for rol in roles %}
-                          <option value="{{ rol.id }}">{{ rol.nombre }}</option>
-                      {% endfor %}
-                  {% else %}
-                      <option value="" disabled>No hay roles disponibles</option>
-                  {% endif %}
-              </select>
-
-                </div>
-            </div>
-
-            <div class="config-actions">
-              <button type="button" class="btn-assign" id="btn-guardar" disabled>
-                <span class="material-icons">save</span>
-                Guardar unidad y rol
-              </button>
-
-                <div class="selected-count">
-                    <span id="count-selected">0</span> personas seleccionadas
-                </div>
-            </div>
-        </div>
-
-        <!-- Panel derecho: Lista de personas -->
-        <div class="assign-list">
-            
-            <!-- Toolbar -->
-            <div class="list-toolbar">
-                <div class="search-box">
-                    <span class="material-icons">search</span>
-                    <input type="text" class="search-input" placeholder="Buscar por nombre o código...">
-                </div>
-                <div class="filter-chips">
-                    <span class="filter-chip active" data-filter="todos">Todos</span>
-                    <span class="filter-chip" data-filter="activo">Activos</span>
-                    <span class="filter-chip" data-filter="observacion">Observación</span>
-                </div>
-            </div>
-
-            <!-- Tabla -->
-            <table class="list-table">
-                <thead>
-                    <tr>
-                        <th class="check-cell">
-                            <div class="custom-check" id="check-all"></div>
-                        </th>
-                        <th>Persona</th>
-                        <th style="width: 120px;">Estado</th>
-                        <th style="width: 140px;">Categoría</th>
-                    </tr>
-                </thead>
-<tbody id="personas-tbody">
-  <tr>
-    <td colspan="4">
-      <div class="empty-state">
-        <span class="material-icons">touch_app</span>
-        <p>Selecciona una unidad para cargar las personas</p>
-      </div>
-    </td>
-  </tr>
-</tbody>
-
-
-
-            </table>
-
-            <!-- Footer -->
-            <div class="list-footer">
-                <span>Mostrando {{ personas|length }} personas</span>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const selectUnidad = document.getElementById('select-unidad');
-  const selectRol = document.getElementById('select-rol');
-  const tbody = document.getElementById('personas-tbody');
-
-  const unitInfo = document.getElementById('unit-info');
-  const infoTipo = document.getElementById('info-tipo');
-  const infoMiembros = document.getElementById('info-miembros');
-
-  const btnGuardar = document.getElementById('btn-guardar');
-
-  function renderEmpty(msg) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="4">
-          <div class="empty-state">
-            <span class="material-icons">touch_app</span>
-            <p>${msg}</p>
-          </div>
-        </td>
-      </tr>
-    `;
-  }
-
-  function updateGuardarState() {
-    btnGuardar.disabled = !(selectUnidad.value && selectRol.value);
-  }
-
-function rowHTML(p) {
-  const extra = p.ya_en_unidad ? '<span class="status-badge status-activo">Ya en unidad</span>' : '';
-  return `
-    <tr data-id="${p.id}" data-estado="${p.estado_slug}">
-      <td class="check-cell">
-        <div class="custom-check" data-check="${p.id}"></div>
-      </td>
-      <td>
-        <div class="person-cell">
-          <div class="person-avatar"><span class="material-icons">person</span></div>
-          <div>
-            <div class="person-name">${p.nombre || '—'}</div>
-            <div class="person-code">${p.codigo || ''}</div>
-          </div>
-        </div>
-      </td>
-      <td>
-        <span class="status-badge status-${p.estado_slug}">${p.estado || '—'}</span>
-        ${extra}
-      </td>
-      <td style="color: #6c757d; font-size: 13px;">
-        ${p.categoria || '—'}
-      </td>
-    </tr>
-  `;
-}
-
-
-  async function guardarYcargar() {
-    const unidadId = selectUnidad.value;
-    const rolId = selectRol.value;
-
-    if (!unidadId || !rolId) return;
-
-    // 1) Guardar contexto (unidad + rol)
-    const urlGuardar = "{% url 'estructura_app:asignacion_guardar_contexto' %}";
-    const res1 = await fetch(urlGuardar, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "",
-        "X-Requested-With": "XMLHttpRequest",
-      },
-      body: JSON.stringify({ unidad_id: unidadId, rol_id: rolId })
-    });
-
-    const data1 = await res1.json();
-    if (!data1.ok) {
-      renderEmpty(data1.error || "No se pudo guardar el contexto.");
-      return;
-    }
-
-    // 2) Cargar lista según reglas de la unidad (y opcionalmente considerando el rol)
-    const urlLista = "{% url 'estructura_app:asignacion_unidad_contexto' %}" + `?unidad_id=${unidadId}&rol_id=${rolId}`;
-    const res2 = await fetch(urlLista, { headers: { "X-Requested-With": "XMLHttpRequest" }});
-    const data2 = await res2.json();
-
-    if (!data2.ok) {
-      renderEmpty(data2.error || "No se pudo cargar la lista.");
-      return;
-    }
-
-    unitInfo.style.display = "block";
-    infoTipo.textContent = data2.unidad.tipo || "—";
-    infoMiembros.textContent = data2.unidad.miembros_actuales ?? 0;
-
-    tbody.innerHTML = data2.personas.map(rowHTML).join("") || "";
-    if (!data2.personas.length) {
-      renderEmpty("No hay personas disponibles según las reglas de esta unidad.");
-    }
-  }
-
-  // Eventos
-  selectUnidad.addEventListener('change', () => {
-    updateGuardarState();
-    unitInfo.style.display = selectUnidad.value ? "block" : "none";
-    renderEmpty("Selecciona un rol y pulsa “Guardar unidad y rol” para cargar la lista.");
-  });
-
-  selectRol.addEventListener('change', () => {
-    updateGuardarState();
-    renderEmpty("Pulsa “Guardar unidad y rol” para cargar la lista según reglas.");
-  });
-
-  btnGuardar.addEventListener('click', guardarYcargar);
-
-  // Inicio
-  unitInfo.style.display = "none";
-  renderEmpty("Selecciona una unidad y un rol, luego pulsa “Guardar” para cargar la lista.");
-  updateGuardarState();
-});
-</script>
-
 
 {% endblock %}
+
+
+

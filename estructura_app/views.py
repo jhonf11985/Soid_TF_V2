@@ -101,7 +101,6 @@ def unidad_crear(request):
     }
     return render(request, "estructura_app/unidad_form.html", context)
 
-
 @login_required
 def unidad_editar(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -109,11 +108,16 @@ def unidad_editar(request, pk):
     if request.method == "POST":
         form = UnidadForm(request.POST, instance=unidad)
         if form.is_valid():
-            # Si quieres que también se actualicen reglas al editar, descomenta:
-            # unidad = form.save(commit=False)
-            # unidad.reglas = _reglas_mvp_from_post(request.POST)
-            # unidad.save()
-            form.save()
+            unidad_obj = form.save(commit=False)
+
+            # ✅ Solo recalcular reglas si realmente vinieron en el POST
+            if any(k.startswith("regla_") for k in request.POST.keys()):
+                unidad_obj.reglas = _reglas_mvp_from_post(request.POST)
+            else:
+                # ✅ No llegaron switches => conservar las reglas existentes
+                unidad_obj.reglas = unidad.reglas
+
+            unidad_obj.save()
 
             messages.success(request, "Cambios guardados correctamente.")
             return redirect("estructura_app:unidad_editar", pk=unidad.pk)
@@ -122,13 +126,11 @@ def unidad_editar(request, pk):
     else:
         form = UnidadForm(instance=unidad)
 
-    context = {
+    return render(request, "estructura_app/unidad_form.html", {
         "form": form,
         "modo": "editar",
         "unidad": unidad,
-    }
-    return render(request, "estructura_app/unidad_form.html", context)
-
+    })
 
 @login_required
 def unidad_listado(request):
@@ -252,7 +254,7 @@ def asignacion_unidad_contexto(request):
     unidad = get_object_or_404(Unidad, pk=unidad_id)
     reglas = unidad.reglas or {}
 
-    solo_activos = bool(reglas.get("solo_activos", True))
+    solo_activos = bool(reglas.get("solo_activos", False))
 
     miembros_actuales_ids = set(
         UnidadMembresia.objects.filter(unidad=unidad, activo=True)
