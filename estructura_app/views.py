@@ -80,6 +80,9 @@ def unidad_crear(request):
         form = UnidadForm(request.POST)
         if form.is_valid():
             unidad = form.save(commit=False)
+            unidad.edad_min = _to_int_from_post(request.POST, "edad_min")
+            unidad.edad_max = _to_int_from_post(request.POST, "edad_max")
+
             unidad.reglas = _reglas_mvp_from_post(request.POST)
             unidad.save()
 
@@ -109,6 +112,8 @@ def unidad_editar(request, pk):
         form = UnidadForm(request.POST, instance=unidad)
         if form.is_valid():
             unidad_obj = form.save(commit=False)
+            unidad_obj.edad_min = _to_int_from_post(request.POST, "edad_min")
+            unidad_obj.edad_max = _to_int_from_post(request.POST, "edad_max")
 
             # ✅ Solo recalcular reglas si realmente vinieron en el POST
             if any(k.startswith("regla_") for k in request.POST.keys()):
@@ -244,6 +249,56 @@ def asignacion_unidad(request):
         "personas": [],
     })
 
+def _get_edad_value(miembro):
+    """
+    Devuelve la edad como entero si existe.
+    Soporta:
+    - miembro.edad (si lo guardas como campo o propiedad)
+    - miembro.fecha_nacimiento (si existe)
+    Si no se puede calcular, devuelve None.
+    """
+    # 1) Si ya tienes edad calculada/guardada
+    if hasattr(miembro, "edad") and miembro.edad is not None:
+        try:
+            return int(miembro.edad)
+        except Exception:
+            pass
+
+    # 2) Si tienes fecha_nacimiento (muy común en tu módulo)
+    if hasattr(miembro, "fecha_nacimiento") and miembro.fecha_nacimiento:
+        from datetime import date
+        hoy = date.today()
+        fn = miembro.fecha_nacimiento
+        edad = hoy.year - fn.year - ((hoy.month, hoy.day) < (fn.month, fn.day))
+        return edad
+
+    return None
+
+
+def _cumple_rango_edad(miembro, unidad):
+    """
+    True si el miembro está dentro del rango edad_min/edad_max de la unidad.
+    Si la unidad no tiene rango definido, devuelve True.
+    Si no se puede calcular edad del miembro, devuelve True (no lo bloqueamos).
+    """
+    edad_min = getattr(unidad, "edad_min", None)
+    edad_max = getattr(unidad, "edad_max", None)
+
+    if edad_min is None and edad_max is None:
+        return True
+
+    edad = _get_edad_value(miembro)
+    if edad is None:
+        return True  # no lo bloqueamos si no podemos medirlo
+
+    if edad_min is not None and edad < edad_min:
+        return False
+    if edad_max is not None and edad > edad_max:
+        return False
+
+    return True
+
+
 @login_required
 def asignacion_unidad_contexto(request):
     unidad_id = (request.GET.get("unidad_id") or "").strip()
@@ -307,15 +362,21 @@ def asignacion_unidad_contexto(request):
 
     personas = []
     for p in qs:
+        # ✅ FILTRO #1: rango de edad (antes de devolverlo a la lista)
+        if not _cumple_rango_edad(p, unidad):
+            continue
+
         personas.append({
             "id": p.id,
             "nombre": f"{p.nombres} {p.apellidos}",
             "codigo": p.codigo_miembro or "",
+            "edad": p.edad,
             "estado": p.get_estado_miembro_display() if p.estado_miembro else "",
             "estado_slug": p.estado_miembro or "vacio",
             "categoria": p.get_categoria_edad_display() if p.categoria_edad else "",
             "ya_en_unidad": p.id in miembros_actuales_ids,
         })
+
 
     return JsonResponse({
         "ok": True,
@@ -324,6 +385,10 @@ def asignacion_unidad_contexto(request):
             "nombre": unidad.nombre,
             "tipo": str(unidad.tipo) if unidad.tipo else "—",
             "miembros_actuales": len(miembros_actuales_ids),
+                    
+            "edad_min": unidad.edad_min,
+            "edad_max": unidad.edad_max,
+
             "reglas_aplicadas": {
                 "solo_activos": solo_activos,
                 "permite_observacion": reglas.get("permite_observacion", False),
@@ -361,3 +426,11 @@ def asignacion_guardar_contexto(request):
 
     return JsonResponse({"ok": True})
 
+def _to_int_from_post(post, name, default=None):
+    raw = (post.get(name) or "").strip()
+    if raw == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default

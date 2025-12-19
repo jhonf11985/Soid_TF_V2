@@ -95,6 +95,10 @@ class Unidad(models.Model):
     motivo_cierre = models.CharField(max_length=180, blank=True, default="")
     notas = models.TextField(blank=True)
 
+    # ✅ RANGO DE EDAD (filtro estructural de la unidad)
+    edad_min = models.PositiveIntegerField(null=True, blank=True)
+    edad_max = models.PositiveIntegerField(null=True, blank=True)
+
       # 🔴🔴🔴 AQUÍ ESTÁ LO QUE FALTABA 🔴🔴🔴
     reglas = models.JSONField(
         default=dict,
