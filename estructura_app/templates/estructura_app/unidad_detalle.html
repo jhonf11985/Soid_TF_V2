@@ -96,6 +96,11 @@
             <span class="material-icons">info</span>
             Información
         </button>
+                </button>
+            <button type="button" class="odoo-tab" data-tab="resumen">
+            <span class="material-icons">analytics</span>
+            Resumen
+        </button>
         <button type="button" class="odoo-tab" data-tab="liderazgo">
             <span class="material-icons">supervisor_account</span>
             Liderazgo
@@ -146,6 +151,189 @@
                 </div>
             </div>
         </div>
+        <!-- TAB: Resumen -->
+        <div class="odoo-tab-content" id="tab-resumen">
+
+            <!-- Stat Cards -->
+            <div class="resumen-stats">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #e3f2fd;">
+                        <span class="material-icons" style="color: #1976d2;">groups</span>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value">{% if resumen.total is not None %}{{ resumen.total }}{% else %}{{ miembros_asignados|length }}{% endif %}</span>
+                        <span class="stat-label">Total miembros</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #e8f5e9;">
+                        <span class="material-icons" style="color: #388e3c;">check_circle</span>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value">{{ resumen.activos|default:0 }}</span>
+                        <span class="stat-label">Activos</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #fff3e0;">
+                        <span class="material-icons" style="color: #f57c00;">male</span>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value">{{ resumen.masculinos|default:0 }}</span>
+                        <span class="stat-label">Masculinos</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #fce4ec;">
+                        <span class="material-icons" style="color: #c2185b;">female</span>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value">{{ resumen.femeninos|default:0 }}</span>
+                        <span class="stat-label">Femeninos</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="resumen-2col">
+
+                <!-- COLUMNA IZQUIERDA -->
+                <div class="resumen-col">
+
+                    <!-- Info de la unidad -->
+                    <div class="odoo-section">
+                        <div class="odoo-section-title">
+                            <span class="material-icons">info</span>
+                            Información de la unidad
+                        </div>
+                        <div class="odoo-mini-table">
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Tipo</div>
+                                <div class="odoo-mini-val">{{ unidad.tipo_unidad.nombre|default:"—" }}</div>
+                            </div>
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Categoría</div>
+                                <div class="odoo-mini-val">{{ unidad.categoria|default:"—" }}</div>
+                            </div>
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Rango de edad</div>
+                                <div class="odoo-mini-val">
+                                    {% if unidad.edad_min or unidad.edad_max %}
+                                        {{ unidad.edad_min|default:"—" }} - {{ unidad.edad_max|default:"—" }} años
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="resumen-badges">
+                            {% if unidad.reglas %}
+                                {% if unidad.reglas.solo_activos %}
+                                    <span class="odoo-badge odoo-badge-success">Solo activos</span>
+                                {% endif %}
+                                {% if unidad.reglas.permite_menores %}
+                                    <span class="odoo-badge odoo-badge-info">Permite menores</span>
+                                {% endif %}
+                                {% if unidad.reglas.requiere_aprobacion_lider %}
+                                    <span class="odoo-badge odoo-badge-warning">Requiere aprobación</span>
+                                {% endif %}
+                                {% if unidad.reglas.unidad_privada %}
+                                    <span class="odoo-badge odoo-badge-danger">Unidad privada</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="odoo-badge odoo-badge-neutral">Sin reglas configuradas</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Composición por edad -->
+                    <div class="odoo-section">
+                        <div class="odoo-section-title">
+                            <span class="material-icons">cake</span>
+                            Composición por edad
+                        </div>
+                        <div class="odoo-mini-table">
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Menores de edad</div>
+                                <div class="odoo-mini-val">
+                                    <span class="odoo-badge odoo-badge-info">{{ resumen.menores|default:0 }}</span>
+                                </div>
+                            </div>
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Mayores de edad</div>
+                                <div class="odoo-mini-val">
+                                    <span class="odoo-badge odoo-badge-success">{{ resumen.mayores|default:0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- COLUMNA DERECHA -->
+                <div class="resumen-col">
+
+                    <!-- Estados -->
+                    <div class="odoo-section">
+                        <div class="odoo-section-title">
+                            <span class="material-icons">fact_check</span>
+                            Estados de membresía
+                        </div>
+                        <div class="odoo-mini-table">
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Activos</div>
+                                <div class="odoo-mini-val"><span class="odoo-badge odoo-badge-success">{{ resumen.activos|default:0 }}</span></div>
+                            </div>
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Pasivos</div>
+                                <div class="odoo-mini-val"><span class="odoo-badge odoo-badge-warning">{{ resumen.pasivos|default:0 }}</span></div>
+                            </div>
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Observación</div>
+                                <div class="odoo-mini-val"><span class="odoo-badge odoo-badge-info">{{ resumen.observacion|default:0 }}</span></div>
+                            </div>
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Disciplina</div>
+                                <div class="odoo-mini-val"><span class="odoo-badge odoo-badge-danger">{{ resumen.disciplina|default:0 }}</span></div>
+                            </div>
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Catecúmenos</div>
+                                <div class="odoo-mini-val"><span class="odoo-badge odoo-badge-info">{{ resumen.catecumenos|default:0 }}</span></div>
+                            </div>
+                            <div class="odoo-mini-row">
+                                <div class="odoo-mini-key">Menores (sin estado)</div>
+                                <div class="odoo-mini-val"><span class="odoo-badge odoo-badge-neutral">{{ resumen.menores_estado_vacio|default:0 }}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Categorías de edad -->
+                    <div class="odoo-section">
+                        <div class="odoo-section-title">
+                            <span class="material-icons">category</span>
+                            Categorías de edad
+                        </div>
+                        {% if resumen.categorias_edad %}
+                            <div class="odoo-simple-table">
+                                <div class="odoo-simple-head">
+                                    <div>Categoría</div>
+                                    <div>Cantidad</div>
+                                </div>
+                                {% for item in resumen.categorias_edad %}
+                                    <div class="odoo-simple-row">
+                                        <div>{{ item.nombre }}</div>
+                                        <div><span class="odoo-badge odoo-badge-neutral">{{ item.cantidad }}</span></div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="odoo-empty" style="padding: 16px 0;">Sin categorías para mostrar</div>
+                        {% endif %}
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
 
         <!-- TAB: Liderazgo -->
         <div class="odoo-tab-content" id="tab-liderazgo">
@@ -177,6 +365,7 @@
             </p>
             {% endif %}
         </div>
+        
 
         <!-- TAB: Miembros -->
         <div class="odoo-tab-content" id="tab-miembros">
@@ -715,6 +904,173 @@
     font-size: 12px;
     color: #6c757d;
 }
+.odoo-mini-table{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+.odoo-mini-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 12px;
+    border:1px solid #e9ecef;
+    border-radius:8px;
+    background:#fff;
+}
+.odoo-mini-key{
+    font-size:13px;
+    color:#212529;
+}
+.odoo-mini-val{
+    display:flex;
+    gap:8px;
+    align-items:center;
+}
+
+.odoo-simple-table{
+    border:1px solid #e9ecef;
+    border-radius:8px;
+    overflow:hidden;
+    background:#fff;
+}
+.odoo-simple-head{
+    display:flex;
+    justify-content:space-between;
+    padding:10px 12px;
+    font-weight:600;
+    font-size:12px;
+    color:#495057;
+    background:#f8f9fa;
+    border-bottom:1px solid #e9ecef;
+}
+.odoo-simple-row{
+    display:flex;
+    justify-content:space-between;
+    padding:10px 12px;
+    border-bottom:1px solid #f1f3f5;
+}
+.odoo-simple-row:last-child{
+    border-bottom:none;
+}
+.resumen-2col{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.resumen-col{
+  display:flex;
+  flex-direction:column;
+  gap: 12px;
+}
+
+.resumen-badges{
+  margin-top: 10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap: 8px;
+}
+
+/* Stat Cards */
+.resumen-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon .material-icons {
+    font-size: 24px;
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #212529;
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+/* Si no existen en tu CSS actual, añade esto */
+.odoo-mini-table{ display:flex; flex-direction:column; gap:8px; }
+.odoo-mini-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 12px;
+  border:1px solid #e9ecef;
+  border-radius:8px;
+  background:#fff;
+}
+.odoo-mini-key{ font-size:13px; color:#212529; }
+.odoo-mini-val{ display:flex; align-items:center; gap:8px; }
+
+.odoo-simple-table{
+  border:1px solid #e9ecef;
+  border-radius:8px;
+  overflow:hidden;
+  background:#fff;
+}
+.odoo-simple-head{
+  display:flex;
+  justify-content:space-between;
+  padding:10px 12px;
+  font-weight:600;
+  font-size:12px;
+  color:#495057;
+  background:#f8f9fa;
+  border-bottom:1px solid #e9ecef;
+}
+.odoo-simple-row{
+  display:flex;
+  justify-content:space-between;
+  padding:10px 12px;
+  border-bottom:1px solid #f1f3f5;
+}
+.odoo-simple-row:last-child{ border-bottom:none; }
+
+/* Responsive */
+@media (max-width: 992px){
+  .resumen-2col{ grid-template-columns: 1fr; }
+  .resumen-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 576px){
+  .resumen-stats { grid-template-columns: 1fr; }
+}
+
+
 </style>
 
 <!-- ══════════════════════════════════════════════════════════════════════════

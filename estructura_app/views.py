@@ -155,12 +155,97 @@ def unidad_listado(request):
         "unidades": unidades,
         "query": query,
     })
-
-
 @login_required
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
-    return render(request, "estructura_app/unidad_detalle.html", {"unidad": unidad})
+
+    miembros_asignados = (
+        UnidadMembresia.objects
+        .filter(unidad=unidad, activo=True)
+        .select_related("miembo_fk")
+        .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
+    )
+
+    lideres_asignados = (
+        UnidadCargo.objects
+        .filter(unidad=unidad, vigente=True)
+        .select_related("miembo_fk", "rol")
+        .order_by("rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
+    )
+
+    miembros = [m.miembo_fk for m in miembros_asignados]
+    total = len(miembros)
+
+    # --- Género: usa el display si existe (más fiable)
+    masculinos = 0
+    femeninos = 0
+    for m in miembros:
+        g = ""
+        try:
+            g = (m.get_genero_display() or "").strip().lower()
+        except Exception:
+            g = (getattr(m, "genero", "") or "").strip().lower()
+
+        if g in ("m", "masculino", "hombre"):
+            masculinos += 1
+        elif g in ("f", "femenino", "mujer"):
+            femeninos += 1
+
+    # --- Estados (tu lógica: estado vacío = menor)
+    activos = pasivos = observacion = disciplina = catecumenos = menores_estado_vacio = 0
+    for m in miembros:
+        e = (m.estado_miembro or "").strip().lower()
+        if e == "":
+            menores_estado_vacio += 1
+        elif e == "activo":
+            activos += 1
+        elif e == "pasivo":
+            pasivos += 1
+        elif e == "observacion":
+            observacion += 1
+        elif e == "disciplina":
+            disciplina += 1
+        elif e == "catecumeno":
+            catecumenos += 1
+
+    # Menores/Mayores: principal por estado vacío (como tú definiste)
+    menores = menores_estado_vacio
+    mayores = total - menores
+
+    # --- Categoría de edad (display)
+    cat_map = {}
+    for m in miembros:
+        label = "—"
+        try:
+            label = m.get_categoria_edad_display() if m.categoria_edad else "—"
+        except Exception:
+            label = "—"
+        cat_map[label] = cat_map.get(label, 0) + 1
+
+    categorias_edad = [{"nombre": k, "cantidad": v} for k, v in cat_map.items()]
+
+    resumen = {
+        "total": total,
+        "masculinos": masculinos,
+        "femeninos": femeninos,
+        "menores": menores,
+        "mayores": mayores,
+        "activos": activos,
+        "pasivos": pasivos,
+        "observacion": observacion,
+        "disciplina": disciplina,
+        "catecumenos": catecumenos,
+        "menores_estado_vacio": menores_estado_vacio,
+        "categorias_edad": categorias_edad,
+    }
+
+    return render(request, "estructura_app/unidad_detalle.html", {
+        "unidad": unidad,
+        "miembros_asignados": miembros_asignados,
+        "lideres_asignados": lideres_asignados,
+        "resumen": resumen,
+    })
+
 
 def _reglas_mvp_from_post(post):
     """
@@ -569,29 +654,7 @@ def asignacion_aplicar(request):
         "ya_existian": ya_existian,
     })
 
-@login_required
-def unidad_detalle(request, pk):
-    unidad = get_object_or_404(Unidad, pk=pk)
 
-    miembros_asignados = (
-        UnidadMembresia.objects
-        .filter(unidad=unidad, activo=True)
-        .select_related("miembo_fk")
-        .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
-    )
-
-    lideres_asignados = (
-        UnidadCargo.objects
-        .filter(unidad=unidad, vigente=True)
-        .select_related("miembo_fk", "rol")   # ✅ NO "miembro"
-        .order_by("rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")  # ✅ NO "miembro__"
-    )
-
-    return render(request, "estructura_app/unidad_detalle.html", {
-        "unidad": unidad,
-        "miembros_asignados": miembros_asignados,
-        "lideres_asignados": lideres_asignados,
-    })
 
 @login_required
 @require_POST
