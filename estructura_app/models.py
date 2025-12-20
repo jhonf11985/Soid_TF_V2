@@ -152,6 +152,13 @@ class UnidadMembresia(models.Model):
         related_name="membresias_unidad",
     )
     unidad = models.ForeignKey(Unidad, on_delete=models.CASCADE, related_name="membresias")
+    rol = models.ForeignKey(
+        "estructura_app.RolUnidad",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="membresias",
+    )
 
     fecha_ingreso = models.DateField(null=True, blank=True)
     fecha_salida = models.DateField(null=True, blank=True)

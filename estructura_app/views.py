@@ -723,25 +723,55 @@ def asignacion_aplicar(request):
             "warning": warning_capacidad,
         })
 
+   
     # ------------------------------------------------------------
-    # 2) PARTICIPACIÓN / TRABAJO => UnidadMembresia
+    # 2) PARTICIPACIÓN / TRABAJO => UnidadMembresia (SOBRESCRIBE TIPO)
     # ------------------------------------------------------------
+
+    # Definir tipo de membresía según el rol seleccionado
+    nuevo_tipo = None
+    if rol.tipo == RolUnidad.TIPO_PARTICIPACION:
+        nuevo_tipo = "miembro"
+    elif rol.tipo == RolUnidad.TIPO_TRABAJO:
+        nuevo_tipo = "colaborador"
+
     for m in miembros:
         memb, created_memb = UnidadMembresia.objects.get_or_create(
             unidad=unidad,
             miembo_fk=m,
-            defaults={"activo": True}
+            defaults={
+                "activo": True,
+                "tipo": nuevo_tipo or "miembro",
+                "rol": rol,  # ✅ guardar el rol seleccionado
+            }
         )
 
         if created_memb:
             creados += 1
+            continue
+
+        cambios = []
+
+        # Reactivar si estaba inactivo
+        if not memb.activo:
+            memb.activo = True
+            cambios.append("activo")
+            reactivados += 1
         else:
-            if not memb.activo:
-                memb.activo = True
-                memb.save(update_fields=["activo"])
-                reactivados += 1
-            else:
-                ya_existian += 1
+            ya_existian += 1
+
+        # ✅ AQUÍ está la sobrescritura del rol
+        if nuevo_tipo and memb.tipo != nuevo_tipo:
+            memb.tipo = nuevo_tipo
+            cambios.append("tipo")
+        # ✅ Sobrescribir el rol (nombre real) si cambió
+        if getattr(memb, "rol_id", None) != rol.id:
+            memb.rol = rol
+            cambios.append("rol")
+
+        if cambios:
+            memb.save(update_fields=cambios)
+
 
     return JsonResponse({
         "ok": True,
