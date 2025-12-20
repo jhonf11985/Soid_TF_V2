@@ -120,6 +120,11 @@
             <span class="material-icons">supervisor_account</span>
             Liderazgo
         </button>
+        <button type="button" class="odoo-tab" data-tab="equipo">
+            <span class="material-icons">handyman</span>
+            Equipo de trabajo
+        </button>
+
         <button type="button" class="odoo-tab" data-tab="miembros">
             <span class="material-icons">groups</span>
             Miembros
@@ -292,7 +297,103 @@
             </p>
             {% endif %}
         </div>
-        
+                <!-- TAB: Equipo de trabajo -->
+        <div class="odoo-tab-content" id="tab-equipo">
+            {% if equipo_trabajo_asignados %}
+            <div class="odoo-table-container">
+                <table class="odoo-table">
+                    <thead>
+                        <tr>
+                            <th>Rol</th>
+                            <th>Miembro</th>
+                            <th>Código</th>
+                            <th>Estado</th>
+                            <th>Edad</th>
+                            <th>Categoría</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in equipo_trabajo_asignados %}
+                        {% with mb=m.miembo_fk %}
+                        <tr>
+                            <td>
+                                {% if m.rol %}
+                                    <span class="odoo-badge odoo-badge-info">{{ m.rol.nombre }}</span>
+                                {% else %}
+                                    <span class="odoo-badge odoo-badge-neutral">—</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <div class="member-cell">
+                                    <div class="member-avatar">
+                                        {% if mb.foto %}
+                                            <img src="{{ mb.foto.url }}" alt="{{ mb }}">
+                                        {% else %}
+                                            <span class="material-icons" style="font-size:18px;color:#6c757d;">person</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="member-meta">
+                                        <div class="member-name">
+                                            <a href="{% url 'miembros_app:detalle' mb.pk %}">
+                                                {{ mb }}
+                                            </a>
+                                        </div>
+                                        <div class="member-sub">
+                                            {% if mb.genero %}{{ mb.get_genero_display }}{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <a href="{% url 'miembros_app:detalle' mb.pk %}"
+                                class="odoo-badge odoo-badge-neutral">
+                                    {{ mb.codigo_miembro|default:"—" }}
+                                </a>
+                            </td>
+
+                            <td>
+                                {% if mb.estado_miembro == "activo" %}
+                                    <span class="odoo-badge odoo-badge-success">Activo</span>
+                                {% elif mb.estado_miembro == "pasivo" %}
+                                    <span class="odoo-badge odoo-badge-warning">Pasivo</span>
+                                {% elif mb.estado_miembro == "observacion" %}
+                                    <span class="odoo-badge odoo-badge-info">Observación</span>
+                                {% elif mb.estado_miembro == "disciplina" %}
+                                    <span class="odoo-badge odoo-badge-danger">Disciplina</span>
+                                {% elif mb.estado_miembro == "catecumeno" %}
+                                    <span class="odoo-badge odoo-badge-info">Catecúmeno</span>
+                                {% else %}
+                                    <span class="odoo-badge odoo-badge-neutral">Menor</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if mb.edad is not None %}
+                                    {{ mb.edad }} años
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {{ mb.get_categoria_edad_display|default:"—" }}
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="odoo-empty">
+                <span class="material-icons" style="font-size: 48px; color: #dee2e6; display: block; margin-bottom: 12px;">handyman</span>
+                No hay equipo de trabajo asignado a esta unidad.
+            </p>
+            {% endif %}
+</div>
+
 
         <!-- TAB: Miembros -->
         <div class="odoo-tab-content" id="tab-miembros">

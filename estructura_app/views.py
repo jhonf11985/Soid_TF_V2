@@ -183,7 +183,6 @@ def unidad_listado(request):
         "query": query,
     })
 
-
 @login_required
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -191,8 +190,20 @@ def unidad_detalle(request, pk):
     miembros_asignados = (
         UnidadMembresia.objects
         .filter(unidad=unidad, activo=True)
-        .select_related("miembo_fk")
+        .select_related("miembo_fk", "rol")
         .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
+    )
+
+    # ✅ NUEVO: Equipo de trabajo (solo roles tipo TRABAJO)
+    equipo_trabajo_asignados = (
+        UnidadMembresia.objects
+        .filter(
+            unidad=unidad,
+            activo=True,
+            rol__tipo=RolUnidad.TIPO_TRABAJO
+        )
+        .select_related("miembo_fk", "rol")
+        .order_by("rol__orden", "rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
     )
 
     lideres_asignados = (
@@ -278,7 +289,6 @@ def unidad_detalle(request, pk):
         capacidad_maxima = reglas.get("capacidad_maxima", None)
         if capacidad_maxima is not None:
             capacidad_maxima = int(capacidad_maxima)
-            # Advertimos si está llena o pasada
             capacidad_excedida = total >= capacidad_maxima
     except Exception:
         capacidad_maxima = None
@@ -287,10 +297,10 @@ def unidad_detalle(request, pk):
     return render(request, "estructura_app/unidad_detalle.html", {
         "unidad": unidad,
         "miembros_asignados": miembros_asignados,
+        "equipo_trabajo_asignados": equipo_trabajo_asignados,  # ✅ NUEVO
         "lideres_asignados": lideres_asignados,
         "resumen": resumen,
 
-        # 👇 NUEVO para el badge sutil
         "miembros_count": total,
         "capacidad_maxima": capacidad_maxima,
         "capacidad_excedida": capacidad_excedida,
@@ -452,10 +462,18 @@ def asignacion_unidad_contexto(request):
 
     solo_activos = bool(reglas.get("solo_activos", False))
 
-    miembros_actuales_ids = set(
-        UnidadMembresia.objects.filter(unidad=unidad, activo=True)
-        .values_list("miembo_fk_id", flat=True)
+    membresias_actuales = (
+        UnidadMembresia.objects
+        .filter(unidad=unidad, activo=True)
+        .select_related("rol")
     )
+
+    miembros_actuales_ids = set(membresias_actuales.values_list("miembo_fk_id", flat=True))
+
+    rol_por_miembro = {
+        m.miembo_fk_id: (m.rol.nombre if m.rol else "")
+        for m in membresias_actuales
+    }
 
     # ✅ IMPORTANTE: no filtramos por Miembro.activo=True
     # porque tu participación depende del ESTADO (estado_miembro)
@@ -517,6 +535,8 @@ def asignacion_unidad_contexto(request):
             "estado_slug": p.estado_miembro or "vacio",
             "categoria": p.get_categoria_edad_display() if p.categoria_edad else "",
             "ya_en_unidad": p.id in miembros_actuales_ids,
+            "rol_en_unidad": rol_por_miembro.get(p.id, ""),
+
         })
 
     # =====================================================
