@@ -109,6 +109,12 @@ class Unidad(models.Model):
 
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+    @property
+    def esta_bloqueada(self):
+        return (
+            self.membresias.filter(activo=True).exists()
+            or self.cargos.filter(vigente=True).exists()
+        )
 
     @property
     def ruta(self):

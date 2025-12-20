@@ -15,6 +15,19 @@
 <form method="post" class="odoo-form">
     {% csrf_token %}
 
+    {% if unidad and unidad.esta_bloqueada %}
+<div class="odoo-alert odoo-alert-warning" style="margin-bottom:12px;">
+    Esta unidad ya tiene miembros o cargos asignados.<br>
+    Sus datos estructurales están bloqueados.
+    <br><br>
+    <a href="{% url 'estructura_app:asignacion_unidad' %}"
+       class="odoo-btn odoo-btn-primary">
+        Gestionar miembros
+    </a>
+</div>
+{% endif %}
+
+
     <!-- ══════════════════════════════════════════════════════════════════
          BARRA SUPERIOR (Control Bar)
          ══════════════════════════════════════════════════════════════════ -->
@@ -45,6 +58,7 @@
     <!-- ══════════════════════════════════════════════════════════════════
          CONTENIDO PRINCIPAL
          ══════════════════════════════════════════════════════════════════ -->
+         <fieldset {% if unidad and unidad.esta_bloqueada %}disabled{% endif %}></fieldset>
     <div class="odoo-form-container">
         
         <!-- ÁREA PRINCIPAL DEL FORMULARIO -->
@@ -421,7 +435,7 @@
                 </div>
             </div>
         </div>
-
+        </fieldset>
         <!-- ══════════════════════════════════════════════════════════════════
              PANEL LATERAL (Chatter / Acciones)
              ══════════════════════════════════════════════════════════════════ -->
@@ -429,7 +443,7 @@
             
             <!-- Botones de acción -->
             <div class="odoo-aside-actions">
-                {% if modo == "editar" %}
+                {% if modo == "editar" and not unidad.esta_bloqueada %}
                     <button type="submit" class="odoo-btn odoo-btn-primary">
                         <span class="material-icons">save</span>
                         Guardar cambios

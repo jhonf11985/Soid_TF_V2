@@ -103,10 +103,19 @@ def unidad_crear(request):
         "unidad": None,
     }
     return render(request, "estructura_app/unidad_form.html", context)
-
 @login_required
 def unidad_editar(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
+
+    # 🔒 Regla clave
+    if unidad.esta_bloqueada:
+        messages.error(
+            request,
+            "Esta unidad ya tiene miembros o cargos asignados. "
+            "No se pueden modificar sus datos. "
+            "Solo puedes gestionar miembros desde Asignación."
+        )
+        return redirect("estructura_app:asignacion_unidad")
 
     if request.method == "POST":
         form = UnidadForm(request.POST, instance=unidad)
@@ -115,19 +124,14 @@ def unidad_editar(request, pk):
             unidad_obj.edad_min = _to_int_from_post(request.POST, "edad_min")
             unidad_obj.edad_max = _to_int_from_post(request.POST, "edad_max")
 
-            # ✅ Solo recalcular reglas si realmente vinieron en el POST
             if any(k.startswith("regla_") for k in request.POST.keys()):
                 unidad_obj.reglas = _reglas_mvp_from_post(request.POST)
-            else:
-                # ✅ No llegaron switches => conservar las reglas existentes
-                unidad_obj.reglas = unidad.reglas
 
             unidad_obj.save()
-
             messages.success(request, "Cambios guardados correctamente.")
-            return redirect("estructura_app:unidad_editar", pk=unidad.pk)
+            return redirect("estructura_app:unidad_listado")
         else:
-            messages.error(request, "Revisa los campos marcados. Hay errores en el formulario.")
+            messages.error(request, "Revisa los campos marcados.")
     else:
         form = UnidadForm(instance=unidad)
 
@@ -135,7 +139,9 @@ def unidad_editar(request, pk):
         "form": form,
         "modo": "editar",
         "unidad": unidad,
+        "bloqueada": False,  # aquí siempre será False
     })
+
 
 @login_required
 def unidad_listado(request):
@@ -586,3 +592,66 @@ def unidad_detalle(request, pk):
         "miembros_asignados": miembros_asignados,
         "lideres_asignados": lideres_asignados,
     })
+
+@login_required
+@require_POST
+def asignacion_remover(request):
+    """
+    Recibe: unidad_id, rol_id (opcional), miembro_ids[]
+    - Si rol es LIDERAZGO: quita el cargo (vigente=False) para ese rol y unidad.
+    - Si rol NO es liderazgo o no viene rol: quita membresía (activo=False) en esa unidad.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"ok": False, "error": "JSON inválido"}, status=400)
+
+    unidad_id = str(payload.get("unidad_id", "")).strip()
+    rol_id = str(payload.get("rol_id", "")).strip()
+    miembro_ids = payload.get("miembro_ids") or []
+
+    if not unidad_id:
+        return JsonResponse({"ok": False, "error": "Falta unidad"}, status=400)
+
+    if not isinstance(miembro_ids, list) or not miembro_ids:
+        return JsonResponse({"ok": False, "error": "No hay miembros seleccionados"}, status=400)
+
+    unidad = get_object_or_404(Unidad, pk=unidad_id)
+
+    clean_ids = []
+    for x in miembro_ids:
+        try:
+            clean_ids.append(int(x))
+        except Exception:
+            pass
+
+    if not clean_ids:
+        return JsonResponse({"ok": False, "error": "Selección inválida"}, status=400)
+
+    # Si viene rol, lo validamos
+    rol = None
+    if rol_id:
+        rol = get_object_or_404(RolUnidad, pk=rol_id)
+
+    removidos = 0
+
+    # 1) Si es liderazgo => desactivar cargo (vigente=False)
+    if rol and rol.tipo == RolUnidad.TIPO_LIDERAZGO:
+        qs = UnidadCargo.objects.filter(
+            unidad=unidad,
+            rol=rol,
+            miembo_fk_id__in=clean_ids,
+            vigente=True
+        )
+        removidos = qs.update(vigente=False)
+        return JsonResponse({"ok": True, "modo": "liderazgo", "removidos": removidos})
+
+    # 2) Si NO liderazgo => desactivar membresía (activo=False)
+    qs = UnidadMembresia.objects.filter(
+        unidad=unidad,
+        miembo_fk_id__in=clean_ids,
+        activo=True
+    )
+    removidos = qs.update(activo=False)
+
+    return JsonResponse({"ok": True, "modo": "membresia", "removidos": removidos})

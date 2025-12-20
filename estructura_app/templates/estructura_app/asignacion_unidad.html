@@ -8,155 +8,171 @@
 {% endblock %}
 
 {% block estructura_content %}
-<div class="assign-container">
+<div class="o-page">
 
     <!-- Header -->
-    <div class="assign-header">
-        <h1>Asignar personas a unidad</h1>
-        <a href="{% url 'estructura_app:unidad_listado' %}" class="assign-back">
-            <span class="material-icons">arrow_back</span>
-            Volver a unidades
-        </a>
-    </div>
+    <header class="o-header">
+        <div class="o-header-left">
+            <a href="{% url 'estructura_app:unidad_listado' %}" class="o-back">
+                <span class="material-icons">arrow_back</span>
+            </a>
+            <h1 class="o-title">Asignar personas a unidad</h1>
+        </div>
+    </header>
 
-    <div class="assign-layout">
-        
-        <!-- Panel izquierdo: Configuración -->
-        <div class="assign-config">
-            
-            <div class="config-section">
-                <div class="config-title">Unidad destino</div>
-                <div class="config-field">
-                    <label class="config-label">Seleccionar unidad</label>
-                    <select class="config-select" id="select-unidad">
-                        <option value="">Selecciona una unidad...</option>
+    <!-- Main Layout -->
+    <div class="o-layout">
 
-                        {% if unidades %}
-                            {% for unidad in unidades %}
-                                <option value="{{ unidad.id }}">{{ unidad.nombre }}</option>
-                            {% endfor %}
-                        {% else %}
-                            <option value="" disabled>No hay unidades disponibles</option>
-                        {% endif %}
-                    </select>
+        <!-- Sidebar -->
+        <aside class="o-sidebar">
+
+            <!-- Card: Configuración -->
+            <div class="o-card">
+                <div class="o-card-header">
+                    <span class="material-icons">settings</span>
+                    Configuración
                 </div>
+                <div class="o-card-body">
+                    
+                    <div class="o-field">
+                        <label class="o-label">Unidad destino</label>
+                        <select class="o-select" id="select-unidad">
+                            <option value="">Selecciona una unidad...</option>
+                            {% if unidades %}
+                                {% for unidad in unidades %}
+                                    <option value="{{ unidad.id }}">{{ unidad.nombre }}</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>No hay unidades disponibles</option>
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    <div class="o-field">
+                        <label class="o-label">Rol a asignar</label>
+                        <select class="o-select" id="select-rol">
+                            <option value="">Selecciona un rol...</option>
+                            {% if roles %}
+                                {% for rol in roles %}
+                                    <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>No hay roles disponibles</option>
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    <!-- Unit Info -->
+                    <div class="o-unit-info" id="unit-info" style="display: none;">
+                        <div class="o-info-item">
+                            <span class="o-info-label">Tipo</span>
+                            <span class="o-info-value" id="info-tipo">—</span>
+                        </div>
+                        <div class="o-info-item">
+                            <span class="o-info-label">Miembros</span>
+                            <span class="o-info-value" id="info-miembros">0</span>
+                        </div>
+                    </div>
+
+                    <button type="button" class="o-btn o-btn-primary" id="btn-guardar" disabled>
+                        <span class="material-icons">sync</span>
+                        Cargar lista
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card: Acciones -->
+            <div class="o-card o-card-actions">
+                <div class="o-card-header">
+                    <span class="material-icons">touch_app</span>
+                    Acciones
+                </div>
+                <div class="o-card-body">
+                    <div class="o-counter">
+                        <span class="o-counter-num" id="count-selected">0</span>
+                        <span class="o-counter-text">seleccionados</span>
+                    </div>
+
+                    <div class="o-btn-stack">
+                        <button type="button" class="o-btn o-btn-success" id="btn-asignar" disabled>
+                            <span class="material-icons">person_add</span>
+                            Asignar
+                        </button>
+                        <button type="button" class="o-btn o-btn-danger" id="btn-remover" disabled>
+                            <span class="material-icons">person_remove</span>
+                            Quitar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Content -->
+        <main class="o-main">
+            <div class="o-card o-card-table">
                 
-                <!-- Info de la unidad (se muestra cuando seleccionan) -->
-                <div class="unit-info" id="unit-info" style="display: none;">
-                    <div class="unit-info-row">
-                        <span class="unit-info-label">Tipo</span>
-                        <span class="unit-info-value" id="info-tipo">—</span>
+                <!-- Toolbar -->
+                <div class="o-toolbar">
+                    <div class="o-search">
+                        <span class="material-icons">search</span>
+                        <input type="text" class="search-input" placeholder="Buscar por nombre o código...">
                     </div>
-                    <div class="unit-info-row">
-                        <span class="unit-info-label">Miembros actuales</span>
-                        <span class="unit-info-value" id="info-miembros">0</span>
+                    <div class="o-filter">
+                        <select class="o-filter-select" id="view-filter-select" disabled>
+                            <option value="todos">Todos (según reglas)</option>
+                            <option value="no_activo">Ocultar activos</option>
+                            <option value="activo">Solo Activos</option>
+                            <option value="observacion">Solo Observación</option>
+                            <option value="pasivo">Solo Pasivos</option>
+                            <option value="disciplina">Solo Disciplina</option>
+                            <option value="catecumeno">Solo Catecúmenos</option>
+                            <option value="menor">Solo Menores</option>
+                            <option value="nuevo">Solo Nuevos creyentes</option>
+                            <option value="en_unidad">Solo en unidad</option>
+                            <option value="fuera_unidad">Solo fuera de unidad</option>
+                        </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="config-section">
-                <div class="config-title">Rol a asignar</div>
-                <div class="config-field">
-                    <label class="config-label">Seleccionar rol</label>
-                    <select class="config-select" id="select-rol">
-                        <option value="">Selecciona un rol...</option>
-
-                        {% if roles %}
-                            {% for rol in roles %}
-                                <option value="{{ rol.id }}">{{ rol.nombre }}</option>
-                            {% endfor %}
-                        {% else %}
-                            <option value="" disabled>No hay roles disponibles</option>
-                        {% endif %}
-                    </select>
+                <!-- Table -->
+                <div class="o-table-container">
+                    <table class="o-table">
+                        <thead>
+                            <tr>
+                                <th class="o-th-check">
+                                    <div class="custom-check" id="check-all"></div>
+                                </th>
+                                <th>Persona</th>
+                                <th class="o-th-sm">Edad</th>
+                                <th class="o-th-md">Estado</th>
+                                <th class="o-th-md">Categoría</th>
+                            </tr>
+                        </thead>
+                        <tbody id="personas-tbody">
+                            <tr>
+                                <td colspan="5">
+                                    <div class="empty-state">
+                                        <span class="material-icons">touch_app</span>
+                                        <p>Selecciona una unidad para cargar las personas</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
+
+                <!-- Footer -->
+                <div class="o-table-footer">
+                    <span>Mostrando {{ personas|length }} personas</span>
+                </div>
+
             </div>
+        </main>
 
-<div class="config-actions">
-    <!-- Guardar contexto -->
-    <button type="button" class="btn-assign" id="btn-guardar" disabled>
-        <span class="material-icons">save</span>
-        Guardar unidad y rol
-    </button>
-
-    <!-- Asignar seleccionados -->
-    <button type="button"
-            class="btn-assign"
-            id="btn-asignar"
-            disabled
-            style="margin-top:10px;">
-        <span class="material-icons">done_all</span>
-        Asignar seleccionados
-    </button>
-
-    <div class="selected-count">
-        <span id="count-selected">0</span> personas seleccionadas
     </div>
 </div>
 
-        </div>
-
-        <!-- Panel derecho: Lista de personas -->
-        <div class="assign-list">
-            
-            <!-- Toolbar -->
-            <div class="list-toolbar">
-                <div class="search-box">
-                    <span class="material-icons">search</span>
-                    <input type="text" class="search-input" placeholder="Buscar por nombre o código...">
-                </div>
-                <div class="view-filter">
-                    <label class="view-filter-label" for="view-filter-select">Mostrar</label>
-                    <select class="view-filter-select" id="view-filter-select" disabled>
-                        <option value="todos">Todos (según reglas)</option>
-                        <option value="no_activo">Ocultar activos</option>
-                        <option value="activo">Solo Activos</option>
-                        <option value="observacion">Solo Observación</option>
-                        <option value="pasivo">Solo Pasivos</option>
-                        <option value="disciplina">Solo Disciplina</option>
-                        <option value="catecumeno">Solo Catecúmenos</option>
-                        <option value="menor">Solo Menores</option>
-                        <option value="nuevo">Solo Nuevos creyentes</option>
-                    </select>
-                </div>
-
-            </div>
-
-            <!-- Tabla -->
-            <table class="list-table">
-                <thead>
-                    <tr>
-                        <th class="check-cell">
-                            <div class="custom-check" id="check-all"></div>
-                        </th>
-                        <th>Persona</th>
-                        
-                        <th style="width: 80px;">Edad</th>   <!-- ✅ NUEVA -->
-                        <th style="width: 120px;">Estado</th>
-                        <th style="width: 140px;">Categoría</th>
-                    </tr>
-                </thead>
-
-                <tbody id="personas-tbody">
-                    <tr>
-                            <td colspan="5">
-
-                            <div class="empty-state">
-                                <span class="material-icons">touch_app</span>
-                                <p>Selecciona una unidad para cargar las personas</p>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <!-- Footer -->
-            <div class="list-footer">
-                <span>Mostrando {{ personas|length }} personas</span>
-            </div>
-        </div>
-    </div>
-</div>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const selectUnidad = document.getElementById('select-unidad');
@@ -169,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnGuardar = document.getElementById('btn-guardar');
   const btnAsignar = document.getElementById('btn-asignar');
+  const btnRemover = document.getElementById('btn-remover');
 
   const countSelected = document.getElementById('count-selected');
   const checkAll = document.getElementById('check-all');
@@ -206,15 +223,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const n = selectedIds.size;
     if (countSelected) countSelected.textContent = String(n);
 
-    // btnAsignar solo se habilita si hay unidad, rol y seleccionados
-    if (btnAsignar) {
-      btnAsignar.disabled = !(selectUnidad.value && selectRol.value && n > 0);
-    }
+    const enabled = (selectUnidad.value && selectRol.value && n > 0);
+
+    if (btnAsignar) btnAsignar.disabled = !enabled;
+    if (btnRemover) btnRemover.disabled = !enabled;
   }
 
   function clearSelection() {
     selectedIds.clear();
-    // quitar checks visuales
     tbody.querySelectorAll('.custom-check.checked').forEach(el => el.classList.remove('checked'));
     if (checkAll) checkAll.classList.remove('checked');
     updateSelectedUI();
@@ -263,6 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
       { value: 'todos', label: 'Todos (según reglas)' },
       { value: 'no_activo', label: 'Ocultar activos' },
     ];
+    const unidadOptions = [
+      { value: 'en_unidad', label: 'Solo en unidad' },
+      { value: 'fuera_unidad', label: 'Solo fuera de unidad' },
+    ];
 
     const stateOptions = ordered.map(slug => ({
       value: slug,
@@ -271,8 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     viewSelect.innerHTML = [
       ...baseOptions.map(o => `<option value="${o.value}">${o.label}</option>`),
+      ...unidadOptions.map(o => `<option value="${o.value}">${o.label}</option>`),
       ...stateOptions.map(o => `<option value="${o.value}">${o.label}</option>`),
     ].join('');
+
 
     const nonActive = ordered.filter(x => x !== 'activo');
     const defaultValue = (nonActive.length === 1) ? nonActive[0] : 'todos';
@@ -294,12 +316,14 @@ document.addEventListener('DOMContentLoaded', () => {
       let matchView = true;
       if (mode === 'todos') matchView = true;
       else if (mode === 'no_activo') matchView = (st !== 'activo');
+      else if (mode === 'en_unidad') matchView = (row.dataset.enunidad === '1');
+      else if (mode === 'fuera_unidad') matchView = (row.dataset.enunidad === '0');
       else matchView = (st === mode);
+
 
       row.style.display = (matchSearch && matchView) ? '' : 'none';
     });
 
-    // Recalcular check-all solo con filas visibles
     if (checkAll) {
       const visible = Array.from(document.querySelectorAll('#personas-tbody tr[data-id]'))
         .filter(r => r.style.display !== 'none');
@@ -316,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : '';
 
     return `
-      <tr data-id="${p.id}" data-estado="${estadoSlug}">
+      <tr data-id="${p.id}" data-estado="${estadoSlug}" data-enunidad="${p.ya_en_unidad ? '1' : '0'}">  
         <td class="check-cell">
           <div class="custom-check" data-check="${p.id}"></div>
         </td>
@@ -348,7 +372,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function attachSelectionHandlers() {
-    // Click en checkbox individual
     tbody.querySelectorAll('.custom-check[data-check]').forEach(chk => {
       chk.addEventListener('click', (ev) => {
         ev.stopPropagation();
@@ -363,11 +386,10 @@ document.addEventListener('DOMContentLoaded', () => {
           selectedIds.add(id);
         }
         updateSelectedUI();
-        applyFilters(); // para actualizar check-all
+        applyFilters();
       });
     });
 
-    // Click en fila completa (más cómodo)
     tbody.querySelectorAll('tr[data-id]').forEach(row => {
       row.addEventListener('click', () => {
         const id = row.dataset.id;
@@ -386,7 +408,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Seleccionar todo (solo visibles)
     if (checkAll) {
       checkAll.addEventListener('click', () => {
         const visibleRows = Array.from(tbody.querySelectorAll('tr[data-id]'))
@@ -502,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    btnAsignar.disabled = true;
+    if (btnAsignar) btnAsignar.disabled = true;
 
     const urlAplicar = "{% url 'estructura_app:asignacion_aplicar' %}";
     const res = await fetch(urlAplicar, {
@@ -534,10 +555,63 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Recargar para que se actualicen badges "Ya en unidad" y conteos
     await guardarYcargar();
-
     alert(`Listo.\nCreados: ${data.creados}\nReactivados: ${data.reactivados}\nYa existían: ${data.ya_existian}`);
+  }
+
+  async function aplicarRemocion() {
+    const unidadId = selectUnidad.value;
+    const rolId = selectRol.value;
+
+    if (!unidadId || !rolId) {
+      alert("Selecciona unidad y rol.");
+      return;
+    }
+
+    const ids = Array.from(selectedIds);
+    if (!ids.length) {
+      alert("Selecciona al menos una persona.");
+      return;
+    }
+
+    if (!confirm("¿Seguro que deseas quitar a las personas seleccionadas de esta unidad?")) {
+      return;
+    }
+
+    if (btnRemover) btnRemover.disabled = true;
+
+    const urlRemover = "{% url 'estructura_app:asignacion_remover' %}";
+    const res = await fetch(urlRemover, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify({
+        unidad_id: unidadId,
+        rol_id: rolId,
+        miembro_ids: ids
+      })
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      alert("Respuesta inválida del servidor.");
+      updateSelectedUI();
+      return;
+    }
+
+    if (!data.ok) {
+      alert(data.error || "No se pudo remover.");
+      updateSelectedUI();
+      return;
+    }
+
+    await guardarYcargar();
+    alert(`Listo.\nRemovidos: ${data.removidos}`);
   }
 
   // Eventos select
@@ -546,7 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
     unitInfo.style.display = selectUnidad.value ? "block" : "none";
     clearSelection();
 
-    renderEmpty("Selecciona un rol y pulsa “Guardar unidad y rol” para cargar la lista.");
+    renderEmpty("Selecciona un rol y pulsa "Cargar lista".");
 
     if (viewSelect) {
       viewSelect.disabled = true;
@@ -559,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateGuardarState();
     clearSelection();
 
-    renderEmpty("Pulsa “Guardar unidad y rol” para cargar la lista según reglas.");
+    renderEmpty("Pulsa "Cargar lista" para ver personas según reglas.");
 
     if (viewSelect) {
       viewSelect.disabled = true;
@@ -570,17 +644,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnGuardar.addEventListener('click', guardarYcargar);
   if (btnAsignar) btnAsignar.addEventListener('click', aplicarAsignacion);
+  if (btnRemover) btnRemover.addEventListener('click', aplicarRemocion);
 
-  if (viewSelect) viewSelect.addEventListener('change', () => {
-    applyFilters();
-  });
-  if (searchInput) searchInput.addEventListener('input', () => {
-    applyFilters();
-  });
+  if (viewSelect) viewSelect.addEventListener('change', applyFilters);
+  if (searchInput) searchInput.addEventListener('input', applyFilters);
 
   // Estado inicial
   unitInfo.style.display = "none";
-  renderEmpty("Selecciona una unidad y un rol, luego pulsa “Guardar” para cargar la lista.");
+  renderEmpty("Selecciona una unidad y un rol, luego pulsa "Cargar lista".");
   updateGuardarState();
   clearSelection();
 
@@ -592,304 +663,380 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-
 <style>
-/* AQUÍ van tus estilos (igual que los tenías) */
 /* ═══════════════════════════════════════════════════════════════════════════
-   ASIGNACIÓN - DISEÑO MINIMALISTA
+   ODOO-STYLE CLEAN DESIGN
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.assign-container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px;
+.o-page {
+    min-height: 100vh;
+    background: #f1f3f5;
 }
 
 /* Header */
-.assign-header {
+.o-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #e9ecef;
+    padding: 0 24px;
+    height: 56px;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
 }
 
-.assign-header h1 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    color: #212529;
-}
-
-.assign-back {
+.o-header-left {
     display: flex;
     align-items: center;
-    gap: 6px;
-    color: #495057;
-    text-decoration: none;
-    font-size: 14px;
+    gap: 12px;
 }
 
-.assign-back:hover {
-    color: #017e84;
-}
-
-.assign-back .material-icons {
-    font-size: 18px;
-}
-
-/* Layout dos columnas */
-.assign-layout {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 24px;
-    align-items: start;
-}
-
-/* Panel izquierdo - Configuración */
-.assign-config {
-    background: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    position: sticky;
-    top: 24px;
-}
-
-.config-section {
-    padding: 16px;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.config-section:last-child {
-    border-bottom: none;
-}
-
-.config-title {
-    font-size: 11px;
-    font-weight: 700;
-    color: #6c757d;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
-}
-
-.config-field {
-    margin-bottom: 12px;
-}
-
-.config-field:last-child {
-    margin-bottom: 0;
-}
-
-.config-label {
-    display: block;
-    font-size: 13px;
-    color: #495057;
-    margin-bottom: 6px;
-}
-
-.config-select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #212529;
-    background: #fff;
-    cursor: pointer;
-    transition: border-color 0.15s;
-}
-
-.config-select:focus {
-    outline: none;
-    border-color: #017e84;
-}
-
-/* Info de unidad seleccionada */
-.unit-info {
-    background: #f8f9fa;
-    border-radius: 6px;
-    padding: 12px;
-    margin-top: 12px;
-}
-
-.unit-info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    padding: 4px 0;
-}
-
-.unit-info-label {
-    color: #6c757d;
-}
-
-.unit-info-value {
-    color: #212529;
-    font-weight: 500;
-}
-
-/* Botón asignar */
-.config-actions {
-    padding: 16px;
-    background: #f8f9fa;
-}
-
-.btn-assign {
-    width: 100%;
-    padding: 12px 16px;
-    background: #017e84;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
+.o-back {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    transition: background 0.15s;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    color: #495057;
+    transition: all 0.15s;
 }
 
-.btn-assign:hover {
-    background: #016166;
+.o-back:hover {
+    background: #f1f3f5;
+    color: #017e84;
 }
 
-.btn-assign:disabled {
-    background: #adb5bd;
-    cursor: not-allowed;
+.o-back .material-icons {
+    font-size: 22px;
 }
 
-.btn-assign .material-icons {
+.o-title {
+    margin: 0;
     font-size: 18px;
+    font-weight: 600;
+    color: #212529;
 }
 
-.selected-count {
-    text-align: center;
-    font-size: 12px;
-    color: #6c757d;
-    margin-top: 8px;
+/* Layout */
+.o-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
-/* Panel derecho - Lista de personas */
-.assign-list {
+/* Sidebar */
+.o-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: sticky;
+    top: 24px;
+    align-self: start;
+}
+
+/* Cards */
+.o-card {
     background: #fff;
     border: 1px solid #dee2e6;
     border-radius: 8px;
     overflow: hidden;
 }
 
-/* Barra de búsqueda y filtros */
-.list-toolbar {
+.o-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #495057;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.o-card-header .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+}
+
+.o-card-body {
+    padding: 16px;
+}
+
+.o-card-actions .o-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Form Fields */
+.o-field {
+    margin-bottom: 14px;
+}
+
+.o-field:last-of-type {
+    margin-bottom: 16px;
+}
+
+.o-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 6px;
+}
+
+.o-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #212529;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.o-select:focus {
+    outline: none;
+    border-color: #017e84;
+    box-shadow: 0 0 0 3px rgba(1, 126, 132, 0.1);
+}
+
+/* Unit Info */
+.o-unit-info {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.o-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+}
+
+.o-info-item:first-child { padding-top: 0; }
+.o-info-item:last-child { padding-bottom: 0; }
+
+.o-info-label {
+    color: #6c757d;
+}
+
+.o-info-value {
+    font-weight: 600;
+    color: #212529;
+}
+
+/* Buttons */
+.o-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+}
+
+.o-btn .material-icons {
+    font-size: 18px;
+}
+
+.o-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.o-btn-primary {
+    background: #017e84;
+    color: #fff;
+}
+
+.o-btn-primary:hover:not(:disabled) {
+    background: #016166;
+}
+
+.o-btn-success {
+    background: #28a745;
+    color: #fff;
+}
+
+.o-btn-success:hover:not(:disabled) {
+    background: #218838;
+}
+
+.o-btn-danger {
+    background: #dc3545;
+    color: #fff;
+}
+
+.o-btn-danger:hover:not(:disabled) {
+    background: #c82333;
+}
+
+.o-btn-stack {
+    display: flex;
+    gap: 8px;
+}
+
+.o-btn-stack .o-btn {
+    flex: 1;
+    padding: 10px 12px;
+}
+
+/* Counter */
+.o-counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+}
+
+.o-counter-num {
+    font-size: 20px;
+    font-weight: 700;
+    color: #017e84;
+}
+
+.o-counter-text {
+    font-size: 13px;
+    color: #6c757d;
+}
+
+/* Main Content */
+.o-main {
+    min-width: 0;
+}
+
+.o-card-table {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Toolbar */
+.o-toolbar {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
+    background: #fff;
     border-bottom: 1px solid #e9ecef;
-    background: #fafafa;
 }
 
-.search-box {
+.o-search {
     flex: 1;
     position: relative;
+    max-width: 320px;
 }
 
-.search-box .material-icons {
+.o-search .material-icons {
     position: absolute;
-    left: 10px;
+    left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 18px;
+    font-size: 20px;
     color: #adb5bd;
 }
 
-.search-input {
+.o-search .search-input {
     width: 100%;
-    padding: 8px 12px 8px 36px;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    font-size: 13px;
-    background: #fff;
+    padding: 9px 12px 9px 40px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.search-input:focus {
+.o-search .search-input:focus {
+    outline: none;
+    border-color: #017e84;
+    box-shadow: 0 0 0 3px rgba(1, 126, 132, 0.1);
+}
+
+.o-filter {
+    margin-left: auto;
+}
+
+.o-filter-select {
+    padding: 9px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #495057;
+    background: #fff;
+    min-width: 180px;
+}
+
+.o-filter-select:focus {
     outline: none;
     border-color: #017e84;
 }
 
-.filter-chips {
-    display: flex;
-    gap: 6px;
+/* Table */
+.o-table-container {
+    overflow-x: auto;
 }
 
-.filter-chip {
-    padding: 6px 12px;
-    border: 1px solid #dee2e6;
-    border-radius: 20px;
-    font-size: 12px;
-    color: #6c757d;
-    background: #fff;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.filter-chip:hover {
-    border-color: #adb5bd;
-}
-
-.filter-chip.active {
-    background: #017e84;
-    border-color: #017e84;
-    color: #fff;
-}
-
-/* Tabla */
-.list-table {
+.o-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-.list-table th,
-.list-table td {
+.o-table th,
+.o-table td {
     padding: 12px 16px;
     text-align: left;
     border-bottom: 1px solid #e9ecef;
 }
 
-.list-table th {
+.o-table th {
     font-size: 11px;
     font-weight: 700;
     color: #6c757d;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-    background: #fafafa;
+    letter-spacing: 0.5px;
+    background: #f8f9fa;
+    white-space: nowrap;
 }
 
-.list-table tbody tr {
+.o-th-check { width: 48px; }
+.o-th-sm { width: 80px; }
+.o-th-md { width: 130px; }
+
+.o-table tbody tr {
     transition: background 0.1s;
+    cursor: pointer;
 }
 
-.list-table tbody tr:hover {
+.o-table tbody tr:hover {
     background: #f8f9fa;
 }
 
-.list-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-/* Checkbox personalizado */
-.check-cell {
-    width: 40px;
-}
+/* Checkbox */
+.check-cell { width: 48px; }
 
 .custom-check {
     width: 18px;
     height: 18px;
-    border: 2px solid #dee2e6;
-    border-radius: 4px;
+    border: 2px solid #ced4da;
+    border-radius: 3px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -916,7 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
     margin-bottom: 2px;
 }
 
-/* Persona info */
+/* Person Cell */
 .person-cell {
     display: flex;
     align-items: center;
@@ -951,33 +1098,28 @@ document.addEventListener('DOMContentLoaded', () => {
     color: #6c757d;
 }
 
-/* Status badge */
+/* Status Badges */
 .status-badge {
     display: inline-block;
     padding: 4px 10px;
-    border-radius: 12px;
+    border-radius: 4px;
     font-size: 11px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
-.status-activo {
-    background: #d4edda;
-    color: #155724;
-}
+.status-activo { background: #d4edda; color: #155724; }
+.status-observacion { background: #fff3cd; color: #856404; }
+.status-pasivo { background: #f8d7da; color: #721c24; }
+.status-disciplina { background: #f5c6cb; color: #721c24; }
+.status-catecumeno { background: #cce5ff; color: #004085; }
+.status-menor { background: #e2e3e5; color: #383d41; }
+.status-nuevo { background: #d1ecf1; color: #0c5460; }
 
-.status-observacion {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.status-pasivo {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-/* Empty state */
+/* Empty State */
 .empty-state {
-    padding: 48px 24px;
+    padding: 60px 24px;
     text-align: center;
     color: #6c757d;
 }
@@ -993,40 +1135,71 @@ document.addEventListener('DOMContentLoaded', () => {
     font-size: 14px;
 }
 
-/* Paginación */
-.list-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+/* Table Footer */
+.o-table-footer {
     padding: 12px 16px;
+    background: #f8f9fa;
     border-top: 1px solid #e9ecef;
-    background: #fafafa;
     font-size: 13px;
     color: #6c757d;
 }
 
 /* Responsive */
-@media (max-width: 900px) {
-    .assign-layout {
+@media (max-width: 1024px) {
+    .o-layout {
         grid-template-columns: 1fr;
     }
-    
-    .assign-config {
+
+    .o-sidebar {
         position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
     }
-    
-    .list-toolbar {
+
+    .o-sidebar .o-card {
+        flex: 1;
+        min-width: 260px;
+    }
+}
+
+@media (max-width: 768px) {
+    .o-header {
+        padding: 0 16px;
+    }
+
+    .o-layout {
+        padding: 16px;
+    }
+
+    .o-sidebar {
+        flex-direction: column;
+    }
+
+    .o-sidebar .o-card {
+        min-width: auto;
+    }
+
+    .o-toolbar {
         flex-direction: column;
         align-items: stretch;
+        gap: 12px;
     }
-    
-    .filter-chips {
-        justify-content: center;
+
+    .o-search {
+        max-width: none;
+    }
+
+    .o-filter {
+        margin-left: 0;
+    }
+
+    .o-filter-select {
+        width: 100%;
+    }
+
+    .o-btn-stack {
+        flex-direction: column;
     }
 }
 </style>
-
 {% endblock %}
-
-
-
