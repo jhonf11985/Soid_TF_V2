@@ -184,8 +184,6 @@ def unidad_listado(request):
     })
 
 
-
-
 @login_required
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -253,7 +251,7 @@ def unidad_detalle(request, pk):
             label = "—"
         cat_map[label] = cat_map.get(label, 0) + 1
 
-    categorias_edad = [{"nombre": k, "cantidad": v} for k, v in cat_map.items()]
+    categorias_edad = [{"nombre": k, "total": v} for k, v in cat_map.items()]
 
     resumen = {
         "total": total,
@@ -270,12 +268,34 @@ def unidad_detalle(request, pk):
         "categorias_edad": categorias_edad,
     }
 
+    # =====================================================
+    # CAPACIDAD MÁXIMA (solo para advertencia sutil en ficha)
+    # =====================================================
+    capacidad_maxima = None
+    capacidad_excedida = False
+    try:
+        reglas = unidad.reglas or {}
+        capacidad_maxima = reglas.get("capacidad_maxima", None)
+        if capacidad_maxima is not None:
+            capacidad_maxima = int(capacidad_maxima)
+            # Advertimos si está llena o pasada
+            capacidad_excedida = total >= capacidad_maxima
+    except Exception:
+        capacidad_maxima = None
+        capacidad_excedida = False
+
     return render(request, "estructura_app/unidad_detalle.html", {
         "unidad": unidad,
         "miembros_asignados": miembros_asignados,
         "lideres_asignados": lideres_asignados,
         "resumen": resumen,
+
+        # 👇 NUEVO para el badge sutil
+        "miembros_count": total,
+        "capacidad_maxima": capacidad_maxima,
+        "capacidad_excedida": capacidad_excedida,
     })
+
 
 
 def _reglas_mvp_from_post(post):
@@ -499,6 +519,26 @@ def asignacion_unidad_contexto(request):
             "ya_en_unidad": p.id in miembros_actuales_ids,
         })
 
+    # =====================================================
+    # CAPACIDAD MÁXIMA (SOLO ADVERTENCIA, NO BLOQUEA)
+    # =====================================================
+    capacidad_maxima = (reglas or {}).get("capacidad_maxima", None)
+
+    miembros_actuales_count = len(miembros_actuales_ids)
+
+    capacidad_excedida = False
+    capacidad_restante = None
+    capacidad_ratio = None
+
+    if capacidad_maxima is not None:
+        try:
+            capacidad_maxima = int(capacidad_maxima)
+            capacidad_restante = capacidad_maxima - miembros_actuales_count
+            capacidad_excedida = miembros_actuales_count > capacidad_maxima
+            capacidad_ratio = round((miembros_actuales_count / capacidad_maxima) * 100, 2) if capacidad_maxima > 0 else None
+        except Exception:
+            # Si el valor está raro, lo ignoramos sin romper
+            capacidad_maxima = None
 
     return JsonResponse({
         "ok": True,
@@ -506,8 +546,13 @@ def asignacion_unidad_contexto(request):
             "id": unidad.id,
             "nombre": unidad.nombre,
             "tipo": str(unidad.tipo) if unidad.tipo else "—",
-            "miembros_actuales": len(miembros_actuales_ids),
-                    
+            "miembros_actuales": miembros_actuales_count,
+
+            "capacidad_maxima": capacidad_maxima,
+            "capacidad_excedida": capacidad_excedida,
+            "capacidad_restante": capacidad_restante,
+            "capacidad_ratio": capacidad_ratio,
+
             "edad_min": unidad.edad_min,
             "edad_max": unidad.edad_max,
 
@@ -565,6 +610,8 @@ def asignacion_aplicar(request):
     Aplica la asignación según el tipo de rol:
     - LIDERAZGO -> UnidadCargo (vigente=True) + asegura UnidadMembresia activa
     - PARTICIPACIÓN/TRABAJO -> UnidadMembresia (activo=True)
+
+    ✅ Capacidad máxima: SOLO ADVERTENCIA (no bloquea)
     """
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -597,11 +644,36 @@ def asignacion_aplicar(request):
 
     miembros = Miembro.objects.filter(id__in=clean_ids)
 
+    # =====================================================
+    # CAPACIDAD MÁXIMA (SOLO ADVERTENCIA, NO BLOQUEA)
+    # =====================================================
+    reglas = unidad.reglas or {}
+    capacidad_maxima = reglas.get("capacidad_maxima", None)
+
+    warning_capacidad = None
+    if capacidad_maxima is not None:
+        try:
+            capacidad_maxima = int(capacidad_maxima)
+            actuales = UnidadMembresia.objects.filter(unidad=unidad, activo=True).count()
+            proyectado = actuales + len(clean_ids)
+
+            if actuales > capacidad_maxima:
+                warning_capacidad = (
+                    f"Advertencia: la unidad ya está por encima de su capacidad máxima "
+                    f"({actuales}/{capacidad_maxima})."
+                )
+            elif proyectado > capacidad_maxima:
+                warning_capacidad = (
+                    f"Advertencia: con esta asignación superarás la capacidad máxima "
+                    f"({proyectado}/{capacidad_maxima})."
+                )
+        except Exception:
+            warning_capacidad = None
+
     creados = 0
     reactivados = 0
     ya_existian = 0
 
-    # Para no reventar si viene algo raro
     tipo = getattr(rol, "tipo", None)
 
     # ------------------------------------------------------------
@@ -609,7 +681,6 @@ def asignacion_aplicar(request):
     # ------------------------------------------------------------
     if tipo == RolUnidad.TIPO_LIDERAZGO:
         for m in miembros:
-            # A) Crear/activar membresía si no existe (regla tuya)
             memb, created_memb = UnidadMembresia.objects.get_or_create(
                 unidad=unidad,
                 miembo_fk=m,
@@ -620,14 +691,14 @@ def asignacion_aplicar(request):
                 memb.save(update_fields=["activo"])
                 reactivados += 1
 
-            # B) Cargo vigente para (unidad, rol, miembro)
+            # ✅ OJO: en tu modelo el FK se llama miembo_fk, NO miembro
             cargo, created_cargo = UnidadCargo.objects.get_or_create(
                 unidad=unidad,
                 rol=rol,
-                miembro=m,  # AJUSTA este nombre de FK si en tu modelo se llama distinto
+                miembo_fk=m,
                 defaults={
                     "vigente": True,
-                    "fecha_inicio": timezone.now().date() if hasattr(timezone.now(), "date") else timezone.now()
+                    "fecha_inicio": timezone.now().date()
                 }
             )
 
@@ -636,10 +707,9 @@ def asignacion_aplicar(request):
             else:
                 if not cargo.vigente:
                     cargo.vigente = True
-                    # si tienes fecha_fin, límpiala
                     if hasattr(cargo, "fecha_fin"):
                         cargo.fecha_fin = None
-                    cargo.save()
+                    cargo.save(update_fields=["vigente", "fecha_fin"] if hasattr(cargo, "fecha_fin") else ["vigente"])
                     reactivados += 1
                 else:
                     ya_existian += 1
@@ -650,6 +720,7 @@ def asignacion_aplicar(request):
             "creados": creados,
             "reactivados": reactivados,
             "ya_existian": ya_existian,
+            "warning": warning_capacidad,
         })
 
     # ------------------------------------------------------------
@@ -672,19 +743,14 @@ def asignacion_aplicar(request):
             else:
                 ya_existian += 1
 
-        # (Opcional) Si quieres guardar el rol también en membresía y tu modelo lo tiene:
-        # if hasattr(memb, "rol") and memb.rol_id != rol.id:
-        #     memb.rol = rol
-        #     memb.save(update_fields=["rol"])
-
     return JsonResponse({
         "ok": True,
         "modo": "membresia",
         "creados": creados,
         "reactivados": reactivados,
         "ya_existian": ya_existian,
+        "warning": warning_capacidad,
     })
-
 
 
 @login_required
@@ -763,3 +829,4 @@ def unidad_imagen_actualizar(request, pk):
         messages.warning(request, "No se seleccionó ninguna imagen.")
 
     return redirect("estructura_app:unidad_detalle", pk=unidad.pk)
+

@@ -14,19 +14,14 @@ Estructura / Unidades
         <a href="{% url 'estructura_app:unidad_crear' %}" class="btn-odoo-primary">
             Nuevo
         </a>
-        <button type="button" class="btn-odoo-secondary" onclick="window.print()">
-            Imprimir
-        </button>
-    </div>
-
-    <div class="cp-center">
-        <h2 class="cp-title">Unidades</h2>
+        <span class="cp-title">Unidades <span class="material-icons cp-title-icon">settings</span></span>
     </div>
 
     <div class="cp-right">
         <div class="cp-searchbar">
             <form method="get" style="display:flex; align-items:center; gap:0;">
                 <span class="material-icons search-icon">search</span>
+                <span class="material-icons filter-icon">filter_alt</span>
                 <input type="text" name="q" placeholder="Buscar..." value="{{ query }}" class="search-input">
             </form>
         </div>
@@ -40,18 +35,18 @@ Estructura / Unidades
         </div>
 
         <div class="cp-view-switcher">
-            <button class="view-btn active" data-view="list" title="Vista Lista">
+            <button class="view-btn" data-view="list" title="Vista Lista">
                 <span class="material-icons">format_list_bulleted</span>
             </button>
-            <button class="view-btn" data-view="kanban" title="Vista Kanban">
+            <button class="view-btn active" data-view="kanban" title="Vista Kanban">
                 <span class="material-icons">view_kanban</span>
             </button>
         </div>
     </div>
 </div>
 
-<!-- Vista Lista (por defecto) -->
-<div id="view-list" class="odoo-view active">
+<!-- Vista Lista -->
+<div id="view-list" class="odoo-view">
     <table class="odoo-table">
         <thead>
             <tr>
@@ -134,44 +129,57 @@ Estructura / Unidades
 </div>
 
 <!-- Vista Kanban -->
-<div id="view-kanban" class="odoo-view">
-    <div class="kanban-container">
+<div id="view-kanban" class="odoo-view active">
+    <div class="kanban-grid">
         {% if unidades %}
             {% for u in unidades %}
             <div class="kanban-card">
-                <div class="kanban-card-header">
-                    <div class="kanban-title">
-                        <a href="{% url 'estructura_app:unidad_detalle' u.pk %}">{{ u.nombre }}</a>
+                <div class="kanban-card-left">
+                    <div class="kanban-avatar">
+                        {% if u.imagen %}
+                            <img src="{{ u.imagen.url }}" alt="{{ u.nombre }}">
+                        {% else %}
+                            <span class="avatar-letter">{{ u.nombre|slice:":1"|upper }}</span>
+                        {% endif %}
                     </div>
-                    {% if u.activa %}
-                        <span class="badge badge-success">Activa</span>
-                    {% else %}
-                        <span class="badge badge-danger">Inactiva</span>
-                    {% endif %}
                 </div>
-                <div class="kanban-card-body">
-                    <div class="kanban-field">
-                        <span class="kanban-label">Código:</span>
-                        <span class="kanban-value">{{ u.codigo|default:"—" }}</span>
+                <div class="kanban-card-right">
+                    <a href="{% url 'estructura_app:unidad_detalle' u.pk %}" class="kanban-card-title">{{ u.nombre }}</a>
+                    <div class="kanban-card-info">
+                        <span class="material-icons">tag</span> {{ u.codigo|default:"—" }}
                     </div>
-                    <div class="kanban-field">
-                        <span class="kanban-label">Tipo:</span>
-                        <span class="kanban-value">{{ u.tipo.nombre|default:"—" }}</span>
+                    <div class="kanban-card-info">
+                        <span class="material-icons">category</span> {{ u.tipo.nombre|default:"—" }}
                     </div>
-                    {% if u.padre %}
-                    <div class="kanban-field">
-                        <span class="kanban-label">Padre:</span>
-                        <span class="kanban-value">{{ u.padre.nombre }}</span>
+                    <div class="kanban-card-info">
+                        <span class="material-icons">folder</span> {{ u.categoria|default:"—" }}
                     </div>
-                    {% endif %}
+                    <div class="kanban-card-info">
+                        <span class="material-icons">account_tree</span> {{ u.padre.nombre|default:"—" }}
+                    </div>
                 </div>
                 <div class="kanban-card-footer">
-                    <a href="{% url 'estructura_app:unidad_editar' u.pk %}" class="kanban-action">
-                        <span class="material-icons">edit</span> Editar
-                    </a>
-                    <a href="{% url 'estructura_app:asignacion_unidad' %}?unidad={{ u.pk }}" class="kanban-action">
-                        <span class="material-icons">group_add</span> Asignar
-                    </a>
+                    <div class="kanban-footer-left">
+                        <span class="kanban-badge">
+                            <span class="material-icons">people</span> {{ u.total_miembros }}
+                        </span>
+                        {% if u.activa %}
+                            <span class="badge badge-success">Activa</span>
+                        {% else %}
+                            <span class="badge badge-danger">Inactiva</span>
+                        {% endif %}
+                    </div>
+                    <div class="kanban-footer-right">
+                        <a href="{% url 'estructura_app:unidad_editar' u.pk %}" class="kanban-action" title="Editar">
+                            <span class="material-icons">edit</span>
+                        </a>
+                        <a href="{% url 'estructura_app:asignacion_unidad' %}?unidad={{ u.pk }}" class="kanban-action" title="Asignar personas">
+                            <span class="material-icons">group_add</span>
+                        </a>
+                        <span class="kanban-clock">
+                            <span class="material-icons">schedule</span>
+                        </span>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -197,22 +205,21 @@ Estructura / Unidades
 .cp-left {
     display: flex;
     align-items: center;
-    gap: 8px;
-}
-
-.cp-center {
-    flex: 1;
-    min-width: 0;
+    gap: 12px;
 }
 
 .cp-title {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 500;
     color: #212529;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cp-title-icon {
+    font-size: 16px;
+    color: #6c757d;
 }
 
 .cp-right {
@@ -242,21 +249,6 @@ Estructura / Unidades
     color: #fff;
 }
 
-.btn-odoo-secondary {
-    background: #fff;
-    color: #212529;
-    border: 1px solid #ced4da;
-    padding: 6px 16px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 400;
-    cursor: pointer;
-}
-
-.btn-odoo-secondary:hover {
-    background: #f8f9fa;
-}
-
 /* Barra de búsqueda */
 .cp-searchbar {
     position: relative;
@@ -272,12 +264,20 @@ Estructura / Unidades
     pointer-events: none;
 }
 
+.filter-icon {
+    position: absolute;
+    left: 34px;
+    font-size: 18px;
+    color: #714B67;
+    pointer-events: none;
+}
+
 .search-input {
-    padding: 6px 12px 6px 36px;
+    padding: 6px 12px 6px 60px;
     border: 1px solid #ced4da;
     border-radius: 4px;
     font-size: 13px;
-    width: 200px;
+    width: 220px;
     background: #fff;
 }
 
@@ -337,6 +337,8 @@ Estructura / Unidades
     cursor: pointer;
     color: #6c757d;
     border-right: 1px solid #ced4da;
+    display: flex;
+    align-items: center;
 }
 
 .view-btn:last-child {
@@ -474,90 +476,144 @@ Estructura / Unidades
     color: #721c24;
 }
 
-/* ========== Vista Kanban ========== */
-.kanban-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+/* ========== Vista Kanban Estilo Odoo ========== */
+.kanban-grid {
+    display: flex;
+    flex-wrap: wrap;
     gap: 16px;
     padding: 16px;
+    background: #f0f0f0;
+    min-height: calc(100vh - 150px);
 }
 
 .kanban-card {
     background: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    width: 380px;
+    height: 180px;
+    display: flex;
+    flex-wrap: wrap;
+    position: relative;
+    transition: box-shadow 0.15s ease;
+    flex-shrink: 0;
 }
 
 .kanban-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-.kanban-card-header {
+.kanban-card-left {
+    width: 90px;
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    padding: 12px 16px;
-    border-bottom: 1px solid #f1f3f5;
-    background: #fafbfc;
+    justify-content: center;
+    padding: 16px 0 16px 16px;
 }
 
-.kanban-title {
-    font-weight: 600;
-    font-size: 14px;
-}
-
-.kanban-title a {
-    color: #212529;
-    text-decoration: none;
-}
-
-.kanban-title a:hover {
-    color: #714B67;
-}
-
-.kanban-card-body {
-    padding: 12px 16px;
-}
-
-.kanban-field {
+.kanban-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     display: flex;
-    gap: 8px;
-    margin-bottom: 6px;
-    font-size: 13px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
-.kanban-field:last-child {
-    margin-bottom: 0;
+.kanban-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
-.kanban-label {
-    color: #6c757d;
-    min-width: 60px;
+.avatar-letter {
+    font-size: 32px;
+    font-weight: 600;
+    color: #fff;
+    text-transform: uppercase;
 }
 
-.kanban-value {
+.kanban-card-right {
+    flex: 1;
+    padding: 14px 16px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    overflow: hidden;
+}
+
+.kanban-card-title {
+    font-size: 14px;
+    font-weight: 600;
     color: #212529;
+    margin-bottom: 2px;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kanban-card-title:hover {
+    color: #714B67;
+    text-decoration: underline;
+}
+
+.kanban-card-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kanban-card-info .material-icons {
+    font-size: 14px;
+    color: #888;
+    flex-shrink: 0;
 }
 
 .kanban-card-footer {
+    width: 100%;
     display: flex;
-    gap: 8px;
-    padding: 10px 16px;
-    border-top: 1px solid #f1f3f5;
-    background: #fafbfc;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-top: 1px solid #f0f0f0;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    background: #fff;
+    border-radius: 0 0 4px 4px;
+}
+
+.kanban-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.kanban-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .kanban-action {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 12px;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
     color: #6c757d;
     text-decoration: none;
-    padding: 4px 8px;
-    border-radius: 4px;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
 .kanban-action:hover {
@@ -566,11 +622,34 @@ Estructura / Unidades
 }
 
 .kanban-action .material-icons {
+    font-size: 18px;
+}
+
+.kanban-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #555;
+}
+
+.kanban-badge .material-icons {
     font-size: 16px;
+    color: #888;
+}
+
+.kanban-clock {
+    display: inline-flex;
+    align-items: center;
+}
+
+.kanban-clock .material-icons {
+    font-size: 18px;
+    color: #aaa;
 }
 
 .kanban-empty {
-    grid-column: 1 / -1;
+    width: 100%;
     text-align: center;
     padding: 60px 20px;
     color: #6c757d;
@@ -584,7 +663,7 @@ Estructura / Unidades
         gap: 12px;
     }
 
-    .cp-left, .cp-center, .cp-right {
+    .cp-left, .cp-right {
         justify-content: center;
     }
 
@@ -595,6 +674,10 @@ Estructura / Unidades
     .search-input {
         width: 100%;
     }
+
+    .kanban-card {
+        width: 100%;
+    }
 }
 
 @media print {
@@ -602,6 +685,7 @@ Estructura / Unidades
         display: none;
     }
 }
+
 /* Unidad cell (imagen + nombre) */
 .unit-cell{
     display:flex;
