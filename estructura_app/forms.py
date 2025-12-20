@@ -18,6 +18,7 @@ class UnidadForm(forms.ModelForm):
             "codigo",
             "orden",
             "notas",
+            "imagen",
         ]
         widgets = {
             "nombre": forms.TextInput(attrs={

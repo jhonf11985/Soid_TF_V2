@@ -94,6 +94,8 @@ class Unidad(models.Model):
     fecha_cierre = models.DateField(null=True, blank=True)
     motivo_cierre = models.CharField(max_length=180, blank=True, default="")
     notas = models.TextField(blank=True)
+    imagen = models.ImageField(upload_to="unidades/", null=True, blank=True)
+
 
     # ✅ RANGO DE EDAD (filtro estructural de la unidad)
     edad_min = models.PositiveIntegerField(null=True, blank=True)

@@ -77,7 +77,7 @@ def dashboard(request):
 @login_required
 def unidad_crear(request):
     if request.method == "POST":
-        form = UnidadForm(request.POST)
+        form = UnidadForm(request.POST, request.FILES)
         if form.is_valid():
             unidad = form.save(commit=False)
             unidad.edad_min = _to_int_from_post(request.POST, "edad_min")
@@ -107,18 +107,23 @@ def unidad_crear(request):
 def unidad_editar(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
-    # 🔒 Regla clave
-    if unidad.esta_bloqueada:
-        messages.error(
-            request,
-            "Esta unidad ya tiene miembros o cargos asignados. "
-            "No se pueden modificar sus datos. "
-            "Solo puedes gestionar miembros desde Asignación."
-        )
-        return redirect("estructura_app:asignacion_unidad")
+    bloqueada = unidad.esta_bloqueada
 
     if request.method == "POST":
-        form = UnidadForm(request.POST, instance=unidad)
+
+        # 🔒 SI ESTÁ BLOQUEADA → SOLO GUARDAMOS IMAGEN
+        if bloqueada:
+            imagen = request.FILES.get("imagen")
+            if imagen:
+                unidad.imagen = imagen
+                unidad.save(update_fields=["imagen", "actualizado_en"])
+                messages.success(request, "Imagen actualizada correctamente.")
+            else:
+                messages.warning(request, "No se seleccionó ninguna imagen.")
+            return redirect("estructura_app:unidad_editar", pk=unidad.pk)
+
+        # 🔓 SI NO ESTÁ BLOQUEADA → EDICIÓN NORMAL
+        form = UnidadForm(request.POST, request.FILES, instance=unidad)
         if form.is_valid():
             unidad_obj = form.save(commit=False)
             unidad_obj.edad_min = _to_int_from_post(request.POST, "edad_min")
@@ -135,26 +140,52 @@ def unidad_editar(request, pk):
     else:
         form = UnidadForm(instance=unidad)
 
+    # ⚠️ MENSAJE CUANDO ESTÁ BLOQUEADA
+    if bloqueada:
+        messages.warning(
+            request,
+            "Esta unidad ya tiene miembros o cargos asignados. "
+            "Solo puedes cambiar la imagen."
+        )
+
     return render(request, "estructura_app/unidad_form.html", {
         "form": form,
         "modo": "editar",
         "unidad": unidad,
-        "bloqueada": False,  # aquí siempre será False
+        "bloqueada": bloqueada,
     })
+
 
 
 @login_required
 def unidad_listado(request):
     query = request.GET.get("q", "").strip()
 
-    unidades = Unidad.objects.all().order_by("nombre")
+    unidades = (
+        Unidad.objects
+        .annotate(
+            total_miembros=Count(
+                "membresias",
+                filter=Q(membresias__activo=True),
+                distinct=True
+            )
+        )
+        .order_by("nombre")
+    )
+
     if query:
-        unidades = unidades.filter(Q(nombre__icontains=query) | Q(codigo__icontains=query))
+        unidades = unidades.filter(
+            Q(nombre__icontains=query) | Q(codigo__icontains=query)
+        )
 
     return render(request, "estructura_app/unidad_listado.html", {
         "unidades": unidades,
         "query": query,
     })
+
+
+
+
 @login_required
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -718,3 +749,17 @@ def asignacion_remover(request):
     removidos = qs.update(activo=False)
 
     return JsonResponse({"ok": True, "modo": "membresia", "removidos": removidos})
+
+@login_required
+@require_POST
+def unidad_imagen_actualizar(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    if "imagen" in request.FILES:
+        unidad.imagen = request.FILES["imagen"]
+        unidad.save(update_fields=["imagen", "actualizado_en"])
+        messages.success(request, "Imagen actualizada correctamente.")
+    else:
+        messages.warning(request, "No se seleccionó ninguna imagen.")
+
+    return redirect("estructura_app:unidad_detalle", pk=unidad.pk)
