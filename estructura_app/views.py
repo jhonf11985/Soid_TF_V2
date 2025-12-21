@@ -467,7 +467,6 @@ def _cumple_rango_edad(miembro, unidad):
 
     return True
 
-
 @login_required
 def asignacion_unidad_contexto(request):
     unidad_id = (request.GET.get("unidad_id") or "").strip()
@@ -481,7 +480,6 @@ def asignacion_unidad_contexto(request):
 
     # -----------------------------------------------------
     # Detectar si el rol seleccionado es de LIDERAZGO
-    # (IMPORTANTE: liderazgo SIEMPRE requiere estado ACTIVO)
     # -----------------------------------------------------
     rol = None
     rol_es_liderazgo = False
@@ -495,75 +493,98 @@ def asignacion_unidad_contexto(request):
 
     solo_activos = bool(reglas.get("solo_activos", False))
 
+    # =====================================================
+    # 1) Membresías actuales (para "miembros" normales)
+    # =====================================================
     membresias_actuales = (
         UnidadMembresia.objects
         .filter(unidad=unidad, activo=True)
         .select_related("rol")
     )
-
-    miembros_actuales_ids = set(membresias_actuales.values_list("miembo_fk_id", flat=True))
-
-    rol_por_miembro = {
+    miembros_membresia_ids = set(membresias_actuales.values_list("miembo_fk_id", flat=True))
+    rol_membresia_por_miembro = {
         m.miembo_fk_id: (m.rol.nombre if m.rol else "")
         for m in membresias_actuales
     }
 
-    # ✅ IMPORTANTE: no filtramos por Miembro.activo=True
-    # porque tu participación depende del ESTADO (estado_miembro)
+    # =====================================================
+    # 2) Cargos actuales (para liderazgo)
+    # =====================================================
+    cargos_actuales = (
+        UnidadCargo.objects
+        .filter(unidad=unidad, vigente=True)
+        .select_related("rol")
+    )
+    miembros_cargo_ids = set(cargos_actuales.values_list("miembo_fk_id", flat=True))
+    rol_cargo_por_miembro = {
+        c.miembo_fk_id: (c.rol.nombre if c.rol else "")
+        for c in cargos_actuales
+    }
+
+    # ✅ Para capacidad y "miembros actuales" de la unidad
+    # (esto debe basarse en la membresía, no en los cargos)
+    miembros_actuales_count = len(miembros_membresia_ids)
+
+    # =====================================================
+    # Query base
+    # =====================================================
     qs = Miembro.objects.all()
 
     # =====================================================
     # REGLA CRÍTICA:
-    # - Si la unidad es "solo_activos" -> solo activos
-    # - Si el rol es LIDERAZGO -> solo activos SIEMPRE
+    # - Si unidad es solo_activos -> solo activos
+    # - Si rol seleccionado es liderazgo -> solo activos SIEMPRE
     # =====================================================
     if solo_activos or rol_es_liderazgo:
         qs = qs.filter(estado_miembro__iexact="activo")
     else:
-        # ✅ activos SIEMPRE incluidos
         estados_permitidos = ["activo"]
 
         if reglas.get("permite_observacion"):
             estados_permitidos.append("observacion")
-
         if reglas.get("permite_pasivos"):
             estados_permitidos.append("pasivo")
-
         if reglas.get("permite_disciplina"):
             estados_permitidos.append("disciplina")
-
         if reglas.get("permite_catecumenos"):
             estados_permitidos.append("catecumeno")
 
         q = Q(estado_miembro__in=estados_permitidos)
 
-        # Nuevos creyentes (si lo usas como extra aparte del estado)
         if reglas.get("permite_nuevos"):
             q |= Q(nuevo_creyente=True)
 
-        # Menores: tú dijiste que "estado vacío" representa menores
         if reglas.get("permite_menores"):
             q |= Q(estado_miembro__isnull=True) | Q(estado_miembro="")
             q |= Q(categoria_edad__in=["infante", "nino", "adolescente"])
 
-        # Nunca descarriados (si ese estado existe)
         q &= ~Q(estado_miembro__iexact="descarriado")
-
         qs = qs.filter(q)
 
     qs = qs.order_by("nombres", "apellidos")
 
+    # =====================================================
+    # Construir respuesta
+    # =====================================================
     personas = []
     for p in qs:
-        # ✅ FILTRO #1: rango de edad (antes de devolverlo a la lista)
+        # Rango de edad de la unidad (si aplica)
         if not _cumple_rango_edad(p, unidad):
             continue
-        # ✅ Si es liderazgo, aplicar rango de edad específico de liderazgo (reglas)
+
+        # Rango de edad específico de liderazgo (si aplica)
         if rol_es_liderazgo and not _cumple_rango_edad_liderazgo(p, unidad, reglas):
             continue
 
-        # Estado slug para UI (tu lógica)
         estado_slug = (p.estado_miembro or "").strip().lower() or "vacio"
+
+        # ✅ "Ya en unidad" y "Rol en unidad" según el tipo de rol seleccionado
+        if rol_es_liderazgo:
+            ya_en_unidad = (p.id in miembros_cargo_ids)
+            rol_en_unidad = rol_cargo_por_miembro.get(p.id, "")
+        else:
+            ya_en_unidad = (p.id in miembros_membresia_ids)
+            rol_en_unidad = rol_membresia_por_miembro.get(p.id, "")
 
         personas.append({
             "id": p.id,
@@ -573,16 +594,14 @@ def asignacion_unidad_contexto(request):
             "estado": p.get_estado_miembro_display() if p.estado_miembro else "",
             "estado_slug": estado_slug,
             "categoria": p.get_categoria_edad_display() if p.categoria_edad else "",
-            "ya_en_unidad": p.id in miembros_actuales_ids,
-            "rol_en_unidad": rol_por_miembro.get(p.id, ""),
+            "ya_en_unidad": ya_en_unidad,
+            "rol_en_unidad": rol_en_unidad,
         })
 
     # =====================================================
     # CAPACIDAD MÁXIMA (SOLO ADVERTENCIA, NO BLOQUEA)
     # =====================================================
     capacidad_maxima = (reglas or {}).get("capacidad_maxima", None)
-    miembros_actuales_count = len(miembros_actuales_ids)
-
     capacidad_excedida = False
     capacidad_restante = None
     capacidad_ratio = None
@@ -622,8 +641,6 @@ def asignacion_unidad_contexto(request):
                 "permite_menores": reglas.get("permite_menores", False),
                 "permite_liderazgo": reglas.get("permite_liderazgo", True),
                 "limite_lideres": reglas.get("limite_lideres", None),
-
-                # ✅ extra para el frontend (por si quieres mostrar algo)
                 "rol_es_liderazgo": rol_es_liderazgo,
             }
         },
