@@ -586,17 +586,42 @@ def asignacion_unidad_contexto(request):
             ya_en_unidad = (p.id in miembros_membresia_ids)
             rol_en_unidad = rol_membresia_por_miembro.get(p.id, "")
 
+        # --- Estado visual (SIN tocar reglas) ---
+        es_nuevo = bool(getattr(p, "nuevo_creyente", False))
+
+        # Menor de edad según categoría o edad mínima oficial
+        es_menor = False
+        try:
+            # Opción A: por categoría ya calculada
+            if p.categoria_edad in ("infante", "nino", "adolescente"):
+                es_menor = True
+        except Exception:
+            es_menor = False
+
+        if es_nuevo:
+            estado_slug = "nuevo"
+            estado_label = "Nuevo creyente"
+
+        elif es_menor:
+            estado_slug = "menor"
+            estado_label = "Menor de edad"
+
+        else:
+            estado_slug = (p.estado_miembro or "").strip().lower() or "vacio"
+            estado_label = p.get_estado_miembro_display() if p.estado_miembro else ""
+
         personas.append({
             "id": p.id,
             "nombre": f"{p.nombres} {p.apellidos}",
             "codigo": p.codigo_miembro or "",
             "edad": getattr(p, "edad", None),
-            "estado": p.get_estado_miembro_display() if p.estado_miembro else "",
+            "estado": estado_label,
             "estado_slug": estado_slug,
             "categoria": p.get_categoria_edad_display() if p.categoria_edad else "",
             "ya_en_unidad": ya_en_unidad,
             "rol_en_unidad": rol_en_unidad,
         })
+
 
     # =====================================================
     # CAPACIDAD MÁXIMA (SOLO ADVERTENCIA, NO BLOQUEA)

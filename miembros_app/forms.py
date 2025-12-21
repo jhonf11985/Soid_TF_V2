@@ -482,6 +482,8 @@ class NuevoCreyenteForm(forms.ModelForm):
             "notas",
         ]
 
+        
+
         widgets = {
             "fecha_conversion": forms.DateInput(attrs={"type": "date"}),
             "fecha_nacimiento": forms.DateInput(attrs={"type": "date"}),
