@@ -89,7 +89,7 @@
                             <option value="">Selecciona un rol...</option>
                             {% if roles %}
                                 {% for rol in roles %}
-                                    <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                                    <option value="{{ rol.id }}" data-tipo="{{ rol.tipo }}">{{ rol.nombre }}</option>
                                 {% endfor %}
                             {% else %}
                                 <option value="" disabled>No hay roles disponibles</option>
@@ -256,7 +256,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const enabled = (selectUnidad.value && selectRol.value && n > 0);
         if (btnAsignar) btnAsignar.disabled = !enabled;
         if (btnRemover) btnRemover.disabled = !enabled;
+
+        validarContextoLiderazgoUI();
     }
+
 
     function clearSelection() {
         selectedIds.clear();
@@ -524,6 +527,20 @@ document.addEventListener('DOMContentLoaded', () => {
             infoMiembros.textContent = data2.unidad?.miembros_actuales ?? 0;
 
             const personas = data2.personas || [];
+            // ─── Contexto de liderazgo ───────────────────────────
+            const reglasUnidad = data2.unidad?.reglas_aplicadas || {};
+            const permiteLiderazgo = !!reglasUnidad.permite_liderazgo;
+
+            // Tipo de rol seleccionado
+            const rolOption = selectRol.options[selectRol.selectedIndex];
+            const rolTipo = rolOption?.dataset?.tipo || null;
+
+            // Guardamos en estado global
+            window.__contextoAsignacion = {
+                permiteLiderazgo,
+                rolTipo,
+            };
+
             tbody.innerHTML = personas.map(rowHTML).join("");
 
             clearSelection();
@@ -544,7 +561,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             applyFilters();
+            validarContextoLiderazgoUI();
             attachSelectionHandlers();
+
 
         } finally {
             btnGuardar.disabled = false;
@@ -552,6 +571,38 @@ document.addEventListener('DOMContentLoaded', () => {
             updateGuardarState();
         }
     }
+    function validarContextoLiderazgoUI() {
+        const ctx = window.__contextoAsignacion;
+        if (!ctx) return true;
+
+        const { permiteLiderazgo, rolTipo } = ctx;
+
+        // Limpieza visual por defecto
+        selectRol.classList.remove('au-input-error');
+
+        // Si el rol NO es liderazgo, no hacemos nada especial
+        if (rolTipo !== 'LIDERAZGO') {
+            // No fuerces aquí: updateSelectedUI ya decide por selectedIds
+            return true;
+        }
+
+        // Rol es liderazgo pero la unidad NO lo permite
+        if (!permiteLiderazgo) {
+            selectRol.classList.add('au-input-error');
+
+            if (btnAsignar) btnAsignar.disabled = true;
+            if (btnRemover) btnRemover.disabled = true;
+
+            renderEmpty(
+                "Esta unidad no permite liderazgo. Activa la opción «Permite liderazgo» en la configuración de la unidad."
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+
 
     // ─── API: Asignar ──────────────────────────────────────────────────────
     async function aplicarAsignacion() {
@@ -1307,6 +1358,11 @@ document.addEventListener('DOMContentLoaded', () => {
         align-self: flex-end;
     }
 }
+.au-input-error {
+    border-color: #dc3545 !important;
+    background: #fff5f5 !important;
+}
+
 </style>
 
 {% endblock %}
