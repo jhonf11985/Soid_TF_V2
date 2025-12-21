@@ -168,10 +168,19 @@ def unidad_listado(request):
                 "membresias",
                 filter=Q(membresias__activo=True),
                 distinct=True
+            ),
+            total_lideres=Count(
+                "cargos",
+                filter=Q(
+                    cargos__vigente=True,
+                    cargos__rol__tipo=RolUnidad.TIPO_LIDERAZGO
+                ),
+                distinct=True
             )
         )
         .order_by("nombre")
     )
+
 
     if query:
         unidades = unidades.filter(
@@ -872,23 +881,13 @@ def asignacion_aplicar(request):
                              f"Actualmente hay {actuales_lideres} líder(es) vigente(s) y estás intentando añadir {nuevos} nuevo(s)."
                 }, status=400)
 
-    # ------------------------------------------------------------
-    # 1) ROLES DE LIDERAZGO => UnidadCargo + asegurar membresía
-    # ------------------------------------------------------------
 
+
+    # ------------------------------------------------------------
+    # 1) ROLES DE LIDERAZGO => SOLO UnidadCargo (NO crea membresía)
+    # ------------------------------------------------------------
     if tipo == RolUnidad.TIPO_LIDERAZGO:
         for m in miembros:
-            memb, created_memb = UnidadMembresia.objects.get_or_create(
-                unidad=unidad,
-                miembo_fk=m,
-                defaults={"activo": True}
-            )
-            if not created_memb and not memb.activo:
-                memb.activo = True
-                memb.save(update_fields=["activo"])
-                reactivados += 1
-
-            # ✅ OJO: en tu modelo el FK se llama miembo_fk, NO miembro
             cargo, created_cargo = UnidadCargo.objects.get_or_create(
                 unidad=unidad,
                 rol=rol,
@@ -906,7 +905,9 @@ def asignacion_aplicar(request):
                     cargo.vigente = True
                     if hasattr(cargo, "fecha_fin"):
                         cargo.fecha_fin = None
-                    cargo.save(update_fields=["vigente", "fecha_fin"] if hasattr(cargo, "fecha_fin") else ["vigente"])
+                        cargo.save(update_fields=["vigente", "fecha_fin"])
+                    else:
+                        cargo.save(update_fields=["vigente"])
                     reactivados += 1
                 else:
                     ya_existian += 1
@@ -979,15 +980,9 @@ def asignacion_aplicar(request):
         "warning": warning_capacidad,
     })
 
-
 @login_required
 @require_POST
 def asignacion_remover(request):
-    """
-    Recibe: unidad_id, rol_id (opcional), miembro_ids[]
-    - Si rol es LIDERAZGO: quita el cargo (vigente=False) para ese rol y unidad.
-    - Si rol NO es liderazgo o no viene rol: quita membresía (activo=False) en esa unidad.
-    """
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except Exception:
@@ -997,13 +992,14 @@ def asignacion_remover(request):
     rol_id = str(payload.get("rol_id", "")).strip()
     miembro_ids = payload.get("miembro_ids") or []
 
-    if not unidad_id:
-        return JsonResponse({"ok": False, "error": "Falta unidad"}, status=400)
+    if not unidad_id or not rol_id:
+        return JsonResponse({"ok": False, "error": "Falta unidad o rol"}, status=400)
 
     if not isinstance(miembro_ids, list) or not miembro_ids:
         return JsonResponse({"ok": False, "error": "No hay miembros seleccionados"}, status=400)
 
     unidad = get_object_or_404(Unidad, pk=unidad_id)
+    rol = get_object_or_404(RolUnidad, pk=rol_id)
 
     clean_ids = []
     for x in miembro_ids:
@@ -1015,33 +1011,49 @@ def asignacion_remover(request):
     if not clean_ids:
         return JsonResponse({"ok": False, "error": "Selección inválida"}, status=400)
 
-    # Si viene rol, lo validamos
-    rol = None
-    if rol_id:
-        rol = get_object_or_404(RolUnidad, pk=rol_id)
-
     removidos = 0
+    tipo = getattr(rol, "tipo", None)
 
-    # 1) Si es liderazgo => desactivar cargo (vigente=False)
-    if rol and rol.tipo == RolUnidad.TIPO_LIDERAZGO:
-        qs = UnidadCargo.objects.filter(
+    # ─────────────────────────────────────────────
+    # 🔴 1) LIDERAZGO => desactivar UnidadCargo
+    # ─────────────────────────────────────────────
+    if tipo == RolUnidad.TIPO_LIDERAZGO:
+        cargos = UnidadCargo.objects.filter(
             unidad=unidad,
-            rol=rol,
             miembo_fk_id__in=clean_ids,
-            vigente=True
+            vigente=True,
+            rol__tipo=RolUnidad.TIPO_LIDERAZGO,  # importante: por tipo
         )
-        removidos = qs.update(vigente=False)
+
+        for c in cargos:
+            c.vigente = False
+            if hasattr(c, "fecha_fin"):
+                c.fecha_fin = timezone.now().date()
+                c.save(update_fields=["vigente", "fecha_fin"])
+            else:
+                c.save(update_fields=["vigente"])
+            removidos += 1
+
+        # ✅ NO tocamos la membresía aquí (solo quitamos liderazgo)
         return JsonResponse({"ok": True, "modo": "liderazgo", "removidos": removidos})
 
-    # 2) Si NO liderazgo => desactivar membresía (activo=False)
-    qs = UnidadMembresia.objects.filter(
+    # ─────────────────────────────────────────────
+    # 🟢 2) PARTICIPACIÓN / TRABAJO => desactivar UnidadMembresia
+    # ✅ NO filtrar por rol, porque puede ser NULL o distinto
+    # ─────────────────────────────────────────────
+    membresias = UnidadMembresia.objects.filter(
         unidad=unidad,
         miembo_fk_id__in=clean_ids,
         activo=True
     )
-    removidos = qs.update(activo=False)
+
+    for m in membresias:
+        m.activo = False
+        m.save(update_fields=["activo"])
+        removidos += 1
 
     return JsonResponse({"ok": True, "modo": "membresia", "removidos": removidos})
+
 
 @login_required
 @require_POST
