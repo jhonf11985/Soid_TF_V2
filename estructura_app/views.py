@@ -528,11 +528,12 @@ def asignacion_unidad_contexto(request):
     # =====================================================
     # Query base
     # =====================================================
-    qs = Miembro.objects.all()
+    # ✅ CRÍTICO: no traer nunca deshabilitados / que ya no están en la iglesia
+    qs = Miembro.objects.filter(activo=True)
 
     # =====================================================
     # REGLA CRÍTICA:
-    # - Si unidad es solo_activos -> solo activos
+    # - Si unidad es solo_activos -> solo activos (por estado pastoral)
     # - Si rol seleccionado es liderazgo -> solo activos SIEMPRE
     # =====================================================
     if solo_activos or rol_es_liderazgo:
@@ -551,14 +552,18 @@ def asignacion_unidad_contexto(request):
 
         q = Q(estado_miembro__in=estados_permitidos)
 
+        # ✅ Nuevos creyentes SOLO si booleano nuevo_creyente=True
         if reglas.get("permite_nuevos"):
             q |= Q(nuevo_creyente=True)
 
+        # ✅ “Menores / no bautizables” en tu lógica = SIN ESTADO
+        # (NO por categoria_edad, porque “adolescente” incluye 12–17 y te ensucia)
         if reglas.get("permite_menores"):
             q |= Q(estado_miembro__isnull=True) | Q(estado_miembro="")
-            q |= Q(categoria_edad__in=["infante", "nino", "adolescente"])
 
+        # Nunca descarriados
         q &= ~Q(estado_miembro__iexact="descarriado")
+
         qs = qs.filter(q)
 
     qs = qs.order_by("nombres", "apellidos")
@@ -576,7 +581,27 @@ def asignacion_unidad_contexto(request):
         if rol_es_liderazgo and not _cumple_rango_edad_liderazgo(p, unidad, reglas):
             continue
 
-        estado_slug = (p.estado_miembro or "").strip().lower() or "vacio"
+        # ✅ Estado visual (SIN cambiar tus datos)
+        # Prioridad:
+        # 1) Si tiene estado pastoral -> se muestra tal cual (Activo/Pasivo/etc.)
+        # 2) Si no tiene estado:
+        #    - si nuevo_creyente=True -> "Nuevo creyente"
+        #    - si no -> "No puede ser bautizado" (tu concepto real)
+        estado_raw = (p.estado_miembro or "").strip()
+        es_nuevo = bool(getattr(p, "nuevo_creyente", False))
+
+        if estado_raw:
+            estado_slug = estado_raw.lower()
+            estado_label = p.get_estado_miembro_display()
+        else:
+            if es_nuevo:
+                estado_slug = "nuevo"
+                estado_label = "Nuevo creyente"
+            else:
+                # OJO: aquí es el caso "sin estado" pero NO nuevo => no bautizable por edad/regla
+                # Para no romper tu UI actual, usamos slug "menor" (ya existe en filtros/CSS)
+                estado_slug = "menor"
+                estado_label = "No puede ser bautizado"
 
         # ✅ "Ya en unidad" y "Rol en unidad" según el tipo de rol seleccionado
         if rol_es_liderazgo:
@@ -585,30 +610,6 @@ def asignacion_unidad_contexto(request):
         else:
             ya_en_unidad = (p.id in miembros_membresia_ids)
             rol_en_unidad = rol_membresia_por_miembro.get(p.id, "")
-
-        # --- Estado visual (SIN tocar reglas) ---
-        es_nuevo = bool(getattr(p, "nuevo_creyente", False))
-
-        # Menor de edad según categoría o edad mínima oficial
-        es_menor = False
-        try:
-            # Opción A: por categoría ya calculada
-            if p.categoria_edad in ("infante", "nino", "adolescente"):
-                es_menor = True
-        except Exception:
-            es_menor = False
-
-        if es_nuevo:
-            estado_slug = "nuevo"
-            estado_label = "Nuevo creyente"
-
-        elif es_menor:
-            estado_slug = "menor"
-            estado_label = "Menor de edad"
-
-        else:
-            estado_slug = (p.estado_miembro or "").strip().lower() or "vacio"
-            estado_label = p.get_estado_miembro_display() if p.estado_miembro else ""
 
         personas.append({
             "id": p.id,
@@ -621,7 +622,6 @@ def asignacion_unidad_contexto(request):
             "ya_en_unidad": ya_en_unidad,
             "rol_en_unidad": rol_en_unidad,
         })
-
 
     # =====================================================
     # CAPACIDAD MÁXIMA (SOLO ADVERTENCIA, NO BLOQUEA)

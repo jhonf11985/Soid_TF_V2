@@ -7,6 +7,7 @@ from django.core.validators import RegexValidator
 
 
 
+
 GENERO_CHOICES = [
     ("masculino", "Masculino"),
     ("femenino", "Femenino"),
@@ -199,6 +200,20 @@ class Miembro(models.Model):
         help_text="Categoría pastoral del miembro (Miembro, Líder, Servidor, etc.)",
     )
 
+    # Código interno de seguimiento para nuevos creyentes
+    numero_seguimiento = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        unique=True,
+    )
+
+    codigo_seguimiento = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        unique=True,
+)
+
     mentor = models.CharField(max_length=150, blank=True)
     lider_celula = models.CharField(max_length=150, blank=True)
 
@@ -301,30 +316,52 @@ class Miembro(models.Model):
         else:
             self.categoria_edad = "adulto_mayor"
 
-    def save(self, *args, **kwargs):
-        """
-        Genera número_miembro y codigo_miembro (TF-0001, TF-0002, etc.)
-        respetando el prefijo configurado.
-        """
-        from django.db.models import Max
-        from core.utils_config import get_config
 
-        # 1) Mantener la lógica de categoría de edad
+
+    def save(self, *args, **kwargs):
+
+        # Mantén tu lógica existente (edad, etc.)
         self.actualizar_categoria_edad()
 
-        # 2) Obtener configuración y prefijo
-        cfg = get_config()
-        prefijo = getattr(cfg, "codigo_miembro_prefijo", "TF-") or "TF-"
+        # ======================================
+        # 1) NUEVOS CREYENTES → NC-XXXX
+        # ======================================
+        if self.nuevo_creyente:
 
-        # 3) Asignar número único autoincremental si aún no existe
-        if self.numero_miembro is None:
-            ultimo = Miembro.objects.aggregate(Max("numero_miembro"))["numero_miembro__max"]
-            self.numero_miembro = (ultimo or 0) + 1
+            if self.numero_seguimiento is None:
+                ultimo = Miembro.objects.aggregate(
+                    Max("numero_seguimiento")
+                )["numero_seguimiento__max"] or 0
 
-        # 4) Generar el código final (TF-0001)
-        self.codigo_miembro = f"{prefijo}{self.numero_miembro:04d}"
+                self.numero_seguimiento = ultimo + 1
+                self.codigo_seguimiento = f"NC-{self.numero_seguimiento:04d}"
+
+            # Asegurar que NO tenga código oficial
+            self.numero_miembro = None
+            self.codigo_miembro = None
+
+        # ======================================
+        # 2) MIEMBRO OFICIAL → TF-XXXX
+        # ======================================
+        else:
+            cfg = get_config()
+            prefijo = getattr(cfg, "codigo_miembro_prefijo", "TF-") or "TF-"
+
+            if self.numero_miembro is None:
+                ultimo = Miembro.objects.aggregate(
+                    Max("numero_miembro")
+                )["numero_miembro__max"] or 0
+
+                self.numero_miembro = ultimo + 1
+                self.codigo_miembro = f"{prefijo}{self.numero_miembro:04d}"
+
+            # Limpiar seguimiento
+            self.numero_seguimiento = None
+            self.codigo_seguimiento = None
 
         super().save(*args, **kwargs)
+
+
 
     @property
     def es_miembro_oficial(self):

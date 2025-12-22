@@ -467,6 +467,14 @@ class NuevoCreyenteForm(forms.ModelForm):
     pensado para usarse rápido desde el móvil.
     """
 
+    def clean_fecha_nacimiento(self):
+        fecha = self.cleaned_data.get("fecha_nacimiento")
+        if not fecha:
+            raise forms.ValidationError(
+                "La fecha de nacimiento es obligatoria para registrar un nuevo creyente."
+            )
+        return fecha
+
     class Meta:
         model = Miembro
         fields = [
@@ -531,24 +539,21 @@ class NuevoCreyenteForm(forms.ModelForm):
     def save(self, commit=True):
         miembro = super().save(commit=False)
 
-        # Asegurar que lo vacío venga como None
+        # Fecha de conversión (si no viene, hoy)
         fecha_conv = self.cleaned_data.get("fecha_conversion")
+        miembro.fecha_conversion = fecha_conv or date.today()
 
-        # Si el usuario la dejó vacía → poner la fecha de hoy
-        if not fecha_conv:
-            miembro.fecha_conversion = date.today()
-        else:
-            miembro.fecha_conversion = fecha_conv
-
-        # Marcar como nuevo creyente
+        # 🔹 Marcar como nuevo creyente
         miembro.nuevo_creyente = True
 
-        # Nunca debe ser tratado como miembro oficial todavía
+        # 🔹 Reglas claras de nuevo creyente
         miembro.estado_miembro = ""
         miembro.bautizado_confirmado = False
-        miembro.fecha_bautismo = None
 
-        # Asegurar que quede activo en el sistema
+        # 🔹 Bautismo automático (HOY)
+        miembro.fecha_bautismo = date.today()
+
+        # 🔹 Asegurar activo
         if miembro.activo is None:
             miembro.activo = True
 
@@ -556,6 +561,7 @@ class NuevoCreyenteForm(forms.ModelForm):
             miembro.save()
 
         return miembro
+
 
 class MiembroRelacionForm(forms.ModelForm):
     """
