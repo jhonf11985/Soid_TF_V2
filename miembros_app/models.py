@@ -2,8 +2,8 @@ from datetime import date
 from django.db import models
 from core.utils_config import get_edad_minima_miembro_oficial
 from django.core.validators import RegexValidator
-
-
+from django.db.models import Max
+from core.models import ConfiguracionSistema
 
 
 
@@ -344,8 +344,10 @@ class Miembro(models.Model):
         # 2) MIEMBRO OFICIAL → TF-XXXX
         # ======================================
         else:
-            cfg = get_config()
-            prefijo = getattr(cfg, "codigo_miembro_prefijo", "TF-") or "TF-"
+
+            cfg = ConfiguracionSistema.load()
+            prefijo = cfg.codigo_miembro_prefijo or "TF-"
+
 
             if self.numero_miembro is None:
                 ultimo = Miembro.objects.aggregate(

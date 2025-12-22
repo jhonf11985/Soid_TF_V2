@@ -572,14 +572,18 @@ def asignacion_unidad_contexto(request):
     # Construir respuesta
     # =====================================================
     personas = []
+ 
     for p in qs:
-        # Rango de edad de la unidad (si aplica)
-        if not _cumple_rango_edad(p, unidad):
-            continue
 
-        # Rango de edad específico de liderazgo (si aplica)
-        if rol_es_liderazgo and not _cumple_rango_edad_liderazgo(p, unidad, reglas):
-            continue
+        # ✅ Si es liderazgo: NO aplicar rango edad_min/edad_max de la UNIDAD
+        # (para líderes manda el rango lider_edad_min / lider_edad_max)
+        if rol_es_liderazgo:
+            if not _cumple_rango_edad_liderazgo(p, reglas):
+                continue
+        else:
+            # Miembros normales sí usan el rango de la unidad
+            if not _cumple_rango_edad(p, unidad):
+                continue
 
         # ✅ Estado visual (SIN cambiar tus datos)
         # Prioridad:
@@ -708,8 +712,6 @@ def _to_int_from_post(post, name, default=None):
 @login_required
 @require_POST
 def asignacion_aplicar(request):
-
-    
     """
     Recibe: unidad_id, rol_id, miembro_ids[]
     Aplica la asignación según el tipo de rol:
@@ -718,7 +720,6 @@ def asignacion_aplicar(request):
 
     ✅ Capacidad máxima: SOLO ADVERTENCIA (no bloquea)
     """
-  
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except Exception:
@@ -776,19 +777,26 @@ def asignacion_aplicar(request):
         except Exception:
             warning_capacidad = None
 
-    creados = 0
-    reactivados = 0
-    ya_existian = 0
-
     tipo = getattr(rol, "tipo", None)
 
-    # =====================================================
-    # VALIDACIONES DE LIDERAZGO
-    # =====================================================
-    permite_liderazgo = bool(reglas.get("permite_liderazgo", False))
-    limite_lideres = reglas.get("limite_lideres", None)
+    def _to_int_or_none(v):
+        if v is None:
+            return None
+        try:
+            s = str(v).strip()
+            if s == "":
+                return None
+            return int(s)
+        except Exception:
+            return None
 
+    # =====================================================
+    # LIDERAZGO
+    # =====================================================
     if tipo == RolUnidad.TIPO_LIDERAZGO:
+        permite_liderazgo = bool(reglas.get("permite_liderazgo", False))
+        limite_lideres = _to_int_or_none(reglas.get("limite_lideres"))
+
         # 1) La unidad debe permitir liderazgo
         if not permite_liderazgo:
             return JsonResponse({
@@ -806,59 +814,49 @@ def asignacion_aplicar(request):
             extra = f" Ejemplos: {', '.join(ejemplos)}." if ejemplos else ""
             return JsonResponse({
                 "ok": False,
-                "error": f"No se puede asignar liderazgo: {no_activos.count()} seleccionado(s) no están en estado ACTIVO.{extra}"
+                "error": (
+                    f"No se puede asignar liderazgo: {no_activos.count()} seleccionado(s) no están en estado ACTIVO."
+                    f"{extra}"
+                )
             }, status=400)
 
-       
-        # 3) Regla extra: rango de edad específico para LIDERAZGO (si se definió en reglas)
-        lider_edad_min = reglas.get("lider_edad_min", None)
-        lider_edad_max = reglas.get("lider_edad_max", None)
+        # 3) ✅ EDAD DE LIDERAZGO (NO usar edad_min/edad_max de la UNIDAD)
+        lider_edad_min = _to_int_or_none(reglas.get("lider_edad_min"))
+        lider_edad_max = _to_int_or_none(reglas.get("lider_edad_max"))
 
-        # si ambos están vacíos => no limita
         if lider_edad_min is not None or lider_edad_max is not None:
-            fuera_rango = []
+            fuera_rango_lider = []
             for m in miembros:
                 edad_val = _get_edad_value(m)
-
-                # si no hay edad calculable, NO bloqueamos (puedes cambiarlo si quieres bloquear)
                 if edad_val is None:
+                    # Si no hay edad, NO bloqueamos por edad (puedes cambiar a bloquear si quieres)
                     continue
 
                 if lider_edad_min is not None and edad_val < lider_edad_min:
-                    fuera_rango.append(f"{m.nombres} {m.apellidos} ({edad_val})")
-                    continue
+                    fuera_rango_lider.append(f"{m.nombres} {m.apellidos} ({edad_val})")
+                elif lider_edad_max is not None and edad_val > lider_edad_max:
+                    fuera_rango_lider.append(f"{m.nombres} {m.apellidos} ({edad_val})")
 
-                if lider_edad_max is not None and edad_val > lider_edad_max:
-                    fuera_rango.append(f"{m.nombres} {m.apellidos} ({edad_val})")
-                    continue
-
-            if fuera_rango:
-                rango_txt = []
+            if fuera_rango_lider:
+                lm = []
                 if lider_edad_min is not None:
-                    rango_txt.append(f"min {lider_edad_min}")
+                    lm.append(f"mín {lider_edad_min}")
                 if lider_edad_max is not None:
-                    rango_txt.append(f"max {lider_edad_max}")
-                rango_txt = ", ".join(rango_txt) if rango_txt else "sin rango"
+                    lm.append(f"máx {lider_edad_max}")
+                lm_txt = ", ".join(lm) if lm else "sin rango"
 
-                ejemplos = ", ".join(fuera_rango[:5])
+                ejemplos = ", ".join(fuera_rango_lider[:5])
                 extra = f" Ejemplos: {ejemplos}." if ejemplos else ""
 
                 return JsonResponse({
                     "ok": False,
                     "error": (
                         "No se puede asignar liderazgo: hay seleccionado(s) fuera del rango de edad "
-                        f"definido para liderazgo ({rango_txt}).{extra}"
+                        f"permitido para liderazgo ({lm_txt}).{extra}"
                     )
                 }, status=400)
 
-
-        # 4) Límite de líderes (si viene vacío => None => sin límite)
-        if limite_lideres is not None:
-            try:
-                limite_lideres = int(limite_lideres)
-            except Exception:
-                limite_lideres = None
-
+        # 4) Límite máximo de líderes (si existe). Vacío => sin límite
         if limite_lideres is not None:
             actuales_lideres = UnidadCargo.objects.filter(
                 unidad=unidad,
@@ -887,56 +885,36 @@ def asignacion_aplicar(request):
                     )
                 }, status=400)
 
+        # 5) ASIGNAR / SOBREESCRIBIR liderazgo
+        creados = 0
+        reactivados = 0
+        ya_existian = 0
+        hoy = timezone.now().date()
 
-        # 3) Límite de líderes (si viene vacío => None => sin límite)
-        if limite_lideres is not None:
-            try:
-                limite_lideres = int(limite_lideres)
-            except Exception:
-                limite_lideres = None
-
-        if limite_lideres is not None:
-            # líderes vigentes actuales (cualquier rol tipo liderazgo)
-            actuales_lideres = UnidadCargo.objects.filter(
+        for m in miembros:
+            # Si ya tiene OTRO rol de liderazgo vigente en esta unidad, lo apagamos (sobreescritura)
+            otros = UnidadCargo.objects.filter(
                 unidad=unidad,
+                miembo_fk=m,
                 vigente=True,
                 rol__tipo=RolUnidad.TIPO_LIDERAZGO
-            ).count()
+            ).exclude(rol=rol)
 
-            # de los seleccionados, ¿cuáles YA son líderes vigentes? (no suman al proyectado)
-            ya_lideres_ids = set(
-                UnidadCargo.objects.filter(
-                    unidad=unidad,
-                    vigente=True,
-                    rol__tipo=RolUnidad.TIPO_LIDERAZGO,
-                    miembo_fk_id__in=clean_ids
-                ).values_list("miembo_fk_id", flat=True)
-            )
+            for c in otros:
+                c.vigente = False
+                if hasattr(c, "fecha_fin"):
+                    c.fecha_fin = hoy
+                    c.save(update_fields=["vigente", "fecha_fin"])
+                else:
+                    c.save(update_fields=["vigente"])
 
-            nuevos = len([i for i in clean_ids if i not in ya_lideres_ids])
-            proyectado = actuales_lideres + nuevos
-
-            if proyectado > limite_lideres:
-                return JsonResponse({
-                    "ok": False,
-                    "error": f"No se puede asignar: el límite de líderes es {limite_lideres}. "
-                             f"Actualmente hay {actuales_lideres} líder(es) vigente(s) y estás intentando añadir {nuevos} nuevo(s)."
-                }, status=400)
-
-
-
-    # ------------------------------------------------------------
-    # 1) ROLES DE LIDERAZGO => SOLO UnidadCargo (NO crea membresía)
-    # ------------------------------------------------------------
-    if tipo == RolUnidad.TIPO_LIDERAZGO:
-        for m in miembros:
             cargo, created_cargo = UnidadCargo.objects.get_or_create(
                 unidad=unidad,
                 rol=rol,
                 miembo_fk=m,
                 defaults={
                     "vigente": True,
-                    "fecha_inicio": timezone.now().date()
+                    "fecha_inicio": hoy,
                 }
             )
 
@@ -954,6 +932,13 @@ def asignacion_aplicar(request):
                 else:
                     ya_existian += 1
 
+            # Asegurar membresía activa (si tu regla lo exige)
+            UnidadMembresia.objects.update_or_create(
+                unidad=unidad,
+                miembo_fk=m,
+                defaults={"activo": True, "rol": rol}
+            )
+
         return JsonResponse({
             "ok": True,
             "modo": "liderazgo",
@@ -963,55 +948,55 @@ def asignacion_aplicar(request):
             "warning": warning_capacidad,
         })
 
-   
-    # ------------------------------------------------------------
-    # 2) PARTICIPACIÓN / TRABAJO => UnidadMembresia (SOBRESCRIBE TIPO)
-    # ------------------------------------------------------------
+    # =====================================================
+    # PARTICIPACIÓN / TRABAJO (MIEMBROS)
+    # =====================================================
+    # ✅ Aquí sí aplica edad_min/edad_max de la UNIDAD (regla de miembros)
+    # (mantengo la lógica que ya tienes; solo agrego el filtro de edad estructural)
+    fuera_rango_unidad = []
+    for m in miembros:
+        if not _cumple_rango_edad(m, unidad):
+            edad_val = _get_edad_value(m)
+            edad_txt = f"{edad_val}" if edad_val is not None else "—"
+            fuera_rango_unidad.append(f"{m.nombres} {m.apellidos} ({edad_txt})")
 
-    # Definir tipo de membresía según el rol seleccionado
-    nuevo_tipo = None
-    if rol.tipo == RolUnidad.TIPO_PARTICIPACION:
-        nuevo_tipo = "miembro"
-    elif rol.tipo == RolUnidad.TIPO_TRABAJO:
-        nuevo_tipo = "colaborador"
+    if fuera_rango_unidad:
+        um = []
+        if unidad.edad_min is not None:
+            um.append(f"mín {unidad.edad_min}")
+        if unidad.edad_max is not None:
+            um.append(f"máx {unidad.edad_max}")
+        um_txt = ", ".join(um) if um else "sin rango"
+
+        ejemplos = ", ".join(fuera_rango_unidad[:5])
+        extra = f" Ejemplos: {ejemplos}." if ejemplos else ""
+
+        return JsonResponse({
+            "ok": False,
+            "error": (
+                "No se puede asignar: hay seleccionado(s) fuera del rango de edad "
+                f"de la unidad ({um_txt}).{extra}"
+            )
+        }, status=400)
+
+    creados = 0
+    reactivados = 0
+    ya_existian = 0
 
     for m in miembros:
-        memb, created_memb = UnidadMembresia.objects.get_or_create(
+        obj, created_obj = UnidadMembresia.objects.update_or_create(
             unidad=unidad,
             miembo_fk=m,
             defaults={
                 "activo": True,
-                "tipo": nuevo_tipo or "miembro",
-                "rol": rol,  # ✅ guardar el rol seleccionado
+                "rol": rol,
             }
         )
-
-        if created_memb:
+        if created_obj:
             creados += 1
-            continue
-
-        cambios = []
-
-        # Reactivar si estaba inactivo
-        if not memb.activo:
-            memb.activo = True
-            cambios.append("activo")
-            reactivados += 1
         else:
+            # como es update_or_create, lo consideramos "ya existía"
             ya_existian += 1
-
-        # ✅ AQUÍ está la sobrescritura del rol
-        if nuevo_tipo and memb.tipo != nuevo_tipo:
-            memb.tipo = nuevo_tipo
-            cambios.append("tipo")
-        # ✅ Sobrescribir el rol (nombre real) si cambió
-        if getattr(memb, "rol_id", None) != rol.id:
-            memb.rol = rol
-            cambios.append("rol")
-
-        if cambios:
-            memb.save(update_fields=cambios)
-
 
     return JsonResponse({
         "ok": True,
@@ -1021,6 +1006,7 @@ def asignacion_aplicar(request):
         "ya_existian": ya_existian,
         "warning": warning_capacidad,
     })
+
 
 @login_required
 @require_POST
@@ -1111,14 +1097,29 @@ def unidad_imagen_actualizar(request, pk):
 
     return redirect("estructura_app:unidad_detalle", pk=unidad.pk)
 
-def _cumple_rango_edad_liderazgo(miembro, unidad, reglas):
+def _to_int_or_none(value):
+    if value is None:
+        return None
+    try:
+        s = str(value).strip()
+        if s == "":
+            return None
+        return int(s)
+    except Exception:
+        return None
+
+
+def _cumple_rango_edad_liderazgo(miembro, reglas):
     """
-    True si el miembro cumple el rango de edad definido para liderazgo en reglas.
-    Si no hay rango definido en reglas, devuelve True (sin límite).
+    True si el miembro cumple el rango de edad definido para liderazgo en reglas:
+      - reglas["lider_edad_min"]
+      - reglas["lider_edad_max"]
+
+    Si no hay rango definido, devuelve True (sin límite).
     Si no se puede calcular edad, devuelve True (no bloqueamos).
     """
-    edad_min = reglas.get("lider_edad_min", None)
-    edad_max = reglas.get("lider_edad_max", None)
+    edad_min = _to_int_or_none(reglas.get("lider_edad_min"))
+    edad_max = _to_int_or_none(reglas.get("lider_edad_max"))
 
     if edad_min is None and edad_max is None:
         return True
@@ -1133,3 +1134,4 @@ def _cumple_rango_edad_liderazgo(miembro, unidad, reglas):
         return False
 
     return True
+

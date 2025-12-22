@@ -55,10 +55,12 @@
             <h1 class="odoo-detail-name">{{ unidad.nombre }}</h1>
             
             <div class="odoo-detail-badges">
-                {% if unidad.tipo_unidad %}
-                    <span class="odoo-badge odoo-badge-info">{{ unidad.tipo_unidad.nombre }}</span>
-                {% endif %}
-                
+            {% if unidad.tipo %}
+            <span class="odoo-badge odoo-badge-info">{{ unidad.tipo.nombre }}</span>
+            {% else %}
+            —
+            {% endif %}
+
                 {% if unidad.categoria %}
                     <span class="odoo-badge odoo-badge-neutral">{{ unidad.categoria }}</span>
                 {% endif %}
@@ -66,13 +68,12 @@
 
             <!-- Quick info -->
             <div class="odoo-detail-quick">
-                {% if unidad.unidad_padre %}
-                <div class="odoo-quick-item">
-                    <span class="material-icons">subdirectory_arrow_right</span>
-                    <span>Pertenece a: </span>
-                    <a href="{% url 'estructura_app:unidad_detalle' unidad.unidad_padre.pk %}">{{ unidad.unidad_padre.nombre }}</a>
-                </div>
-                {% endif %}
+        {% if unidad.padre %}
+        <a href="{% url 'estructura_app:unidad_detalle' unidad.padre.pk %}">{{ unidad.padre.nombre }}</a>
+        {% else %}
+        —
+        {% endif %}
+
                 
                 <div class="odoo-quick-item">
                     <span class="material-icons">people</span>
@@ -148,11 +149,12 @@
                 <div class="odoo-field">
                     <label>Tipo de unidad</label>
                     <span>
-                        {% if unidad.tipo_unidad %}
-                            <span class="odoo-badge odoo-badge-info">{{ unidad.tipo_unidad.nombre }}</span>
-                        {% else %}
-                            —
-                        {% endif %}
+{% if unidad.tipo %}
+  <span class="odoo-badge odoo-badge-info">{{ unidad.tipo.nombre }}</span>
+{% else %}
+  —
+{% endif %}
+
                     </span>
                 </div>
                 <div class="odoo-field">
@@ -162,11 +164,13 @@
                 <div class="odoo-field">
                     <label>Unidad padre</label>
                     <span>
-                        {% if unidad.unidad_padre %}
-                            <a href="{% url 'estructura_app:unidad_detalle' unidad.unidad_padre.pk %}">{{ unidad.unidad_padre.nombre }}</a>
-                        {% else %}
-                            —
-                        {% endif %}
+{% if unidad.padre %}
+  <a href="{% url 'estructura_app:unidad_detalle' unidad.padre.pk %}">{{ unidad.padre.nombre }}</a>
+{% else %}
+  —
+{% endif %}
+
+                       
                     </span>
                 </div>
             </div>
@@ -345,13 +349,14 @@
                                     </div>
                                 </div>
                             </td>
+<td>
+  <a href="{% url 'miembros_app:detalle' mb.pk %}"
+     class="odoo-badge odoo-badge-neutral">
+      {{ mb.codigo_miembro|default:"—" }}
+  </a>
+</td>
 
-                            <td>
-                                <a href="{% url 'miembros_app:detalle' mb.pk %}"
-                                class="odoo-badge odoo-badge-neutral">
-                                    {{ mb.codigo_miembro|default:"—" }}
-                                </a>
-                            </td>
+
 
                             <td>
                                 {% if mb.estado_miembro == "activo" %}
@@ -439,13 +444,17 @@
                                         </div>
                                     </td>
 
-                                    <td>
-                    <a href="{% url 'miembros_app:detalle' mb.pk %}"
-                    class="odoo-badge odoo-badge-neutral">
-                        {{ mb.codigo_miembro|default:"—" }}
-                    </a>
+             <td>
+  <a href="{% url 'miembros_app:detalle' mb.pk %}"
+     class="odoo-badge odoo-badge-neutral">
+      {% if mb.nuevo_creyente %}
+          {{ mb.codigo_seguimiento|default:"NC—" }}
+      {% else %}
+          {{ mb.codigo_miembro|default:"—" }}
+      {% endif %}
+  </a>
+</td>
 
-                </td>
 <td>
     {% if m.rol %}
         <span class="odoo-badge odoo-badge-info">
