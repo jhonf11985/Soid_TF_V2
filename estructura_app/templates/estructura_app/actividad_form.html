@@ -1,88 +1,1140 @@
 {% extends 'estructura_app/base_estructura.html' %}
-{% block title %}Nueva actividad · {{ unidad.nombre }}{% endblock %}
+{% load static %}
+
+{% block title %}
+    {% if actividad %}
+        {{ actividad.titulo }} · Actividades
+    {% else %}
+        Nueva actividad · {{ unidad.nombre }}
+    {% endif %}
+{% endblock %}
+
 {% block estructura_content %}
 
-<div class="odoo-control-bar">
-  <div class="odoo-control-left">
-    <a class="odoo-btn" href="{% url 'estructura_app:unidad_actividades' unidad.pk %}">
-      <span class="material-icons">arrow_back</span>
-      Volver
-    </a>
-    <h2 style="margin:0 0 0 10px;">Nueva actividad · {{ unidad.nombre }}</h2>
-  </div>
-</div>
-
-<div class="odoo-card">
-  <form method="post">
+<form method="post" class="odoo-form">
     {% csrf_token %}
 
-    <div class="odoo-grid-2">
-      <div class="odoo-field">
-        <label>Fecha</label>
-        {{ form.fecha }}
-      </div>
+    <!-- ══════════════════════════════════════════════════════════════════
+         BARRA SUPERIOR (Control Bar)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'estructura_app:unidad_actividades' unidad.pk %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                Actividades
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">
+                {% if actividad %}Editar{% else %}Nueva{% endif %}
+            </span>
 
-      <div class="odoo-field">
-        <label>Tipo</label>
-        {{ form.tipo }}
-      </div>
-    </div>
-
-    <div class="odoo-field">
-      <label>Título</label>
-      {{ form.titulo }}
-    </div>
-
-    <div class="odoo-grid-2">
-      <div class="odoo-field">
-        <label>Lugar</label>
-        {{ form.lugar }}
-      </div>
-      <div class="odoo-field">
-        <label>Responsable</label>
-        {{ form.responsable }}
-      </div>
-    </div>
-
-    <div class="odoo-field">
-      <label>Participantes</label>
-      {{ form.participantes }}
-      <p class="odoo-muted" style="margin:6px 0 0;">Puedes seleccionar varios.</p>
-    </div>
-
-    {% if es_evangelismo %}
-      <div class="odoo-separator"></div>
-      <h3 style="margin:0 0 10px;">Métricas (Evangelismo)</h3>
-
-      <div class="odoo-grid-3">
-        <div class="odoo-field">
-          <label>Personas alcanzadas</label>
-          {{ form.alcanzados }}
+            {% if not actividad %}
+            <span class="odoo-new-badge">Nuevo</span>
+            {% endif %}
         </div>
-        <div class="odoo-field">
-          <label>Nuevos creyentes</label>
-          {{ form.nuevos_creyentes }}
-        </div>
-        <div class="odoo-field">
-          <label>Seguimientos</label>
-          {{ form.seguimientos }}
-        </div>
-      </div>
-    {% endif %}
 
-    <div class="odoo-field">
-      <label>Notas</label>
-      {{ form.notas }}
+        <div class="odoo-control-right">
+            <div class="odoo-member-code">
+                <span class="material-icons">event</span>
+                {% if actividad %}ID {{ actividad.id }}{% else %}Nueva{% endif %}
+            </div>
+        </div>
     </div>
 
-    <div class="odoo-actions" style="margin-top:14px;">
-      <button class="odoo-btn odoo-btn-primary" type="submit">
-        <span class="material-icons">save</span>
-        Guardar
-      </button>
-      <a class="odoo-btn" href="{% url 'estructura_app:unidad_actividades' unidad.pk %}">Cancelar</a>
+    <!-- ══════════════════════════════════════════════════════════════════
+         CONTENIDO PRINCIPAL
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-form-container">
+
+        <!-- ÁREA PRINCIPAL DEL FORMULARIO -->
+        <div class="odoo-form-main">
+
+            <!-- ─────────────────────────────────────────────────────────
+                 HEADER: Icono + Título + Campos principales
+                 ───────────────────────────────────────────────────────── -->
+            <div class="odoo-form-header">
+
+                <!-- Icono de la actividad -->
+                <div class="odoo-avatar-section">
+                    <div class="odoo-avatar odoo-avatar-activity">
+                        <span class="material-icons" id="activity-icon">event</span>
+                    </div>
+                </div>
+
+                <!-- Info principal -->
+                <div class="odoo-header-info">
+
+                    <!-- Radio: Tipo de Actividad -->
+                    <div class="odoo-radio-group">
+                        {% for value, label in form.tipo.field.choices %}
+                            {% if value %}
+                            <label class="odoo-radio">
+                                <input type="radio" name="tipo" value="{{ value }}"
+                                    {% if form.tipo.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}>
+                                <span>{{ label }}</span>
+                            </label>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- Título grande -->
+                    <div class="odoo-name-field">
+                        <input type="text"
+                               name="titulo"
+                               id="{{ form.titulo.id_for_label }}"
+                               value="{{ form.titulo.value|default:'' }}"
+                               placeholder="Título de la actividad"
+                               class="odoo-name-input"
+                               required>
+                    </div>
+
+                    <!-- Campos de info rápida -->
+                    <div class="odoo-quick-fields">
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">calendar_today</span>
+                            <input type="date"
+                                   name="fecha"
+                                   id="{{ form.fecha.id_for_label }}"
+                                   value="{{ form.fecha.value|default:'' }}"
+                                   class="odoo-quick-input"
+                                   required>
+                        </div>
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">location_on</span>
+                            <input type="text"
+                                   name="lugar"
+                                   id="{{ form.lugar.id_for_label }}"
+                                   value="{{ form.lugar.value|default:'' }}"
+                                   placeholder="Lugar del evento"
+                                   class="odoo-quick-input">
+                        </div>
+                        <div class="odoo-quick-field">
+                            <span class="material-icons">person</span>
+                            <select name="responsable" id="{{ form.responsable.id_for_label }}" class="odoo-quick-select">
+                                <option value="">Seleccionar responsable...</option>
+                                {% for value, label in form.responsable.field.choices %}
+                                    {% if value %}
+                                    <option value="{{ value }}" {% if form.responsable.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────────────────────────────────
+                 BODY: Campos en dos columnas estilo Odoo
+                 ───────────────────────────────────────────────────────── -->
+            <div class="odoo-form-body">
+
+                <!-- Columna Izquierda -->
+                <div class="odoo-form-column">
+
+                    <div class="odoo-field">
+                        <label class="odoo-label">Unidad</label>
+                        <span class="odoo-field-text">
+                            <span class="odoo-status-badge odoo-status-info">{{ unidad.nombre }}</span>
+                        </span>
+                    </div>
+
+                </div>
+
+                <!-- Columna Derecha -->
+                <div class="odoo-form-column">
+
+                    <div class="odoo-field">
+                        <label class="odoo-label">Estado</label>
+                        <span class="odoo-field-text">
+                            {% if actividad %}
+                                <span class="odoo-status-badge odoo-status-active">Registrada</span>
+                            {% else %}
+                                <span class="odoo-status-badge odoo-status-pending">Pendiente</span>
+                            {% endif %}
+                        </span>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────────────────────────────────
+                 TABS: Pestañas inferiores estilo Odoo
+                 ───────────────────────────────────────────────────────── -->
+            <div class="odoo-tabs-section">
+
+                <!-- Tab buttons -->
+                <div class="odoo-tabs-bar">
+                    <button type="button" class="odoo-tab active" data-tab="participantes">
+                        Participantes
+                    </button>
+                    <button type="button" class="odoo-tab" data-tab="notas">
+                        Notas
+                    </button>
+                </div>
+
+                <!-- Tab contents -->
+                <div class="odoo-tabs-content">
+
+                    <!-- TAB: Participantes -->
+                    <div class="odoo-tab-panel active" id="tab-participantes">
+                        <div class="odoo-field odoo-field-full">
+                            <label class="odoo-label">Seleccionar participantes</label>
+
+                            <!-- Controles -->
+                            <div class="odoo-participants-tools">
+                                <div class="odoo-participants-search">
+                                    <span class="material-icons">search</span>
+                                    <input type="text"
+                                           id="participants-search"
+                                           class="odoo-input"
+                                           placeholder="Buscar por nombre o código...">
+                                </div>
+
+                                <div class="odoo-participants-actions">
+                                    <button type="button" class="odoo-btn odoo-btn-secondary" id="btn-participants-all">
+                                        Seleccionar todos
+                                    </button>
+                                    <button type="button" class="odoo-btn odoo-btn-secondary" id="btn-participants-none">
+                                        Quitar todos
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Contador -->
+                            <div class="odoo-participants-meta">
+                                <span class="odoo-hint">
+                                    Seleccionados: <strong id="participants-count">0</strong>
+                                </span>
+                            </div>
+
+                            <!-- Lista -->
+                            <div class="odoo-participants-grid" id="participants-grid">
+                                {{ form.participantes }}
+                            </div>
+
+                            <p class="odoo-hint">Solo aparecen los miembros asignados a esta unidad.</p>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Notas -->
+                    <div class="odoo-tab-panel" id="tab-notas">
+                        <div class="odoo-field odoo-field-full">
+                            <textarea name="notas" id="{{ form.notas.id_for_label }}"
+                                      rows="6" class="odoo-textarea"
+                                      placeholder="Notas adicionales sobre la actividad...">{{ form.notas.value|default:'' }}</textarea>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             PANEL LATERAL (Chatter / Acciones)
+             ══════════════════════════════════════════════════════════════════ -->
+        <div class="odoo-form-aside">
+
+            <!-- Botones de acción -->
+            <div class="odoo-aside-actions">
+                {% if actividad %}
+                    <button type="submit" class="odoo-btn odoo-btn-primary">
+                        <span class="material-icons">save</span>
+                        Guardar cambios
+                    </button>
+                {% else %}
+                    <button type="submit" name="guardar" value="1" class="odoo-btn odoo-btn-primary">
+                        <span class="material-icons">check</span>
+                        Guardar
+                    </button>
+                    <button type="submit" name="guardar_y_nuevo" value="1" class="odoo-btn odoo-btn-secondary">
+                        <span class="material-icons">add</span>
+                        Guardar y nuevo
+                    </button>
+                {% endif %}
+                <a href="{% url 'estructura_app:unidad_actividades' unidad.pk %}" class="odoo-btn odoo-btn-secondary">
+                    Descartar
+                </a>
+            </div>
+
+            <!-- Info rápida -->
+            <div class="odoo-aside-info">
+                <div class="odoo-info-item">
+                    <span class="odoo-info-label">Unidad</span>
+                    <span class="odoo-info-value">{{ unidad.nombre }}</span>
+                </div>
+                <div class="odoo-info-item">
+                    <span class="odoo-info-label">Estado</span>
+                    {% if actividad %}
+                        <span class="odoo-info-badge">Registrada</span>
+                    {% else %}
+                        <span class="odoo-info-badge odoo-badge-pending">Nueva</span>
+                    {% endif %}
+                </div>
+                {% if actividad %}
+                <div class="odoo-info-item">
+                    <span class="odoo-info-label">Creado</span>
+                    <span class="odoo-info-value">{{ actividad.creado_en|date:'d/m/Y' }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tips -->
+            <div class="odoo-aside-tips">
+                <h4 class="odoo-aside-title">Consejos</h4>
+                <ul class="odoo-tips-list">
+                    <li>Selecciona los participantes para llevar control de asistencia</li>
+                    <li>El responsable será notificado de la actividad</li>
+                </ul>
+            </div>
+
+            <!-- Actividad reciente -->
+            {% if actividad %}
+            <div class="odoo-aside-activity">
+                <h4 class="odoo-aside-title">Actividad</h4>
+                <div class="odoo-activity-item">
+                    <div class="odoo-activity-avatar">
+                        <span class="material-icons">person</span>
+                    </div>
+                    <div class="odoo-activity-content">
+                        <span class="odoo-activity-text">Última actualización</span>
+                        <span class="odoo-activity-date">{{ actividad.actualizado_en|date:'d/m/Y H:i' }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
-  </form>
-</div>
+</form>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   VARIABLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+    --odoo-primary: #714B67;
+    --odoo-primary-dark: #5a3c52;
+    --odoo-text: #212529;
+    --odoo-text-muted: #6c757d;
+    --odoo-border: #dee2e6;
+    --odoo-bg: #f8f9fa;
+    --odoo-success: #28a745;
+    --odoo-info: #017e84;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTROL BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: #fff;
+    border-bottom: 1px solid var(--odoo-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.odoo-control-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.odoo-breadcrumb-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--odoo-primary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.odoo-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-breadcrumb-link .material-icons {
+    font-size: 18px;
+}
+
+.odoo-breadcrumb-sep {
+    color: var(--odoo-text-muted);
+    font-size: 14px;
+}
+
+.odoo-breadcrumb-current {
+    font-size: 14px;
+    color: var(--odoo-text);
+}
+
+.odoo-new-badge {
+    background: var(--odoo-primary);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.odoo-member-code {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+    background: var(--odoo-bg);
+    padding: 6px 12px;
+    border-radius: 4px;
+}
+
+.odoo-member-code .material-icons {
+    font-size: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORM CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-container {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 0;
+    background: #f0f0f0;
+    min-height: calc(100vh - 52px);
+}
+
+.odoo-form-main {
+    background: #fff;
+    border-right: 1px solid var(--odoo-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORM HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-header {
+    display: flex;
+    gap: 20px;
+    padding: 24px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.odoo-avatar-section {
+    flex-shrink: 0;
+}
+
+.odoo-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--odoo-info) 0%, #015f63 100%);
+}
+
+.odoo-avatar .material-icons {
+    font-size: 40px;
+    color: #fff;
+}
+
+.odoo-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RADIO GROUP (Tipo)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-radio-group {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.odoo-radio {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--odoo-text);
+    cursor: pointer;
+}
+
+.odoo-radio input[type="radio"] {
+    accent-color: var(--odoo-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NAME FIELD
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-name-field {
+    margin-bottom: 16px;
+}
+
+.odoo-name-input {
+    width: 100%;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--odoo-text);
+    padding: 4px 0;
+    background: transparent;
+    transition: border-color 0.2s;
+}
+
+.odoo-name-input:focus {
+    outline: none;
+    border-bottom-color: var(--odoo-primary);
+}
+
+.odoo-name-input::placeholder {
+    color: #adb5bd;
+    font-weight: 400;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUICK FIELDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-quick-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.odoo-quick-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--odoo-bg);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.odoo-quick-field .material-icons {
+    font-size: 16px;
+    color: var(--odoo-text-muted);
+}
+
+.odoo-quick-input,
+.odoo-quick-select {
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    color: var(--odoo-text);
+    padding: 2px 4px;
+    min-width: 120px;
+}
+
+.odoo-quick-input:focus,
+.odoo-quick-select:focus {
+    outline: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORM BODY
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    padding: 24px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.odoo-form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.odoo-field {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.odoo-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--odoo-text-muted);
+    min-width: 100px;
+    flex-shrink: 0;
+}
+
+.odoo-field-text {
+    font-size: 14px;
+    color: var(--odoo-text);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATUS BADGES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.odoo-status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.odoo-status-inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.odoo-status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.odoo-status-info {
+    background: #e3f2fd;
+    color: #0d47a1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-tabs-section {
+    padding: 0;
+}
+
+.odoo-tabs-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--odoo-border);
+    padding: 0 24px;
+    background: #fafafa;
+}
+
+.odoo-tab {
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--odoo-text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.odoo-tab:hover {
+    color: var(--odoo-text);
+}
+
+.odoo-tab.active {
+    color: var(--odoo-primary);
+}
+
+.odoo-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--odoo-primary);
+}
+
+.odoo-tabs-content {
+    padding: 24px;
+}
+
+.odoo-tab-panel {
+    display: none;
+}
+
+.odoo-tab-panel.active {
+    display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PARTICIPANTS TOOLS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-participants-tools{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  margin:8px 0 10px;
+}
+
+.odoo-participants-search{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex:1;
+  min-width:260px;
+}
+
+.odoo-participants-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.odoo-participants-meta{
+  margin:6px 0 10px;
+}
+
+.odoo-input{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid var(--odoo-border);
+  border-radius:6px;
+  font-size:13px;
+  background:#fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PARTICIPANTS GRID
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-participants-grid ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--odoo-border);
+    border-radius: 4px;
+    padding: 12px;
+    background: #fafafa;
+}
+
+.odoo-participants-grid ul li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+}
+
+.odoo-participants-grid ul li:hover {
+    background: #fff;
+}
+
+.odoo-participants-grid ul li label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--odoo-text);
+    cursor: pointer;
+    margin: 0;
+}
+
+.odoo-participants-grid ul li input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--odoo-primary);
+}
+
+.odoo-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: var(--odoo-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEXTAREA
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--odoo-border);
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 120px;
+}
+
+.odoo-textarea:focus {
+    outline: none;
+    border-color: var(--odoo-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ASIDE PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-aside {
+    padding: 20px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.odoo-aside-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: var(--odoo-primary);
+    color: #fff;
+}
+
+.odoo-btn-primary:hover {
+    background: var(--odoo-primary-dark);
+    color: #fff;
+}
+
+.odoo-btn-secondary {
+    background: #fff;
+    color: var(--odoo-text);
+    border: 1px solid var(--odoo-border);
+}
+
+.odoo-btn-secondary:hover {
+    background: var(--odoo-bg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ASIDE INFO
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-aside-info {
+    background: var(--odoo-bg);
+    border-radius: 6px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.odoo-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.odoo-info-label {
+    font-size: 12px;
+    color: var(--odoo-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.odoo-info-value {
+    font-size: 13px;
+    color: var(--odoo-text);
+    font-weight: 500;
+}
+
+.odoo-info-badge {
+    background: #d4edda;
+    color: #155724;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.odoo-badge-inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.odoo-badge-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ASIDE TIPS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-aside-tips {
+    border: 1px solid #e3f2fd;
+    background: #f8fbff;
+    border-radius: 6px;
+    padding: 16px;
+}
+
+.odoo-aside-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--odoo-text);
+    margin: 0 0 12px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.odoo-tips-list {
+    margin: 0;
+    padding: 0 0 0 16px;
+    font-size: 12px;
+    color: var(--odoo-text-muted);
+    line-height: 1.6;
+}
+
+.odoo-tips-list li {
+    margin-bottom: 6px;
+}
+
+.odoo-tips-list li:last-child {
+    margin-bottom: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ASIDE ACTIVITY
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-aside-activity {
+    border-top: 1px solid var(--odoo-border);
+    padding-top: 16px;
+}
+
+.odoo-activity-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.odoo-activity-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--odoo-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.odoo-activity-avatar .material-icons {
+    font-size: 16px;
+    color: var(--odoo-text-muted);
+}
+
+.odoo-activity-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.odoo-activity-text {
+    font-size: 13px;
+    color: var(--odoo-text);
+}
+
+.odoo-activity-date {
+    font-size: 11px;
+    color: var(--odoo-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+    .odoo-form-container {
+        grid-template-columns: 1fr;
+    }
+
+    .odoo-form-aside {
+        border-top: 1px solid var(--odoo-border);
+    }
+
+    .odoo-aside-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-form-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .odoo-radio-group {
+        justify-content: center;
+    }
+
+    .odoo-quick-fields {
+        justify-content: center;
+    }
+
+    .odoo-form-body {
+        grid-template-columns: 1fr;
+    }
+
+    .odoo-control-bar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .odoo-control-right {
+        display: none;
+    }
+}
+</style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initTabs();
+    initTypeSelector();
+    initParticipantsTools();
+});
+
+/**
+ * Sistema de tabs
+ */
+function initTabs() {
+    const tabs = document.querySelectorAll('.odoo-tab');
+    const panels = document.querySelectorAll('.odoo-tab-panel');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            const targetId = 'tab-' + this.dataset.tab;
+
+            // Remove active from all
+            tabs.forEach(t => t.classList.remove('active'));
+            panels.forEach(p => p.classList.remove('active'));
+
+            // Add active to current
+            this.classList.add('active');
+            const targetPanel = document.getElementById(targetId);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+        });
+    });
+}
+
+/**
+ * Selector de tipo - cambia el icono según el tipo
+ */
+function initTypeSelector() {
+    const radios = document.querySelectorAll('.odoo-radio input[type="radio"][name="tipo"]');
+    const icon = document.getElementById('activity-icon');
+
+    const typeIcons = {
+        'reunion': 'groups',
+        'culto': 'church',
+        'evangelismo': 'campaign',
+        'capacitacion': 'school',
+        'servicio': 'volunteer_activism',
+        'otro': 'event'
+    };
+
+    radios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (icon) {
+                const selectedType = this.value.toLowerCase();
+                icon.textContent = typeIcons[selectedType] || 'event';
+            }
+        });
+
+        // Set initial icon
+        if (radio.checked && icon) {
+            const selectedType = radio.value.toLowerCase();
+            icon.textContent = typeIcons[selectedType] || 'event';
+        }
+    });
+}
+
+/**
+ * Participantes: buscador + seleccionar/quitar todos + contador
+ */
+function initParticipantsTools() {
+    const grid = document.getElementById('participants-grid');
+    if (!grid) return;
+
+    const search = document.getElementById('participants-search');
+    const btnAll = document.getElementById('btn-participants-all');
+    const btnNone = document.getElementById('btn-participants-none');
+    const countEl = document.getElementById('participants-count');
+
+    const checkboxes = () => Array.from(grid.querySelectorAll('input[type="checkbox"]'));
+    const items = () => Array.from(grid.querySelectorAll('li'));
+
+    function updateCount() {
+        const n = checkboxes().filter(cb => cb.checked).length;
+        if (countEl) countEl.textContent = String(n);
+    }
+
+    function setAll(value) {
+        checkboxes().forEach(cb => { cb.checked = value; });
+        updateCount();
+    }
+
+    function applyFilter(term) {
+        const t = (term || '').trim().toLowerCase();
+        items().forEach(li => {
+            const text = (li.textContent || '').toLowerCase();
+            li.style.display = (!t || text.includes(t)) ? '' : 'none';
+        });
+    }
+
+    grid.addEventListener('change', (e) => {
+        if (e.target && e.target.matches('input[type="checkbox"]')) updateCount();
+    });
+
+    if (search) search.addEventListener('input debating', () => applyFilter(search.value)); // fallback
+    if (search) search.addEventListener('input', () => applyFilter(search.value));
+
+    if (btnAll) btnAll.addEventListener('click', () => setAll(true));
+    if (btnNone) btnNone.addEventListener('click', () => setAll(false));
+
+    updateCount();
+}
+</script>
 
 {% endblock %}

@@ -10,7 +10,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from miembros_app.models import Miembro
-from .forms import UnidadForm, RolUnidadForm
+from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriodoForm
+
 from .models import (
     Unidad,
     TipoUnidad,
@@ -1155,76 +1156,7 @@ MESES = [
 ]
 
 
-def _es_evangelismo(unidad: Unidad) -> bool:
-    try:
-        nombre = (unidad.tipo.nombre or "").strip().lower()
-        return "evangel" in nombre
-    except Exception:
-        return False
 
-
-class ActividadUnidadForm(forms.ModelForm):
-    # Campos “extra” solo para Evangelismo (se guardan en JSONField datos)
-    alcanzados = forms.IntegerField(required=False, min_value=0, label="Personas alcanzadas")
-    nuevos_creyentes = forms.IntegerField(required=False, min_value=0, label="Nuevos creyentes")
-    seguimientos = forms.IntegerField(required=False, min_value=0, label="Seguimientos activos")
-
-    class Meta:
-        model = ActividadUnidad
-        fields = [
-            "fecha", "titulo", "tipo", "lugar",
-            "responsable", "participantes", "notas",
-        ]
-        widgets = {
-            "fecha": forms.DateInput(attrs={"type": "date"}),
-            "participantes": forms.SelectMultiple(attrs={"size": "8"}),
-            "notas": forms.Textarea(attrs={"rows": 4}),
-        }
-
-    def __init__(self, *args, unidad: Unidad = None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._unidad = unidad
-
-        # Si no es evangelismo, ocultamos los “extras”
-        if not unidad or not _es_evangelismo(unidad):
-            for k in ["alcanzados", "nuevos_creyentes", "seguimientos"]:
-                self.fields.pop(k, None)
-        else:
-            # Pre-cargar desde datos si editas o si existe instance
-            datos = {}
-            if self.instance and self.instance.pk:
-                datos = self.instance.datos or {}
-            self.fields["alcanzados"].initial = datos.get("alcanzados")
-            self.fields["nuevos_creyentes"].initial = datos.get("nuevos_creyentes")
-            self.fields["seguimientos"].initial = datos.get("seguimientos")
-
-    def save(self, commit=True):
-        obj = super().save(commit=False)
-
-        # Guardar métricas específicas de evangelismo dentro de datos
-        if self._unidad and _es_evangelismo(self._unidad):
-            datos = obj.datos or {}
-            datos["alcanzados"] = int(self.cleaned_data.get("alcanzados") or 0)
-            datos["nuevos_creyentes"] = int(self.cleaned_data.get("nuevos_creyentes") or 0)
-            datos["seguimientos"] = int(self.cleaned_data.get("seguimientos") or 0)
-            obj.datos = datos
-
-        if commit:
-            obj.save()
-            self.save_m2m()
-
-        return obj
-
-
-class ReportePeriodoForm(forms.ModelForm):
-    class Meta:
-        model = ReporteUnidadPeriodo
-        fields = ["reflexion", "necesidades", "plan_proximo"]
-        widgets = {
-            "reflexion": forms.Textarea(attrs={"rows": 6}),
-            "necesidades": forms.Textarea(attrs={"rows": 4}),
-            "plan_proximo": forms.Textarea(attrs={"rows": 4}),
-        }
 
 
 def _rango_mes(anio: int, mes: int):
@@ -1297,7 +1229,8 @@ def unidad_actividades(request, pk):
     return render(request, "estructura_app/unidad_actividades.html", {
         "unidad": unidad,
         "actividades": actividades,
-        "es_evangelismo": _es_evangelismo(unidad),
+        
+
     })
 
 
@@ -1323,7 +1256,7 @@ def actividad_crear(request, pk):
     return render(request, "estructura_app/actividad_form.html", {
         "unidad": unidad,
         "form": form,
-        "es_evangelismo": _es_evangelismo(unidad),
+        
     })
 
 

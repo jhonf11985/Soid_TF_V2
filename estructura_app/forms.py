@@ -5,6 +5,11 @@ from django import forms
 from django.http import HttpResponse
 from .models import Unidad, RolUnidad
 
+from django import forms
+from .models import ActividadUnidad, Unidad, UnidadMembresia
+from .models import ReporteUnidadPeriodo
+
+
 
 
 class UnidadForm(forms.ModelForm):
@@ -74,4 +79,62 @@ class RolUnidadForm(forms.ModelForm):
         widgets = {
             "descripcion": forms.Textarea(attrs={"rows": 3}),
         }
+class ActividadUnidadForm(forms.ModelForm):
+    class Meta:
+        model = ActividadUnidad
+        fields = [
+            "fecha", "titulo", "tipo", "lugar",
+            "responsable", "participantes", "notas",
+        ]
+        widgets = {
+            "fecha": forms.DateInput(attrs={"type": "date"}),
+            "participantes": forms.CheckboxSelectMultiple(),
+            "notas": forms.Textarea(attrs={"rows": 4}),
+        }
 
+    def __init__(self, *args, unidad: Unidad = None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        MiembroModel = ActividadUnidad._meta.get_field(
+            "participantes"
+        ).remote_field.model
+
+        if unidad:
+            miembros_ids = (
+                UnidadMembresia.objects
+                .filter(unidad=unidad, activo=True)
+                .values_list("miembo_fk_id", flat=True)
+            )
+
+            self.fields["participantes"].queryset = (
+                MiembroModel.objects
+                .filter(id__in=miembros_ids)
+                .order_by("nombres", "apellidos")
+            )
+        else:
+            self.fields["participantes"].queryset = MiembroModel.objects.none()
+
+
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+
+        # Guardar métricas específicas de evangelismo dentro de datos
+
+
+        if commit:
+            obj.save()
+            self.save_m2m()
+
+        return obj
+
+
+class ReportePeriodoForm(forms.ModelForm):
+    class Meta:
+        model = ReporteUnidadPeriodo
+        fields = ["reflexion", "necesidades", "plan_proximo"]
+        widgets = {
+            "reflexion": forms.Textarea(attrs={"rows": 6}),
+            "necesidades": forms.Textarea(attrs={"rows": 4}),
+            "plan_proximo": forms.Textarea(attrs={"rows": 4}),
+        }
