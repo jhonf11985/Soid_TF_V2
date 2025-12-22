@@ -1194,22 +1194,7 @@ def _generar_resumen_periodo(unidad: Unidad, anio: int, mes: int) -> dict:
         "participantes_unicos": len(participantes_set),
     }
 
-    # Métricas específicas si es Evangelismo
-    if _es_evangelismo(unidad):
-        alcanzados = 0
-        nuevos = 0
-        seguimientos = 0
-        for a in actividades:
-            d = a.datos or {}
-            alcanzados += int(d.get("alcanzados") or 0)
-            nuevos += int(d.get("nuevos_creyentes") or 0)
-            seguimientos += int(d.get("seguimientos") or 0)
 
-        resumen.update({
-            "alcanzados_total": alcanzados,
-            "nuevos_creyentes_total": nuevos,
-            "seguimientos_total": seguimientos,
-        })
 
     return resumen
 
@@ -1303,7 +1288,7 @@ def unidad_reportes(request, pk):
         "anio_sel": anio_sel,
         "mes_sel": mes_sel,
         "MESES": MESES,
-        "es_evangelismo": _es_evangelismo(unidad),
+        
     })
 
 
