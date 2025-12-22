@@ -1,5 +1,122 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
+
+class ActividadUnidad(models.Model):
+    TIPO_REUNION = "REUNION"
+    TIPO_SALIDA = "SALIDA"
+    TIPO_VISITA = "VISITA"
+    TIPO_EVENTO = "EVENTO"
+    TIPO_OTRO = "OTRO"
+
+    TIPOS = (
+        (TIPO_REUNION, "Reunión"),
+        (TIPO_SALIDA, "Salida"),
+        (TIPO_VISITA, "Visita"),
+        (TIPO_EVENTO, "Evento"),
+        (TIPO_OTRO, "Otro"),
+    )
+
+    unidad = models.ForeignKey(
+        "estructura_app.Unidad",
+        on_delete=models.CASCADE,
+        related_name="actividades",
+    )
+
+    fecha = models.DateField(default=timezone.localdate)
+    titulo = models.CharField(max_length=120)
+    tipo = models.CharField(max_length=20, choices=TIPOS, default=TIPO_OTRO)
+    lugar = models.CharField(max_length=120, blank=True)
+
+    responsable = models.ForeignKey(
+        "miembros_app.Miembro",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="actividades_responsable",
+    )
+
+    participantes = models.ManyToManyField(
+        "miembros_app.Miembro",
+        blank=True,
+        related_name="actividades_participa",
+    )
+
+    # Para métricas específicas por tipo de unidad (Evangelismo, Jóvenes, etc.)
+    # Ejemplo Evangelismo: {"alcanzados": 20, "nuevos_creyentes": 3, "seguimientos": 5}
+    datos = models.JSONField(default=dict, blank=True)
+
+    notas = models.TextField(blank=True)
+
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="actividades_creadas",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Actividad de unidad"
+        verbose_name_plural = "Actividades de unidad"
+        ordering = ["-fecha", "-creado_en"]
+        indexes = [
+            models.Index(fields=["unidad", "fecha"]),
+            models.Index(fields=["unidad", "tipo"]),
+        ]
+
+    def __str__(self):
+        return f"{self.titulo} ({self.unidad})"
+
+
+class ReporteUnidadPeriodo(models.Model):
+    unidad = models.ForeignKey(
+        "estructura_app.Unidad",
+        on_delete=models.CASCADE,
+        related_name="reportes_periodo",
+    )
+
+    anio = models.PositiveIntegerField()
+    mes = models.PositiveSmallIntegerField()  # 1-12
+
+    # Resumen calculado desde ActividadUnidad
+    resumen = models.JSONField(default=dict, blank=True)
+
+    # Parte humana/pastoral
+    reflexion = models.TextField(blank=True)
+    necesidades = models.TextField(blank=True)
+    plan_proximo = models.TextField(blank=True)
+
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reportes_creados",
+    )
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Reporte por período"
+        verbose_name_plural = "Reportes por período"
+        ordering = ["-anio", "-mes", "unidad__nombre"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["unidad", "anio", "mes"],
+                name="uniq_reporte_unidad_anio_mes",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["unidad", "anio", "mes"]),
+        ]
+
+    def __str__(self):
+        return f"Reporte {self.mes:02d}/{self.anio} - {self.unidad}"
+
 
 class RolUnidad(models.Model):
     TIPO_LIDERAZGO = "LIDERAZGO"

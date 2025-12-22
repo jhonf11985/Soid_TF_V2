@@ -23,4 +23,10 @@ urlpatterns = [
     path("asignacion/aplicar/", views.asignacion_aplicar, name="asignacion_aplicar"),
     path("asignacion/remover/", views.asignacion_remover, name="asignacion_remover"),
 
+    
+    path("unidades/<int:pk>/actividades/", views.unidad_actividades, name="unidad_actividades"),
+    path("unidades/<int:pk>/actividades/nueva/", views.actividad_crear, name="actividad_crear"),
+
+    path("unidades/<int:pk>/reportes/", views.unidad_reportes, name="unidad_reportes"),
+    path("unidades/<int:pk>/reportes/<int:anio>/<int:mes>/imprimir/", views.reporte_unidad_imprimir, name="reporte_unidad_imprimir"),
 ]

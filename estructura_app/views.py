@@ -1,4 +1,5 @@
 import json
+from django import forms
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,7 +11,15 @@ from django.views.decorators.http import require_POST
 
 from miembros_app.models import Miembro
 from .forms import UnidadForm, RolUnidadForm
-from .models import Unidad, TipoUnidad, RolUnidad, UnidadMembresia, UnidadCargo
+from .models import (
+    Unidad,
+    TipoUnidad,
+    RolUnidad,
+    UnidadMembresia,
+    UnidadCargo,
+    ActividadUnidad,
+    ReporteUnidadPeriodo,
+)
 
 
 # ============================================================
@@ -1135,3 +1144,255 @@ def _cumple_rango_edad_liderazgo(miembro, reglas):
 
     return True
 
+# ============================================================
+# ACTIVIDADES + REPORTES (Actividad y Período)
+# ============================================================
+
+MESES = [
+    (1, "Enero"), (2, "Febrero"), (3, "Marzo"), (4, "Abril"),
+    (5, "Mayo"), (6, "Junio"), (7, "Julio"), (8, "Agosto"),
+    (9, "Septiembre"), (10, "Octubre"), (11, "Noviembre"), (12, "Diciembre"),
+]
+
+
+def _es_evangelismo(unidad: Unidad) -> bool:
+    try:
+        nombre = (unidad.tipo.nombre or "").strip().lower()
+        return "evangel" in nombre
+    except Exception:
+        return False
+
+
+class ActividadUnidadForm(forms.ModelForm):
+    # Campos “extra” solo para Evangelismo (se guardan en JSONField datos)
+    alcanzados = forms.IntegerField(required=False, min_value=0, label="Personas alcanzadas")
+    nuevos_creyentes = forms.IntegerField(required=False, min_value=0, label="Nuevos creyentes")
+    seguimientos = forms.IntegerField(required=False, min_value=0, label="Seguimientos activos")
+
+    class Meta:
+        model = ActividadUnidad
+        fields = [
+            "fecha", "titulo", "tipo", "lugar",
+            "responsable", "participantes", "notas",
+        ]
+        widgets = {
+            "fecha": forms.DateInput(attrs={"type": "date"}),
+            "participantes": forms.SelectMultiple(attrs={"size": "8"}),
+            "notas": forms.Textarea(attrs={"rows": 4}),
+        }
+
+    def __init__(self, *args, unidad: Unidad = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._unidad = unidad
+
+        # Si no es evangelismo, ocultamos los “extras”
+        if not unidad or not _es_evangelismo(unidad):
+            for k in ["alcanzados", "nuevos_creyentes", "seguimientos"]:
+                self.fields.pop(k, None)
+        else:
+            # Pre-cargar desde datos si editas o si existe instance
+            datos = {}
+            if self.instance and self.instance.pk:
+                datos = self.instance.datos or {}
+            self.fields["alcanzados"].initial = datos.get("alcanzados")
+            self.fields["nuevos_creyentes"].initial = datos.get("nuevos_creyentes")
+            self.fields["seguimientos"].initial = datos.get("seguimientos")
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+
+        # Guardar métricas específicas de evangelismo dentro de datos
+        if self._unidad and _es_evangelismo(self._unidad):
+            datos = obj.datos or {}
+            datos["alcanzados"] = int(self.cleaned_data.get("alcanzados") or 0)
+            datos["nuevos_creyentes"] = int(self.cleaned_data.get("nuevos_creyentes") or 0)
+            datos["seguimientos"] = int(self.cleaned_data.get("seguimientos") or 0)
+            obj.datos = datos
+
+        if commit:
+            obj.save()
+            self.save_m2m()
+
+        return obj
+
+
+class ReportePeriodoForm(forms.ModelForm):
+    class Meta:
+        model = ReporteUnidadPeriodo
+        fields = ["reflexion", "necesidades", "plan_proximo"]
+        widgets = {
+            "reflexion": forms.Textarea(attrs={"rows": 6}),
+            "necesidades": forms.Textarea(attrs={"rows": 4}),
+            "plan_proximo": forms.Textarea(attrs={"rows": 4}),
+        }
+
+
+def _rango_mes(anio: int, mes: int):
+    # inicio = 1er día del mes, fin = 1er día del siguiente mes
+    inicio = timezone.datetime(anio, mes, 1).date()
+    if mes == 12:
+        fin = timezone.datetime(anio + 1, 1, 1).date()
+    else:
+        fin = timezone.datetime(anio, mes + 1, 1).date()
+    return inicio, fin
+
+
+def _generar_resumen_periodo(unidad: Unidad, anio: int, mes: int) -> dict:
+    inicio, fin = _rango_mes(anio, mes)
+
+    actividades = (
+        ActividadUnidad.objects
+        .filter(unidad=unidad, fecha__gte=inicio, fecha__lt=fin)
+        .prefetch_related("participantes")
+        .order_by("fecha")
+    )
+
+    total_actividades = actividades.count()
+
+    # Participantes únicos (en todas las actividades del período)
+    participantes_set = set()
+    for a in actividades:
+        for p in a.participantes.all():
+            participantes_set.add(p.pk)
+
+    resumen = {
+        "anio": anio,
+        "mes": mes,
+        "actividades_total": total_actividades,
+        "participantes_unicos": len(participantes_set),
+    }
+
+    # Métricas específicas si es Evangelismo
+    if _es_evangelismo(unidad):
+        alcanzados = 0
+        nuevos = 0
+        seguimientos = 0
+        for a in actividades:
+            d = a.datos or {}
+            alcanzados += int(d.get("alcanzados") or 0)
+            nuevos += int(d.get("nuevos_creyentes") or 0)
+            seguimientos += int(d.get("seguimientos") or 0)
+
+        resumen.update({
+            "alcanzados_total": alcanzados,
+            "nuevos_creyentes_total": nuevos,
+            "seguimientos_total": seguimientos,
+        })
+
+    return resumen
+
+
+@login_required
+def unidad_actividades(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    actividades = (
+        ActividadUnidad.objects
+        .filter(unidad=unidad)
+        .select_related("responsable")
+        .prefetch_related("participantes")
+        .order_by("-fecha", "-creado_en")
+    )
+
+    return render(request, "estructura_app/unidad_actividades.html", {
+        "unidad": unidad,
+        "actividades": actividades,
+        "es_evangelismo": _es_evangelismo(unidad),
+    })
+
+
+@login_required
+def actividad_crear(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    if request.method == "POST":
+        form = ActividadUnidadForm(request.POST, unidad=unidad)
+        if form.is_valid():
+            act = form.save(commit=False)
+            act.unidad = unidad
+            act.creado_por = request.user
+            act.save()
+            form.save_m2m()
+            messages.success(request, "Actividad registrada correctamente.")
+            return redirect("estructura_app:unidad_actividades", pk=unidad.pk)
+        else:
+            messages.error(request, "Revisa el formulario: hay campos inválidos.")
+    else:
+        form = ActividadUnidadForm(unidad=unidad)
+
+    return render(request, "estructura_app/actividad_form.html", {
+        "unidad": unidad,
+        "form": form,
+        "es_evangelismo": _es_evangelismo(unidad),
+    })
+
+
+@login_required
+def unidad_reportes(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    hoy = timezone.localdate()
+    anio_sel = int(request.GET.get("anio") or hoy.year)
+    mes_sel = int(request.GET.get("mes") or hoy.month)
+
+    reporte, _created = ReporteUnidadPeriodo.objects.get_or_create(
+        unidad=unidad,
+        anio=anio_sel,
+        mes=mes_sel,
+        defaults={"creado_por": request.user},
+    )
+
+    # Si se pide regenerar o si está vacío, calculamos resumen
+    if request.method == "POST" or not (reporte.resumen or {}).get("actividades_total") is not None:
+        reporte.resumen = _generar_resumen_periodo(unidad, anio_sel, mes_sel)
+        if not reporte.creado_por:
+            reporte.creado_por = request.user
+        reporte.save()
+
+    form = ReportePeriodoForm(request.POST or None, instance=reporte)
+    if request.method == "POST":
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Reporte guardado.")
+            return redirect(f"{request.path}?anio={anio_sel}&mes={mes_sel}")
+
+    reportes_lista = (
+        ReporteUnidadPeriodo.objects
+        .filter(unidad=unidad)
+        .order_by("-anio", "-mes")
+    )
+
+    return render(request, "estructura_app/unidad_reportes.html", {
+        "unidad": unidad,
+        "reportes_lista": reportes_lista,
+        "reporte": reporte,
+        "form": form,
+        "anio_sel": anio_sel,
+        "mes_sel": mes_sel,
+        "MESES": MESES,
+        "es_evangelismo": _es_evangelismo(unidad),
+    })
+
+
+@login_required
+def reporte_unidad_imprimir(request, pk, anio, mes):
+    unidad = get_object_or_404(Unidad, pk=pk)
+    anio = int(anio)
+    mes = int(mes)
+
+    reporte, _ = ReporteUnidadPeriodo.objects.get_or_create(
+        unidad=unidad,
+        anio=anio,
+        mes=mes,
+        defaults={"creado_por": request.user},
+    )
+
+    if request.GET.get("refresh") == "1" or not reporte.resumen:
+        reporte.resumen = _generar_resumen_periodo(unidad, anio, mes)
+        reporte.save()
+
+    return render(request, "estructura_app/reportes/reporte_unidad_periodo.html", {
+        "unidad": unidad,
+        "reporte": reporte,
+        "mes_nombre": dict(MESES).get(mes, str(mes)),
+    })

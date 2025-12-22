@@ -1,0 +1,582 @@
+{% extends 'estructura_app/base_estructura.html' %}
+{% block title %}{{ unidad.nombre }} · Actividades{% endblock %}
+
+{% block estructura_content %}
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+    <div class="odoo-control-left">
+        <a href="{% url 'estructura_app:unidad_detalle' unidad.pk %}?tab=actividades" class="odoo-btn odoo-btn-icon">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        
+        <div class="odoo-breadcrumb">
+            <a href="{% url 'estructura_app:unidad_listado' %}" class="odoo-breadcrumb-link">Unidades</a>
+            <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
+            <a href="{% url 'estructura_app:unidad_detalle' unidad.pk %}" class="odoo-breadcrumb-link">{{ unidad.nombre }}</a>
+            <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
+            <span class="odoo-breadcrumb-current">Actividades</span>
+        </div>
+    </div>
+
+    <div class="odoo-control-right">
+        <a href="{% url 'estructura_app:actividad_crear' unidad.pk %}" class="odoo-btn odoo-btn-primary">
+            <span class="material-icons">add</span>
+            Nueva actividad
+        </a>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTENIDO PRINCIPAL
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="page-container">
+
+    <!-- HEADER -->
+    <div class="page-header">
+        <div class="page-avatar" style="background: linear-gradient(135deg, #017e84 0%, #015f63 100%);">
+            {% if unidad.imagen %}
+                <img src="{{ unidad.imagen.url }}" alt="{{ unidad.nombre }}">
+            {% else %}
+                <span class="material-icons">event_note</span>
+            {% endif %}
+        </div>
+
+        <div class="page-info">
+            <h1 class="page-title">Actividades</h1>
+            
+            <div class="page-badges">
+                <span class="badge badge-info">{{ unidad.nombre }}</span>
+                {% if unidad.tipo %}
+                    <span class="badge badge-neutral">{{ unidad.tipo.nombre }}</span>
+                {% endif %}
+            </div>
+
+            <div class="page-meta">
+                <div class="meta-item">
+                    <span class="material-icons">event</span>
+                    <span>{{ actividades|length }} actividad{{ actividades|length|pluralize:"es" }}</span>
+                </div>
+                {% if es_evangelismo %}
+                <div class="meta-item">
+                    <span class="material-icons">groups</span>
+                    <span>Ministerio de Evangelismo</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA DE ACTIVIDADES -->
+    <div class="content-card">
+        {% if actividades %}
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Título</th>
+                        <th>Tipo</th>
+                        <th>Responsable</th>
+                        {% if es_evangelismo %}
+                            <th class="text-center">Alcanzados</th>
+                            <th class="text-center">Nuevos</th>
+                            <th class="text-center">Seguimientos</th>
+                        {% endif %}
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in actividades %}
+                    <tr>
+                        <td>
+                            <span class="date-badge">{{ a.fecha|date:"d/m/Y" }}</span>
+                        </td>
+                        <td>
+                            <span class="activity-title">{{ a.titulo }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-neutral">{{ a.get_tipo_display }}</span>
+                        </td>
+                        <td>
+                            {% if a.responsable %}
+                                <div class="responsable-cell">
+                                    <span class="material-icons">person</span>
+                                    {{ a.responsable }}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+
+                        {% if es_evangelismo %}
+                            <td class="text-center">
+                                <span class="metric-mini metric-primary">{{ a.datos.alcanzados|default:0 }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="metric-mini metric-success">{{ a.datos.nuevos_creyentes|default:0 }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="metric-mini metric-info">{{ a.datos.seguimientos|default:0 }}</span>
+                            </td>
+                        {% endif %}
+                        
+                        <td class="text-center">
+                            <div class="row-actions">
+                                <a href="#" class="action-btn" title="Ver detalles">
+                                    <span class="material-icons">visibility</span>
+                                </a>
+                                <a href="#" class="action-btn" title="Editar">
+                                    <span class="material-icons">edit</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <span class="material-icons">event_busy</span>
+            <h3>No hay actividades registradas</h3>
+            <p>Comienza creando la primera actividad para esta unidad.</p>
+            <a href="{% url 'estructura_app:actividad_crear' unidad.pk %}" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons">add</span>
+                Nueva actividad
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   VARIABLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+    --odoo-primary: #714B67;
+    --odoo-primary-dark: #5a3c52;
+    --odoo-text: #212529;
+    --odoo-text-muted: #6c757d;
+    --odoo-border: #dee2e6;
+    --odoo-bg: #f8f9fa;
+    --odoo-success: #28a745;
+    --odoo-info: #17a2b8;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTROL BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: #fff;
+    border-bottom: 1px solid var(--odoo-border);
+    gap: 16px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.odoo-control-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Breadcrumb */
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+}
+
+.odoo-breadcrumb-link {
+    color: var(--odoo-primary);
+    text-decoration: none;
+}
+
+.odoo-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-breadcrumb-sep {
+    font-size: 18px;
+    color: var(--odoo-text-muted);
+}
+
+.odoo-breadcrumb-current {
+    color: var(--odoo-text);
+    font-weight: 500;
+}
+
+/* Botones */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: var(--odoo-primary);
+    color: #fff;
+}
+
+.odoo-btn-primary:hover {
+    background: var(--odoo-primary-dark);
+    color: #fff;
+}
+
+.odoo-btn-icon {
+    padding: 8px;
+    background: transparent;
+    color: var(--odoo-text-muted);
+    border: 1px solid var(--odoo-border);
+}
+
+.odoo-btn-icon:hover {
+    background: var(--odoo-bg);
+    color: var(--odoo-text);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGE LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+.page-container {
+    padding: 24px;
+    background: #f0f0f0;
+    min-height: calc(100vh - 60px);
+}
+
+.page-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+    border: 1px solid var(--odoo-border);
+    margin-bottom: 20px;
+}
+
+.page-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.page-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.page-avatar .material-icons {
+    font-size: 40px;
+    color: #fff;
+}
+
+.page-info {
+    flex: 1;
+}
+
+.page-title {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--odoo-text);
+}
+
+.page-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.page-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+}
+
+.meta-item .material-icons {
+    font-size: 18px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTENT CARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+.content-card {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--odoo-border);
+    overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA TABLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.table-container {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table thead {
+    background: var(--odoo-bg);
+    border-bottom: 2px solid var(--odoo-border);
+}
+
+.data-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.data-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background: var(--odoo-bg);
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #adb5bd;
+}
+
+/* Date badge */
+.date-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: #e3f2fd;
+    color: #1565c0;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Activity title */
+.activity-title {
+    font-weight: 500;
+    color: var(--odoo-text);
+}
+
+/* Responsable cell */
+.responsable-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #495057;
+}
+
+.responsable-cell .material-icons {
+    font-size: 16px;
+    color: var(--odoo-text-muted);
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.badge-info {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.badge-neutral {
+    background: #e9ecef;
+    color: #495057;
+}
+
+/* Mini métricas */
+.metric-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.metric-mini.metric-primary {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.metric-mini.metric-success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.metric-mini.metric-info {
+    background: #e0f7fa;
+    color: #00838f;
+}
+
+/* Row actions */
+.row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 4px;
+    color: var(--odoo-text-muted);
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.action-btn:hover {
+    background: #e9ecef;
+    color: var(--odoo-text);
+}
+
+.action-btn .material-icons {
+    font-size: 18px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-state .material-icons {
+    font-size: 64px;
+    color: #dee2e6;
+    margin-bottom: 16px;
+}
+
+.empty-state h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.empty-state p {
+    margin: 0 0 20px 0;
+    color: var(--odoo-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .odoo-control-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .odoo-control-left,
+    .odoo-control-right {
+        justify-content: center;
+    }
+    
+    .page-container {
+        padding: 16px;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .page-badges,
+    .page-meta {
+        justify-content: center;
+    }
+    
+    .data-table {
+        font-size: 12px;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 10px 12px;
+    }
+}
+</style>
+
+{% endblock %}
