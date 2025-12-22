@@ -168,9 +168,12 @@
                 <!-- Tab buttons -->
                 <div class="odoo-tabs-bar">
                     <button type="button" class="odoo-tab active" data-tab="participantes">
+                        <span class="material-icons">groups</span>
                         Participantes
+                        <span class="odoo-tab-badge" id="tab-participants-badge">0</span>
                     </button>
                     <button type="button" class="odoo-tab" data-tab="notas">
+                        <span class="material-icons">notes</span>
                         Notas
                     </button>
                 </div>
@@ -180,43 +183,68 @@
 
                     <!-- TAB: Participantes -->
                     <div class="odoo-tab-panel active" id="tab-participantes">
-                        <div class="odoo-field odoo-field-full">
-                            <label class="odoo-label">Seleccionar participantes</label>
-
-                            <!-- Controles -->
-                            <div class="odoo-participants-tools">
-                                <div class="odoo-participants-search">
-                                    <span class="material-icons">search</span>
-                                    <input type="text"
-                                           id="participants-search"
-                                           class="odoo-input"
-                                           placeholder="Buscar por nombre o código...">
-                                </div>
-
-                                <div class="odoo-participants-actions">
-                                    <button type="button" class="odoo-btn odoo-btn-secondary" id="btn-participants-all">
-                                        Seleccionar todos
-                                    </button>
-                                    <button type="button" class="odoo-btn odoo-btn-secondary" id="btn-participants-none">
-                                        Quitar todos
-                                    </button>
-                                </div>
+                        
+                        <!-- Toolbar compacto -->
+                        <div class="participants-toolbar">
+                            <div class="participants-search-box">
+                                <span class="material-icons">search</span>
+                                <input type="text" 
+                                       id="participants-search" 
+                                       placeholder="Buscar miembro...">
                             </div>
-
-                            <!-- Contador -->
-                            <div class="odoo-participants-meta">
-                                <span class="odoo-hint">
-                                    Seleccionados: <strong id="participants-count">0</strong>
-                                </span>
+                            
+                            <div class="participants-actions">
+                                <button type="button" class="btn-action" id="btn-select-all" title="Seleccionar todos">
+                                    <span class="material-icons">check_box</span>
+                                    Todos
+                                </button>
+                                <button type="button" class="btn-action" id="btn-select-none" title="Quitar selección">
+                                    <span class="material-icons">check_box_outline_blank</span>
+                                    Ninguno
+                                </button>
                             </div>
-
-                            <!-- Lista -->
-                            <div class="odoo-participants-grid" id="participants-grid">
-                                {{ form.participantes }}
-                            </div>
-
-                            <p class="odoo-hint">Solo aparecen los miembros asignados a esta unidad.</p>
                         </div>
+
+                        <!-- Contenedor principal de participantes -->
+                        <div class="participants-container" id="participants-grid">
+                            
+                            <!-- Panel: Seleccionados -->
+                            <div class="participants-panel participants-selected-panel">
+                                <div class="panel-header">
+                                    <div class="panel-title">
+                                        <span class="material-icons">check_circle</span>
+                                        <span>Seleccionados</span>
+                                    </div>
+                                    <span class="panel-count" id="selected-count">0</span>
+                                </div>
+                                <div class="panel-body" id="selected-list">
+                                    <div class="empty-state" id="empty-selected">
+                                        <span class="material-icons">person_add</span>
+                                        <span>Selecciona participantes de la lista</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Panel: Disponibles -->
+                            <div class="participants-panel participants-available-panel">
+                                <div class="panel-header">
+                                    <div class="panel-title">
+                                        <span class="material-icons">people_outline</span>
+                                        <span>Disponibles</span>
+                                    </div>
+                                    <span class="panel-count" id="available-count">0</span>
+                                </div>
+                                <div class="panel-body participants-grid" id="available-list">
+                                    {{ form.participantes }}
+                                </div>
+                            </div>
+                            
+                        </div>
+
+                        <p class="participants-hint">
+                            <span class="material-icons">info</span>
+                            Solo aparecen miembros asignados a esta unidad
+                        </p>
                     </div>
 
                     <!-- TAB: Notas -->
@@ -324,7 +352,9 @@
     --odoo-border: #dee2e6;
     --odoo-bg: #f8f9fa;
     --odoo-success: #28a745;
-    --odoo-info: #017e84;
+    --odoo-info: #17a2b8;
+    --odoo-warning: #ffc107;
+    --odoo-danger: #dc3545;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -332,14 +362,12 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-control-bar {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 10px 20px;
+    align-items: center;
+    padding: 12px 20px;
     background: #fff;
     border-bottom: 1px solid var(--odoo-border);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    margin: -20px -20px 20px -20px;
 }
 
 .odoo-control-left {
@@ -348,20 +376,14 @@
     gap: 8px;
 }
 
-.odoo-control-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
 .odoo-breadcrumb-link {
     display: flex;
     align-items: center;
     gap: 4px;
     color: var(--odoo-primary);
     text-decoration: none;
-    font-size: 14px;
     font-weight: 500;
+    font-size: 14px;
 }
 
 .odoo-breadcrumb-link:hover {
@@ -374,36 +396,39 @@
 
 .odoo-breadcrumb-sep {
     color: var(--odoo-text-muted);
-    font-size: 14px;
 }
 
 .odoo-breadcrumb-current {
-    font-size: 14px;
     color: var(--odoo-text);
+    font-weight: 500;
 }
 
 .odoo-new-badge {
-    background: var(--odoo-primary);
+    background: var(--odoo-success);
     color: #fff;
-    font-size: 11px;
     padding: 2px 8px;
-    border-radius: 10px;
-    font-weight: 500;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .odoo-member-code {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 13px;
     color: var(--odoo-text-muted);
-    background: var(--odoo-bg);
-    padding: 6px 12px;
-    border-radius: 4px;
+    font-size: 13px;
 }
 
 .odoo-member-code .material-icons {
-    font-size: 16px;
+    font-size: 18px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -413,13 +438,14 @@
     display: grid;
     grid-template-columns: 1fr 280px;
     gap: 0;
-    background: #f0f0f0;
-    min-height: calc(100vh - 52px);
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--odoo-border);
+    overflow: hidden;
 }
 
 .odoo-form-main {
-    background: #fff;
-    border-right: 1px solid var(--odoo-border);
+    padding: 24px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -428,61 +454,55 @@
 .odoo-form-header {
     display: flex;
     gap: 20px;
-    padding: 24px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.odoo-avatar-section {
-    flex-shrink: 0;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--odoo-border);
+    margin-bottom: 20px;
 }
 
 .odoo-avatar {
-    width: 90px;
-    height: 90px;
+    width: 80px;
+    height: 80px;
     border-radius: 8px;
+    background: linear-gradient(135deg, var(--odoo-primary) 0%, var(--odoo-primary-dark) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--odoo-info) 0%, #015f63 100%);
+    flex-shrink: 0;
 }
 
 .odoo-avatar .material-icons {
-    font-size: 40px;
+    font-size: 36px;
     color: #fff;
 }
 
 .odoo-header-info {
     flex: 1;
-    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   RADIO GROUP (Tipo)
-   ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-radio-group {
     display: flex;
-    gap: 16px;
-    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .odoo-radio {
     display: flex;
     align-items: center;
     gap: 6px;
+    cursor: pointer;
     font-size: 13px;
     color: var(--odoo-text);
-    cursor: pointer;
 }
 
-.odoo-radio input[type="radio"] {
+.odoo-radio input {
     accent-color: var(--odoo-primary);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   NAME FIELD
-   ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-name-field {
-    margin-bottom: 16px;
+    margin: 4px 0;
 }
 
 .odoo-name-input {
@@ -491,8 +511,8 @@
     border-bottom: 2px solid transparent;
     font-size: 24px;
     font-weight: 600;
-    color: var(--odoo-text);
     padding: 4px 0;
+    color: var(--odoo-text);
     background: transparent;
     transition: border-color 0.2s;
 }
@@ -504,46 +524,39 @@
 
 .odoo-name-input::placeholder {
     color: #adb5bd;
-    font-weight: 400;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   QUICK FIELDS
-   ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-quick-fields {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 16px;
 }
 
 .odoo-quick-field {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: var(--odoo-bg);
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 13px;
 }
 
 .odoo-quick-field .material-icons {
-    font-size: 16px;
+    font-size: 18px;
     color: var(--odoo-text-muted);
 }
 
 .odoo-quick-input,
 .odoo-quick-select {
-    border: none;
-    background: transparent;
+    border: 1px solid var(--odoo-border);
+    border-radius: 4px;
+    padding: 6px 10px;
     font-size: 13px;
     color: var(--odoo-text);
-    padding: 2px 4px;
-    min-width: 120px;
+    background: #fff;
 }
 
 .odoo-quick-input:focus,
 .odoo-quick-select:focus {
     outline: none;
+    border-color: var(--odoo-primary);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -552,39 +565,23 @@
 .odoo-form-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    padding: 24px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.odoo-form-column {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    gap: 20px;
+    padding-bottom: 20px;
 }
 
 .odoo-field {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 12px;
 }
 
 .odoo-label {
+    min-width: 100px;
     font-size: 13px;
     font-weight: 500;
     color: var(--odoo-text-muted);
-    min-width: 100px;
-    flex-shrink: 0;
 }
 
-.odoo-field-text {
-    font-size: 14px;
-    color: var(--odoo-text);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   STATUS BADGES
-   ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-status-badge {
     display: inline-flex;
     align-items: center;
@@ -594,73 +591,78 @@
     font-weight: 500;
 }
 
-.odoo-status-active {
-    background: #d4edda;
-    color: #155724;
+.odoo-status-info {
+    background: rgba(23, 162, 184, 0.1);
+    color: var(--odoo-info);
 }
 
-.odoo-status-inactive {
-    background: #f8d7da;
-    color: #721c24;
+.odoo-status-active {
+    background: rgba(40, 167, 69, 0.1);
+    color: var(--odoo-success);
 }
 
 .odoo-status-pending {
-    background: #fff3cd;
+    background: rgba(255, 193, 7, 0.15);
     color: #856404;
 }
 
-.odoo-status-info {
-    background: #e3f2fd;
-    color: #0d47a1;
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
-   TABS
+   TABS SECTION
    ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-tabs-section {
-    padding: 0;
+    border-top: 1px solid var(--odoo-border);
+    padding-top: 16px;
 }
 
 .odoo-tabs-bar {
     display: flex;
-    gap: 0;
+    gap: 4px;
     border-bottom: 1px solid var(--odoo-border);
-    padding: 0 24px;
-    background: #fafafa;
+    margin-bottom: 16px;
 }
 
 .odoo-tab {
-    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
     font-size: 13px;
     font-weight: 500;
     color: var(--odoo-text-muted);
-    background: transparent;
-    border: none;
     cursor: pointer;
-    position: relative;
-    transition: color 0.2s;
+    transition: all 0.2s;
+}
+
+.odoo-tab .material-icons {
+    font-size: 18px;
 }
 
 .odoo-tab:hover {
     color: var(--odoo-text);
+    background: var(--odoo-bg);
 }
 
 .odoo-tab.active {
     color: var(--odoo-primary);
+    border-bottom-color: var(--odoo-primary);
 }
 
-.odoo-tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
+.odoo-tab-badge {
     background: var(--odoo-primary);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
 }
 
 .odoo-tabs-content {
-    padding: 24px;
+    min-height: 200px;
 }
 
 .odoo-tab-panel {
@@ -672,95 +674,277 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   PARTICIPANTS TOOLS
+   PARTICIPANTES - NUEVO DISEÑO
    ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-participants-tools{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  justify-content:space-between;
-  flex-wrap:wrap;
-  margin:8px 0 10px;
+
+/* Toolbar */
+.participants-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
 }
 
-.odoo-participants-search{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex:1;
-  min-width:260px;
-}
-
-.odoo-participants-actions{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-}
-
-.odoo-participants-meta{
-  margin:6px 0 10px;
-}
-
-.odoo-input{
-  width:100%;
-  padding:10px 12px;
-  border:1px solid var(--odoo-border);
-  border-radius:6px;
-  font-size:13px;
-  background:#fff;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PARTICIPANTS GRID
-   ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-participants-grid ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 8px;
-    max-height: 300px;
-    overflow-y: auto;
-    border: 1px solid var(--odoo-border);
-    border-radius: 4px;
-    padding: 12px;
-    background: #fafafa;
-}
-
-.odoo-participants-grid ul li {
+.participants-search-box {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 10px;
-    border-radius: 4px;
-    transition: background 0.15s ease;
+    flex: 1;
+    min-width: 200px;
+    max-width: 320px;
+    background: var(--odoo-bg);
+    border: 1px solid var(--odoo-border);
+    border-radius: 6px;
+    padding: 0 12px;
 }
 
-.odoo-participants-grid ul li:hover {
+.participants-search-box .material-icons {
+    font-size: 20px;
+    color: var(--odoo-text-muted);
+}
+
+.participants-search-box input {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 10px 0;
+    font-size: 13px;
+    color: var(--odoo-text);
+}
+
+.participants-search-box input:focus {
+    outline: none;
+}
+
+.participants-search-box input::placeholder {
+    color: #adb5bd;
+}
+
+.participants-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
     background: #fff;
+    border: 1px solid var(--odoo-border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--odoo-text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
 }
 
-.odoo-participants-grid ul li label {
+.btn-action .material-icons {
+    font-size: 18px;
+}
+
+.btn-action:hover {
+    background: var(--odoo-bg);
+    color: var(--odoo-text);
+    border-color: #ced4da;
+}
+
+/* Container principal */
+.participants-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Paneles */
+.participants-panel {
+    background: #fff;
+    border: 1px solid var(--odoo-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--odoo-bg);
+    border-bottom: 1px solid var(--odoo-border);
+}
+
+.panel-title {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 13px;
+    font-weight: 600;
+    color: var(--odoo-text);
+}
+
+.panel-title .material-icons {
+    font-size: 20px;
+    color: var(--odoo-text-muted);
+}
+
+.participants-selected-panel .panel-title .material-icons {
+    color: var(--odoo-success);
+}
+
+.panel-count {
+    background: var(--odoo-primary);
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.participants-selected-panel .panel-count {
+    background: var(--odoo-success);
+}
+
+.panel-body {
+    padding: 12px;
+    min-height: 200px;
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+/* Empty state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px 20px;
+    color: var(--odoo-text-muted);
+    text-align: center;
+}
+
+.empty-state .material-icons {
+    font-size: 40px;
+    opacity: 0.4;
+}
+
+.empty-state span:last-child {
+    font-size: 13px;
+}
+
+/* Grid de participantes disponibles */
+.participants-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Items de participante - Lista disponibles */
+.participants-grid label,
+.participant-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid var(--odoo-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.participants-grid label:hover,
+.participant-item:hover {
+    background: var(--odoo-bg);
+    border-color: #ced4da;
+}
+
+.participants-grid label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--odoo-primary);
+    cursor: pointer;
+}
+
+.participants-grid label.selected,
+.participant-item.selected {
+    background: rgba(113, 75, 103, 0.08);
+    border-color: var(--odoo-primary);
+}
+
+/* Chips de seleccionados */
+#selected-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+}
+
+.selected-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(113,75,103,0.08) 0%, rgba(113,75,103,0.04) 100%);
+    border: 1px solid rgba(113,75,103,0.25);
+    border-radius: 20px;
+    font-size: 13px;
     color: var(--odoo-text);
     cursor: pointer;
-    margin: 0;
+    transition: all 0.15s;
 }
 
-.odoo-participants-grid ul li input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--odoo-primary);
+.selected-chip:hover {
+    background: rgba(220, 53, 69, 0.08);
+    border-color: var(--odoo-danger);
 }
 
-.odoo-hint {
-    margin: 8px 0 0;
-    font-size: 12px;
+.selected-chip:hover .chip-remove {
+    color: var(--odoo-danger);
+}
+
+.chip-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--odoo-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.chip-remove {
+    font-size: 16px !important;
     color: var(--odoo-text-muted);
+    margin-left: 2px;
+}
+
+/* Hint inferior */
+.participants-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding: 10px 14px;
+    background: rgba(23, 162, 184, 0.08);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--odoo-info);
+}
+
+.participants-hint .material-icons {
+    font-size: 16px;
+}
+
+/* Ocultar elementos mientras filtrado */
+.participants-grid label.hidden {
+    display: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -770,11 +954,12 @@
     width: 100%;
     padding: 12px;
     border: 1px solid var(--odoo-border);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 14px;
     font-family: inherit;
+    color: var(--odoo-text);
     resize: vertical;
-    min-height: 120px;
+    transition: border-color 0.2s;
 }
 
 .odoo-textarea:focus {
@@ -786,8 +971,9 @@
    ASIDE PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-form-aside {
+    background: var(--odoo-bg);
     padding: 20px;
-    background: #fff;
+    border-left: 1px solid var(--odoo-border);
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -799,27 +985,19 @@
     gap: 8px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   BUTTONS
-   ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     padding: 10px 16px;
-    border-radius: 4px;
-    font-size: 13px;
+    border-radius: 6px;
+    font-size: 14px;
     font-weight: 500;
-    cursor: pointer;
     text-decoration: none;
-    border: 1px solid transparent;
-    transition: all 0.15s ease;
-    font-family: inherit;
-}
-
-.odoo-btn .material-icons {
-    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
 }
 
 .odoo-btn-primary {
@@ -829,7 +1007,6 @@
 
 .odoo-btn-primary:hover {
     background: var(--odoo-primary-dark);
-    color: #fff;
 }
 
 .odoo-btn-secondary {
@@ -842,16 +1019,18 @@
     background: var(--odoo-bg);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ASIDE INFO
-   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
 .odoo-aside-info {
-    background: var(--odoo-bg);
-    border-radius: 6px;
-    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--odoo-border);
 }
 
 .odoo-info-item {
@@ -863,64 +1042,62 @@
 .odoo-info-label {
     font-size: 12px;
     color: var(--odoo-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
 }
 
 .odoo-info-value {
     font-size: 13px;
-    color: var(--odoo-text);
     font-weight: 500;
+    color: var(--odoo-text);
 }
 
 .odoo-info-badge {
-    background: #d4edda;
-    color: #155724;
-    font-size: 11px;
+    background: rgba(40, 167, 69, 0.1);
+    color: var(--odoo-success);
     padding: 3px 8px;
     border-radius: 4px;
-    font-weight: 500;
-}
-
-.odoo-badge-inactive {
-    background: #f8d7da;
-    color: #721c24;
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .odoo-badge-pending {
-    background: #fff3cd;
+    background: rgba(255, 193, 7, 0.15);
     color: #856404;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ASIDE TIPS
-   ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-aside-tips {
-    border: 1px solid #e3f2fd;
-    background: #f8fbff;
-    border-radius: 6px;
     padding: 16px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--odoo-border);
 }
 
 .odoo-aside-title {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--odoo-text);
     margin: 0 0 12px 0;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
 }
 
 .odoo-tips-list {
+    list-style: none;
+    padding: 0;
     margin: 0;
-    padding: 0 0 0 16px;
-    font-size: 12px;
-    color: var(--odoo-text-muted);
-    line-height: 1.6;
 }
 
 .odoo-tips-list li {
-    margin-bottom: 6px;
+    position: relative;
+    padding-left: 16px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--odoo-text-muted);
+    line-height: 1.5;
+}
+
+.odoo-tips-list li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--odoo-primary);
 }
 
 .odoo-tips-list li:last-child {
@@ -983,11 +1160,18 @@
 
     .odoo-form-aside {
         border-top: 1px solid var(--odoo-border);
+        border-left: none;
     }
 
     .odoo-aside-actions {
         flex-direction: row;
         flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 900px) {
+    .participants-container {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -1018,6 +1202,19 @@
     .odoo-control-right {
         display: none;
     }
+    
+    .participants-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .participants-search-box {
+        max-width: none;
+    }
+    
+    .participants-actions {
+        justify-content: center;
+    }
 }
 </style>
 
@@ -1028,7 +1225,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     initTabs();
     initTypeSelector();
-    initParticipantsTools();
+    initParticipantsManager();
 });
 
 /**
@@ -1091,49 +1288,140 @@ function initTypeSelector() {
 }
 
 /**
- * Participantes: buscador + seleccionar/quitar todos + contador
+ * Gestor de participantes mejorado
  */
-function initParticipantsTools() {
-    const grid = document.getElementById('participants-grid');
-    if (!grid) return;
+function initParticipantsManager() {
+    const container = document.getElementById('participants-grid');
+    if (!container) return;
 
-    const search = document.getElementById('participants-search');
-    const btnAll = document.getElementById('btn-participants-all');
-    const btnNone = document.getElementById('btn-participants-none');
-    const countEl = document.getElementById('participants-count');
+    const searchInput = document.getElementById('participants-search');
+    const btnSelectAll = document.getElementById('btn-select-all');
+    const btnSelectNone = document.getElementById('btn-select-none');
+    const selectedList = document.getElementById('selected-list');
+    const emptySelected = document.getElementById('empty-selected');
+    const selectedCount = document.getElementById('selected-count');
+    const availableCount = document.getElementById('available-count');
+    const tabBadge = document.getElementById('tab-participants-badge');
+    const availableList = document.getElementById('available-list');
 
-    const checkboxes = () => Array.from(grid.querySelectorAll('input[type="checkbox"]'));
-    const items = () => Array.from(grid.querySelectorAll('li'));
+    // Obtener todos los checkboxes y labels
+    const getCheckboxes = () => Array.from(availableList.querySelectorAll('input[type="checkbox"]'));
+    const getLabels = () => Array.from(availableList.querySelectorAll('label'));
 
-    function updateCount() {
-        const n = checkboxes().filter(cb => cb.checked).length;
-        if (countEl) countEl.textContent = String(n);
+    // Obtener iniciales del nombre
+    function getInitials(name) {
+        return name.split(' ')
+            .slice(0, 2)
+            .map(word => word.charAt(0).toUpperCase())
+            .join('');
     }
 
-    function setAll(value) {
-        checkboxes().forEach(cb => { cb.checked = value; });
-        updateCount();
-    }
+    // Actualizar contadores y vista
+    function updateView() {
+        const checkboxes = getCheckboxes();
+        const selected = checkboxes.filter(cb => cb.checked);
+        const count = selected.length;
 
-    function applyFilter(term) {
-        const t = (term || '').trim().toLowerCase();
-        items().forEach(li => {
-            const text = (li.textContent || '').toLowerCase();
-            li.style.display = (!t || text.includes(t)) ? '' : 'none';
+        // Actualizar contadores
+        if (selectedCount) selectedCount.textContent = count;
+        if (availableCount) availableCount.textContent = checkboxes.length;
+        if (tabBadge) tabBadge.textContent = count;
+
+        // Mostrar/ocultar empty state
+        if (emptySelected) {
+            emptySelected.style.display = count > 0 ? 'none' : 'flex';
+        }
+
+        // Limpiar y reconstruir lista de seleccionados
+        if (selectedList) {
+            // Mantener el empty state
+            const chips = selectedList.querySelectorAll('.selected-chip');
+            chips.forEach(chip => chip.remove());
+
+            selected.forEach(cb => {
+                const label = cb.closest('label');
+                const name = label ? label.textContent.trim() : 'Participante';
+                
+                const chip = document.createElement('div');
+                chip.className = 'selected-chip';
+                chip.dataset.checkboxId = cb.id;
+                chip.innerHTML = `
+                    <span class="chip-avatar">${getInitials(name)}</span>
+                    <span>${name}</span>
+                    <span class="material-icons chip-remove">close</span>
+                `;
+                
+                chip.addEventListener('click', () => {
+                    cb.checked = false;
+                    updateLabelStyle(label, false);
+                    updateView();
+                });
+
+                selectedList.appendChild(chip);
+            });
+        }
+
+        // Actualizar estilos de labels
+        getLabels().forEach(label => {
+            const cb = label.querySelector('input[type="checkbox"]');
+            updateLabelStyle(label, cb && cb.checked);
         });
     }
 
-    grid.addEventListener('change', (e) => {
-        if (e.target && e.target.matches('input[type="checkbox"]')) updateCount();
-    });
+    function updateLabelStyle(label, isSelected) {
+        if (label) {
+            label.classList.toggle('selected', isSelected);
+        }
+    }
 
-    if (search) search.addEventListener('input debating', () => applyFilter(search.value)); // fallback
-    if (search) search.addEventListener('input', () => applyFilter(search.value));
+    // Filtrar por búsqueda
+    function filterParticipants(term) {
+        const searchTerm = (term || '').toLowerCase().trim();
+        
+        getLabels().forEach(label => {
+            const text = (label.textContent || '').toLowerCase();
+            const matches = !searchTerm || text.includes(searchTerm);
+            label.classList.toggle('hidden', !matches);
+        });
+    }
 
-    if (btnAll) btnAll.addEventListener('click', () => setAll(true));
-    if (btnNone) btnNone.addEventListener('click', () => setAll(false));
+    // Seleccionar/deseleccionar todos (solo visibles)
+    function setAll(value) {
+        getLabels().forEach(label => {
+            if (!label.classList.contains('hidden')) {
+                const cb = label.querySelector('input[type="checkbox"]');
+                if (cb) cb.checked = value;
+            }
+        });
+        updateView();
+    }
 
-    updateCount();
+    // Event listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            filterParticipants(searchInput.value);
+        });
+    }
+
+    if (btnSelectAll) {
+        btnSelectAll.addEventListener('click', () => setAll(true));
+    }
+
+    if (btnSelectNone) {
+        btnSelectNone.addEventListener('click', () => setAll(false));
+    }
+
+    // Escuchar cambios en checkboxes
+    if (availableList) {
+        availableList.addEventListener('change', (e) => {
+            if (e.target.matches('input[type="checkbox"]')) {
+                updateView();
+            }
+        });
+    }
+
+    // Inicializar vista
+    updateView();
 }
 </script>
 
