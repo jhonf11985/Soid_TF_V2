@@ -160,34 +160,34 @@
         margin-bottom: 16px;
         padding-bottom: 10px;
     }
-    
+
     .rpt-title {
         font-size: 18px;
     }
-    
+
     .rpt-summary-box {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
-    
+
     .rpt-section {
         margin-bottom: 16px;
     }
-    
+
     .rpt-section-title {
         font-size: 13px;
     }
-    
+
     .rpt-metrics-table th,
     .rpt-metrics-table td {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
-    
+
     .rpt-metric-value {
         font-size: 20px;
     }
-    
+
     .rpt-text-block {
         padding: 10px 12px;
     }
@@ -206,21 +206,21 @@
         flex-direction: column;
         gap: 2px;
     }
-    
+
     .rpt-summary-value {
         text-align: left;
     }
-    
+
     .rpt-metrics-table th,
     .rpt-metrics-table td {
         padding: 6px 8px;
         font-size: 10px;
     }
-    
+
     .rpt-metric-value {
         font-size: 18px;
     }
-    
+
     .rpt-footer {
         flex-direction: column;
         gap: 4px;
@@ -234,7 +234,7 @@
 
 <!-- Encabezado del reporte -->
 <div class="rpt-header">
-    <h1 class="rpt-title">Reporte de Unidad</h1>
+    <h1 class="rpt-title">Reporte mensual de unidad</h1>
     <p class="rpt-subtitle">{{ unidad.nombre }} · {{ mes_nombre }} {{ reporte.anio }}</p>
 </div>
 
@@ -263,12 +263,13 @@
 <!-- Resumen (métricas) -->
 <div class="rpt-section">
     <h2 class="rpt-section-title">Resumen del Período</h2>
-    
+
     <table class="rpt-metrics-table">
         <thead>
             <tr>
                 <th>Actividades</th>
                 <th>Participantes únicos</th>
+                <th>Oyentes</th>
                 <th>Alcanzados</th>
                 <th>Nuevos creyentes</th>
                 <th>Seguimientos</th>
@@ -278,6 +279,7 @@
             <tr>
                 <td><span class="rpt-metric-value">{{ reporte.resumen.actividades_total|default:0 }}</span></td>
                 <td><span class="rpt-metric-value">{{ reporte.resumen.participantes_unicos|default:0 }}</span></td>
+                <td><span class="rpt-metric-value">{{ reporte.resumen.oyentes_total|default:0 }}</span></td>
                 <td><span class="rpt-metric-value">{{ reporte.resumen.alcanzados_total|default:0 }}</span></td>
                 <td><span class="rpt-metric-value">{{ reporte.resumen.nuevos_creyentes_total|default:0 }}</span></td>
                 <td><span class="rpt-metric-value">{{ reporte.resumen.seguimientos_total|default:0 }}</span></td>
@@ -321,5 +323,24 @@
     <span>Generado el {% now "d/m/Y H:i" %}</span>
     <span>Torre Fuerte · Sistema de Gestión</span>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const params = new URLSearchParams(window.location.search);
+    const auto = params.get("autoprint");
+
+    if (auto === "1") {
+        // Pequeña espera para que carguen estilos/imágenes (logo/watermark)
+        setTimeout(() => {
+            window.print();
+
+            // Opcional: cerrar pestaña al terminar (algunos navegadores lo permiten)
+            window.onafterprint = () => {
+                window.close();
+            };
+        }, 400);
+    }
+});
+</script>
 
 {% endblock %}

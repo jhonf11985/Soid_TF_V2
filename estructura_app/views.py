@@ -1253,15 +1253,99 @@ def actividad_crear(request, pk):
         "form": form,
         
     })
-
 @login_required
 def unidad_reportes(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
     hoy = timezone.localdate()
     anio_sel = int(request.GET.get("anio") or hoy.year)
-    mes_sel = int(request.GET.get("mes") or hoy.month)
 
+    # tipo de periodo: mes (default) o trimestre
+    periodo_tipo = (request.GET.get("tipo") or "mes").strip().lower()
+    if periodo_tipo not in ("mes", "trimestre", "anio"):
+        periodo_tipo = "mes"
+
+
+    # defaults
+    mes_sel = int(request.GET.get("mes") or hoy.month)
+    trimestre_sel = int(request.GET.get("tri") or ((hoy.month - 1) // 3 + 1))
+    if trimestre_sel not in (1, 2, 3, 4):
+        trimestre_sel = 1
+
+    # ==========================
+    # TRIMESTRAL (GET solamente)
+    # ==========================
+    if periodo_tipo == "trimestre":
+        # En trimestre no guardamos/editar reflexión aún (próximo paso)
+        resumen_vista = _generar_resumen_trimestre(unidad, anio_sel, trimestre_sel)
+
+        # histórico sigue siendo mensual (ReporteUnidadPeriodo)
+        reportes_lista = (
+            ReporteUnidadPeriodo.objects
+            .filter(unidad=unidad)
+            .order_by("-anio", "-mes")
+        )
+
+        # form y reporte se mandan vacíos para que la plantilla no rompa
+        form = ReportePeriodoForm(None)
+        reporte = None
+
+        return render(request, "estructura_app/unidad_reportes.html", {
+            "unidad": unidad,
+            "reportes_lista": reportes_lista,
+
+            "reporte": reporte,
+            "form": form,
+
+            "anio_sel": anio_sel,
+            "mes_sel": mes_sel,
+            "MESES": MESES,
+
+            "periodo_tipo": periodo_tipo,
+            "trimestre_sel": trimestre_sel,
+            "TRIMESTRES": TRIMESTRES,
+
+            "resumen_vista": resumen_vista,
+        })
+    # ==========================
+    # ANUAL (GET solamente)
+    # ==========================
+    if periodo_tipo == "anio":
+        # En anual no guardamos/editar reflexión aún (igual que trimestre)
+        resumen_vista = _generar_resumen_anual(unidad, anio_sel)
+
+        # histórico sigue siendo mensual (ReporteUnidadPeriodo)
+        reportes_lista = (
+            ReporteUnidadPeriodo.objects
+            .filter(unidad=unidad)
+            .order_by("-anio", "-mes")
+        )
+
+        # form y reporte se mandan vacíos para que la plantilla no rompa
+        form = ReportePeriodoForm(None)
+        reporte = None
+
+        return render(request, "estructura_app/unidad_reportes.html", {
+            "unidad": unidad,
+            "reportes_lista": reportes_lista,
+
+            "reporte": reporte,
+            "form": form,
+
+            "anio_sel": anio_sel,
+            "mes_sel": mes_sel,
+            "MESES": MESES,
+
+            "periodo_tipo": periodo_tipo,
+            "trimestre_sel": trimestre_sel,
+            "TRIMESTRES": TRIMESTRES,
+
+            "resumen_vista": resumen_vista,
+        })
+
+    # ==========================
+    # MENSUAL (tu flujo actual)
+    # ==========================
     reporte, _created = ReporteUnidadPeriodo.objects.get_or_create(
         unidad=unidad,
         anio=anio_sel,
@@ -1279,7 +1363,7 @@ def unidad_reportes(request, pk):
             reporte.creado_por = request.user
         reporte.save()
         messages.success(request, "Resumen recalculado.")
-        return redirect(f"{request.path}?anio={anio_sel}&mes={mes_sel}")
+        return redirect(f"{request.path}?tipo=mes&anio={anio_sel}&mes={mes_sel}")
 
     # ✅ Si el resumen está vacío o incompleto, lo generamos (GET normal)
     if not reporte.resumen or (reporte.resumen or {}).get("actividades_total") is None:
@@ -1294,7 +1378,7 @@ def unidad_reportes(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Reporte guardado.")
-            return redirect(f"{request.path}?anio={anio_sel}&mes={mes_sel}")
+            return redirect(f"{request.path}?tipo=mes&anio={anio_sel}&mes={mes_sel}")
 
     reportes_lista = (
         ReporteUnidadPeriodo.objects
@@ -1302,15 +1386,26 @@ def unidad_reportes(request, pk):
         .order_by("-anio", "-mes")
     )
 
+    # Mensual: para mantener plantilla usando la misma variable resumen_vista
+    resumen_vista = reporte.resumen or {}
+
     return render(request, "estructura_app/unidad_reportes.html", {
         "unidad": unidad,
         "reportes_lista": reportes_lista,
         "reporte": reporte,
         "form": form,
+
         "anio_sel": anio_sel,
         "mes_sel": mes_sel,
         "MESES": MESES,
+
+        "periodo_tipo": periodo_tipo,
+        "trimestre_sel": trimestre_sel,
+        "TRIMESTRES": TRIMESTRES,
+
+        "resumen_vista": resumen_vista,
     })
+
 
 
 @login_required
@@ -1335,3 +1430,91 @@ def reporte_unidad_imprimir(request, pk, anio, mes):
         "reporte": reporte,
         "mes_nombre": dict(MESES).get(mes, str(mes)),
     })
+
+TRIMESTRES = [
+    (1, "Q1 (Ene–Mar)"),
+    (2, "Q2 (Abr–Jun)"),
+    (3, "Q3 (Jul–Sep)"),
+    (4, "Q4 (Oct–Dic)"),
+]
+
+def _meses_de_trimestre(tri: int):
+    """
+    Devuelve la lista de meses para un trimestre:
+    Q1-> [1,2,3], Q2-> [4,5,6], Q3-> [7,8,9], Q4-> [10,11,12]
+    """
+    tri = int(tri)
+    if tri == 1:
+        return [1, 2, 3]
+    if tri == 2:
+        return [4, 5, 6]
+    if tri == 3:
+        return [7, 8, 9]
+    return [10, 11, 12]
+
+
+def _generar_resumen_trimestre(unidad, anio: int, tri: int):
+    """
+    Resumen trimestral dinámico (no se guarda):
+    - actividades_total = suma actividades de los 3 meses
+    - participantes_unicos = únicos del trimestre
+    - oyentes_total / nuevos_creyentes_total = suma por actividad (datos JSON)
+    """
+    meses = _meses_de_trimestre(tri)
+
+    actividades = (
+        ActividadUnidad.objects
+        .filter(unidad=unidad, fecha__year=anio, fecha__month__in=meses)
+        .prefetch_related("participantes")
+    )
+
+    participantes_ids = set()
+    oyentes_total = 0
+    nuevos_creyentes_total = 0
+
+    for act in actividades:
+        participantes_ids.update(act.participantes.values_list("id", flat=True))
+        datos = act.datos or {}
+        oyentes_total += int(datos.get("oyentes", 0))
+        nuevos_creyentes_total += int(datos.get("nuevos_creyentes", 0))
+
+    return {
+        "actividades_total": actividades.count(),
+        "participantes_unicos": len(participantes_ids),
+        "oyentes_total": oyentes_total,
+        "nuevos_creyentes_total": nuevos_creyentes_total,
+
+        # compatibilidad si alguna plantilla vieja lo usa
+        "alcanzados_total": oyentes_total,
+    }
+
+def _generar_resumen_anual(unidad, anio: int):
+    """
+    Resumen anual dinámico (no se guarda):
+    - actividades_total = total del año
+    - participantes_unicos = únicos del año
+    - oyentes_total / nuevos_creyentes_total = suma por actividad (datos JSON)
+    """
+    actividades = (
+        ActividadUnidad.objects
+        .filter(unidad=unidad, fecha__year=anio)
+        .prefetch_related("participantes")
+    )
+
+    participantes_ids = set()
+    oyentes_total = 0
+    nuevos_creyentes_total = 0
+
+    for act in actividades:
+        participantes_ids.update(act.participantes.values_list("id", flat=True))
+        datos = act.datos or {}
+        oyentes_total += int(datos.get("oyentes", 0))
+        nuevos_creyentes_total += int(datos.get("nuevos_creyentes", 0))
+
+    return {
+        "actividades_total": actividades.count(),
+        "participantes_unicos": len(participantes_ids),
+        "oyentes_total": oyentes_total,
+        "nuevos_creyentes_total": nuevos_creyentes_total,
+        "alcanzados_total": oyentes_total,
+    }

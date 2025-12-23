@@ -11,7 +11,7 @@
         <a href="{% url 'estructura_app:unidad_detalle' unidad.pk %}?tab=reportes" class="odoo-btn odoo-btn-icon">
             <span class="material-icons">arrow_back</span>
         </a>
-        
+
         <div class="odoo-breadcrumb">
             <a href="{% url 'estructura_app:unidad_listado' %}" class="odoo-breadcrumb-link">Unidades</a>
             <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
@@ -22,12 +22,19 @@
     </div>
 
     <div class="odoo-control-right">
-        <a href="{% url 'estructura_app:reporte_unidad_imprimir' unidad.pk anio_sel mes_sel %}?refresh=1" 
-           target="_blank" 
-           class="odoo-btn odoo-btn-secondary">
-            <span class="material-icons">print</span>
-            Imprimir
-        </a>
+        {% if periodo_tipo == "trimestre" %}
+            <button class="odoo-btn odoo-btn-secondary" type="button" disabled title="Impresión trimestral: próximo paso">
+                <span class="material-icons">print</span>
+                Imprimir
+            </button>
+        {% else %}
+            <a href="{% url 'estructura_app:reporte_unidad_imprimir' unidad.pk anio_sel mes_sel %}?refresh=1&autoprint=1"
+               target="_blank"
+               class="odoo-btn odoo-btn-secondary">
+                <span class="material-icons">print</span>
+                Imprimir
+            </a>
+        {% endif %}
     </div>
 </div>
 
@@ -48,7 +55,7 @@
 
         <div class="page-info">
             <h1 class="page-title">Reportes</h1>
-            
+
             <div class="page-badges">
                 <span class="badge badge-info">{{ unidad.nombre }}</span>
                 {% if unidad.tipo %}
@@ -59,7 +66,16 @@
             <div class="page-meta">
                 <div class="meta-item">
                     <span class="material-icons">calendar_month</span>
-                    <span>{{ mes_sel|stringformat:"02d" }}/{{ anio_sel }}</span>
+                    <span>
+                    {% if periodo_tipo == "anio" %}
+                        Año {{ anio_sel }}
+                    {% elif periodo_tipo == "trimestre" %}
+                        Q{{ trimestre_sel }} / {{ anio_sel }}
+                    {% else %}
+                        {{ mes_sel|stringformat:"02d" }}/{{ anio_sel }}
+                    {% endif %}
+
+                    </span>
                 </div>
                 <div class="meta-item">
                     <span class="material-icons">folder</span>
@@ -71,17 +87,37 @@
 
     <!-- SELECTOR DE PERÍODO -->
     <div class="period-selector">
-        <form method="get" class="period-form">
+        <form method="get" class="period-form" id="periodForm">
+            <div class="period-field">
+                <label>Tipo</label>
+<select name="tipo" class="form-select" id="tipoPeriodo">
+    <option value="mes" {% if periodo_tipo == "mes" %}selected{% endif %}>Mensual</option>
+    <option value="trimestre" {% if periodo_tipo == "trimestre" %}selected{% endif %}>Trimestral</option>
+    <option value="anio" {% if periodo_tipo == "anio" %}selected{% endif %}>Anual</option>
+</select>
+
+            </div>
+
             <div class="period-field">
                 <label>Año</label>
                 <input type="number" name="anio" value="{{ anio_sel }}" min="2000" max="2100" class="form-input">
             </div>
 
-            <div class="period-field">
+           <div class="period-field" id="campoMes" {% if periodo_tipo != "mes" %}style="display:none"{% endif %}>
+
                 <label>Mes</label>
                 <select name="mes" class="form-select">
                     {% for n, label in MESES %}
                         <option value="{{ n }}" {% if n == mes_sel %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="period-field" id="campoTrimestre" {% if periodo_tipo != "trimestre" %}style="display:none"{% endif %}>
+                <label>Trimestre</label>
+                <select name="tri" class="form-select">
+                    {% for q, label in TRIMESTRES %}
+                        <option value="{{ q }}" {% if q == trimestre_sel %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -95,45 +131,53 @@
 
     <!-- GRID DE CONTENIDO -->
     <div class="reportes-grid">
-        
+
         <!-- RESUMEN AUTOMÁTICO -->
         <div class="report-card">
             <div class="report-card-header">
                 <span class="material-icons">analytics</span>
                 <h3>Resumen automático</h3>
             </div>
-            
+
             <div class="report-card-body">
                 <div class="metrics-grid">
                     <div class="metric-item">
-                        <span class="metric-value">{{ reporte.resumen.actividades_total|default:0 }}</span>
+                        <span class="metric-value">{{ resumen_vista.actividades_total|default:0 }}</span>
                         <span class="metric-label">Actividades</span>
                     </div>
                     <div class="metric-item">
-                        <span class="metric-value">{{ reporte.resumen.participantes_unicos|default:0 }}</span>
+                        <span class="metric-value">{{ resumen_vista.participantes_unicos|default:0 }}</span>
                         <span class="metric-label">Participantes únicos</span>
                     </div>
 
-                  
-                <div class="metric-item metric-evangelismo">
-                    <span class="metric-value">{{ reporte.resumen.oyentes_total|default:0 }}</span>
-                    <span class="metric-label">Oyentes (invitados)</span>
-                </div>
-                <div class="metric-item metric-evangelismo">
-                    <span class="metric-value">{{ reporte.resumen.nuevos_creyentes_total|default:0 }}</span>
-                    <span class="metric-label">Nuevos creyentes</span>
-                </div>
-
-                 
+                    <div class="metric-item metric-evangelismo">
+                        <span class="metric-value">{{ resumen_vista.oyentes_total|default:0 }}</span>
+                        <span class="metric-label">Oyentes (invitados)</span>
+                    </div>
+                    <div class="metric-item metric-evangelismo">
+                        <span class="metric-value">{{ resumen_vista.nuevos_creyentes_total|default:0 }}</span>
+                        <span class="metric-label">Nuevos creyentes</span>
+                    </div>
                 </div>
 
-                <form method="post" class="recalcular-form">
-                    {% csrf_token %}
-                    <button class="odoo-btn odoo-btn-secondary" type="submit">
-                        <span class="material-icons">refresh</span>
-                        Recalcular resumen
-                    </button>
-                </form>
+                {% if periodo_tipo == "trimestre" or periodo_tipo == "anio" %}
+
+                    <div class="hint-box">
+                        <span class="material-icons">info</span>
+                        <div>
+                            <strong>Vista trimestral</strong>
+                            <div class="hint-text">Este resumen se calcula sumando los 3 meses del trimestre. (La impresión trimestral la activamos en el siguiente paso).</div>
+                        </div>
+                    </div>
+                {% else %}
+                    <form method="post" class="recalcular-form">
+                        {% csrf_token %}
+                        <button class="odoo-btn odoo-btn-secondary" type="submit">
+                            <span class="material-icons">refresh</span>
+                            Recalcular resumen
+                        </button>
+                    </form>
+                {% endif %}
             </div>
         </div>
 
@@ -143,33 +187,41 @@
                 <span class="material-icons">edit_note</span>
                 <h3>Reflexión del líder</h3>
             </div>
-            
-            <div class="report-card-body">
-                <form method="post" class="reflexion-form">
-                    {% csrf_token %}
-                    
-                    <div class="form-group">
-                        <label>Reflexión</label>
-                        {{ form.reflexion }}
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Necesidades</label>
-                        {{ form.necesidades }}
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Plan próximo</label>
-                        {{ form.plan_proximo }}
-                    </div>
 
-                    <div class="form-actions">
-                        <button class="odoo-btn odoo-btn-primary" type="submit">
-                            <span class="material-icons">save</span>
-                            Guardar reflexión
-                        </button>
+            <div class="report-card-body">
+                {% if periodo_tipo == "trimestre" %}
+                    <div class="empty-state-small">
+                        <span class="material-icons">construction</span>
+                        <p><strong>Reflexión trimestral</strong></p>
+                        <p>La activamos en el siguiente paso (guardar/refrescar/firmar por trimestre).</p>
                     </div>
-                </form>
+                {% else %}
+                    <form method="post" class="reflexion-form">
+                        {% csrf_token %}
+
+                        <div class="form-group">
+                            <label>Reflexión</label>
+                            {{ form.reflexion }}
+                        </div>
+
+                        <div class="form-group">
+                            <label>Necesidades</label>
+                            {{ form.necesidades }}
+                        </div>
+
+                        <div class="form-group">
+                            <label>Plan próximo</label>
+                            {{ form.plan_proximo }}
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="odoo-btn odoo-btn-primary" type="submit">
+                                <span class="material-icons">save</span>
+                                Guardar reflexión
+                            </button>
+                        </div>
+                    </form>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -180,7 +232,7 @@
             <span class="material-icons">history</span>
             <h3>Histórico de reportes</h3>
         </div>
-        
+
         {% if reportes_lista %}
         <div class="table-container">
             <table class="data-table">
@@ -205,13 +257,13 @@
                         </td>
                         <td class="text-center">
                             <div class="row-actions">
-                                <a href="{% url 'estructura_app:unidad_reportes' unidad.pk %}?anio={{ r.anio }}&mes={{ r.mes }}" 
+                                <a href="{% url 'estructura_app:unidad_reportes' unidad.pk %}?tipo=mes&anio={{ r.anio }}&mes={{ r.mes }}"
                                    class="odoo-btn odoo-btn-sm"
                                    title="Ver reporte">
                                     <span class="material-icons">visibility</span>
                                     Ver
                                 </a>
-                                <a href="{% url 'estructura_app:reporte_unidad_imprimir' unidad.pk r.anio r.mes %}?refresh=1" 
+                                <a href="{% url 'estructura_app:reporte_unidad_imprimir' unidad.pk r.anio r.mes %}?refresh=1"
                                    target="_blank"
                                    class="odoo-btn odoo-btn-sm odoo-btn-secondary"
                                    title="Imprimir">
@@ -233,13 +285,43 @@
     </div>
 </div>
 
+<script>
+(function(){
+    const tipo = document.getElementById("tipoPeriodo");
+    const campoMes = document.getElementById("campoMes");
+    const campoTri = document.getElementById("campoTrimestre");
+
+    function toggle(){
+        const v = (tipo && tipo.value) ? tipo.value : "mes";
+
+        if (v === "trimestre") {
+            if (campoMes) campoMes.style.display = "none";
+            if (campoTri) campoTri.style.display = "";
+            return;
+        }
+
+        if (v === "anio") {
+            if (campoMes) campoMes.style.display = "none";
+            if (campoTri) campoTri.style.display = "none";
+            return;
+        }
+
+        // mes
+        if (campoMes) campoMes.style.display = "";
+        if (campoTri) campoTri.style.display = "none";
+    }
+
+    if (tipo) {
+        tipo.addEventListener("change", toggle);
+        toggle();
+    }
+})();
+</script>
+
 <!-- ══════════════════════════════════════════════════════════════════════════
      ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
-/* ═══════════════════════════════════════════════════════════════════════════
-   VARIABLES
-   ═══════════════════════════════════════════════════════════════════════════ */
 :root {
     --odoo-primary: #714B67;
     --odoo-primary-dark: #5a3c52;
@@ -249,9 +331,6 @@
     --odoo-bg: #f8f9fa;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   CONTROL BAR
-   ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-control-bar {
     display: flex;
     align-items: center;
@@ -271,43 +350,32 @@
     align-items: center;
     gap: 12px;
 }
-
 .odoo-control-right {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-/* Breadcrumb */
 .odoo-breadcrumb {
     display: flex;
     align-items: center;
     gap: 4px;
     font-size: 14px;
 }
-
 .odoo-breadcrumb-link {
     color: var(--odoo-primary);
     text-decoration: none;
 }
-
-.odoo-breadcrumb-link:hover {
-    text-decoration: underline;
-}
-
+.odoo-breadcrumb-link:hover { text-decoration: underline; }
 .odoo-breadcrumb-sep {
     font-size: 18px;
     color: var(--odoo-text-muted);
 }
-
 .odoo-breadcrumb-current {
     color: var(--odoo-text);
     font-weight: 500;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   BOTONES
-   ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-btn {
     display: inline-flex;
     align-items: center;
@@ -322,16 +390,12 @@
     transition: all 0.15s ease;
     font-family: inherit;
 }
-
-.odoo-btn .material-icons {
-    font-size: 18px;
-}
+.odoo-btn .material-icons { font-size: 18px; }
 
 .odoo-btn-primary {
     background: var(--odoo-primary);
     color: #fff;
 }
-
 .odoo-btn-primary:hover {
     background: var(--odoo-primary-dark);
     color: #fff;
@@ -342,10 +406,7 @@
     color: var(--odoo-text);
     border: 1px solid var(--odoo-border);
 }
-
-.odoo-btn-secondary:hover {
-    background: var(--odoo-bg);
-}
+.odoo-btn-secondary:hover { background: var(--odoo-bg); }
 
 .odoo-btn-icon {
     padding: 8px;
@@ -353,7 +414,6 @@
     color: var(--odoo-text-muted);
     border: 1px solid var(--odoo-border);
 }
-
 .odoo-btn-icon:hover {
     background: var(--odoo-bg);
     color: var(--odoo-text);
@@ -363,14 +423,8 @@
     padding: 6px 12px;
     font-size: 12px;
 }
+.odoo-btn-sm .material-icons { font-size: 16px; }
 
-.odoo-btn-sm .material-icons {
-    font-size: 16px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PAGE LAYOUT
-   ═══════════════════════════════════════════════════════════════════════════ */
 .page-container {
     padding: 24px;
     background: #f0f0f0;
@@ -397,22 +451,18 @@
     justify-content: center;
     flex-shrink: 0;
 }
-
 .page-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 12px;
 }
-
 .page-avatar .material-icons {
     font-size: 40px;
     color: #fff;
 }
 
-.page-info {
-    flex: 1;
-}
+.page-info { flex: 1; }
 
 .page-title {
     margin: 0 0 8px 0;
@@ -433,7 +483,6 @@
     gap: 20px;
     flex-wrap: wrap;
 }
-
 .meta-item {
     display: flex;
     align-items: center;
@@ -441,14 +490,8 @@
     font-size: 13px;
     color: var(--odoo-text-muted);
 }
+.meta-item .material-icons { font-size: 18px; }
 
-.meta-item .material-icons {
-    font-size: 18px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   BADGES
-   ═══════════════════════════════════════════════════════════════════════════ */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -457,20 +500,9 @@
     font-size: 12px;
     font-weight: 500;
 }
+.badge-info { background: #e3f2fd; color: #1565c0; }
+.badge-neutral { background: #e9ecef; color: #495057; }
 
-.badge-info {
-    background: #e3f2fd;
-    color: #1565c0;
-}
-
-.badge-neutral {
-    background: #e9ecef;
-    color: #495057;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PERIOD SELECTOR
-   ═══════════════════════════════════════════════════════════════════════════ */
 .period-selector {
     background: #fff;
     border: 1px solid var(--odoo-border);
@@ -485,13 +517,11 @@
     gap: 16px;
     flex-wrap: wrap;
 }
-
 .period-field {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
-
 .period-field label {
     font-size: 12px;
     font-weight: 600;
@@ -499,7 +529,6 @@
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
-
 .form-input,
 .form-select {
     padding: 8px 12px;
@@ -509,7 +538,6 @@
     font-family: inherit;
     min-width: 120px;
 }
-
 .form-input:focus,
 .form-select:focus {
     outline: none;
@@ -517,9 +545,6 @@
     box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   REPORTES GRID
-   ═══════════════════════════════════════════════════════════════════════════ */
 .reportes-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -533,7 +558,6 @@
     border-radius: 8px;
     overflow: hidden;
 }
-
 .report-card-header {
     display: flex;
     align-items: center;
@@ -542,26 +566,18 @@
     background: var(--odoo-bg);
     border-bottom: 1px solid var(--odoo-border);
 }
-
 .report-card-header .material-icons {
     font-size: 20px;
     color: var(--odoo-primary);
 }
-
 .report-card-header h3 {
     margin: 0;
     font-size: 15px;
     font-weight: 600;
     color: var(--odoo-text);
 }
+.report-card-body { padding: 20px; }
 
-.report-card-body {
-    padding: 20px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   METRICS
-   ═══════════════════════════════════════════════════════════════════════════ */
 .metrics-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
@@ -576,7 +592,6 @@
     border-radius: 8px;
     border: 1px solid var(--odoo-border);
 }
-
 .metric-item .metric-value {
     display: block;
     font-size: 28px;
@@ -584,7 +599,6 @@
     color: var(--odoo-text);
     line-height: 1;
 }
-
 .metric-item .metric-label {
     display: block;
     font-size: 11px;
@@ -598,18 +612,10 @@
     background: #e8f5e9;
     border-color: #c8e6c9;
 }
+.metric-item.metric-evangelismo .metric-value { color: #2e7d32; }
 
-.metric-item.metric-evangelismo .metric-value {
-    color: #2e7d32;
-}
+.recalcular-form { text-align: center; }
 
-.recalcular-form {
-    text-align: center;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   FORM
-   ═══════════════════════════════════════════════════════════════════════════ */
 .reflexion-form {
     display: flex;
     flex-direction: column;
@@ -621,7 +627,6 @@
     flex-direction: column;
     gap: 6px;
 }
-
 .form-group label {
     font-size: 12px;
     font-weight: 600;
@@ -629,7 +634,6 @@
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
-
 .form-group textarea,
 .form-group input[type="text"] {
     padding: 10px 12px;
@@ -640,28 +644,20 @@
     min-height: 80px;
     font-family: inherit;
 }
-
 .form-group textarea:focus,
 .form-group input[type="text"]:focus {
     outline: none;
     border-color: var(--odoo-primary);
     box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
 }
+.form-actions { padding-top: 8px; }
 
-.form-actions {
-    padding-top: 8px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   HISTORICO
-   ═══════════════════════════════════════════════════════════════════════════ */
 .historico-card {
     background: #fff;
     border: 1px solid var(--odoo-border);
     border-radius: 8px;
     overflow: hidden;
 }
-
 .historico-header {
     display: flex;
     align-items: center;
@@ -670,12 +666,10 @@
     background: var(--odoo-bg);
     border-bottom: 1px solid var(--odoo-border);
 }
-
 .historico-header .material-icons {
     font-size: 20px;
     color: var(--odoo-primary);
 }
-
 .historico-header h3 {
     margin: 0;
     font-size: 15px;
@@ -683,24 +677,17 @@
     color: var(--odoo-text);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DATA TABLE
-   ═══════════════════════════════════════════════════════════════════════════ */
-.table-container {
-    overflow-x: auto;
-}
+.table-container { overflow-x: auto; }
 
 .data-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
 }
-
 .data-table thead {
     background: var(--odoo-bg);
     border-bottom: 2px solid var(--odoo-border);
 }
-
 .data-table th {
     padding: 12px 16px;
     text-align: left;
@@ -710,26 +697,16 @@
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
-
 .data-table td {
     padding: 12px 16px;
     border-bottom: 1px solid #f0f0f0;
     vertical-align: middle;
 }
+.data-table tbody tr:hover { background: var(--odoo-bg); }
+.data-table tbody tr:last-child td { border-bottom: none; }
 
-.data-table tbody tr:hover {
-    background: var(--odoo-bg);
-}
+.text-center { text-align: center; }
 
-.data-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.text-center {
-    text-align: center;
-}
-
-/* Period badge */
 .period-badge {
     display: inline-flex;
     align-items: center;
@@ -741,12 +718,8 @@
     font-size: 13px;
     font-weight: 500;
 }
+.period-badge .material-icons { font-size: 16px; }
 
-.period-badge .material-icons {
-    font-size: 16px;
-}
-
-/* Metric mini */
 .metric-mini {
     display: inline-flex;
     align-items: center;
@@ -761,7 +734,6 @@
     color: #495057;
 }
 
-/* Row actions */
 .row-actions {
     display: flex;
     align-items: center;
@@ -769,79 +741,51 @@
     gap: 8px;
 }
 
-/* Empty state small */
 .empty-state-small {
     text-align: center;
     padding: 40px 20px;
     color: var(--odoo-text-muted);
 }
-
 .empty-state-small .material-icons {
     font-size: 48px;
     color: #dee2e6;
     margin-bottom: 12px;
 }
-
 .empty-state-small p {
     margin: 0;
     font-size: 14px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════════════════════════════════════════ */
+.hint-box{
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    border:1px solid var(--odoo-border);
+    background: var(--odoo-bg);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+.hint-box .material-icons{
+    color: var(--odoo-primary);
+}
+.hint-text{
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+}
+
 @media (max-width: 768px) {
-    .odoo-control-bar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .odoo-control-left,
-    .odoo-control-right {
-        justify-content: center;
-    }
-    
-    .page-container {
-        padding: 16px;
-    }
-    
-    .page-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
-    
-    .page-badges,
-    .page-meta {
-        justify-content: center;
-    }
-    
-    .reportes-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .period-form {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .period-field {
-        width: 100%;
-    }
-    
-    .form-input,
-    .form-select {
-        width: 100%;
-    }
-    
-    .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .row-actions {
-        flex-direction: column;
-        gap: 4px;
-    }
+    .odoo-control-bar { flex-direction: column; align-items: stretch; }
+    .odoo-control-left, .odoo-control-right { justify-content: center; }
+    .page-container { padding: 16px; }
+    .page-header { flex-direction: column; align-items: center; text-align: center; }
+    .page-badges, .page-meta { justify-content: center; }
+    .reportes-grid { grid-template-columns: 1fr; }
+    .period-form { flex-direction: column; align-items: stretch; }
+    .period-field { width: 100%; }
+    .form-input, .form-select { width: 100%; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .row-actions { flex-direction: column; gap: 4px; }
 }
 </style>
 
