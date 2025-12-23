@@ -79,7 +79,18 @@ class RolUnidadForm(forms.ModelForm):
         widgets = {
             "descripcion": forms.Textarea(attrs={"rows": 3}),
         }
+from django import forms
+from .models import ActividadUnidad, Unidad, UnidadMembresia
+
+
 class ActividadUnidadForm(forms.ModelForm):
+    # ✅ Campos extra (NO van dentro de Meta)
+    oyentes = forms.IntegerField(min_value=0, required=False, initial=0)
+    nuevos_creyentes = forms.IntegerField(min_value=0, required=False, initial=0)
+    alcanzados = forms.IntegerField(min_value=0, required=False, initial=0)
+    seguimientos = forms.IntegerField(min_value=0, required=False, initial=0)
+    observaciones_impacto = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
+
     class Meta:
         model = ActividadUnidad
         fields = [
@@ -95,38 +106,49 @@ class ActividadUnidadForm(forms.ModelForm):
     def __init__(self, *args, unidad: Unidad = None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        MiembroModel = ActividadUnidad._meta.get_field(
-            "participantes"
-        ).remote_field.model
+        # Limitar participantes a miembros activos de la unidad
+        MiembroModel = ActividadUnidad._meta.get_field("participantes").remote_field.model
 
         if unidad:
             miembros_ids = (
                 UnidadMembresia.objects
                 .filter(unidad=unidad, activo=True)
                 .values_list("miembo_fk_id", flat=True)
-            )
+                .values_list("miembo_fk_id", flat=True)
 
+            )
             self.fields["participantes"].queryset = (
-                MiembroModel.objects
-                .filter(id__in=miembros_ids)
-                .order_by("nombres", "apellidos")
+                MiembroModel.objects.filter(id__in=miembros_ids).order_by("nombres", "apellidos")
             )
         else:
             self.fields["participantes"].queryset = MiembroModel.objects.none()
 
-
+        # Cargar iniciales desde JSON (al editar)
+        datos = (self.instance.datos or {}) if self.instance and self.instance.pk else {}
+        self.fields["oyentes"].initial = int(datos.get("oyentes") or 0)
+        self.fields["nuevos_creyentes"].initial = int(datos.get("nuevos_creyentes") or 0)
+        self.fields["alcanzados"].initial = int(datos.get("alcanzados") or 0)
+        self.fields["seguimientos"].initial = int(datos.get("seguimientos") or 0)
+        self.fields["observaciones_impacto"].initial = datos.get("observaciones") or ""
 
     def save(self, commit=True):
         obj = super().save(commit=False)
 
-        # Guardar métricas específicas de evangelismo dentro de datos
-
+        datos = obj.datos or {}
+        datos["oyentes"] = int(self.cleaned_data.get("oyentes") or 0)
+        datos["nuevos_creyentes"] = int(self.cleaned_data.get("nuevos_creyentes") or 0)
+        datos["alcanzados"] = int(self.cleaned_data.get("alcanzados") or 0)
+        datos["seguimientos"] = int(self.cleaned_data.get("seguimientos") or 0)
+        datos["observaciones"] = (self.cleaned_data.get("observaciones_impacto") or "").strip()
+        obj.datos = datos
 
         if commit:
             obj.save()
             self.save_m2m()
 
         return obj
+
+
 
 
 class ReportePeriodoForm(forms.ModelForm):

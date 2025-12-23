@@ -1169,34 +1169,44 @@ def _rango_mes(anio: int, mes: int):
     return inicio, fin
 
 
-def _generar_resumen_periodo(unidad: Unidad, anio: int, mes: int) -> dict:
-    inicio, fin = _rango_mes(anio, mes)
-
+def _generar_resumen_periodo(unidad, anio, mes):
     actividades = (
         ActividadUnidad.objects
-        .filter(unidad=unidad, fecha__gte=inicio, fecha__lt=fin)
+        .filter(
+            unidad=unidad,
+            fecha__year=anio,
+            fecha__month=mes
+        )
         .prefetch_related("participantes")
-        .order_by("fecha")
     )
 
-    total_actividades = actividades.count()
+    participantes_ids = set()
+    oyentes_total = 0
+    nuevos_creyentes_total = 0
 
-    # Participantes únicos (en todas las actividades del período)
-    participantes_set = set()
-    for a in actividades:
-        for p in a.participantes.all():
-            participantes_set.add(p.pk)
+    for act in actividades:
+        participantes_ids.update(
+            act.participantes.values_list("id", flat=True)
+        )
 
-    resumen = {
-        "anio": anio,
-        "mes": mes,
-        "actividades_total": total_actividades,
-        "participantes_unicos": len(participantes_set),
+        datos = act.datos or {}
+
+        # 🔥 AQUÍ ESTABA EL ERROR
+        oyentes_total += int(datos.get("oyentes", 0))
+        nuevos_creyentes_total += int(datos.get("nuevos_creyentes", 0))
+
+    return {
+        "actividades_total": actividades.count(),
+        "participantes_unicos": len(participantes_ids),
+
+        # 👉 estas son las que EXISTEN
+        "oyentes_total": oyentes_total,
+        "nuevos_creyentes_total": nuevos_creyentes_total,
+
+        # 👉 compatibilidad con plantillas viejas
+        "alcanzados_total": oyentes_total,
     }
 
-
-
-    return resumen
 
 
 @login_required
@@ -1244,7 +1254,6 @@ def actividad_crear(request, pk):
         
     })
 
-
 @login_required
 def unidad_reportes(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -1260,15 +1269,28 @@ def unidad_reportes(request, pk):
         defaults={"creado_por": request.user},
     )
 
-    # Si se pide regenerar o si está vacío, calculamos resumen
-    if request.method == "POST" or not (reporte.resumen or {}).get("actividades_total") is not None:
+    # Detectar si este POST es para GUARDAR REFLEXIÓN (y no solo recalcular)
+    es_post_reflexion = any(k in request.POST for k in ("reflexion", "necesidades", "plan_proximo"))
+
+    # ✅ Si es POST de recalcular (no viene reflexión), solo recalculamos y redirigimos
+    if request.method == "POST" and not es_post_reflexion:
+        reporte.resumen = _generar_resumen_periodo(unidad, anio_sel, mes_sel)
+        if not reporte.creado_por:
+            reporte.creado_por = request.user
+        reporte.save()
+        messages.success(request, "Resumen recalculado.")
+        return redirect(f"{request.path}?anio={anio_sel}&mes={mes_sel}")
+
+    # ✅ Si el resumen está vacío o incompleto, lo generamos (GET normal)
+    if not reporte.resumen or (reporte.resumen or {}).get("actividades_total") is None:
         reporte.resumen = _generar_resumen_periodo(unidad, anio_sel, mes_sel)
         if not reporte.creado_por:
             reporte.creado_por = request.user
         reporte.save()
 
+    # Formulario de reflexión (solo se guarda si vino en POST con esos campos)
     form = ReportePeriodoForm(request.POST or None, instance=reporte)
-    if request.method == "POST":
+    if request.method == "POST" and es_post_reflexion:
         if form.is_valid():
             form.save()
             messages.success(request, "Reporte guardado.")
@@ -1288,7 +1310,6 @@ def unidad_reportes(request, pk):
         "anio_sel": anio_sel,
         "mes_sel": mes_sel,
         "MESES": MESES,
-        
     })
 
 
