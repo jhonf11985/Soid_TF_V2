@@ -1,0 +1,325 @@
+{% extends 'core/reporte_base.html' %}
+
+{% block extra_head %}
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   VARIABLES - Estilo limpio sin colores (escala de grises)
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+    --rpt-text: #212529;
+    --rpt-text-muted: #6c757d;
+    --rpt-border: #dee2e6;
+    --rpt-bg-light: #f8f9fa;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENCABEZADO DEL REPORTE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rpt-header {
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--rpt-text);
+}
+
+.rpt-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--rpt-text);
+    margin: 0 0 4px 0;
+}
+
+.rpt-subtitle {
+    font-size: 13px;
+    color: var(--rpt-text-muted);
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CAJA DE RESUMEN (Estilo de miembro_salida_form)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rpt-summary-box {
+    border: 1px solid var(--rpt-border);
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 20px;
+}
+
+.rpt-summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--rpt-border);
+}
+
+.rpt-summary-row:last-child {
+    border-bottom: none;
+}
+
+.rpt-summary-label {
+    color: var(--rpt-text-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rpt-summary-value {
+    color: var(--rpt-text);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECCIONES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rpt-section {
+    margin-bottom: 20px;
+    page-break-inside: avoid;
+}
+
+.rpt-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--rpt-text);
+    margin: 0 0 10px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--rpt-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLA DE MÉTRICAS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rpt-metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.rpt-metrics-table th {
+    background: var(--rpt-bg-light);
+    font-weight: 600;
+    color: var(--rpt-text);
+    text-align: center;
+    padding: 10px 12px;
+    border: 1px solid var(--rpt-border);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.rpt-metrics-table td {
+    border: 1px solid var(--rpt-border);
+    padding: 12px;
+    text-align: center;
+    background: #fff;
+}
+
+.rpt-metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--rpt-text);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BLOQUES DE TEXTO
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rpt-text-block {
+    background: var(--rpt-bg-light);
+    border: 1px solid var(--rpt-border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--rpt-text);
+}
+
+.rpt-text-block.rpt-empty {
+    color: var(--rpt-text-muted);
+    font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PIE DE PÁGINA
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rpt-footer {
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rpt-border);
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--rpt-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   IMPRESIÓN
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media print {
+    .rpt-header {
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+    }
+    
+    .rpt-title {
+        font-size: 18px;
+    }
+    
+    .rpt-summary-box {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .rpt-section {
+        margin-bottom: 16px;
+    }
+    
+    .rpt-section-title {
+        font-size: 13px;
+    }
+    
+    .rpt-metrics-table th,
+    .rpt-metrics-table td {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .rpt-metric-value {
+        font-size: 20px;
+    }
+    
+    .rpt-text-block {
+        padding: 10px 12px;
+    }
+}
+
+@page {
+    margin: 1.5cm;
+    size: A4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen and (max-width: 600px) {
+    .rpt-summary-row {
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .rpt-summary-value {
+        text-align: left;
+    }
+    
+    .rpt-metrics-table th,
+    .rpt-metrics-table td {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+    
+    .rpt-metric-value {
+        font-size: 18px;
+    }
+    
+    .rpt-footer {
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Encabezado del reporte -->
+<div class="rpt-header">
+    <h1 class="rpt-title">Reporte de Unidad</h1>
+    <p class="rpt-subtitle">{{ unidad.nombre }} · {{ mes_nombre }} {{ reporte.anio }}</p>
+</div>
+
+<!-- Información de la unidad -->
+<div class="rpt-summary-box">
+    <div class="rpt-summary-row">
+        <span class="rpt-summary-label">Unidad</span>
+        <span class="rpt-summary-value">{{ unidad.nombre }}</span>
+    </div>
+    <div class="rpt-summary-row">
+        <span class="rpt-summary-label">Tipo</span>
+        <span class="rpt-summary-value">{{ unidad.tipo.nombre|default:"—" }}</span>
+    </div>
+    <div class="rpt-summary-row">
+        <span class="rpt-summary-label">Período</span>
+        <span class="rpt-summary-value">{{ mes_nombre }} {{ reporte.anio }}</span>
+    </div>
+    {% if unidad.codigo %}
+    <div class="rpt-summary-row">
+        <span class="rpt-summary-label">Código</span>
+        <span class="rpt-summary-value">{{ unidad.codigo }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Resumen (métricas) -->
+<div class="rpt-section">
+    <h2 class="rpt-section-title">Resumen del Período</h2>
+    
+    <table class="rpt-metrics-table">
+        <thead>
+            <tr>
+                <th>Actividades</th>
+                <th>Participantes únicos</th>
+                <th>Alcanzados</th>
+                <th>Nuevos creyentes</th>
+                <th>Seguimientos</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="rpt-metric-value">{{ reporte.resumen.actividades_total|default:0 }}</span></td>
+                <td><span class="rpt-metric-value">{{ reporte.resumen.participantes_unicos|default:0 }}</span></td>
+                <td><span class="rpt-metric-value">{{ reporte.resumen.alcanzados_total|default:0 }}</span></td>
+                <td><span class="rpt-metric-value">{{ reporte.resumen.nuevos_creyentes_total|default:0 }}</span></td>
+                <td><span class="rpt-metric-value">{{ reporte.resumen.seguimientos_total|default:0 }}</span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Reflexión del Líder -->
+<div class="rpt-section">
+    <h2 class="rpt-section-title">Reflexión del Líder</h2>
+    {% if reporte.reflexion %}
+        <div class="rpt-text-block">{{ reporte.reflexion|linebreaksbr }}</div>
+    {% else %}
+        <div class="rpt-text-block rpt-empty">Sin reflexión registrada.</div>
+    {% endif %}
+</div>
+
+<!-- Necesidades -->
+<div class="rpt-section">
+    <h2 class="rpt-section-title">Necesidades</h2>
+    {% if reporte.necesidades %}
+        <div class="rpt-text-block">{{ reporte.necesidades|linebreaksbr }}</div>
+    {% else %}
+        <div class="rpt-text-block rpt-empty">Sin necesidades registradas.</div>
+    {% endif %}
+</div>
+
+<!-- Plan Próximo Período -->
+<div class="rpt-section">
+    <h2 class="rpt-section-title">Plan Próximo Período</h2>
+    {% if reporte.plan_proximo %}
+        <div class="rpt-text-block">{{ reporte.plan_proximo|linebreaksbr }}</div>
+    {% else %}
+        <div class="rpt-text-block rpt-empty">Sin plan registrado.</div>
+    {% endif %}
+</div>
+
+<!-- Pie de página -->
+<div class="rpt-footer">
+    <span>Generado el {% now "d/m/Y H:i" %}</span>
+    <span>Torre Fuerte · Sistema de Gestión</span>
+</div>
+
+{% endblock %}
