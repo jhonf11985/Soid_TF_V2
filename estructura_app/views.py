@@ -1407,13 +1407,23 @@ def unidad_reportes(request, pk):
     })
 
 
-
 @login_required
 def reporte_unidad_imprimir(request, pk, anio, mes):
     unidad = get_object_or_404(Unidad, pk=pk)
     anio = int(anio)
     mes = int(mes)
 
+    # Por defecto, este imprimible es mensual,
+    # pero dejamos listo el texto para cuando imprimas trimestre/anio.
+    periodo_tipo = (request.GET.get("tipo") or "mes").strip().lower()
+    if periodo_tipo not in ("mes", "trimestre", "anio"):
+        periodo_tipo = "mes"
+
+    trimestre_sel = int(request.GET.get("tri") or ((mes - 1) // 3 + 1))
+    if trimestre_sel not in (1, 2, 3, 4):
+        trimestre_sel = 1
+
+    # Reporte mensual (tu modelo actual)
     reporte, _ = ReporteUnidadPeriodo.objects.get_or_create(
         unidad=unidad,
         anio=anio,
@@ -1425,11 +1435,32 @@ def reporte_unidad_imprimir(request, pk, anio, mes):
         reporte.resumen = _generar_resumen_periodo(unidad, anio, mes)
         reporte.save()
 
+    mes_nombre = dict(MESES).get(mes, str(mes))
+
+    # Textos del periodo para imprimir
+    if periodo_tipo == "anio":
+        periodo_label = "anual"
+        periodo_texto = f"Año {anio}"
+    elif periodo_tipo == "trimestre":
+        periodo_label = "trimestral"
+        periodo_texto = f"Q{trimestre_sel} / {anio}"
+    else:
+        periodo_label = "mensual"
+        periodo_texto = f"{mes_nombre} {anio}"
+
     return render(request, "estructura_app/reportes/reporte_unidad_periodo.html", {
         "unidad": unidad,
         "reporte": reporte,
-        "mes_nombre": dict(MESES).get(mes, str(mes)),
+
+        "mes_nombre": mes_nombre,   # lo puedes dejar, por compatibilidad
+        "periodo_tipo": periodo_tipo,
+        "periodo_label": periodo_label,
+        "periodo_texto": periodo_texto,
+        "trimestre_sel": trimestre_sel,
+        "anio_sel": anio,
+        "mes_sel": mes,
     })
+
 
 TRIMESTRES = [
     (1, "Q1 (Ene–Mar)"),
