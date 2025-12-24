@@ -1,57 +1,566 @@
 {% extends 'estructura_app/base_estructura.html' %}
-{% load static %}
 
-{% block title %}Roles · Estructura{% endblock %}
+{% block title %}Roles{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/estructura.css' %}">
-<style>
-  .page{max-width:1100px;margin:0 auto;padding:14px}
-  .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-  .title{margin:0;font-size:18px;font-weight:900}
-  .btn{border:none;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer}
-  .btn-primary{background:rgba(0,0,0,.88);color:#fff;text-decoration:none}
-  .table{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;overflow:hidden;box-shadow:0 10px 28px rgba(0,0,0,.06)}
-  table{width:100%;border-collapse:collapse}
-  th,td{padding:11px 12px;border-bottom:1px solid rgba(0,0,0,.06);text-align:left;font-size:13px}
-  th{font-size:12px;color:rgba(0,0,0,.62);background:rgba(0,0,0,.02);font-weight:900}
-  tr:last-child td{border-bottom:none}
-  .pill{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:900;border:1px solid rgba(0,0,0,.10);background:#fff;color:rgba(0,0,0,.72)}
-</style>
+{% block breadcrumb %}
+Estructura / Roles
 {% endblock %}
 
 {% block estructura_content %}
-<div class="page">
-  <div class="top">
-    <h1 class="title">Roles</h1>
-    <a class="btn btn-primary" href="{% url 'estructura_app:rol_crear' %}">Nuevo rol</a>
-  </div>
 
-  <div class="table">
-    <table>
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th style="width:220px;">Tipo</th>
-          <th style="width:110px;">Activo</th>
-          <th style="width:110px;">Orden</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in roles %}
-          <tr>
-            <td>{{ r.nombre }}</td>
-            <td><span class="pill">{{ r.get_tipo_display }}</span></td>
-            <td>{{ r.activo|yesno:"Sí,No" }}</td>
-            <td>{{ r.orden }}</td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="4">No hay roles creados todavía.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<!-- Barra superior estilo Odoo -->
+<div class="odoo-control-panel">
+    <div class="cp-left">
+        <a href="{% url 'estructura_app:rol_crear' %}" class="btn-odoo-primary">
+            Nuevo
+        </a>
+        <span class="cp-title">Roles <span class="material-icons cp-title-icon">badge</span></span>
+    </div>
+
+    <div class="cp-right">
+        <div class="cp-searchbar">
+            <form method="get" style="display:flex; align-items:center; gap:0;">
+                <span class="material-icons search-icon">search</span>
+                <span class="material-icons filter-icon">filter_alt</span>
+                <input type="text" id="q" name="q" placeholder="Buscar..." value="{{ query }}" class="search-input">
+            </form>
+        </div>
+
+        <div class="cp-filter-chips">
+            <button type="button" class="chip active" data-filter="all">Todos</button>
+            <button type="button" class="chip" data-filter="liderazgo">Liderazgo</button>
+            <button type="button" class="chip" data-filter="participacion">Participación</button>
+            <button type="button" class="chip" data-filter="trabajo">Trabajo</button>
+            <button type="button" class="chip" data-filter="activos">Activos</button>
+            <button type="button" class="chip" data-filter="inactivos">Inactivos</button>
+        </div>
+
+        <div class="cp-pager">
+            <span class="pager-text" id="countVisible">
+                {% if roles %}1-{{ roles|length }} / {{ roles|length }}{% else %}0{% endif %}
+            </span>
+            <button class="pager-btn" disabled><span class="material-icons">chevron_left</span></button>
+            <button class="pager-btn" disabled><span class="material-icons">chevron_right</span></button>
+        </div>
+    </div>
 </div>
+
+<!-- Vista Lista -->
+<div class="odoo-view active">
+    <table class="odoo-table">
+        <thead>
+            <tr>
+                <th class="col-checkbox"><input type="checkbox" id="select-all"></th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Orden</th>
+                <th class="col-actions"></th>
+            </tr>
+        </thead>
+        <tbody id="rolesTable">
+        {% if roles %}
+            {% for r in roles %}
+            <tr class="role-row"
+                data-nombre="{{ r.nombre|lower }}"
+                data-tipo="{{ r.get_tipo_display|lower }}"
+                data-activo="{{ r.activo|yesno:'1,0' }}">
+                <td class="col-checkbox"><input type="checkbox" name="selected" value="{{ r.pk }}"></td>
+                <td>
+                    <div class="role-cell">
+                        <div class="role-avatar">
+                            <span class="material-icons">badge</span>
+                        </div>
+                        <div class="role-meta">
+                            <span class="cell-link">{{ r.nombre }}</span>
+                            <span class="cell-subtext">Orden: {{ r.orden }}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="type-badge type-{{ r.get_tipo_display|lower|slugify }}">
+                        {{ r.get_tipo_display }}
+                    </span>
+                </td>
+                <td>
+                    {% if r.activo %}
+                        <span class="badge badge-success">Activo</span>
+                    {% else %}
+                        <span class="badge badge-danger">Inactivo</span>
+                    {% endif %}
+                </td>
+                <td>{{ r.orden }}</td>
+                <td class="col-actions">
+                    <a href="{% url 'estructura_app:rol_editar' r.id %}" class="row-action" title="Editar">
+                        <span class="material-icons">edit</span>
+                    </a>
+                    <a href="{% url 'estructura_app:rol_crear' %}" class="row-action" title="Duplicar">
+                        <span class="material-icons">content_copy</span>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="6" class="empty-row">
+                    <span class="material-icons" style="font-size:32px;color:#adb5bd;display:block;margin-bottom:8px;">badge</span>
+                    No hay roles creados todavía.
+                </td>
+            </tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+/* ========== Control Panel Odoo ========== */
+.odoo-control-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.cp-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cp-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: #212529;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cp-title-icon {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+.cp-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Botones estilo Odoo */
+.btn-odoo-primary {
+    background: #714B67;
+    color: #fff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-odoo-primary:hover {
+    background: #5a3c52;
+    color: #fff;
+}
+
+/* Barra de búsqueda */
+.cp-searchbar {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 10px;
+    font-size: 18px;
+    color: #6c757d;
+    pointer-events: none;
+}
+
+.filter-icon {
+    position: absolute;
+    left: 34px;
+    font-size: 18px;
+    color: #714B67;
+    pointer-events: none;
+}
+
+.search-input {
+    padding: 6px 12px 6px 60px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+    width: 200px;
+    background: #fff;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #714B67;
+    box-shadow: 0 0 0 2px rgba(113, 75, 103, 0.1);
+}
+
+/* Filter chips */
+.cp-filter-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.chip {
+    border: 1px solid #dee2e6;
+    background: #fff;
+    color: #495057;
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.chip:hover {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+.chip.active {
+    background: #714B67;
+    color: #fff;
+    border-color: #714B67;
+}
+
+/* Paginador */
+.cp-pager {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #495057;
+}
+
+.pager-text {
+    margin-right: 4px;
+}
+
+.pager-btn {
+    background: transparent;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pager-btn:hover:not(:disabled) {
+    background: #f8f9fa;
+}
+
+.pager-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pager-btn .material-icons {
+    font-size: 18px;
+}
+
+/* ========== Tabla Odoo ========== */
+.odoo-view {
+    display: none;
+    background: #fff;
+}
+
+.odoo-view.active {
+    display: block;
+}
+
+.odoo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.odoo-table th,
+.odoo-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.odoo-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.odoo-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.col-checkbox {
+    width: 40px;
+    text-align: center !important;
+}
+
+.col-actions {
+    width: 100px;
+    text-align: right !important;
+}
+
+/* Role cell */
+.role-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 220px;
+}
+
+.role-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #714B67 0%, #5a3c52 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.role-avatar .material-icons {
+    font-size: 18px;
+    color: #fff;
+}
+
+.role-meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.cell-link {
+    font-weight: 600;
+    color: #212529;
+}
+
+.cell-subtext {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+/* Type badges */
+.type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #e9ecef;
+    color: #495057;
+}
+
+.type-badge.type-liderazgo {
+    background: #e8f4fd;
+    color: #0c5fa5;
+}
+
+.type-badge.type-participacion {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.type-badge.type-trabajo {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* Status badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Row actions */
+.row-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    color: #6c757d;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.row-action:hover {
+    background: #e9ecef;
+    color: #212529;
+}
+
+.row-action .material-icons {
+    font-size: 18px;
+}
+
+/* Empty state */
+.empty-row {
+    text-align: center;
+    padding: 40px 20px !important;
+    color: #6c757d;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 992px) {
+    .cp-filter-chips {
+        order: 3;
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-control-panel {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .cp-left, .cp-right {
+        justify-content: center;
+    }
+
+    .cp-right {
+        flex-wrap: wrap;
+    }
+
+    .search-input {
+        width: 100%;
+    }
+
+    .odoo-table {
+        font-size: 12px;
+    }
+
+    .role-cell {
+        min-width: auto;
+    }
+}
+
+@media print {
+    .odoo-control-panel {
+        display: none;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const q = document.getElementById("q");
+    const chips = Array.from(document.querySelectorAll(".chip"));
+    const rows = Array.from(document.querySelectorAll(".role-row"));
+    const countVisible = document.getElementById("countVisible");
+
+    let activeFilter = "all";
+
+    function normalizeTipo(tipo) {
+        tipo = (tipo || "").toLowerCase();
+        if (tipo.includes("lider")) return "liderazgo";
+        if (tipo.includes("particip")) return "participacion";
+        if (tipo.includes("trabaj")) return "trabajo";
+        return "other";
+    }
+
+    function matchesFilter(el) {
+        const nombre = (el.dataset.nombre || "");
+        const tipo = normalizeTipo(el.dataset.tipo || "");
+        const activo = (el.dataset.activo || "0") === "1";
+
+        const text = (q.value || "").trim().toLowerCase();
+        if (text && !nombre.includes(text)) return false;
+
+        if (activeFilter === "all") return true;
+        if (activeFilter === "liderazgo") return tipo === "liderazgo";
+        if (activeFilter === "participacion") return tipo === "participacion";
+        if (activeFilter === "trabajo") return tipo === "trabajo";
+        if (activeFilter === "activos") return activo === true;
+        if (activeFilter === "inactivos") return activo === false;
+
+        return true;
+    }
+
+    function apply() {
+        let visible = 0;
+
+        rows.forEach(r => {
+            const ok = matchesFilter(r);
+            r.style.display = ok ? "" : "none";
+            if (ok) visible++;
+        });
+
+        const total = rows.length;
+        if (countVisible) {
+            countVisible.textContent = visible > 0 ? `1-${visible} / ${total}` : "0";
+        }
+    }
+
+    chips.forEach(btn => {
+        btn.addEventListener("click", () => {
+            chips.forEach(x => x.classList.remove("active"));
+            btn.classList.add("active");
+            activeFilter = btn.dataset.filter || "all";
+            apply();
+        });
+    });
+
+    if (q) {
+        q.addEventListener("input", apply);
+    }
+
+    // Select all checkbox
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('input[name="selected"]').forEach(cb => {
+                cb.checked = this.checked;
+            });
+        });
+    }
+
+    apply();
+});
+</script>
+
 {% endblock %}

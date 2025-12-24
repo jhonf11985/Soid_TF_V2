@@ -1549,3 +1549,23 @@ def _generar_resumen_anual(unidad, anio: int):
         "nuevos_creyentes_total": nuevos_creyentes_total,
         "alcanzados_total": oyentes_total,
     }
+
+@login_required
+def rol_editar(request, rol_id):
+    rol = get_object_or_404(RolUnidad, id=rol_id)
+
+    if request.method == "POST":
+        form = RolUnidadForm(request.POST, instance=rol)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Rol actualizado correctamente.")
+            return redirect("estructura_app:rol_listado")
+        messages.error(request, "Revisa los campos marcados.")
+    else:
+        form = RolUnidadForm(instance=rol)
+
+    return render(request, "estructura_app/rol_form.html", {
+        "form": form,
+        "modo": "editar",
+        "rol": rol,
+    })
