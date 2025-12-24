@@ -113,6 +113,7 @@ def unidad_crear(request):
         "unidad": None,
     }
     return render(request, "estructura_app/unidad_form.html", context)
+
 @login_required
 def unidad_editar(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -382,11 +383,16 @@ def _reglas_mvp_from_post(post):
 # ============================================================
 # ROLES
 # ============================================================
-
 @login_required
 def rol_listado(request):
     roles = RolUnidad.objects.all().order_by("orden", "nombre")
-    return render(request, "estructura_app/rol_listado.html", {"roles": roles})
+
+    for r in roles:
+        r.en_uso = _rol_en_uso(r)
+
+    return render(request, "estructura_app/rol_listado.html", {
+        "roles": roles
+    })
 
 
 @login_required
@@ -1554,6 +1560,14 @@ def _generar_resumen_anual(unidad, anio: int):
 def rol_editar(request, rol_id):
     rol = get_object_or_404(RolUnidad, id=rol_id)
 
+    if _rol_en_uso(rol):
+        messages.warning(
+            request,
+            "Este rol ya está en uso en una o más unidades. "
+            "Por motivos de seguridad, no puede ser editado ni desactivado."
+        )
+        return redirect("estructura_app:rol_listado")
+
     if request.method == "POST":
         form = RolUnidadForm(request.POST, instance=rol)
         if form.is_valid():
@@ -1569,3 +1583,16 @@ def rol_editar(request, rol_id):
         "modo": "editar",
         "rol": rol,
     })
+
+
+def _rol_en_uso(rol):
+    """
+    Un rol se considera 'en uso' si está referenciado por:
+    - UnidadCargo (liderazgo)
+    - UnidadMembresia (participación/trabajo)
+    """
+    from estructura_app.models import UnidadCargo, UnidadMembresia
+
+    usado_en_cargos = UnidadCargo.objects.filter(rol_id=rol.id).exists()
+    usado_en_membresias = UnidadMembresia.objects.filter(rol_id=rol.id).exists()
+    return usado_en_cargos or usado_en_membresias
