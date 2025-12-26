@@ -1,0 +1,150 @@
+{% extends 'core/reporte_base.html' %}
+
+{% block extra_head %}
+<style>
+:root{
+  --rpt-text:#212529;
+  --rpt-text-muted:#6c757d;
+  --rpt-border:#dee2e6;
+  --rpt-bg-light:#f8f9fa;
+}
+.rpt-header{margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--rpt-text);}
+.rpt-title{font-size:20px;font-weight:700;color:var(--rpt-text);margin:0 0 4px 0;}
+.rpt-subtitle{font-size:13px;color:var(--rpt-text-muted);margin:0;}
+.rpt-summary-box{border:1px solid var(--rpt-border);background:#fff;border-radius:8px;padding:14px;margin-bottom:20px;}
+.rpt-summary-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--rpt-border);}
+.rpt-summary-row:last-child{border-bottom:none;}
+.rpt-summary-label{color:var(--rpt-text-muted);font-size:13px;font-weight:600;}
+.rpt-summary-value{color:var(--rpt-text);font-size:14px;font-weight:600;text-align:right;}
+
+.rpt-section{margin-bottom:18px;page-break-inside:avoid;}
+.rpt-section-title{font-size:14px;font-weight:600;color:var(--rpt-text);margin:0 0 10px 0;padding-bottom:6px;border-bottom:1px solid var(--rpt-border);}
+
+.rpt-table{width:100%;border-collapse:collapse;font-size:11px;}
+.rpt-table th{
+  background:var(--rpt-bg-light);
+  font-weight:700;
+  color:var(--rpt-text);
+  text-align:left;
+  padding:8px 10px;
+  border:1px solid var(--rpt-border);
+  text-transform:uppercase;
+  letter-spacing:.3px;
+  font-size:10px;
+}
+.rpt-table td{
+  border:1px solid var(--rpt-border);
+  padding:8px 10px;
+  vertical-align:top;
+}
+.text-center{text-align:center;}
+.text-right{text-align:right;}
+.muted{color:var(--rpt-text-muted);}
+.small{font-size:10px;}
+
+.rpt-footer{margin-top:24px;padding-top:12px;border-top:1px solid var(--rpt-border);display:flex;justify-content:space-between;font-size:10px;color:var(--rpt-text-muted);}
+
+@page{margin:1.5cm;size:A4;}
+@media print{
+  .rpt-title{font-size:18px;}
+  .rpt-summary-box,.rpt-table th,.rpt-table td{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="rpt-header">
+  <h1 class="rpt-title">Padrón de unidad</h1>
+  <p class="rpt-subtitle">{{ unidad.nombre }} · {{ periodo_texto }}</p>
+</div>
+
+<div class="rpt-summary-box">
+  <div class="rpt-summary-row">
+    <span class="rpt-summary-label">Unidad</span>
+    <span class="rpt-summary-value">{{ unidad.nombre }}</span>
+  </div>
+  <div class="rpt-summary-row">
+    <span class="rpt-summary-label">Tipo</span>
+    <span class="rpt-summary-value">{{ unidad.tipo.nombre|default:"—" }}</span>
+  </div>
+  <div class="rpt-summary-row">
+    <span class="rpt-summary-label">Período</span>
+    <span class="rpt-summary-value">{{ periodo_texto }}</span>
+  </div>
+
+  <div class="rpt-summary-row">
+    <span class="rpt-summary-label">Total asignados</span>
+    <span class="rpt-summary-value">{{ total|default:0 }}</span>
+  </div>
+  <div class="rpt-summary-row">
+    <span class="rpt-summary-label">Activos</span>
+    <span class="rpt-summary-value">{{ activos|default:0 }}</span>
+  </div>
+  <div class="rpt-summary-row">
+    <span class="rpt-summary-label">Nuevos creyentes</span>
+    <span class="rpt-summary-value">{{ nuevos|default:0 }}</span>
+  </div>
+  <div class="rpt-summary-row">
+    <span class="rpt-summary-label">Líderes vigentes</span>
+    <span class="rpt-summary-value">{{ lideres|default:0 }}</span>
+  </div>
+</div>
+
+<div class="rpt-section">
+  <h2 class="rpt-section-title">Listado</h2>
+
+  {% if filas %}
+    <table class="rpt-table">
+      <thead>
+        <tr>
+          <th class="text-center" style="width:38px;">#</th>
+          <th style="width:95px;">Código</th>
+          <th>Nombre</th>
+          <th class="text-center" style="width:55px;">Edad</th>
+          <th style="width:85px;">Género</th>
+          <th style="width:160px;">Estado</th>
+          <th class="text-center" style="width:70px;">Nuevo</th>
+          <th style="width:150px;">Rol</th>
+          <th style="width:110px;">Tipo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in filas %}
+          <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td>{% if f.codigo %}{{ f.codigo }}{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td>{{ f.nombre }}</td>
+            <td class="text-center">{% if f.edad != None %}{{ f.edad }}{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td>{{ f.genero|default:"—" }}</td>
+            <td>{{ f.estado|default:"—" }}</td>
+            <td class="text-center">{{ f.nuevo }}</td>
+            <td>{{ f.rol|default:"—" }}</td>
+            <td>{{ f.tipo|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="muted">Sin miembros asignados.</div>
+  {% endif %}
+</div>
+
+<div class="rpt-footer">
+  <span>Generado el {% now "d/m/Y H:i" %}</span>
+  <span>Torre Fuerte · Sistema de Gestión</span>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("autoprint") === "1") {
+    setTimeout(() => {
+      window.print();
+      window.onafterprint = () => { window.close(); };
+    }, 350);
+  }
+});
+</script>
+
+{% endblock %}

@@ -31,4 +31,10 @@ urlpatterns = [
     path("unidades/<int:pk>/reportes/<int:anio>/<int:mes>/imprimir/", views.reporte_unidad_imprimir, name="reporte_unidad_imprimir"),
         # ✅ editar usando el mismo template del crear
     path("roles/<int:rol_id>/editar/", views.rol_editar, name="rol_editar"),
+    path(
+    "unidades/<int:pk>/reportes/padron/<int:anio>/<int:mes>/imprimir/",
+    views.reporte_unidad_padron_imprimir,
+    name="reporte_unidad_padron_imprimir"
+),
+
 ]

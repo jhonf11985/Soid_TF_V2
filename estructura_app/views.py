@@ -1752,3 +1752,160 @@ def _rol_en_uso(rol):
     usado_en_cargos = UnidadCargo.objects.filter(rol_id=rol.id).exists()
     usado_en_membresias = UnidadMembresia.objects.filter(rol_id=rol.id).exists()
     return usado_en_cargos or usado_en_membresias
+
+
+@login_required
+def reporte_unidad_padron_imprimir(request, pk, anio, mes):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    try:
+        anio = int(anio)
+    except Exception:
+        anio = timezone.now().year
+
+    try:
+        mes = int(mes)
+        if mes < 1 or mes > 12:
+            mes = timezone.now().month
+    except Exception:
+        mes = timezone.now().month
+
+    # Texto del período (solo etiqueta, el padrón lista "asignados actuales")
+    MESES_MAP = {
+        1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+        5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+        9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
+    }
+    periodo_texto = f"{MESES_MAP.get(mes, str(mes))} {anio}"
+
+    # 1) Membresías (asignados como miembros)
+    membresias = (
+        UnidadMembresia.objects
+        .filter(unidad=unidad, activo=True)
+        .select_related("miembo_fk", "rol")
+        .order_by("rol__orden", "rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
+    )
+
+    # 2) Cargos (liderazgo vigente)
+    cargos = (
+        UnidadCargo.objects
+        .filter(unidad=unidad, vigente=True, rol__tipo=RolUnidad.TIPO_LIDERAZGO)
+        .select_related("miembo_fk", "rol")
+        .order_by("rol__orden", "rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
+    )
+
+    # Helpers (reutiliza tu lógica existente si ya tienes _get_edad_value; si existe, úsalo)
+    def _edad(miembro):
+        if hasattr(miembro, "edad") and miembro.edad is not None:
+            try:
+                return int(miembro.edad)
+            except Exception:
+                pass
+        if hasattr(miembro, "fecha_nacimiento") and miembro.fecha_nacimiento:
+            hoy = date.today()
+            fn = miembro.fecha_nacimiento
+            return hoy.year - fn.year - ((hoy.month, hoy.day) < (fn.month, fn.day))
+        return None
+
+    def _genero_label(miembro):
+        try:
+            v = (miembro.get_genero_display() or "").strip()
+            return v if v else "—"
+        except Exception:
+            v = (getattr(miembro, "genero", "") or "").strip()
+            return v if v else "—"
+
+    def _estado_label(miembro):
+        estado_raw = (getattr(miembro, "estado_miembro", "") or "").strip()
+        es_nuevo = bool(getattr(miembro, "nuevo_creyente", False))
+
+        if estado_raw:
+            try:
+                return miembro.get_estado_miembro_display()
+            except Exception:
+                return estado_raw
+
+        if es_nuevo:
+            return "Nuevo creyente"
+
+        return "No puede ser bautizado"
+
+    # Índice de liderazgo por miembro
+    lider_por_id = {}
+    for c in cargos:
+        lider_por_id[c.miembo_fk_id] = c
+
+    filas = []
+    ids_agregados = set()
+
+    # Primero: miembros (membresías)
+    for mem in membresias:
+        m = mem.miembo_fk
+        if not m:
+            continue
+
+        ids_agregados.add(m.id)
+
+        cargo = lider_por_id.get(m.id)
+        es_lider = cargo is not None
+
+        filas.append({
+            "id": m.id,
+            "codigo": getattr(m, "codigo_miembro", "") or "",
+            "nombre": f"{m.nombres} {m.apellidos}".strip(),
+            "edad": _edad(m),
+            "genero": _genero_label(m),
+            "estado": _estado_label(m),
+            "nuevo": "Sí" if bool(getattr(m, "nuevo_creyente", False)) else "No",
+            "rol": (cargo.rol.nombre if es_lider and cargo.rol else (mem.rol.nombre if mem.rol else "—")),
+            "tipo": "Liderazgo" if es_lider else (
+                "Trabajo" if (mem.rol and mem.rol.tipo == RolUnidad.TIPO_TRABAJO) else "Participación"
+            ),
+        })
+
+    # Luego: líderes que por alguna razón no estén en membresía (por seguridad)
+    for c in cargos:
+        m = c.miembo_fk
+        if not m or m.id in ids_agregados:
+            continue
+
+        filas.append({
+            "id": m.id,
+            "codigo": getattr(m, "codigo_miembro", "") or "",
+            "nombre": f"{m.nombres} {m.apellidos}".strip(),
+            "edad": _edad(m),
+            "genero": _genero_label(m),
+            "estado": _estado_label(m),
+            "nuevo": "Sí" if bool(getattr(m, "nuevo_creyente", False)) else "No",
+            "rol": c.rol.nombre if c.rol else "—",
+            "tipo": "Liderazgo",
+        })
+
+    # Orden final por nombre
+    filas.sort(key=lambda x: (x["nombre"] or "").lower())
+
+    # Resumen superior
+    total = len(filas)
+    activos = 0
+    nuevos = 0
+    for f in filas:
+        if (f["estado"] or "").strip().lower() == "activo":
+            activos += 1
+        if f["nuevo"] == "Sí":
+            nuevos += 1
+
+    lideres = len(set(lider_por_id.keys()))
+
+    context = {
+        "unidad": unidad,
+        "anio_sel": anio,
+        "mes_sel": mes,
+        "periodo_texto": periodo_texto,
+        "periodo_label": "padrón",
+        "total": total,
+        "activos": activos,
+        "nuevos": nuevos,
+        "lideres": lideres,
+        "filas": filas,
+    }
+    return render(request, "estructura_app/reporte_unidad_padron.html", context)
