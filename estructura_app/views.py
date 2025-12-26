@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from types import SimpleNamespace
 
 from miembros_app.models import Miembro
 from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriodoForm
@@ -1160,6 +1161,12 @@ MESES = [
     (5, "Mayo"), (6, "Junio"), (7, "Julio"), (8, "Agosto"),
     (9, "Septiembre"), (10, "Octubre"), (11, "Noviembre"), (12, "Diciembre"),
 ]
+TRIMESTRES = [
+    (1, "Q1 (Ene–Mar)"),
+    (2, "Q2 (Abr–Jun)"),
+    (3, "Q3 (Jul–Sep)"),
+    (4, "Q4 (Oct–Dic)"),
+]
 
 
 
@@ -1412,15 +1419,13 @@ def unidad_reportes(request, pk):
         "resumen_vista": resumen_vista,
     })
 
-
 @login_required
 def reporte_unidad_imprimir(request, pk, anio, mes):
     unidad = get_object_or_404(Unidad, pk=pk)
     anio = int(anio)
     mes = int(mes)
 
-    # Por defecto, este imprimible es mensual,
-    # pero dejamos listo el texto para cuando imprimas trimestre/anio.
+    # tipo de periodo: mes/trimestre/anio
     periodo_tipo = (request.GET.get("tipo") or "mes").strip().lower()
     if periodo_tipo not in ("mes", "trimestre", "anio"):
         periodo_tipo = "mes"
@@ -1428,18 +1433,6 @@ def reporte_unidad_imprimir(request, pk, anio, mes):
     trimestre_sel = int(request.GET.get("tri") or ((mes - 1) // 3 + 1))
     if trimestre_sel not in (1, 2, 3, 4):
         trimestre_sel = 1
-
-    # Reporte mensual (tu modelo actual)
-    reporte, _ = ReporteUnidadPeriodo.objects.get_or_create(
-        unidad=unidad,
-        anio=anio,
-        mes=mes,
-        defaults={"creado_por": request.user},
-    )
-
-    if request.GET.get("refresh") == "1" or not reporte.resumen:
-        reporte.resumen = _generar_resumen_periodo(unidad, anio, mes)
-        reporte.save()
 
     mes_nombre = dict(MESES).get(mes, str(mes))
 
@@ -1449,16 +1442,69 @@ def reporte_unidad_imprimir(request, pk, anio, mes):
         periodo_texto = f"Año {anio}"
     elif periodo_tipo == "trimestre":
         periodo_label = "trimestral"
-        periodo_texto = f"Q{trimestre_sel} / {anio}"
+
+        TRIMESTRES_TEXTO = {
+            1: "Ene–Mar",
+            2: "Abr–Jun",
+            3: "Jul–Sep",
+            4: "Oct–Dic",
+        }
+
+        periodo_texto = f"{TRIMESTRES_TEXTO.get(trimestre_sel, '—')} / {anio}"
+
     else:
         periodo_label = "mensual"
         periodo_texto = f"{mes_nombre} {anio}"
 
+    # ==========================
+    # MENSUAL (BD)
+    # ==========================
+    if periodo_tipo == "mes":
+        reporte, _ = ReporteUnidadPeriodo.objects.get_or_create(
+            unidad=unidad,
+            anio=anio,
+            mes=mes,
+            defaults={"creado_por": request.user},
+        )
+
+        if request.GET.get("refresh") == "1" or not reporte.resumen:
+            reporte.resumen = _generar_resumen_periodo(unidad, anio, mes)
+            reporte.save()
+
+        return render(request, "estructura_app/reportes/reporte_unidad_periodo.html", {
+            "unidad": unidad,
+            "reporte": reporte,
+
+            "mes_nombre": mes_nombre,   # compatibilidad
+            "periodo_tipo": periodo_tipo,
+            "periodo_label": periodo_label,
+            "periodo_texto": periodo_texto,
+            "trimestre_sel": trimestre_sel,
+            "anio_sel": anio,
+            "mes_sel": mes,
+        })
+
+    # ==========================
+    # TRIMESTRAL / ANUAL (VIRTUAL)
+    # ==========================
+    if periodo_tipo == "trimestre":
+        resumen = _generar_resumen_trimestre(unidad, anio, trimestre_sel)
+    else:
+        resumen = _generar_resumen_anual(unidad, anio)
+
+    # “reporte” virtual para reutilizar la plantilla SIN romper nada
+    reporte_virtual = SimpleNamespace(
+        resumen=resumen or {},
+        reflexion="",
+        necesidades="",
+        plan_proximo="",
+    )
+
     return render(request, "estructura_app/reportes/reporte_unidad_periodo.html", {
         "unidad": unidad,
-        "reporte": reporte,
+        "reporte": reporte_virtual,
 
-        "mes_nombre": mes_nombre,   # lo puedes dejar, por compatibilidad
+        "mes_nombre": mes_nombre,   # compatibilidad
         "periodo_tipo": periodo_tipo,
         "periodo_label": periodo_label,
         "periodo_texto": periodo_texto,
@@ -1466,14 +1512,6 @@ def reporte_unidad_imprimir(request, pk, anio, mes):
         "anio_sel": anio,
         "mes_sel": mes,
     })
-
-
-TRIMESTRES = [
-    (1, "Q1 (Ene–Mar)"),
-    (2, "Q2 (Abr–Jun)"),
-    (3, "Q3 (Jul–Sep)"),
-    (4, "Q4 (Oct–Dic)"),
-]
 
 def _meses_de_trimestre(tri: int):
     """
