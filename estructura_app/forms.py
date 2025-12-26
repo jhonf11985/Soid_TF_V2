@@ -10,7 +10,12 @@ from .models import ActividadUnidad, Unidad, UnidadMembresia
 from .models import ReporteUnidadPeriodo
 
 
+from .models import ReporteUnidadCierre
 
+class ReporteCierreForm(forms.ModelForm):
+    class Meta:
+        model = ReporteUnidadCierre
+        fields = ("reflexion", "necesidades", "plan_proximo")
 
 class UnidadForm(forms.ModelForm):
     class Meta:

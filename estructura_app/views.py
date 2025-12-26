@@ -9,7 +9,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from types import SimpleNamespace
-
+from .models import ReporteUnidadCierre
+from .forms import ReporteCierreForm
+from itertools import chain
 from miembros_app.models import Miembro
 from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriodoForm
 
@@ -20,7 +22,7 @@ from .models import (
     UnidadMembresia,
     UnidadCargo,
     ActividadUnidad,
-    ReporteUnidadPeriodo,
+    ReporteUnidadPeriodo,ReporteUnidadCierre,
 )
 
 
@@ -1266,6 +1268,65 @@ def actividad_crear(request, pk):
         "form": form,
         
     })
+
+def _historico_reportes_unidad(unidad):
+    mensuales = (
+        ReporteUnidadPeriodo.objects
+        .filter(unidad=unidad)
+        .only("id", "anio", "mes", "resumen", "reflexion", "necesidades", "plan_proximo")
+    )
+
+    cierres = (
+        ReporteUnidadCierre.objects
+        .filter(unidad=unidad)
+        .only("id", "anio", "tipo", "trimestre", "resumen", "reflexion", "necesidades", "plan_proximo")
+    )
+
+    def _key(r):
+        # mensual (tiene mes)
+        mes = getattr(r, "mes", None)
+        if mes is not None:
+            return (int(r.anio), 1, int(mes))  # 1 = mensual
+
+        # cierres (tiene tipo: 'trimestre' o 'anio')
+        pt = (getattr(r, "tipo", "") or "").strip().lower()
+
+        if pt == "trimestre":
+            tri = int(getattr(r, "trimestre", 0) or 0)
+            return (int(r.anio), 2, tri)       # 2 = trimestral
+
+        if pt == "anio":
+            return (int(r.anio), 3, 0)         # 3 = anual
+
+        return (int(r.anio), 9, 0)
+
+    lista = list(mensuales) + list(cierres)
+
+    # Orden: más reciente arriba (año desc, y dentro: anual > trimestral > mensual por el segundo campo)
+    lista.sort(key=_key, reverse=True)
+
+    return lista
+
+
+    def _key(r):
+        # mensual (tiene mes)
+        mes = getattr(r, "mes", None)
+        if mes is not None:
+            return (r.anio, 1, int(mes))  # 1 = mensual
+
+        # cierres (tiene tipo: 'trimestre' o 'anio')
+        pt = (getattr(r, "tipo", "") or "").strip().lower()
+
+        if pt == "trimestre":
+            tri = int(getattr(r, "trimestre", 0) or 0)
+            return (r.anio, 2, tri)       # 2 = trimestral
+
+        if pt == "anio":
+            return (r.anio, 3, 0)         # 3 = anual
+
+        return (r.anio, 9, 0)
+
+
 @login_required
 def unidad_reportes(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -1289,72 +1350,119 @@ def unidad_reportes(request, pk):
     # TRIMESTRAL (GET solamente)
     # ==========================
     if periodo_tipo == "trimestre":
-        # En trimestre no guardamos/editar reflexión aún (próximo paso)
-        resumen_vista = _generar_resumen_trimestre(unidad, anio_sel, trimestre_sel)
-
-        # histórico sigue siendo mensual (ReporteUnidadPeriodo)
-        reportes_lista = (
-            ReporteUnidadPeriodo.objects
-            .filter(unidad=unidad)
-            .order_by("-anio", "-mes")
+        cierre, _ = ReporteUnidadCierre.objects.get_or_create(
+            unidad=unidad,
+            anio=anio_sel,
+            tipo="trimestre",
+            trimestre=trimestre_sel,
+            defaults={"creado_por": request.user},
         )
 
-        # form y reporte se mandan vacíos para que la plantilla no rompa
-        form = ReportePeriodoForm(None)
-        reporte = None
+        # Detectar si este POST es para GUARDAR REFLEXIÓN (y no solo recalcular)
+        es_post_reflexion = any(k in request.POST for k in ("reflexion", "necesidades", "plan_proximo"))
+
+        # ✅ POST recalcular (no viene reflexión)
+        if request.method == "POST" and not es_post_reflexion:
+            cierre.resumen = _generar_resumen_trimestre(unidad, anio_sel, trimestre_sel)
+            if not cierre.creado_por:
+                cierre.creado_por = request.user
+            cierre.save()
+            messages.success(request, "Resumen trimestral recalculado.")
+            return redirect(f"{request.path}?tipo=trimestre&anio={anio_sel}&tri={trimestre_sel}")
+
+        # ✅ GET: si resumen vacío lo generamos (y se guarda como snapshot)
+        if not cierre.resumen or (cierre.resumen or {}).get("actividades_total") is None:
+            cierre.resumen = _generar_resumen_trimestre(unidad, anio_sel, trimestre_sel)
+            if not cierre.creado_por:
+                cierre.creado_por = request.user
+            cierre.save()
+
+        # Formulario de reflexión
+        form = ReporteCierreForm(request.POST or None, instance=cierre)
+        if request.method == "POST" and es_post_reflexion:
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Reporte trimestral guardado.")
+                return redirect(f"{request.path}?tipo=trimestre&anio={anio_sel}&tri={trimestre_sel}")
+
+        # histórico sigue siendo mensual (ReporteUnidadPeriodo)
+
+        reportes_lista = _historico_reportes_unidad(unidad)
+
+
+        resumen_vista = cierre.resumen or {}
 
         return render(request, "estructura_app/unidad_reportes.html", {
             "unidad": unidad,
             "reportes_lista": reportes_lista,
-
-            "reporte": reporte,
+            "reporte": cierre,
             "form": form,
-
             "anio_sel": anio_sel,
             "mes_sel": mes_sel,
             "MESES": MESES,
-
             "periodo_tipo": periodo_tipo,
             "trimestre_sel": trimestre_sel,
             "TRIMESTRES": TRIMESTRES,
-
             "resumen_vista": resumen_vista,
         })
+
     # ==========================
     # ANUAL (GET solamente)
     # ==========================
     if periodo_tipo == "anio":
-        # En anual no guardamos/editar reflexión aún (igual que trimestre)
-        resumen_vista = _generar_resumen_anual(unidad, anio_sel)
-
-        # histórico sigue siendo mensual (ReporteUnidadPeriodo)
-        reportes_lista = (
-            ReporteUnidadPeriodo.objects
-            .filter(unidad=unidad)
-            .order_by("-anio", "-mes")
+        cierre, _ = ReporteUnidadCierre.objects.get_or_create(
+            unidad=unidad,
+            anio=anio_sel,
+            tipo="anio",
+            trimestre=None,
+            defaults={"creado_por": request.user},
         )
 
-        # form y reporte se mandan vacíos para que la plantilla no rompa
-        form = ReportePeriodoForm(None)
-        reporte = None
+        es_post_reflexion = any(k in request.POST for k in ("reflexion", "necesidades", "plan_proximo"))
+
+        # ✅ POST recalcular
+        if request.method == "POST" and not es_post_reflexion:
+            cierre.resumen = _generar_resumen_anual(unidad, anio_sel)
+            if not cierre.creado_por:
+                cierre.creado_por = request.user
+            cierre.save()
+            messages.success(request, "Resumen anual recalculado.")
+            return redirect(f"{request.path}?tipo=anio&anio={anio_sel}")
+
+        # ✅ GET: si resumen vacío lo generamos
+        if not cierre.resumen or (cierre.resumen or {}).get("actividades_total") is None:
+            cierre.resumen = _generar_resumen_anual(unidad, anio_sel)
+            if not cierre.creado_por:
+                cierre.creado_por = request.user
+            cierre.save()
+
+        form = ReporteCierreForm(request.POST or None, instance=cierre)
+        if request.method == "POST" and es_post_reflexion:
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Reporte anual guardado.")
+                return redirect(f"{request.path}?tipo=anio&anio={anio_sel}")
+
+
+        reportes_lista = _historico_reportes_unidad(unidad)
+
+
+        resumen_vista = cierre.resumen or {}
 
         return render(request, "estructura_app/unidad_reportes.html", {
             "unidad": unidad,
             "reportes_lista": reportes_lista,
-
-            "reporte": reporte,
+            "reporte": cierre,
             "form": form,
-
             "anio_sel": anio_sel,
             "mes_sel": mes_sel,
             "MESES": MESES,
-
             "periodo_tipo": periodo_tipo,
             "trimestre_sel": trimestre_sel,
             "TRIMESTRES": TRIMESTRES,
-
             "resumen_vista": resumen_vista,
         })
+
 
     # ==========================
     # MENSUAL (tu flujo actual)
@@ -1393,11 +1501,7 @@ def unidad_reportes(request, pk):
             messages.success(request, "Reporte guardado.")
             return redirect(f"{request.path}?tipo=mes&anio={anio_sel}&mes={mes_sel}")
 
-    reportes_lista = (
-        ReporteUnidadPeriodo.objects
-        .filter(unidad=unidad)
-        .order_by("-anio", "-mes")
-    )
+    reportes_lista = _historico_reportes_unidad(unidad)
 
     # Mensual: para mantener plantilla usando la misma variable resumen_vista
     resumen_vista = reporte.resumen or {}
@@ -1459,6 +1563,7 @@ def reporte_unidad_imprimir(request, pk, anio, mes):
     # ==========================
     # MENSUAL (BD)
     # ==========================
+    # Reporte mensual (tu modelo actual) / Cierres (trimestral/anual)
     if periodo_tipo == "mes":
         reporte, _ = ReporteUnidadPeriodo.objects.get_or_create(
             unidad=unidad,
@@ -1471,18 +1576,31 @@ def reporte_unidad_imprimir(request, pk, anio, mes):
             reporte.resumen = _generar_resumen_periodo(unidad, anio, mes)
             reporte.save()
 
-        return render(request, "estructura_app/reportes/reporte_unidad_periodo.html", {
-            "unidad": unidad,
-            "reporte": reporte,
+    else:
+        if periodo_tipo == "trimestre":
+            reporte, _ = ReporteUnidadCierre.objects.get_or_create(
+                unidad=unidad,
+                anio=anio,
+                tipo="trimestre",
+                trimestre=trimestre_sel,
+                defaults={"creado_por": request.user},
+            )
+            if request.GET.get("refresh") == "1" or not reporte.resumen:
+                reporte.resumen = _generar_resumen_trimestre(unidad, anio, trimestre_sel)
+                reporte.save()
 
-            "mes_nombre": mes_nombre,   # compatibilidad
-            "periodo_tipo": periodo_tipo,
-            "periodo_label": periodo_label,
-            "periodo_texto": periodo_texto,
-            "trimestre_sel": trimestre_sel,
-            "anio_sel": anio,
-            "mes_sel": mes,
-        })
+        else:  # anio
+            reporte, _ = ReporteUnidadCierre.objects.get_or_create(
+                unidad=unidad,
+                anio=anio,
+                tipo="anio",
+                trimestre=None,
+                defaults={"creado_por": request.user},
+            )
+            if request.GET.get("refresh") == "1" or not reporte.resumen:
+                reporte.resumen = _generar_resumen_anual(unidad, anio)
+                reporte.save()
+
 
     # ==========================
     # TRIMESTRAL / ANUAL (VIRTUAL)

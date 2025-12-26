@@ -3,6 +3,45 @@ from django.db import models
 from django.utils import timezone
 
 
+class ReporteUnidadCierre(models.Model):
+    TIPO_CHOICES = (
+        ("trimestre", "Trimestral"),
+        ("anio", "Anual"),
+    )
+
+    unidad = models.ForeignKey("estructura_app.Unidad", on_delete=models.CASCADE, related_name="reportes_cierre")
+    anio = models.PositiveIntegerField()
+    tipo = models.CharField(max_length=12, choices=TIPO_CHOICES)
+
+    # Solo aplica cuando tipo = "trimestre"
+    trimestre = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    # Congelamos el resumen (snapshot)
+    resumen = models.JSONField(default=dict, blank=True)
+
+    # Texto del líder
+    reflexion = models.TextField(blank=True, default="")
+    necesidades = models.TextField(blank=True, default="")
+    plan_proximo = models.TextField(blank=True, default="")
+
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["unidad", "anio", "tipo", "trimestre"],
+                name="uniq_reporte_unidad_cierre"
+            ),
+        ]
+        ordering = ["-anio", "-tipo", "-trimestre"]
+
+    def __str__(self):
+        if self.tipo == "anio":
+            return f"{self.unidad} · Anual {self.anio}"
+        return f"{self.unidad} · Trimestral Q{self.trimestre} {self.anio}"
+
 class ActividadUnidad(models.Model):
     TIPO_REUNION = "REUNION"
     TIPO_SALIDA = "SALIDA"

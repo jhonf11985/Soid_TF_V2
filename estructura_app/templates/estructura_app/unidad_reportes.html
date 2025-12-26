@@ -244,14 +244,14 @@ refre{% extends 'estructura_app/base_estructura.html' %}
 </div>
  </div> 
 
-    <!-- HISTÓRICO DE REPORTES -->
-    <div class="historico-card">
-        <div class="historico-header">
-            <span class="material-icons">history</span>
-            <h3>Histórico de reportes</h3>
-        </div>
+ <!-- HISTÓRICO DE REPORTES -->
+<div class="historico-card">
+    <div class="historico-header">
+        <span class="material-icons">history</span>
+        <h3>Histórico de reportes</h3>
+    </div>
 
-        {% if reportes_lista %}
+    {% if reportes_lista %}
         <div class="table-container">
             <table class="data-table">
                 <thead>
@@ -263,45 +263,102 @@ refre{% extends 'estructura_app/base_estructura.html' %}
                 </thead>
                 <tbody>
                     {% for r in reportes_lista %}
-                    <tr>
-                        <td>
-                            <span class="period-badge">
-                                <span class="material-icons">calendar_today</span>
-                                {{ r.mes|stringformat:"02d" }}/{{ r.anio }}
-                            </span>
-                        </td>
-                        <td class="text-center">
-                            <span class="metric-mini">{{ r.resumen.actividades_total|default:0 }}</span>
-                        </td>
-                        <td class="text-center">
-                            <div class="row-actions">
-                                <a href="{% url 'estructura_app:unidad_reportes' unidad.pk %}?tipo=mes&anio={{ r.anio }}&mes={{ r.mes }}"
-                                   class="odoo-btn odoo-btn-sm"
-                                   title="Ver reporte">
-                                    <span class="material-icons">visibility</span>
-                                    Ver
-                                </a>
-                                <a href="{% url 'estructura_app:reporte_unidad_imprimir' unidad.pk r.anio r.mes %}?refresh=1"
-                                   target="_blank"
-                                   class="odoo-btn odoo-btn-sm odoo-btn-secondary"
-                                   title="Imprimir">
-                                    <span class="material-icons">print</span>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td>
+                                <span class="period-badge">
+                                    <span class="material-icons">calendar_today</span>
+
+                                    {% if r.mes %}
+                                        {{ r.mes|stringformat:"02d" }}/{{ r.anio }}
+                                    {% else %}
+                                        {% if r.tipo == "anio" %}
+                                            Año {{ r.anio }}
+                                        {% elif r.tipo == "trimestre" %}
+                                            Q{{ r.trimestre }} / {{ r.anio }}
+                                        {% else %}
+                                            {{ r.anio }}
+                                        {% endif %}
+                                    {% endif %}
+                                </span>
+                            </td>
+
+                            <td class="text-center">
+                                <span class="metric-mini">{{ r.resumen.actividades_total|default:0 }}</span>
+                            </td>
+
+                            <td class="text-center">
+                                <div class="row-actions">
+
+                                    {# VER #}
+                                    {% if r.mes %}
+                                        <a href="{% url 'estructura_app:unidad_reportes' unidad.pk %}?tipo=mes&anio={{ r.anio }}&mes={{ r.mes }}"
+                                           class="odoo-btn odoo-btn-sm" title="Ver reporte">
+                                            <span class="material-icons">visibility</span>
+                                            Ver
+                                        </a>
+                                    {% else %}
+                                        {% if r.tipo == "anio" %}
+                                            <a href="{% url 'estructura_app:unidad_reportes' unidad.pk %}?tipo=anio&anio={{ r.anio }}"
+                                               class="odoo-btn odoo-btn-sm" title="Ver reporte">
+                                                <span class="material-icons">visibility</span>
+                                                Ver
+                                            </a>
+                                        {% elif r.tipo == "trimestre" %}
+                                            <a href="{% url 'estructura_app:unidad_reportes' unidad.pk %}?tipo=trimestre&anio={{ r.anio }}&tri={{ r.trimestre }}"
+                                               class="odoo-btn odoo-btn-sm" title="Ver reporte">
+                                                <span class="material-icons">visibility</span>
+                                                Ver
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'estructura_app:unidad_reportes' unidad.pk %}?tipo=anio&anio={{ r.anio }}"
+                                               class="odoo-btn odoo-btn-sm" title="Ver reporte">
+                                                <span class="material-icons">visibility</span>
+                                                Ver
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
+
+                                    {# IMPRIMIR #}
+                                    {% if r.mes %}
+                                        <a href="{% url 'estructura_app:reporte_unidad_imprimir' unidad.pk r.anio r.mes %}?refresh=1&autoprint=1"
+                                           target="_blank"
+                                           class="odoo-btn odoo-btn-sm odoo-btn-secondary"
+                                           title="Imprimir">
+                                            <span class="material-icons">print</span>
+                                        </a>
+                                    {% else %}
+                                        {% if r.tipo == "anio" %}
+                                            <a href="{% url 'estructura_app:reporte_unidad_imprimir' unidad.pk r.anio 1 %}?tipo=anio&refresh=1&autoprint=1"
+                                               target="_blank"
+                                               class="odoo-btn odoo-btn-sm odoo-btn-secondary"
+                                               title="Imprimir">
+                                                <span class="material-icons">print</span>
+                                            </a>
+                                        {% elif r.tipo == "trimestre" %}
+                                            <a href="{% url 'estructura_app:reporte_unidad_imprimir' unidad.pk r.anio 1 %}?tipo=trimestre&tri={{ r.trimestre }}&refresh=1&autoprint=1"
+                                               target="_blank"
+                                               class="odoo-btn odoo-btn-sm odoo-btn-secondary"
+                                               title="Imprimir">
+                                                <span class="material-icons">print</span>
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
+
+                                </div>
+                            </td>
+                        </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% else %}
+    {% else %}
         <div class="empty-state-small">
             <span class="material-icons">folder_off</span>
             <p>Sin reportes todavía</p>
         </div>
-        {% endif %}
-    </div>
+    {% endif %}
 </div>
+
 
 <script>
 (function(){
