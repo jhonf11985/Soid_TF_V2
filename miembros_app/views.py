@@ -871,6 +871,9 @@ class MiembroDetailView(View):
     def get(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
 
+        # =========================
+        # FINANZAS
+        # =========================
         movimientos_financieros = (
             MovimientoFinanciero.objects
             .filter(persona_asociada=miembro)
@@ -878,15 +881,23 @@ class MiembroDetailView(View):
             .order_by("-fecha", "-creado_en")
         )
 
+        total_aportes = (
+            movimientos_financieros
+            .filter(tipo="ingreso")
+            .aggregate(total=Sum("monto"))["total"] or 0
+        )
+
+        # =========================
+        # PERMISOS
+        # =========================
         can_dar_salida = (
             request.user.is_authenticated
             and request.user.has_perm("miembros_app.change_miembro")
         )
 
-        total_aportes = movimientos_financieros.filter(
-            tipo="ingreso"
-        ).aggregate(total=Sum("monto"))["total"] or 0
-
+        # =========================
+        # FAMILIA
+        # =========================
         relaciones_qs = (
             MiembroRelacion.objects
             .filter(Q(miembro=miembro) | Q(familiar=miembro))
@@ -902,12 +913,13 @@ class MiembroDetailView(View):
                 if pareja in parejas_vistas:
                     continue
                 parejas_vistas.add(pareja)
-                relaciones_familia.append(rel)
-            else:
-                relaciones_familia.append(rel)
+            relaciones_familia.append(rel)
 
         edad_minima = get_edad_minima_miembro_oficial()
 
+        # =========================
+        # CONTEXT BASE
+        # =========================
         context = {
             "miembro": miembro,
             "relaciones_familia": relaciones_familia,
@@ -915,77 +927,65 @@ class MiembroDetailView(View):
             "movimientos_financieros": movimientos_financieros,
             "total_aportes": total_aportes,
             "can_dar_salida": can_dar_salida,
+            "unidades_resumen": [],
+            "unidades_total": 0,
         }
 
-        # ==============================
-        # UNIDADES (solo si Estructura activo)
-        # ==============================
+        # =========================
+        # UNIDADES (LISTA SIMPLE)
+        # =========================
         estructura_activa = _modulo_estructura_activo()
-
-        context["unidades_total"] = 0
-        context["unidades_liderazgo"] = []
-        context["unidades_participacion"] = []
-        context["unidades_trabajo"] = []
 
         if estructura_activa:
             UnidadCargo = _safe_get_model("estructura_app", "UnidadCargo")
             UnidadMembresia = _safe_get_model("estructura_app", "UnidadMembresia")
 
             if UnidadCargo and UnidadMembresia:
+                # ── cargos vigentes + unidad activa
                 cargos_qs = (
                     UnidadCargo.objects
-                    .filter(miembo_fk=miembro)
+                    .filter(miembo_fk=miembro, vigente=True, unidad__activa=True)
                     .select_related("unidad", "rol")
-                    .order_by("-vigente", "unidad__nombre", "rol__orden")
                 )
 
+                # ── membresías activas + unidad activa
                 membresias_qs = (
                     UnidadMembresia.objects
-                    .filter(miembo_fk=miembro)
+                    .filter(miembo_fk=miembro, activo=True, unidad__activa=True)
                     .select_related("unidad", "rol")
-                    .order_by("-activo", "unidad__nombre")
                 )
 
-                liderazgo = []
+                resumen = []
+                vistos = set()
+
                 for c in cargos_qs:
-                    liderazgo.append({
+                    key = ("CARGO", c.unidad_id, c.rol_id)
+                    if key in vistos:
+                        continue
+                    vistos.add(key)
+
+                    resumen.append({
                         "unidad": c.unidad.nombre if c.unidad_id else "—",
-                        "rol": c.rol.nombre if c.rol_id else "—",
-                        "vigente": bool(c.vigente),
+                        "rol": c.rol.nombre if c.rol_id else "Miembro",
                     })
 
-                participacion = []
-                trabajo = []
-
                 for m in membresias_qs:
-                    rol = m.rol
-                    rol_tipo = (rol.tipo or "").upper() if rol else ""
-                    item = {
+                    key = ("MEMB", m.unidad_id, m.rol_id)
+                    if key in vistos:
+                        continue
+                    vistos.add(key)
+
+                    resumen.append({
                         "unidad": m.unidad.nombre if m.unidad_id else "—",
-                        "rol": rol.nombre if rol else "—",
-                        "vigente": bool(m.activo),
-                    }
+                        "rol": m.rol.nombre if m.rol_id else "Miembro",
+                    })
 
-                    if rol_tipo == "TRABAJO":
-                        trabajo.append(item)
-                    else:
-                        participacion.append(item)
+                resumen.sort(key=lambda x: (x["unidad"], x["rol"]))
 
-                unidades_ids = set()
-                for c in cargos_qs:
-                    if c.unidad_id:
-                        unidades_ids.add(c.unidad_id)
-                for m in membresias_qs:
-                    if m.unidad_id:
-                        unidades_ids.add(m.unidad_id)
-
-                context["unidades_total"] = len(unidades_ids)
-                context["unidades_liderazgo"] = liderazgo
-                context["unidades_participacion"] = participacion
-                context["unidades_trabajo"] = trabajo
+                context["unidades_resumen"] = resumen
+                context["unidades_total"] = len(resumen)
 
         return render(request, "miembros_app/miembros_detalle.html", context)
-
 
 
 # -------------------------------------

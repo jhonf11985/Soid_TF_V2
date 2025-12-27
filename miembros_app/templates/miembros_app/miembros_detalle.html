@@ -557,35 +557,60 @@
 </div>
 {% endif %}
 
+{% if MODULOS_ACTIVOS.Estructura or MODULOS_ACTIVOS.Unidad or MODULOS_ACTIVOS.Unidades %}
 <div class="odoo-tab-content" id="tab-unidades">
 
-  <div class="odoo-subtitle">
-    <span class="material-icons">apartment</span>
-    Unidades asignadas
+  <!-- Encabezado -->
+  <div class="odoo-unidades-head">
+    <div class="odoo-unidades-title">
+      <span class="material-icons">apartment</span>
+      <div>
+        <div class="odoo-unidades-h">Unidades</div>
+        <div class="odoo-unidades-sub">
+          Asignaciones activas del miembro (solo unidades activas y asignaciones vigentes).
+        </div>
+      </div>
+    </div>
+
+    <div class="odoo-unidades-counter">
+      <span class="odoo-unidades-counter-label">Total</span>
+      <span class="odoo-unidades-counter-value">{{ unidades_total|default:"0" }}</span>
+    </div>
   </div>
 
-  <div class="odoo-subtitle-help">
-    Se muestran únicamente las unidades <b>activas</b> donde el miembro pertenece actualmente.
-  </div>
-
-  {% if unidades_activas %}
-    <ul class="odoo-unidades-lista">
-      {% for it in unidades_activas %}
-        <li class="odoo-unidad-item">
-          <div class="odoo-unidad-info">
-            <span class="odoo-unidad-nombre">{{ it.unidad }}</span>
-            <span class="odoo-unidad-rol">{{ it.rol|default:"Miembro" }}</span>
+  {% if unidades_resumen %}
+    <div class="odoo-unidades-list">
+      {% for it in unidades_resumen %}
+        <div class="odoo-unidad-row">
+          <div class="odoo-unidad-left">
+            <span class="material-icons odoo-unidad-ico">domain</span>
+            <div class="odoo-unidad-text">
+              <div class="odoo-unidad-name">{{ it.unidad }}</div>
+              <div class="odoo-unidad-meta">Asignación activa</div>
+            </div>
           </div>
-        </li>
+
+          <div class="odoo-unidad-right">
+            <span class="odoo-unidad-pill">{{ it.rol|default:"Miembro" }}</span>
+            <span class="material-icons odoo-unidad-arrow">chevron_right</span>
+          </div>
+        </div>
       {% endfor %}
-    </ul>
+    </div>
   {% else %}
-    <p class="odoo-empty">
-      Este miembro no pertenece actualmente a ninguna unidad activa.
-    </p>
+    <div class="odoo-unidades-empty">
+      <span class="material-icons">info</span>
+      <div>
+        <div class="odoo-unidades-empty-title">Sin asignaciones activas</div>
+        <div class="odoo-unidades-empty-sub">
+          Este miembro no tiene actualmente unidades activas asignadas.
+        </div>
+      </div>
+    </div>
   {% endif %}
 
 </div>
+{% endif %}
 
 
 
@@ -629,30 +654,26 @@
 <style>
 
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   UNIDADES (MEJORAS VISUALES)
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+   TAB UNIDADES (decente, simple)
+   ═══════════════════════════════════════════════ */
 
-.odoo-unidades-summary {
+.odoo-unidades-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
     border: 1px solid #e9ecef;
     border-radius: 10px;
-    padding: 16px;
     background: #fbfcfd;
-    margin-bottom: 18px;
-}
-
-.odoo-unidades-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
     margin-bottom: 14px;
 }
 
 .odoo-unidades-title {
     display: flex;
-    align-items: flex-start;
     gap: 10px;
+    align-items: flex-start;
 }
 
 .odoo-unidades-title .material-icons {
@@ -674,64 +695,141 @@
     margin-top: 2px;
 }
 
-.odoo-unidades-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    border: 1px solid #dee2e6;
-    background: #ffffff;
-    color: #495057;
-    font-size: 12px;
-    white-space: nowrap;
+.odoo-unidades-counter {
+    text-align: right;
+    padding-left: 8px;
+    flex-shrink: 0;
 }
 
-.odoo-unidades-pill .material-icons {
-    font-size: 16px;
-    color: #6c757d;
-}
-
-/* Cards */
-.odoo-unidades-cards {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-}
-
-.odoo-u-card {
-    border: 1px solid #e9ecef;
-    background: #ffffff;
-    border-radius: 10px;
-    padding: 12px 12px;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
-}
-
-.odoo-u-card-label {
+.odoo-unidades-counter-label {
+    display: block;
     font-size: 11px;
     color: #6c757d;
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }
 
-.odoo-u-card-value {
-    font-size: 22px;
+.odoo-unidades-counter-value {
+    font-size: 20px;
     font-weight: 800;
     color: #212529;
-    margin-top: 4px;
     line-height: 1.1;
 }
 
-.odoo-u-card-foot {
-    font-size: 12px;
-    color: #6c757d;
-    margin-top: 4px;
+/* Lista */
+.odoo-unidades-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.odoo-u-card-lead {
-    border-color: rgba(1,126,132,0.35);
-    background: rgba(1,126,132,0.06);
+.odoo-unidad-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    background: #ffffff;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
+
+.odoo-unidad-row:hover {
+    background: #fbfcfd;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.04);
+    transform: translateY(-1px);
+}
+
+.odoo-unidad-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.odoo-unidad-ico {
+    font-size: 20px;
+    color: #6c757d;
+    flex-shrink: 0;
+}
+
+.odoo-unidad-text {
+    min-width: 0;
+}
+
+.odoo-unidad-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 52vw;
+}
+
+.odoo-unidad-meta {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.odoo-unidad-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.odoo-unidad-pill {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #374151;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.odoo-unidad-arrow {
+    font-size: 20px;
+    color: #c0c7cf;
+}
+
+/* Empty state */
+.odoo-unidades-empty {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    border: 1px dashed #dee2e6;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #6c757d;
+}
+
+.odoo-unidades-empty .material-icons {
+    color: #6c757d;
+}
+
+.odoo-unidades-empty-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #212529;
+}
+
+.odoo-unidades-empty-sub {
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .odoo-unidad-name {
+        max-width: 60vw;
+    }
+}
+
 
 /* Subsections: separar bien */
 .odoo-subsection {
