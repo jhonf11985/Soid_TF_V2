@@ -932,7 +932,7 @@ class MiembroDetailView(View):
         }
 
         # =========================
-        # UNIDADES (LISTA SIMPLE)
+        # UNIDADES (TABLA: Unidad / Rol / Tipo)
         # =========================
         estructura_activa = _modulo_estructura_activo()
 
@@ -958,6 +958,7 @@ class MiembroDetailView(View):
                 resumen = []
                 vistos = set()
 
+                # Cargos => Tipo: Liderazgo
                 for c in cargos_qs:
                     key = ("CARGO", c.unidad_id, c.rol_id)
                     if key in vistos:
@@ -967,20 +968,28 @@ class MiembroDetailView(View):
                     resumen.append({
                         "unidad": c.unidad.nombre if c.unidad_id else "—",
                         "rol": c.rol.nombre if c.rol_id else "Miembro",
+                        "tipo": "Liderazgo",
                     })
 
+                # Membresías => Tipo según rol.tipo
                 for m in membresias_qs:
                     key = ("MEMB", m.unidad_id, m.rol_id)
                     if key in vistos:
                         continue
                     vistos.add(key)
 
+                    rol_tipo = (m.rol.tipo or "").upper() if m.rol else ""
+                    tipo = "Trabajo" if rol_tipo == "TRABAJO" else "Participación"
+
                     resumen.append({
                         "unidad": m.unidad.nombre if m.unidad_id else "—",
                         "rol": m.rol.nombre if m.rol_id else "Miembro",
+                        "tipo": tipo,
                     })
 
-                resumen.sort(key=lambda x: (x["unidad"], x["rol"]))
+                # Orden bonito: Tipo -> Unidad -> Rol
+                orden_tipo = {"Liderazgo": 0, "Participación": 1, "Trabajo": 2}
+                resumen.sort(key=lambda x: (orden_tipo.get(x.get("tipo"), 99), x["unidad"], x["rol"]))
 
                 context["unidades_resumen"] = resumen
                 context["unidades_total"] = len(resumen)
