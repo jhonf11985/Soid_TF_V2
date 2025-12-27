@@ -234,6 +234,16 @@ def unidad_detalle(request, pk):
         .select_related("miembo_fk", "rol")
         .order_by("rol__orden", "rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
     )
+    lideres_asignados = (
+        UnidadCargo.objects
+        .filter(
+            unidad=unidad,
+            vigente=True,
+            rol__tipo=RolUnidad.TIPO_LIDERAZGO
+        )
+        .select_related("miembo_fk", "rol")
+        .order_by("rol__orden", "rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
+    )
 
     # =====================================================
     # 3) TOTAL REAL DE MIEMBROS (participación + trabajo + sin rol)
