@@ -51,5 +51,10 @@ path(
     views.reporte_unidad_cierre_imprimir,
     name="reporte_unidad_cierre_imprimir",
 ),
+path(
+    "reportes/miembros-multi-unidad/",
+    views.reporte_miembros_multi_unidad,
+    name="reporte_miembros_multi_unidad"
+),
 
 ]
