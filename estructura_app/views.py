@@ -1950,12 +1950,20 @@ def reporte_unidad_liderazgo_imprimir(request, pk):
             "estado": estado_label,
             "fecha_inicio": c.fecha_inicio,
         })
+    reglas = unidad.reglas or {}
+    lider_edad_min = reglas.get("lider_edad_min")
+    lider_edad_max = reglas.get("lider_edad_max")
+
 
     context = {
         "unidad": unidad,
         "filas": filas,
         "total_lideres": len(filas),
+        "lider_edad_min": lider_edad_min,
+        "lider_edad_max": lider_edad_max,
+
     }
+
 
     return render(request, "estructura_app/reportes/reporte_unidad_liderazgo.html", context)
 
