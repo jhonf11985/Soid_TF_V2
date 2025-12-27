@@ -35,12 +35,27 @@ from notificaciones_app.utils import crear_notificacion
 from finanzas_app.models import MovimientoFinanciero
 from django.db.models import Sum
 from .forms import MiembroSalidaForm
+from django.apps import apps
+from core.models import Module
 
 
 
 
 CHROME_PATH = getattr(settings, "CHROME_PATH", None) or os.environ.get("CHROME_PATH")
 
+
+def _modulo_estructura_activo():
+    return Module.objects.filter(
+        is_enabled=True,
+        code__in=["Estructura", "Unidad", "Unidades"]
+    ).exists()
+
+
+def _safe_get_model(app_label, model_name):
+    try:
+        return apps.get_model(app_label, model_name)
+    except Exception:
+        return None
 
 # -------------------------------------
 # DASHBOARD
@@ -849,7 +864,6 @@ class MiembroUpdateView(View):
         }
         return render(request, "miembros_app/miembro_form.html", context)
 
-
 # -------------------------------------
 # DETALLE DEL MIEMBRO
 # -------------------------------------
@@ -857,25 +871,22 @@ class MiembroDetailView(View):
     def get(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
 
-
         movimientos_financieros = (
             MovimientoFinanciero.objects
             .filter(persona_asociada=miembro)
-            .exclude(estado="anulado")   # ✅ tu modelo usa "estado"
+            .exclude(estado="anulado")
             .order_by("-fecha", "-creado_en")
         )
+
         can_dar_salida = (
             request.user.is_authenticated
             and request.user.has_perm("miembros_app.change_miembro")
         )
 
-        # Totales (ajusta tipos si usas otros)
         total_aportes = movimientos_financieros.filter(
             tipo="ingreso"
         ).aggregate(total=Sum("monto"))["total"] or 0
 
-
-        # Traemos todas las relaciones donde participa este miembro
         relaciones_qs = (
             MiembroRelacion.objects
             .filter(Q(miembro=miembro) | Q(familiar=miembro))
@@ -883,21 +894,16 @@ class MiembroDetailView(View):
         )
 
         relaciones_familia = []
-        parejas_vistas = set()  # para fusionar relaciones de cónyuges recíprocas
+        parejas_vistas = set()
 
         for rel in relaciones_qs:
             if rel.tipo_relacion == "conyuge":
-                # Creamos un identificador único para la pareja, sin importar el orden
                 pareja = frozenset({rel.miembro_id, rel.familiar_id})
-
-                # Si ya vimos esta pareja en otra relación "conyuge", no la repetimos
                 if pareja in parejas_vistas:
                     continue
-
                 parejas_vistas.add(pareja)
                 relaciones_familia.append(rel)
             else:
-                # Cualquier otra relación (padre, madre, hijo, etc.) se agrega tal cual
                 relaciones_familia.append(rel)
 
         edad_minima = get_edad_minima_miembro_oficial()
@@ -906,11 +912,80 @@ class MiembroDetailView(View):
             "miembro": miembro,
             "relaciones_familia": relaciones_familia,
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
-             "movimientos_financieros": movimientos_financieros,
-             "total_aportes": total_aportes,
-             "can_dar_salida": can_dar_salida, 
+            "movimientos_financieros": movimientos_financieros,
+            "total_aportes": total_aportes,
+            "can_dar_salida": can_dar_salida,
         }
+
+        # ==============================
+        # UNIDADES (solo si Estructura activo)
+        # ==============================
+        estructura_activa = _modulo_estructura_activo()
+
+        context["unidades_total"] = 0
+        context["unidades_liderazgo"] = []
+        context["unidades_participacion"] = []
+        context["unidades_trabajo"] = []
+
+        if estructura_activa:
+            UnidadCargo = _safe_get_model("estructura_app", "UnidadCargo")
+            UnidadMembresia = _safe_get_model("estructura_app", "UnidadMembresia")
+
+            if UnidadCargo and UnidadMembresia:
+                cargos_qs = (
+                    UnidadCargo.objects
+                    .filter(miembo_fk=miembro)
+                    .select_related("unidad", "rol")
+                    .order_by("-vigente", "unidad__nombre", "rol__orden")
+                )
+
+                membresias_qs = (
+                    UnidadMembresia.objects
+                    .filter(miembo_fk=miembro)
+                    .select_related("unidad", "rol")
+                    .order_by("-activo", "unidad__nombre")
+                )
+
+                liderazgo = []
+                for c in cargos_qs:
+                    liderazgo.append({
+                        "unidad": c.unidad.nombre if c.unidad_id else "—",
+                        "rol": c.rol.nombre if c.rol_id else "—",
+                        "vigente": bool(c.vigente),
+                    })
+
+                participacion = []
+                trabajo = []
+
+                for m in membresias_qs:
+                    rol = m.rol
+                    rol_tipo = (rol.tipo or "").upper() if rol else ""
+                    item = {
+                        "unidad": m.unidad.nombre if m.unidad_id else "—",
+                        "rol": rol.nombre if rol else "—",
+                        "vigente": bool(m.activo),
+                    }
+
+                    if rol_tipo == "TRABAJO":
+                        trabajo.append(item)
+                    else:
+                        participacion.append(item)
+
+                unidades_ids = set()
+                for c in cargos_qs:
+                    if c.unidad_id:
+                        unidades_ids.add(c.unidad_id)
+                for m in membresias_qs:
+                    if m.unidad_id:
+                        unidades_ids.add(m.unidad_id)
+
+                context["unidades_total"] = len(unidades_ids)
+                context["unidades_liderazgo"] = liderazgo
+                context["unidades_participacion"] = participacion
+                context["unidades_trabajo"] = trabajo
+
         return render(request, "miembros_app/miembros_detalle.html", context)
+
 
 
 # -------------------------------------
