@@ -1908,4 +1908,4 @@ def reporte_unidad_padron_imprimir(request, pk, anio, mes):
         "lideres": lideres,
         "filas": filas,
     }
-    return render(request, "estructura_app/reporte_unidad_padron.html", context)
+    return render(request, "estructura_app/reportes/reporte_unidad_padron.html", context)
