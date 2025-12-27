@@ -184,26 +184,21 @@ def unidad_listado(request):
         Unidad.objects
         .annotate(
             total_miembros=Count(
-                "membresias",
-                filter=Q(
-                    membresias__activo=True,
-                    membresias__rol__tipo=RolUnidad.TIPO_PARTICIPACION
+                "membresias__miembo_fk",  # 👈 cuenta PERSONAS, no registros
+                filter=Q(membresias__activo=True) & (
+                    Q(membresias__rol__tipo__in=[RolUnidad.TIPO_PARTICIPACION, RolUnidad.TIPO_TRABAJO])
+                    | Q(membresias__rol__isnull=True)
                 ),
                 distinct=True
             ),
-
             total_lideres=Count(
                 "cargos",
-                filter=Q(
-                    cargos__vigente=True,
-                    cargos__rol__tipo=RolUnidad.TIPO_LIDERAZGO
-                ),
+                filter=Q(cargos__vigente=True, cargos__rol__tipo=RolUnidad.TIPO_LIDERAZGO),
                 distinct=True
-            )
+            ),
         )
         .order_by("nombre")
     )
-
 
     if query:
         unidades = unidades.filter(
@@ -214,45 +209,54 @@ def unidad_listado(request):
         "unidades": unidades,
         "query": query,
     })
-
 @login_required
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
     lideres_asignados = UnidadCargo.objects.none()
-    
+
+    # =====================================================
+    # 1) LISTA "MIEMBROS" (participación + sin rol)
+    # =====================================================
     miembros_asignados = (
         UnidadMembresia.objects
         .filter(unidad=unidad, activo=True)
+        .filter(Q(rol__tipo=RolUnidad.TIPO_PARTICIPACION) | Q(rol__isnull=True))
         .select_related("miembo_fk", "rol")
         .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
     )
 
-    # ✅ NUEVO: Equipo de trabajo (solo roles tipo TRABAJO)
+    # =====================================================
+    # 2) LISTA "EQUIPO DE TRABAJO" (solo trabajo)
+    # =====================================================
     equipo_trabajo_asignados = (
         UnidadMembresia.objects
-        .filter(
-            unidad=unidad,
-            activo=True,
-            rol__tipo=RolUnidad.TIPO_TRABAJO
-        )
+        .filter(unidad=unidad, activo=True, rol__tipo=RolUnidad.TIPO_TRABAJO)
         .select_related("miembo_fk", "rol")
         .order_by("rol__orden", "rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
     )
 
-    miembros_asignados = (
+    # =====================================================
+    # 3) TOTAL REAL DE MIEMBROS (participación + trabajo + sin rol)
+    #    OJO: líderes NO se cuentan aquí (liderazgo vive en UnidadCargo)
+    # =====================================================
+    miembros_total_asignados = (
         UnidadMembresia.objects
+        .filter(unidad=unidad, activo=True)
         .filter(
-            unidad=unidad,
-            activo=True
-        )
-        .filter(
-            Q(rol__tipo=RolUnidad.TIPO_PARTICIPACION) | Q(rol__isnull=True)
+            Q(rol__tipo__in=[RolUnidad.TIPO_PARTICIPACION, RolUnidad.TIPO_TRABAJO])
+            | Q(rol__isnull=True)
         )
         .select_related("miembo_fk", "rol")
-        .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
     )
 
-    miembros = [m.miembo_fk for m in miembros_asignados]
+    # Evitar duplicados por si un miembro tiene 2 membresías (participación + trabajo)
+    miembros_ids = list(
+        miembros_total_asignados.values_list("miembo_fk_id", flat=True).distinct()
+    )
+    miembros = list(
+        Miembro.objects.filter(id__in=miembros_ids).order_by("nombres", "apellidos")
+    )
+
     total = len(miembros)
 
     # --- Género: usa el display si existe (más fiable)
@@ -336,15 +340,16 @@ def unidad_detalle(request, pk):
     return render(request, "estructura_app/unidad_detalle.html", {
         "unidad": unidad,
         "miembros_asignados": miembros_asignados,
-        "equipo_trabajo_asignados": equipo_trabajo_asignados,  # ✅ NUEVO
+        "equipo_trabajo_asignados": equipo_trabajo_asignados,
         "lideres_asignados": lideres_asignados,
         "resumen": resumen,
 
+        # ✅ ESTE ES EL TOTAL REAL (participación + trabajo + sin rol)
         "miembros_count": total,
+
         "capacidad_maxima": capacidad_maxima,
         "capacidad_excedida": capacidad_excedida,
     })
-
 
 
 def _reglas_mvp_from_post(post):
