@@ -26,6 +26,9 @@ from .models import (
 )
 
 
+
+
+
 # ============================================================
 # HOME / DASHBOARD
 # ============================================================
@@ -1909,3 +1912,44 @@ def reporte_unidad_padron_imprimir(request, pk, anio, mes):
         "filas": filas,
     }
     return render(request, "estructura_app/reportes/reporte_unidad_padron.html", context)
+
+
+@login_required
+def reporte_unidad_liderazgo_imprimir(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    cargos = (
+        UnidadCargo.objects
+        .select_related("miembo_fk", "rol")
+        .filter(
+            unidad=unidad,
+            vigente=True,
+            rol__tipo=RolUnidad.TIPO_LIDERAZGO,
+        )
+        .order_by("rol__orden", "miembo_fk__nombres")
+    )
+
+    filas = []
+    for c in cargos:
+        m = c.miembo_fk
+        filas.append({
+            "rol": c.rol.nombre,
+            "nombre": str(m),
+            "codigo": getattr(m, "codigo", ""),
+            "telefono": getattr(m, "telefono", ""),
+            "estado": getattr(m, "estado", ""),
+            "fecha_inicio": c.fecha_inicio,
+            "vigente": "Sí" if c.vigente else "No",
+        })
+
+    context = {
+        "unidad": unidad,
+        "filas": filas,
+        "total_lideres": len(filas),
+    }
+
+    return render(
+        request,
+        "estructura_app/reportes/reporte_unidad_liderazgo.html",
+        context
+    )

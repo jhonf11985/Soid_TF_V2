@@ -36,5 +36,10 @@ urlpatterns = [
     views.reporte_unidad_padron_imprimir,
     name="reporte_unidad_padron_imprimir"
     ),
-    
+    path(
+    "unidades/<int:pk>/reportes/liderazgo/imprimir/",
+    views.reporte_unidad_liderazgo_imprimir,
+    name="reporte_unidad_liderazgo_imprimir",
+),
+
 ]

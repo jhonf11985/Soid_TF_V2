@@ -1,0 +1,173 @@
+{% extends "core/reporte_base.html" %}
+
+{% block content %}
+<style>
+  /* ===== Print Layout: limpio y estable ===== */
+  .rpt-wrap { font-family: Arial, Helvetica, sans-serif; color:#111; }
+  .rpt-topbar {
+    display:flex; justify-content:space-between; align-items:flex-start;
+    gap:16px; border-bottom:1px solid #e5e7eb; padding-bottom:12px; margin-bottom:14px;
+  }
+  .rpt-title { margin:0; font-size:20px; font-weight:700; letter-spacing:.2px; }
+  .rpt-sub { margin:4px 0 0; color:#555; font-size:12px; line-height:1.3; }
+  .rpt-meta { text-align:right; font-size:12px; color:#444; white-space:nowrap; }
+  .rpt-badge { display:inline-block; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; }
+
+  .rpt-grid {
+    display:grid; grid-template-columns: 1fr 1fr; gap:10px;
+    margin: 12px 0 14px;
+  }
+  .rpt-card {
+    border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px;
+    background:#fff;
+  }
+  .rpt-k { color:#666; font-size:11px; text-transform:uppercase; letter-spacing:.6px; }
+  .rpt-v { margin-top:4px; font-size:13px; font-weight:600; }
+
+  .rpt-section-title { margin: 12px 0 8px; font-size:14px; font-weight:700; }
+
+  .rpt-table {
+    width:100%;
+    border-collapse:collapse;
+    border:1px solid #e5e7eb;
+    font-size:12px;
+  }
+  .rpt-table thead th {
+    background:#f3f4f6;
+    text-align:left;
+    padding:8px 8px;
+    border-bottom:1px solid #e5e7eb;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .rpt-table td {
+    padding:7px 8px;
+    border-bottom:1px solid #eee;
+    vertical-align:top;
+  }
+  .rpt-table tr:nth-child(even) td { background:#fafafa; }
+  .rpt-center { text-align:center; }
+  .rpt-right { text-align:right; }
+  .rpt-muted { color:#666; }
+  .rpt-small { font-size:11px; color:#666; }
+
+  .rpt-footer {
+    display:flex; justify-content:space-between; gap:12px;
+    margin-top:14px; padding-top:10px;
+    border-top:1px solid #e5e7eb;
+    font-size:11px; color:#555;
+  }
+
+  @media print {
+    .rpt-card { break-inside: avoid; }
+    .rpt-table { break-inside:auto; }
+    .rpt-table tr { break-inside:avoid; break-after:auto; }
+  }
+</style>
+
+<div class="rpt-wrap">
+
+  <div class="rpt-topbar">
+    <div>
+      <h1 class="rpt-title">Liderazgo vigente de la unidad</h1>
+      <p class="rpt-sub">
+        {{ unidad.ruta }}
+      </p>
+    </div>
+    <div class="rpt-meta">
+      <div class="rpt-badge">Imprimible</div><br>
+      <span class="rpt-small">Generado: {% now "d/m/Y H:i" %}</span>
+    </div>
+  </div>
+
+  <div class="rpt-grid">
+    <div class="rpt-card">
+      <div class="rpt-k">Unidad</div>
+      <div class="rpt-v">{{ unidad.nombre }}</div>
+      <div class="rpt-small rpt-muted" style="margin-top:4px;">
+        {% if unidad.padre %}Padre: {{ unidad.padre.nombre }}{% else %}Sin unidad padre{% endif %}
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-k">Tipo / Categoría</div>
+      <div class="rpt-v">{{ unidad.tipo.nombre }} · {{ unidad.categoria.nombre }}</div>
+      <div class="rpt-small rpt-muted" style="margin-top:4px;">
+        Estado: {% if unidad.activa %}Activa{% else %}Cerrada{% endif %}
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-k">Total líderes vigentes</div>
+      <div class="rpt-v">{{ total_lideres }}</div>
+      <div class="rpt-small rpt-muted" style="margin-top:4px;">
+        (Solo roles tipo Liderazgo)
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-k">Rango de edad (unidad)</div>
+      <div class="rpt-v">
+        {% if unidad.edad_min or unidad.edad_max %}
+          {{ unidad.edad_min|default:"—" }} a {{ unidad.edad_max|default:"—" }} años
+        {% else %}
+          No definido
+        {% endif %}
+      </div>
+      <div class="rpt-small rpt-muted" style="margin-top:4px;">
+        (Solo informativo)
+      </div>
+    </div>
+  </div>
+
+  <div class="rpt-section-title">Listado de liderazgo</div>
+
+  {% if filas %}
+    <table class="rpt-table">
+      <thead>
+        <tr>
+          <th class="rpt-center" style="width:40px;">#</th>
+          <th style="width:170px;">Rol</th>
+          <th>Nombre</th>
+          <th style="width:120px;">Código</th>
+          <th style="width:120px;">Teléfono</th>
+          <th style="width:120px;">Estado</th>
+          <th style="width:95px;">Inicio</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in filas %}
+          <tr>
+            <td class="rpt-center">{{ forloop.counter }}</td>
+            <td><strong>{{ f.rol }}</strong></td>
+            <td>{{ f.nombre }}</td>
+            <td>{{ f.codigo|default:"—" }}</td>
+            <td>{{ f.telefono|default:"—" }}</td>
+            <td>{{ f.estado|default:"—" }}</td>
+            <td>{{ f.fecha_inicio|date:"d/m/Y"|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="rpt-card">
+      <div class="rpt-muted">No hay líderes vigentes en esta unidad.</div>
+    </div>
+  {% endif %}
+
+  <div class="rpt-footer">
+    <div>Unidad: <strong>{{ unidad.nombre }}</strong></div>
+    <div>Sistema SOID · Torre Fuerte</div>
+  </div>
+
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("autoprint") === "1") {
+      setTimeout(() => window.print(), 300);
+    }
+  });
+</script>
+{% endblock %}
