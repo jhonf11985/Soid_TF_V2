@@ -2187,53 +2187,24 @@ def reporte_unidad_cierre_imprimir(request, pk):
 
 from collections import defaultdict
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
-from django.db.models import Q
 from django.shortcuts import render
 
 @login_required
 def reporte_miembros_multi_unidad(request):
     """
-    Lista (análisis): miembros que participan en >= N unidades (default 2).
-    - Filtros por GET (min_unidades, liderazgo, membresia, solo_vigentes, estado, q)
-    - Paginación
-    - Impresión: mismo resultado filtrado (Ctrl+P o botón imprimir)
-    - Dedupe por unidad: si hay liderazgo en una unidad, no repetimos membresía en esa misma unidad.
+    Versión SIMPLE (sin filtros):
+    Miembros que están en 2 o más unidades, contando:
+    - Liderazgo (UnidadCargo vigente)
+    - Membresía participación (UnidadMembresia activo, rol tipo PARTICIPACIÓN)
+    - Membresía trabajo (UnidadMembresia activo, rol tipo TRABAJO)
     """
 
-    def _to_int(v, default=None):
-        try:
-            return int(v)
-        except Exception:
-            return default
+    min_unidades = 2
+    incluir_liderazgo = True
+    incluir_membresia = True
+    solo_vigentes = True
 
-    # -----------------------------
-    # 1) Filtros GET
-    # -----------------------------
-    min_unidades = _to_int(request.GET.get("min_unidades"), 2) or 2
-    if min_unidades < 2:
-        min_unidades = 2
-    if min_unidades > 20:
-        min_unidades = 20
-
-    incluir_liderazgo = (request.GET.get("liderazgo", "1") == "1")
-    incluir_membresia = (request.GET.get("membresia", "1") == "1")
-    solo_vigentes = (request.GET.get("solo_vigentes", "1") == "1")
-
-    estado = (request.GET.get("estado") or "todos").strip().lower()
-    q = (request.GET.get("q") or "").strip()
-
-    excluir_nuevos_creyentes = (request.GET.get("excluir_nc", "1") == "1")
-
-    # paginación
-    per_page = _to_int(request.GET.get("per_page"), 25) or 25
-    if per_page not in (25, 50, 100):
-        per_page = 25
-    page_number = request.GET.get("page") or 1
-
-    # -----------------------------
-    # 2) Helpers del miembro
-    # -----------------------------
+    # Helpers (reutiliza lo que ya tienes en tu archivo si existen)
     def _edad_miembro(m):
         try:
             return _get_edad_value(m)
@@ -2249,153 +2220,101 @@ def reporte_miembros_multi_unidad(request):
         except Exception:
             return getattr(m, "estado_miembro", "") or ""
 
-    # -----------------------------
-    # 3) Filtro base por miembro
-    # -----------------------------
-    miembro_filter = Q()
-    if estado and estado != "todos":
-        miembro_filter &= Q(estado_miembro=estado)
+    # data por miembro
+    data = defaultdict(lambda: {
+        "miembro": None,
+        "unidades": {},   # unidad_id -> {"unidad": unidad, "etiqueta": "..."}
+        "lider_unidades": set(),  # para dedupe: si es líder, no repetimos membresía en esa unidad
+    })
 
-    if excluir_nuevos_creyentes:
-        miembro_filter &= Q(nuevo_creyente=False)
-
-    if q:
-        # Ajusta nombres de campos si difieren en tu modelo
-        miembro_filter &= (
-            Q(nombres__icontains=q) |
-            Q(apellidos__icontains=q) |
-            Q(codigo_miembro__icontains=q) |
-            Q(telefono__icontains=q)
-        )
-
-    miembros_validos = Miembro.objects.filter(miembro_filter)
-
-    # -----------------------------
-    # 4) Recolectar participaciones por miembro
-    #    y deduplicar por unidad (preferir liderazgo)
-    # -----------------------------
-    # data[mid] = {"miembro": m, "by_unidad": {unidad_id: {"unidad":U,"liderazgo":..., "membresia":...}}}
-    data = {}
-
+    # 1) Liderazgo
     if incluir_liderazgo:
-        cargos_qs = (
-            UnidadCargo.objects
-            .select_related("miembo_fk", "unidad", "rol")
-            .filter(rol__tipo=RolUnidad.TIPO_LIDERAZGO, miembo_fk__in=miembros_validos)
-        )
+        qs_cargos = UnidadCargo.objects.select_related("miembo_fk", "unidad", "rol")
         if solo_vigentes:
-            cargos_qs = cargos_qs.filter(vigente=True)
+            qs_cargos = qs_cargos.filter(vigente=True)
 
-        for c in cargos_qs:
+        for c in qs_cargos:
             m = c.miembo_fk
-            if not m:
-                continue
-            if m.pk not in data:
-                data[m.pk] = {"miembro": m, "by_unidad": {}}
-
-            u = c.unidad
-            if not u:
+            if not m or not c.unidad:
                 continue
 
-            slot = data[m.pk]["by_unidad"].setdefault(u.pk, {"unidad": u, "liderazgo": None, "membresia": None})
-            slot["liderazgo"] = {
-                "rol": c.rol.nombre if c.rol else "—",
+            d = data[m.id]
+            d["miembro"] = m
+
+            d["unidades"][c.unidad_id] = {
+                "unidad": c.unidad,
+                "etiqueta": "Liderazgo"
             }
+            d["lider_unidades"].add(c.unidad_id)
 
+    # 2) Membresía (participación / trabajo)
     if incluir_membresia:
-        mem_qs = (
-            UnidadMembresia.objects
-            .select_related("miembo_fk", "unidad", "rol")
-            .filter(miembo_fk__in=miembros_validos)
-        )
+        qs_mem = UnidadMembresia.objects.select_related("miembo_fk", "unidad", "rol")
         if solo_vigentes:
-            mem_qs = mem_qs.filter(activo=True)
+            qs_mem = qs_mem.filter(activo=True)
 
-        for um in mem_qs:
-            m = um.miembo_fk
-            if not m:
-                continue
-            if m.pk not in data:
-                data[m.pk] = {"miembro": m, "by_unidad": {}}
-
-            u = um.unidad
-            if not u:
+        for mem in qs_mem:
+            m = mem.miembo_fk
+            if not m or not mem.unidad:
                 continue
 
-            slot = data[m.pk]["by_unidad"].setdefault(u.pk, {"unidad": u, "liderazgo": None, "membresia": None})
-            # si ya tiene liderazgo en esa unidad, guardamos membresía pero NO la mostraremos duplicada (ver abajo)
-            slot["membresia"] = {
-                "rol": (um.rol.nombre if um.rol else "Miembro"),
-            }
+            d = data[m.id]
+            d["miembro"] = m
 
-    # -----------------------------
-    # 5) Construir filas (solo >= min_unidades)
-    # -----------------------------
+            # dedupe: si ya hay liderazgo en esa unidad, no añadimos membresía duplicada
+            if mem.unidad_id in d["lider_unidades"]:
+                continue
+
+            etiqueta = "Membresía"
+            try:
+                if mem.rol and mem.rol.tipo == RolUnidad.TIPO_TRABAJO:
+                    etiqueta = "Trabajo"
+                elif mem.rol and mem.rol.tipo == RolUnidad.TIPO_PARTICIPACION:
+                    etiqueta = "Participación"
+            except Exception:
+                # si no existe TIPO_PARTICIPACION, se queda en "Membresía"
+                pass
+
+            # si ya estaba por otra vía, no pisamos (pero normalmente no pasará por dedupe)
+            if mem.unidad_id not in d["unidades"]:
+                d["unidades"][mem.unidad_id] = {
+                    "unidad": mem.unidad,
+                    "etiqueta": etiqueta
+                }
+
+    # 3) Construir filas finales (>= 2 unidades)
     filas = []
-    for mid, info in data.items():
-        m = info["miembro"]
-        unidades_unique = len(info["by_unidad"])
-        if unidades_unique < min_unidades:
+    for miembro_id, d in data.items():
+        m = d["miembro"]
+        if not m:
             continue
 
-        # items compactos por unidad (una línea por unidad)
-        items = []
-        for uid, slot in info["by_unidad"].items():
-            u = slot["unidad"]
-            lid = slot["liderazgo"]
-            mem = slot["membresia"]
-
-            # Si hay liderazgo, mostramos solo liderazgo (para evitar duplicado tipo “Zaeta” dos veces)
-            if lid:
-                etiqueta = f"L: {lid['rol']}"
-            else:
-                etiqueta = f"M: {mem['rol']}" if mem else "M: Miembro"
-
-            items.append({
-                "unidad": u,
-                "etiqueta": etiqueta,
-                "tiene_liderazgo": bool(lid),
+        total_unidades = len(d["unidades"])
+        if total_unidades >= min_unidades:
+            filas.append({
+                "miembro_id": miembro_id,
+                "nombre": f"{m.nombres} {m.apellidos}".strip(),
+                "codigo": _codigo_miembro(m) or "—",
+                "edad": _edad_miembro(m),
+                "estado": _estado_display(m) or "—",
+                "total_unidades": total_unidades,
+                "items": list(d["unidades"].values()),
             })
 
-        items = sorted(items, key=lambda x: (x["unidad"].nombre or "").lower())
-
-        filas.append({
-            "miembro_id": m.pk,
-            "nombre": str(m),
-            "codigo": _codigo_miembro(m) or "—",
-            "edad": _edad_miembro(m),
-            "estado": _estado_display(m) or "—",
-            "telefono": getattr(m, "telefono", "") or "—",
-            "total_unidades": unidades_unique,
-            "items": items,
-        })
-
     # Orden: más unidades primero, luego nombre
-    filas.sort(key=lambda r: (-r["total_unidades"], (r["nombre"] or "").lower()))
-
-    # -----------------------------
-    # 6) Paginación
-    # -----------------------------
-    paginator = Paginator(filas, per_page)
-    page_obj = paginator.get_page(page_number)
+    filas.sort(key=lambda x: (-x["total_unidades"], x["nombre"]))
 
     context = {
-        "page_obj": page_obj,
-        "total": len(filas),
-
-        # filtros para re-render
         "min_unidades": min_unidades,
-        "incluir_liderazgo": incluir_liderazgo,
-        "incluir_membresia": incluir_membresia,
-        "solo_vigentes": solo_vigentes,
-        "estado": estado,
-        "q": q,
-        "per_page": per_page,
-        "excluir_nc": excluir_nuevos_creyentes,
+        "total": len(filas),
+        "page_obj": filas,  # mantenemos el nombre para no tocar mucho el template
+        # variables que el template usaba antes:
+        "q": "",
+        "estado": "todos",
+        "incluir_liderazgo": True,
+        "incluir_membresia": True,
+        "solo_vigentes": True,
+        "excluir_nc": False,
+        "per_page": 999999,
     }
-
-    return render(
-        request,
-        "estructura_app/reportes/reporte_miembros_multi_unidad.html",
-        context
-    )
+    return render(request, "estructura_app/reportes/reporte_miembros_multi_unidad.html", context)
