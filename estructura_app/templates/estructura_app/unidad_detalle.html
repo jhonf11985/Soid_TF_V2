@@ -493,125 +493,102 @@
     </p>
 </div>
 
-</div>
+<div class="odoo-card" style="margin-top:16px;">
+  <div class="odoo-card-header">
+    <h3>Actividades del período</h3>
+    <div class="odoo-actions">
+      <button class="odoo-btn odoo-btn-secondary" type="button"
+              onclick="document.getElementById('rpt-act-form').classList.toggle('is-open')">
+        <span class="material-icons">tune</span>
+        Elegir período
+      </button>
 
-
-
-        <!-- TAB: Miembros -->
-        <div class="odoo-tab-content" id="tab-miembros">
- {% if miembros_asignados %}
-<div class="odoo-table-container">
-    <table class="odoo-table">
-        <thead>
-            <tr>
-                
-                <th>Miembro</th>
-                <th>Código</th>
-                <th>Rol</th>            
-                <th>Estado</th>
-                <th>Edad</th>
-                <th>Categoría</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for m in miembros_asignados %}
-            {% with mb=m.miembo_fk %}
-            <tr>
-                <td>
-                    <div class="member-cell">
-                        <div class="member-avatar">
-                            {% if mb.foto %}
-                                <img src="{{ mb.foto.url }}" alt="{{ mb }}">
-                            {% else %}
-                                <span class="material-icons" style="font-size:18px;color:#6c757d;">person</span>
-                            {% endif %}
-                        </div>
-                        <div class="member-meta">
-                            <div class="member-name">
-                            <a href="{% url 'miembros_app:detalle' mb.pk %}">
-                                {{ mb }}
-                            </a>
-                        </div>
-
-                            <div class="member-sub">
-                                {% if mb.genero %}{{ mb.get_genero_display }}{% endif %}
-
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-
-             <td>
-  <a href="{% url 'miembros_app:detalle' mb.pk %}"
-     class="odoo-badge odoo-badge-neutral">
-      {% if mb.nuevo_creyente %}
-          {{ mb.codigo_seguimiento|default:"NC—" }}
-      {% else %}
-          {{ mb.codigo_miembro|default:"—" }}
-      {% endif %}
-  </a>
-</td>
-
-<td>
-    {% if m.rol %}
-        <span class="odoo-badge odoo-badge-info">
-            {{ m.rol.nombre }}
-        </span>
-    {% else %}
-        <span class="odoo-badge odoo-badge-neutral">
-            {{ m.get_tipo_display|default:"Miembro" }}
-        </span>
-    {% endif %}
-</td>
-
-
-
-                <td>
-                    {% if mb.estado_miembro == "activo" %}
-                        <span class="odoo-badge odoo-badge-success">Activo</span>
-                    {% elif mb.estado_miembro == "pasivo" %}
-                        <span class="odoo-badge odoo-badge-warning">Pasivo</span>
-                    {% elif mb.estado_miembro == "observacion" %}
-                        <span class="odoo-badge odoo-badge-info">Observación</span>
-                    {% elif mb.estado_miembro == "disciplina" %}
-                        <span class="odoo-badge odoo-badge-danger">Disciplina</span>
-                    {% elif mb.estado_miembro == "catecumeno" %}
-                        <span class="odoo-badge odoo-badge-info">Catecúmeno</span>
-                    {% else %}
-                        <span class="odoo-badge odoo-badge-neutral">Menor</span>
-                    {% endif %}
-                </td>
-
-                <td>
-                    {% if mb.edad is not None %}
-                        {{ mb.edad }} años
-                    {% else %}
-                        —
-                    {% endif %}
-                </td>
-
-                <td>
-                    {{ mb.get_categoria_edad_display|default:"—" }}
-
-
-                </td>
-            </tr>
-            {% endwith %}
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% else %}
-<p class="odoo-empty">
-    <span class="material-icons" style="font-size: 48px; color: #dee2e6; display: block; margin-bottom: 12px;">groups</span>
-    No hay miembros asignados a esta unidad.
-</p>
-{% endif %}
-
-        </div>
-
+      <a class="odoo-btn odoo-btn-primary"
+         id="btn-imprimir-actividades"
+         href="{% url 'estructura_app:reporte_unidad_actividades_imprimir' unidad.pk %}?anio={% now 'Y' %}&mes={% now 'n' %}&autoprint=1"
+         target="_blank">
+        <span class="material-icons">print</span>
+        Imprimir
+      </a>
     </div>
+  </div>
+
+  <p class="odoo-muted" style="margin:0;">
+    Resumen mensual con totales y listado detallado de actividades.
+  </p>
+
+  <div id="rpt-act-form" style="margin-top:12px; display:none;">
+    <div class="odoo-form-row" style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div style="min-width:150px;">
+        <label class="odoo-label">Año</label>
+        <input class="odoo-input" type="number" id="act-anio" value="{% now 'Y' %}" min="2000" max="2100">
+      </div>
+
+      <div style="min-width:150px;">
+        <label class="odoo-label">Mes</label>
+        <select class="odoo-input" id="act-mes">
+          <option value="1">Enero</option>
+          <option value="2">Febrero</option>
+          <option value="3">Marzo</option>
+          <option value="4">Abril</option>
+          <option value="5">Mayo</option>
+          <option value="6">Junio</option>
+          <option value="7">Julio</option>
+          <option value="8">Agosto</option>
+          <option value="9">Septiembre</option>
+          <option value="10">Octubre</option>
+          <option value="11">Noviembre</option>
+          <option value="12">Diciembre</option>
+        </select>
+      </div>
+
+      <div>
+        <button class="odoo-btn odoo-btn-primary" type="button" onclick="actualizarLinkActividades()">
+          Aplicar
+        </button>
+        <button class="odoo-btn odoo-btn-light" type="button"
+                onclick="document.getElementById('rpt-act-form').style.display='none'">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<script>
+  // abrir/cerrar simple
+  (function () {
+    const box = document.getElementById('rpt-act-form');
+    if (!box) return;
+
+    // set mes actual seleccionado
+    const mesActual = parseInt("{% now 'n' %}", 10);
+    const sel = document.getElementById("act-mes");
+    if (sel && mesActual) sel.value = String(mesActual);
+
+    // toggle con la clase (fallback)
+    box.classList.toggle = function(cls){
+      if (box.style.display === "none" || box.style.display === "") box.style.display = "block";
+      else box.style.display = "none";
+    }
+  })();
+
+  function actualizarLinkActividades(){
+    const anio = document.getElementById("act-anio").value || "{% now 'Y' %}";
+    const mes = document.getElementById("act-mes").value || "{% now 'n' %}";
+
+    const baseUrl = "{% url 'estructura_app:reporte_unidad_actividades_imprimir' unidad.pk %}";
+    const href = baseUrl + "?anio=" + encodeURIComponent(anio) + "&mes=" + encodeURIComponent(mes) + "&autoprint=1";
+
+    const btn = document.getElementById("btn-imprimir-actividades");
+    if (btn) btn.setAttribute("href", href);
+
+    // opcional: ocultar el form al aplicar
+    const box = document.getElementById("rpt-act-form");
+    if (box) box.style.display = "none";
+  }
+</script>
+
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      ESTILOS

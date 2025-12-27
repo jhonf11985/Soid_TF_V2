@@ -1,5 +1,7 @@
 import json
 from django import forms
+from datetime import date
+from collections import defaultdict
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -1952,4 +1954,112 @@ def reporte_unidad_liderazgo_imprimir(request, pk):
         request,
         "estructura_app/reportes/reporte_unidad_liderazgo.html",
         context
+    )
+
+
+
+def _to_int(v):
+    try:
+        if v is None or v == "":
+            return 0
+        return int(v)
+    except Exception:
+        return 0
+
+
+@login_required
+def reporte_unidad_actividades_imprimir(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    hoy = timezone.localdate()
+    anio = request.GET.get("anio")
+    mes = request.GET.get("mes")
+
+    try:
+        anio = int(anio) if anio else hoy.year
+    except Exception:
+        anio = hoy.year
+
+    try:
+        mes = int(mes) if mes else hoy.month
+    except Exception:
+        mes = hoy.month
+
+    # Rango del mes
+    inicio = date(anio, mes, 1)
+    if mes == 12:
+        fin = date(anio + 1, 1, 1)
+    else:
+        fin = date(anio, mes + 1, 1)
+
+    qs = (
+        ActividadUnidad.objects
+        .select_related("responsable")
+        .filter(unidad=unidad, fecha__gte=inicio, fecha__lt=fin)
+        .order_by("fecha", "id")
+    )
+
+    # Conteos por tipo
+    conteo_tipos = defaultdict(int)
+
+    # Totales de métricas (desde datos JSON)
+    # Base recomendada:
+    metric_keys = ["oyentes", "alcanzados", "nuevos_creyentes", "seguimientos"]
+    metric_totals = {k: 0 for k in metric_keys}
+
+    filas = []
+    for a in qs:
+        conteo_tipos[a.tipo] += 1
+
+        datos = a.datos or {}
+        for k in metric_keys:
+            metric_totals[k] += _to_int(datos.get(k))
+
+        responsable_nombre = str(a.responsable) if a.responsable else "—"
+
+        # Resumen compacto de métricas por fila
+        resumen_partes = []
+        if _to_int(datos.get("oyentes")):
+            resumen_partes.append(f"Oyentes: {_to_int(datos.get('oyentes'))}")
+        if _to_int(datos.get("alcanzados")):
+            resumen_partes.append(f"Alcanzados: {_to_int(datos.get('alcanzados'))}")
+        if _to_int(datos.get("nuevos_creyentes")):
+            resumen_partes.append(f"Nuevos: {_to_int(datos.get('nuevos_creyentes'))}")
+        if _to_int(datos.get("seguimientos")):
+            resumen_partes.append(f"Seguimientos: {_to_int(datos.get('seguimientos'))}")
+
+        filas.append({
+            "fecha": a.fecha,
+            "titulo": a.titulo,
+            "tipo": a.get_tipo_display(),
+            "lugar": a.lugar or "—",
+            "responsable": responsable_nombre,
+            "metricas": " · ".join(resumen_partes) if resumen_partes else "—",
+        })
+
+    # Para mostrar todos los tipos aunque estén en cero (según choices)
+    tipos_display = []
+    for code, label in ActividadUnidad.TIPOS:
+        tipos_display.append({
+            "code": code,
+            "label": label,
+            "count": int(conteo_tipos.get(code, 0)),
+        })
+
+    contexto = {
+        "unidad": unidad,
+        "anio": anio,
+        "mes": mes,
+        "inicio": inicio,
+        "fin": fin,
+        "total_actividades": qs.count(),
+        "tipos_display": tipos_display,
+        "metric_totals": metric_totals,
+        "filas": filas,
+    }
+
+    return render(
+        request,
+        "estructura_app/reportes/reporte_unidad_actividades.html",
+        contexto
     )

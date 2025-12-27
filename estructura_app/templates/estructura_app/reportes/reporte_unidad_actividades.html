@@ -1,0 +1,158 @@
+{% extends "core/reporte_base.html" %}
+
+{% block content %}
+<style>
+  .rpt-wrap { font-family: Arial, Helvetica, sans-serif; color:#111; }
+  .rpt-topbar {
+    display:flex; justify-content:space-between; align-items:flex-start;
+    gap:16px; border-bottom:1px solid #e5e7eb; padding-bottom:12px; margin-bottom:14px;
+  }
+  .rpt-title { margin:0; font-size:20px; font-weight:700; letter-spacing:.2px; }
+  .rpt-sub { margin:4px 0 0; color:#555; font-size:12px; line-height:1.35; }
+  .rpt-meta { text-align:right; font-size:12px; color:#444; white-space:nowrap; }
+  .rpt-badge { display:inline-block; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; }
+
+  .rpt-grid { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:10px; margin: 12px 0 14px; }
+  .rpt-card {
+    border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px; background:#fff;
+  }
+  .rpt-k { color:#666; font-size:11px; text-transform:uppercase; letter-spacing:.6px; }
+  .rpt-v { margin-top:4px; font-size:14px; font-weight:700; }
+
+  .rpt-section-title { margin: 12px 0 8px; font-size:14px; font-weight:700; }
+
+  .rpt-table {
+    width:100%; border-collapse:collapse; border:1px solid #e5e7eb; font-size:12px;
+  }
+  .rpt-table thead th {
+    background:#f3f4f6; text-align:left; padding:8px 8px; border-bottom:1px solid #e5e7eb;
+    font-weight:700; white-space:nowrap;
+  }
+  .rpt-table td { padding:7px 8px; border-bottom:1px solid #eee; vertical-align:top; }
+  .rpt-table tr:nth-child(even) td { background:#fafafa; }
+  .rpt-center { text-align:center; }
+  .rpt-muted { color:#666; }
+
+  .mini-grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; }
+  .mini { border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px; background:#fff; }
+  .mini h4 { margin:0 0 8px; font-size:13px; }
+  .pill { display:inline-block; padding:3px 8px; border:1px solid #e5e7eb; border-radius:999px; font-size:11px; margin:2px 6px 2px 0; background:#fff; }
+
+  .rpt-footer {
+    display:flex; justify-content:space-between; gap:12px;
+    margin-top:14px; padding-top:10px; border-top:1px solid #e5e7eb;
+    font-size:11px; color:#555;
+  }
+
+  @media print {
+    .rpt-card, .mini { break-inside: avoid; }
+    .rpt-table tr { break-inside:avoid; break-after:auto; }
+  }
+</style>
+
+<div class="rpt-wrap">
+
+  <div class="rpt-topbar">
+    <div>
+      <h1 class="rpt-title">Resumen de actividades del período</h1>
+      <p class="rpt-sub">
+        {{ unidad.ruta }}<br>
+        Período: <strong>{{ mes|stringformat:"02d" }}/{{ anio }}</strong>
+      </p>
+    </div>
+    <div class="rpt-meta">
+      <div class="rpt-badge">Mensual</div><br>
+      <span class="rpt-muted">Generado: {% now "d/m/Y H:i" %}</span>
+    </div>
+  </div>
+
+  <div class="rpt-grid">
+    <div class="rpt-card">
+      <div class="rpt-k">Total actividades</div>
+      <div class="rpt-v">{{ total_actividades }}</div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-k">Oyentes</div>
+      <div class="rpt-v">{{ metric_totals.oyentes }}</div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-k">Alcanzados</div>
+      <div class="rpt-v">{{ metric_totals.alcanzados }}</div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-k">Nuevos creyentes</div>
+      <div class="rpt-v">{{ metric_totals.nuevos_creyentes }}</div>
+    </div>
+  </div>
+
+  <div class="mini-grid">
+    <div class="mini">
+      <h4>Actividades por tipo</h4>
+      {% for t in tipos_display %}
+        <span class="pill">{{ t.label }}: <strong>{{ t.count }}</strong></span>
+      {% endfor %}
+    </div>
+
+    <div class="mini">
+      <h4>Seguimientos</h4>
+      <div style="font-size:22px; font-weight:800; margin-top:2px;">
+        {{ metric_totals.seguimientos }}
+      </div>
+      <div class="rpt-muted" style="margin-top:4px;">
+        Total del período (sumado desde “datos”).
+      </div>
+    </div>
+  </div>
+
+  <div class="rpt-section-title">Listado de actividades</div>
+
+  {% if filas %}
+    <table class="rpt-table">
+      <thead>
+        <tr>
+          <th style="width:95px;">Fecha</th>
+          <th>Título</th>
+          <th style="width:120px;">Tipo</th>
+          <th style="width:160px;">Lugar</th>
+          <th style="width:170px;">Responsable</th>
+          <th style="width:260px;">Métricas</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in filas %}
+          <tr>
+            <td>{{ f.fecha|date:"d/m/Y" }}</td>
+            <td><strong>{{ f.titulo }}</strong></td>
+            <td>{{ f.tipo }}</td>
+            <td>{{ f.lugar }}</td>
+            <td>{{ f.responsable }}</td>
+            <td class="rpt-muted">{{ f.metricas }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="mini">
+      <div class="rpt-muted">No hay actividades registradas en este período.</div>
+    </div>
+  {% endif %}
+
+  <div class="rpt-footer">
+    <div>Unidad: <strong>{{ unidad.nombre }}</strong></div>
+    <div>Sistema SOID · Torre Fuerte</div>
+  </div>
+
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("autoprint") === "1") {
+      setTimeout(() => window.print(), 300);
+    }
+  });
+</script>
+{% endblock %}
