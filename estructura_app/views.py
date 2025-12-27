@@ -185,9 +185,13 @@ def unidad_listado(request):
         .annotate(
             total_miembros=Count(
                 "membresias",
-                filter=Q(membresias__activo=True),
+                filter=Q(
+                    membresias__activo=True,
+                    membresias__rol__tipo=RolUnidad.TIPO_PARTICIPACION
+                ),
                 distinct=True
             ),
+
             total_lideres=Count(
                 "cargos",
                 filter=Q(
@@ -957,11 +961,7 @@ def asignacion_aplicar(request):
                     ya_existian += 1
 
             # Asegurar membresía activa (si tu regla lo exige)
-            UnidadMembresia.objects.update_or_create(
-                unidad=unidad,
-                miembo_fk=m,
-                defaults={"activo": True, "rol": rol}
-            )
+
 
         return JsonResponse({
             "ok": True,
