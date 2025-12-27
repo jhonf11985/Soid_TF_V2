@@ -1,0 +1,139 @@
+{% extends "core/reporte_base.html" %}
+
+{% block content %}
+<style>
+  .rpt-wrap { font-family: Arial, Helvetica, sans-serif; color:#111; }
+  .rpt-topbar {
+    display:flex; justify-content:space-between; align-items:flex-start;
+    gap:16px; border-bottom:1px solid #e5e7eb; padding-bottom:12px; margin-bottom:14px;
+  }
+  .rpt-title { margin:0; font-size:20px; font-weight:700; }
+  .rpt-sub { margin:4px 0 0; color:#555; font-size:12px; line-height:1.35; }
+  .rpt-meta { text-align:right; font-size:12px; color:#444; white-space:nowrap; }
+  .badge { display:inline-block; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; }
+
+  .grid { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:10px; margin: 12px 0 14px; }
+  .card { border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px; background:#fff; }
+  .k { color:#666; font-size:11px; text-transform:uppercase; letter-spacing:.6px; }
+  .v { margin-top:4px; font-size:14px; font-weight:800; }
+
+  .section { margin-top:12px; }
+  .section-title { margin:0 0 8px; font-size:14px; font-weight:800; }
+  .muted { color:#666; }
+
+  .table { width:100%; border-collapse:collapse; border:1px solid #e5e7eb; font-size:12px; }
+  .table th { background:#f3f4f6; text-align:left; padding:8px; border-bottom:1px solid #e5e7eb; }
+  .table td { padding:7px 8px; border-bottom:1px solid #eee; }
+  .pill { display:inline-block; padding:3px 8px; border:1px solid #e5e7eb; border-radius:999px; font-size:11px; margin:2px 6px 2px 0; background:#fff; }
+
+  .box { border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px; background:#fff; }
+  .box h4 { margin:0 0 8px; font-size:13px; }
+  .textarea {
+    min-height:90px; white-space:pre-wrap; line-height:1.4;
+    border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px; background:#fff;
+  }
+
+  .footer {
+    display:flex; justify-content:space-between; gap:12px;
+    margin-top:14px; padding-top:10px; border-top:1px solid #e5e7eb;
+    font-size:11px; color:#555;
+  }
+
+  @media print {
+    .card, .box, .textarea { break-inside: avoid; }
+    .table tr { break-inside:avoid; break-after:auto; }
+  }
+</style>
+
+<div class="rpt-wrap">
+
+  <div class="rpt-topbar">
+    <div>
+      <h1 class="rpt-title">Cierre oficial de unidad</h1>
+      <div class="rpt-sub">
+        {{ unidad.ruta }}<br>
+        Período: <strong>{{ periodo_texto }}</strong>
+      </div>
+    </div>
+    <div class="rpt-meta">
+      <div class="badge">{{ badge }}</div><br>
+      <span class="muted">Generado: {% now "d/m/Y H:i" %}</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="k">Total actividades</div>
+      <div class="v">{{ cierre.resumen.total_actividades|default:0 }}</div>
+    </div>
+
+    <div class="card">
+      <div class="k">Oyentes</div>
+      <div class="v">{{ cierre.resumen.metricas.oyentes|default:0 }}</div>
+    </div>
+
+    <div class="card">
+      <div class="k">Alcanzados</div>
+      <div class="v">{{ cierre.resumen.metricas.alcanzados|default:0 }}</div>
+    </div>
+
+    <div class="card">
+      <div class="k">Nuevos creyentes</div>
+      <div class="v">{{ cierre.resumen.metricas.nuevos_creyentes|default:0 }}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">Actividades por tipo</h2>
+    <div class="box">
+      {% if cierre.resumen.por_tipo %}
+        {% for k,v in cierre.resumen.por_tipo.items %}
+          <span class="pill">{{ k }}: <strong>{{ v }}</strong></span>
+        {% endfor %}
+      {% else %}
+        <span class="muted">Sin actividades registradas en el período.</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">Seguimientos</h2>
+    <div class="box">
+      <div style="font-size:20px; font-weight:900;">
+        {{ cierre.resumen.metricas.seguimientos|default:0 }}
+      </div>
+      <div class="muted">Total del período (sumado desde “datos”).</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">Reflexión del líder</h2>
+    <div class="textarea">{{ cierre.reflexion|default:"" }}</div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">Necesidades</h2>
+    <div class="textarea">{{ cierre.necesidades|default:"" }}</div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">Plan próximo</h2>
+    <div class="textarea">{{ cierre.plan_proximo|default:"" }}</div>
+  </div>
+
+  <div class="footer">
+    <div>Unidad: <strong>{{ unidad.nombre }}</strong></div>
+    <div>Sistema SOID · Torre Fuerte</div>
+  </div>
+
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("autoprint") === "1") {
+      setTimeout(() => window.print(), 300);
+    }
+  });
+</script>
+{% endblock %}

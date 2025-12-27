@@ -46,5 +46,10 @@ urlpatterns = [
         views.reporte_unidad_actividades_imprimir,
         name="reporte_unidad_actividades_imprimir",
     ),
+path(
+    "unidades/<int:pk>/reportes/cierre/imprimir/",
+    views.reporte_unidad_cierre_imprimir,
+    name="reporte_unidad_cierre_imprimir",
+),
 
 ]

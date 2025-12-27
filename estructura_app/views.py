@@ -1915,7 +1915,6 @@ def reporte_unidad_padron_imprimir(request, pk, anio, mes):
     }
     return render(request, "estructura_app/reportes/reporte_unidad_padron.html", context)
 
-
 @login_required
 def reporte_unidad_liderazgo_imprimir(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -1934,14 +1933,22 @@ def reporte_unidad_liderazgo_imprimir(request, pk):
     filas = []
     for c in cargos:
         m = c.miembo_fk
+
+        # ✅ Estado correcto
+        estado_raw = (m.estado_miembro or "").strip()
+        if estado_raw:
+            estado_label = m.get_estado_miembro_display()
+        else:
+            estado_label = "Nuevo creyente" if m.nuevo_creyente else "No puede ser bautizado"
+
         filas.append({
             "rol": c.rol.nombre,
-            "nombre": str(m),
-            "codigo": getattr(m, "codigo", ""),
-            "telefono": getattr(m, "telefono", ""),
-            "estado": getattr(m, "estado", ""),
+            "nombre": f"{m.nombres} {m.apellidos}",
+            "codigo": m.codigo_miembro or "—",
+            "edad": m.edad if m.edad is not None else "—",  # ✅ AQUÍ
+            "telefono": m.telefono or "—",
+            "estado": estado_label,
             "fecha_inicio": c.fecha_inicio,
-            "vigente": "Sí" if c.vigente else "No",
         })
 
     context = {
@@ -1950,13 +1957,7 @@ def reporte_unidad_liderazgo_imprimir(request, pk):
         "total_lideres": len(filas),
     }
 
-    return render(
-        request,
-        "estructura_app/reportes/reporte_unidad_liderazgo.html",
-        context
-    )
-
-
+    return render(request, "estructura_app/reportes/reporte_unidad_liderazgo.html", context)
 
 def _to_int(v):
     try:
@@ -2062,4 +2063,115 @@ def reporte_unidad_actividades_imprimir(request, pk):
         request,
         "estructura_app/reportes/reporte_unidad_actividades.html",
         contexto
+    )
+
+def _rango_trimestre(anio: int, tri: int):
+    # tri: 1..4
+    mes_inicio = (tri - 1) * 3 + 1
+    inicio = date(anio, mes_inicio, 1)
+    if tri == 4:
+        fin = date(anio + 1, 1, 1)
+    else:
+        fin = date(anio, mes_inicio + 3, 1)
+    return inicio, fin
+
+
+def _rango_anio(anio: int):
+    return date(anio, 1, 1), date(anio + 1, 1, 1)
+
+
+@login_required
+def reporte_unidad_cierre_imprimir(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    tipo = (request.GET.get("tipo") or "trimestre").strip().lower()
+    if tipo not in ("trimestre", "anio"):
+        tipo = "trimestre"
+
+    hoy = timezone.localdate()
+    try:
+        anio = int(request.GET.get("anio") or hoy.year)
+    except Exception:
+        anio = hoy.year
+
+    tri = None
+    if tipo == "trimestre":
+        try:
+            tri = int(request.GET.get("tri") or ((hoy.month - 1) // 3 + 1))
+        except Exception:
+            tri = 1
+        if tri not in (1, 2, 3, 4):
+            tri = 1
+
+    # Rango de fechas del cierre
+    if tipo == "anio":
+        inicio, fin = _rango_anio(anio)
+    else:
+        inicio, fin = _rango_trimestre(anio, tri)
+
+    # Creamos o buscamos el cierre (snapshot)
+    cierre, created = ReporteUnidadCierre.objects.get_or_create(
+        unidad=unidad,
+        anio=anio,
+        tipo=tipo,
+        trimestre=tri if tipo == "trimestre" else None,
+        defaults={
+            "resumen": {},
+            "reflexion": "",
+            "necesidades": "",
+            "plan_proximo": "",
+            "creado_por": request.user,
+        }
+    )
+
+    # Recalcular resumen si está vacío o si el usuario fuerza refresh
+    force_refresh = request.GET.get("refresh") == "1"
+    if force_refresh or (not cierre.resumen):
+        qs = (
+            ActividadUnidad.objects
+            .filter(unidad=unidad, fecha__gte=inicio, fecha__lt=fin)
+            .order_by("fecha", "id")
+        )
+
+        conteo_tipos = defaultdict(int)
+        metric_keys = ["oyentes", "alcanzados", "nuevos_creyentes", "seguimientos"]
+        metric_totals = {k: 0 for k in metric_keys}
+
+        for a in qs:
+            conteo_tipos[a.tipo] += 1
+            datos = a.datos or {}
+            for k in metric_keys:
+                metric_totals[k] += _to_int(datos.get(k))
+
+        resumen = {
+            "total_actividades": qs.count(),
+            "por_tipo": dict(conteo_tipos),
+            "metricas": metric_totals,
+            "rango": {"inicio": str(inicio), "fin": str(fin)},
+        }
+
+        cierre.resumen = resumen
+        cierre.save(update_fields=["resumen", "actualizado_en"])
+
+    # Texto de período
+    if tipo == "anio":
+        periodo_texto = f"Año {anio}"
+        badge = "Anual"
+    else:
+        periodo_texto = f"Trimestre {tri} - {anio}"
+        badge = f"Q{tri}"
+
+    context = {
+        "unidad": unidad,
+        "cierre": cierre,
+        "periodo_texto": periodo_texto,
+        "badge": badge,
+        "inicio": inicio,
+        "fin": fin,
+    }
+
+    return render(
+        request,
+        "estructura_app/reportes/reporte_unidad_cierre.html",
+        context
     )

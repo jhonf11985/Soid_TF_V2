@@ -441,7 +441,7 @@
         <a class="odoo-btn odoo-btn-primary"
            href="{% url 'estructura_app:unidad_reportes' unidad.pk %}">
           <span class="material-icons">description</span>
-          Abrir reportes
+          Generar Informe
         </a>
       </div>
     </div>
@@ -492,6 +492,106 @@
         Listado oficial de los líderes vigentes asignados a esta unidad.
     </p>
 </div>
+<div class="odoo-card" style="margin-top:16px;">
+  <div class="odoo-card-header">
+    <h3>Cierre trimestral / anual</h3>
+    <div class="odoo-actions">
+      <button class="odoo-btn odoo-btn-secondary" type="button"
+              onclick="toggleCierreForm()">
+        <span class="material-icons">tune</span>
+        Elegir período
+      </button>
+
+      <a class="odoo-btn odoo-btn-primary"
+         id="btn-imprimir-cierre"
+         href="{% url 'estructura_app:reporte_unidad_cierre_imprimir' unidad.pk %}?tipo=trimestre&anio={% now 'Y' %}&tri=1&autoprint=1"
+         target="_blank">
+        <span class="material-icons">print</span>
+        Imprimir cierre
+      </a>
+    </div>
+  </div>
+
+  <p class="odoo-muted" style="margin:0;">
+    Reporte oficial de cierre con resumen congelado + reflexión, necesidades y plan.
+  </p>
+
+  <div id="cierre-form" style="margin-top:12px; display:none;">
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div style="min-width:170px;">
+        <label class="odoo-label">Tipo</label>
+        <select class="odoo-input" id="cierre-tipo" onchange="onTipoCierreChange()">
+          <option value="trimestre">Trimestral</option>
+          <option value="anio">Anual</option>
+        </select>
+      </div>
+
+      <div style="min-width:140px;">
+        <label class="odoo-label">Año</label>
+        <input class="odoo-input" type="number" id="cierre-anio" value="{% now 'Y' %}" min="2000" max="2100">
+      </div>
+
+      <div style="min-width:160px;" id="wrap-tri">
+        <label class="odoo-label">Trimestre</label>
+        <select class="odoo-input" id="cierre-tri">
+          <option value="1">Q1</option>
+          <option value="2">Q2</option>
+          <option value="3">Q3</option>
+          <option value="4">Q4</option>
+        </select>
+      </div>
+
+      <div>
+        <button class="odoo-btn odoo-btn-primary" type="button" onclick="actualizarLinkCierre()">
+          Aplicar
+        </button>
+        <button class="odoo-btn odoo-btn-light" type="button" onclick="document.getElementById('cierre-form').style.display='none'">
+          Cerrar
+        </button>
+      </div>
+    </div>
+
+    <div class="odoo-muted" style="margin-top:10px;">
+      Si quieres recalcular el resumen (por si agregaste actividades), usa “refresh=1”.
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleCierreForm(){
+    const box = document.getElementById("cierre-form");
+    if (!box) return;
+    box.style.display = (box.style.display === "none" || box.style.display === "") ? "block" : "none";
+  }
+
+  function onTipoCierreChange(){
+    const tipo = document.getElementById("cierre-tipo").value;
+    const wrap = document.getElementById("wrap-tri");
+    if (wrap) wrap.style.display = (tipo === "trimestre") ? "block" : "none";
+  }
+
+  function actualizarLinkCierre(){
+    const tipo = document.getElementById("cierre-tipo").value || "trimestre";
+    const anio = document.getElementById("cierre-anio").value || "{% now 'Y' %}";
+    const tri = document.getElementById("cierre-tri").value || "1";
+
+    const baseUrl = "{% url 'estructura_app:reporte_unidad_cierre_imprimir' unidad.pk %}";
+    let href = baseUrl + "?tipo=" + encodeURIComponent(tipo) + "&anio=" + encodeURIComponent(anio);
+
+    if (tipo === "trimestre") {
+      href += "&tri=" + encodeURIComponent(tri);
+    }
+
+    href += "&autoprint=1";
+
+    document.getElementById("btn-imprimir-cierre").setAttribute("href", href);
+    document.getElementById("cierre-form").style.display = "none";
+  }
+
+  // init
+  onTipoCierreChange();
+</script>
+
 
 <div class="odoo-card" style="margin-top:16px;">
   <div class="odoo-card-header">
