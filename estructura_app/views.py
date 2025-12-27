@@ -1025,9 +1025,13 @@ def asignacion_aplicar(request):
             )
         }, status=400)
 
+
+
     creados = 0
     reactivados = 0
     ya_existian = 0
+
+    hoy = timezone.now().date()
 
     for m in miembros:
         obj, created_obj = UnidadMembresia.objects.update_or_create(
@@ -1038,11 +1042,35 @@ def asignacion_aplicar(request):
                 "rol": rol,
             }
         )
+
         if created_obj:
+            # Si es nuevo, ponemos fecha de ingreso
+            if hasattr(obj, "fecha_ingreso") and not obj.fecha_ingreso:
+                obj.fecha_ingreso = hoy
+            if hasattr(obj, "fecha_salida"):
+                obj.fecha_salida = None
+            obj.save(update_fields=["fecha_ingreso", "fecha_salida"] if hasattr(obj, "fecha_salida") else ["fecha_ingreso"])
             creados += 1
         else:
-            # como es update_or_create, lo consideramos "ya existía"
-            ya_existian += 1
+            # Si ya existía, puede que estuviera “inactivo” con fecha_salida puesta.
+            update_fields = []
+
+            # Si estaba “salido” y lo reactivamos, limpiamos fecha_salida
+            if hasattr(obj, "fecha_salida") and obj.fecha_salida is not None:
+                obj.fecha_salida = None
+                update_fields.append("fecha_salida")
+                reactivados += 1
+            else:
+                ya_existian += 1
+
+            # Si no tenía fecha_ingreso, la ponemos hoy
+            if hasattr(obj, "fecha_ingreso") and not obj.fecha_ingreso:
+                obj.fecha_ingreso = hoy
+                update_fields.append("fecha_ingreso")
+
+            if update_fields:
+                obj.save(update_fields=update_fields)
+
 
     return JsonResponse({
         "ok": True,
@@ -1123,7 +1151,11 @@ def asignacion_remover(request):
 
     for m in membresias:
         m.activo = False
-        m.save(update_fields=["activo"])
+        if hasattr(m, "fecha_salida"):
+            m.fecha_salida = timezone.now().date()
+            m.save(update_fields=["activo", "fecha_salida"])
+        else:
+            m.save(update_fields=["activo"])
         removidos += 1
 
     return JsonResponse({"ok": True, "modo": "membresia", "removidos": removidos})
