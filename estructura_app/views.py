@@ -218,7 +218,8 @@ def unidad_listado(request):
 @login_required
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
-
+    lideres_asignados = UnidadCargo.objects.none()
+    
     miembros_asignados = (
         UnidadMembresia.objects
         .filter(unidad=unidad, activo=True)
@@ -238,11 +239,17 @@ def unidad_detalle(request, pk):
         .order_by("rol__orden", "rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
     )
 
-    lideres_asignados = (
-        UnidadCargo.objects
-        .filter(unidad=unidad, vigente=True)
+    miembros_asignados = (
+        UnidadMembresia.objects
+        .filter(
+            unidad=unidad,
+            activo=True
+        )
+        .filter(
+            Q(rol__tipo=RolUnidad.TIPO_PARTICIPACION) | Q(rol__isnull=True)
+        )
         .select_related("miembo_fk", "rol")
-        .order_by("rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
+        .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
     )
 
     miembros = [m.miembo_fk for m in miembros_asignados]
