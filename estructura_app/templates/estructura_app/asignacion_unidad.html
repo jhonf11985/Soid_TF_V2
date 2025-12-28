@@ -216,6 +216,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAsignar = document.getElementById('btn-asignar');
     const btnRemover = document.getElementById('btn-remover');
 
+    // ─── Modal salida masiva ─────────────────────────────────────────
+    const modalSalida = document.getElementById('au-modal-salida');
+    const modalClose = document.getElementById('au-modal-close');
+    const modalCancel = document.getElementById('au-salida-cancel');
+    const modalAplicar = document.getElementById('au-salida-aplicar');
+
+    const salidaResumen = document.getElementById('au-salida-resumen');
+    const salidaFecha = document.getElementById('au-salida-fecha');
+    const salidaMotivo = document.getElementById('au-salida-motivo');
+    const salidaNotas = document.getElementById('au-salida-notas');
+    const salidaConfirm = document.getElementById('au-salida-confirm');
+
+
     const countSelected = document.getElementById('count-selected');
     const selectedBadge = document.getElementById('selected-badge');
     const checkAll = document.getElementById('check-all');
@@ -282,6 +295,40 @@ document.addEventListener('DOMContentLoaded', () => {
     function normalizeEstadoSlug(slug) {
         if (!slug || slug === 'null' || slug === 'undefined') return 'menor';
         return slug;
+    }
+
+    function todayISO() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function openModalSalida() {
+        if (!modalSalida) return;
+
+        // Resumen
+        const unidadTxt = selectUnidad?.options?.[selectUnidad.selectedIndex]?.text || '—';
+        const rolTxt = selectRol?.options?.[selectRol.selectedIndex]?.text || '—';
+        const n = selectedIds.size;
+
+        if (salidaResumen) {
+            salidaResumen.textContent = `Unidad: ${unidadTxt} · Rol: ${rolTxt} · Seleccionados: ${n}`;
+        }
+
+        // Defaults
+        if (salidaFecha) salidaFecha.value = todayISO();
+        if (salidaMotivo) salidaMotivo.value = '';
+        if (salidaNotas) salidaNotas.value = '';
+        if (salidaConfirm) salidaConfirm.checked = false;
+
+        modalSalida.style.display = 'block';
+    }
+
+    function closeModalSalida() {
+        if (!modalSalida) return;
+        modalSalida.style.display = 'none';
     }
 
     function labelForEstadoSlug(slug) {
@@ -620,54 +667,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const unidadId = selectUnidad.value;
         const rolId = selectRol.value;
 
-        if (!unidadId || !rolId) {
-            alert("Selecciona unidad y rol.");
-            return;
-        }
+        if (!unidadId || !rolId) { alert("Selecciona unidad y rol."); return; }
 
         const ids = Array.from(selectedIds);
-        if (!ids.length) {
-            alert("Selecciona al menos una persona.");
-            return;
-        }
+        if (!ids.length) { alert("Selecciona al menos una persona."); return; }
 
         if (btnAsignar) btnAsignar.disabled = true;
 
-        const urlAplicar = "{% url 'estructura_app:asignacion_aplicar' %}";
-        const res = await fetch(urlAplicar, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCookie("csrftoken"),
-                "X-Requested-With": "XMLHttpRequest",
-            },
-            body: JSON.stringify({
-                unidad_id: unidadId,
-                rol_id: rolId,
-                miembro_ids: ids
-            })
-        });
-
-        let data;
         try {
-            data = await res.json();
-        } catch (e) {
-            alert("Respuesta inválida del servidor.");
-            updateSelectedUI();
-            return;
-        }
+            const urlAplicar = "{% url 'estructura_app:asignacion_aplicar' %}";
+            const res = await fetch(urlAplicar, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+                body: JSON.stringify({ unidad_id: unidadId, rol_id: rolId, miembro_ids: ids })
+            });
 
-        if (!data.ok) {
-            alert(data.error || "No se pudo asignar.");
-            updateSelectedUI();
-            return;
-        }
+            let data;
+            try { data = await res.json(); }
+            catch { alert("Respuesta inválida del servidor."); return; }
 
-        await guardarYcargar();
-        alert(`Listo.\nCreados: ${data.creados}\nReactivados: ${data.reactivados}\nYa existían: ${data.ya_existian}`);
+            if (!data.ok) { alert(data.error || "No se pudo asignar."); return; }
+
+            await guardarYcargar();
+            alert(`Listo.\nCreados: ${data.creados}\nReactivados: ${data.reactivados}\nYa existían: ${data.ya_existian}`);
+        } finally {
+            if (btnAsignar) btnAsignar.disabled = false;
+            updateSelectedUI();
+        }
     }
 
-    // ─── API: Remover ──────────────────────────────────────────────────────
+
     async function aplicarRemocion() {
         const unidadId = selectUnidad.value;
         const rolId = selectRol.value;
@@ -683,45 +716,84 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!confirm("¿Seguro que deseas quitar a las personas seleccionadas de esta unidad?")) {
+        // En vez de confirm(), abrimos el modal
+        openModalSalida();
+    }
+
+    async function ejecutarSalidaMasiva() {
+        const unidadId = selectUnidad.value;
+        const rolId = selectRol.value;
+
+        const ids = Array.from(selectedIds);
+        if (!ids.length) {
+            alert("No hay seleccionados.");
+            closeModalSalida();
+            return;
+        }
+
+        const fecha = (salidaFecha?.value || '').trim();
+        const motivo = (salidaMotivo?.value || '').trim();
+        const notas = (salidaNotas?.value || '').trim();
+        const confirmado = !!salidaConfirm?.checked;
+
+        if (!fecha) {
+            alert("Selecciona la fecha de salida.");
+            return;
+        }
+        if (!motivo) {
+            alert("Selecciona un motivo.");
+            return;
+        }
+        if (!confirmado) {
+            alert("Debes confirmar la salida.");
             return;
         }
 
         if (btnRemover) btnRemover.disabled = true;
+        if (modalAplicar) modalAplicar.disabled = true;
 
-        const urlRemover = "{% url 'estructura_app:asignacion_remover' %}";
-        const res = await fetch(urlRemover, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCookie("csrftoken"),
-                "X-Requested-With": "XMLHttpRequest",
-            },
-            body: JSON.stringify({
-                unidad_id: unidadId,
-                rol_id: rolId,
-                miembro_ids: ids
-            })
-        });
-
-        let data;
         try {
-            data = await res.json();
-        } catch (e) {
-            alert("Respuesta inválida del servidor.");
-            updateSelectedUI();
-            return;
-        }
+            const urlRemover = "{% url 'estructura_app:asignacion_remover' %}";
+            const res = await fetch(urlRemover, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+                body: JSON.stringify({
+                    unidad_id: unidadId,
+                    rol_id: rolId,
+                    miembro_ids: ids,
+                    fecha_salida: fecha,
+                    motivo: motivo,
+                    notas: notas
+                })
+            });
 
-        if (!data.ok) {
-            alert(data.error || "No se pudo remover.");
-            updateSelectedUI();
-            return;
-        }
+            let data;
+            try {
+                data = await res.json();
+            } catch (e) {
+                alert("Respuesta inválida del servidor.");
+                return;
+            }
 
-        await guardarYcargar();
-        alert(`Listo.\nRemovidos: ${data.removidos}`);
+            if (!data.ok) {
+                alert(data.error || "No se pudo remover.");
+                return;
+            }
+
+            closeModalSalida();
+            await guardarYcargar();
+            alert(`Listo.\nRemovidos: ${data.removidos}`);
+        } finally {
+            if (btnRemover) btnRemover.disabled = false;
+            if (modalAplicar) modalAplicar.disabled = false;
+            updateSelectedUI();
+        }
     }
+
 
     // ─── Event Listeners ───────────────────────────────────────────────────
     selectUnidad.addEventListener('change', () => {
@@ -752,6 +824,17 @@ document.addEventListener('DOMContentLoaded', () => {
     btnGuardar.addEventListener('click', guardarYcargar);
     if (btnAsignar) btnAsignar.addEventListener('click', aplicarAsignacion);
     if (btnRemover) btnRemover.addEventListener('click', aplicarRemocion);
+
+        // Modal events
+    if (modalClose) modalClose.addEventListener('click', closeModalSalida);
+    if (modalCancel) modalCancel.addEventListener('click', closeModalSalida);
+
+    // Click fuera (opcional, pero útil)
+    const backdrop = modalSalida?.querySelector('.au-modal-backdrop');
+    if (backdrop) backdrop.addEventListener('click', closeModalSalida);
+
+    if (modalAplicar) modalAplicar.addEventListener('click', ejecutarSalidaMasiva);
+
 
     if (viewSelect) viewSelect.addEventListener('change', applyFilters);
     if (searchInput) searchInput.addEventListener('input', applyFilters);
@@ -1372,6 +1455,161 @@ document.addEventListener('DOMContentLoaded', () => {
     background: #fff5f5 !important;
 }
 
+/* ─────────────────────────────────────────────
+   MODAL (Salida masiva)
+   ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+   MODAL (Salida masiva) - estilo AU
+   ───────────────────────────────────────────── */
+.au-modal{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+}
+
+.au-modal-backdrop{
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, .45); /* oscuro suave */
+  backdrop-filter: blur(2px);
+}
+
+.au-modal-card{
+  position: relative;
+  width: min(620px, calc(100% - 24px));
+  margin: 56px auto;
+  background: var(--au-white, #fff);
+  border: 1px solid var(--au-border, var(--au-gray-200));
+  border-radius: var(--au-radius, 12px);
+  box-shadow: var(--au-shadow, 0 12px 40px rgba(2, 6, 23, .18));
+  overflow: hidden;
+}
+
+.au-modal-header{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--au-surface, var(--au-gray-50));
+  border-bottom: 1px solid var(--au-border, var(--au-gray-200));
+}
+
+.au-modal-header h3{
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--au-text, var(--au-gray-900));
+  letter-spacing: .2px;
+}
+
+.au-modal-body{
+  padding: 16px;
+}
+
+.au-modal-footer{
+  display:flex;
+  justify-content:flex-end;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--au-surface, var(--au-gray-50));
+  border-top: 1px solid var(--au-border, var(--au-gray-200));
+}
+
+/* Inputs/labels compatibles con tu look */
+.au-label{
+  display:block;
+  margin: 10px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--au-muted, var(--au-gray-600));
+}
+
+.au-input{
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--au-border, var(--au-gray-200));
+  border-radius: 10px;
+  font-size: 14px;
+  background: var(--au-white, #fff);
+  color: var(--au-text, var(--au-gray-900));
+}
+
+.au-input:focus{
+  outline: none;
+  border-color: var(--au-primary, #0ea5e9);
+  box-shadow: 0 0 0 3px rgba(14,165,233,.15);
+}
+
+.au-muted{
+  color: var(--au-muted, var(--au-gray-500));
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+/* Botón cerrar más discreto */
+.au-modal-header .au-btn{
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+/* Danger button: respeta tu au-btn-danger si existe */
+.au-btn-danger{
+  background: var(--au-danger, #ef4444);
+  color: #fff;
+  border: 1px solid rgba(0,0,0,.05);
+}
+
+.au-btn-danger:hover:not(:disabled){
+  filter: brightness(.95);
+}
+
+
 </style>
+
+<!-- Modal Salida Masiva -->
+<div id="au-modal-salida" class="au-modal" style="display:none;">
+  <div class="au-modal-backdrop"></div>
+  <div class="au-modal-card">
+    <div class="au-modal-header">
+      <h3>Dar salida (en masa)</h3>
+      <button type="button" id="au-modal-close" class="au-btn au-btn-light">Cerrar</button>
+    </div>
+
+    <div class="au-modal-body">
+      <p id="au-salida-resumen" class="au-muted"></p>
+
+      <label class="au-label">Fecha de salida</label>
+      <input type="date" id="au-salida-fecha" class="au-input">
+
+      <label class="au-label" style="margin-top:10px;">Motivo</label>
+      <select id="au-salida-motivo" class="au-input">
+        <option value="">— Selecciona —</option>
+        <option value="Cierre de unidad">Cierre de unidad</option>
+        <option value="Reorganización">Reorganización</option>
+        <option value="Traslado">Traslado</option>
+        <option value="Fin de período">Fin de período</option>
+        <option value="Error de asignación">Error de asignación</option>
+        <option value="Error de asignación">Cambio de Estado</option>
+        <option value="Otro">Otro</option>
+      </select>
+
+      <label class="au-label" style="margin-top:10px;">Notas (opcional)</label>
+      <textarea id="au-salida-notas" class="au-input" rows="3" placeholder="Detalle adicional…"></textarea>
+
+      <label style="display:flex; gap:10px; align-items:center; margin-top:12px;">
+        <input type="checkbox" id="au-salida-confirm">
+        <span>Confirmo que deseo dar salida a los seleccionados</span>
+      </label>
+    </div>
+
+    <div class="au-modal-footer">
+      <button type="button" id="au-salida-cancel" class="au-btn au-btn-light">Cancelar</button>
+      <button type="button" id="au-salida-aplicar" class="au-btn au-btn-danger">Confirmar salida</button>
+    </div>
+  </div>
+</div>
+
 
 {% endblock %}

@@ -1,0 +1,357 @@
+{% extends "core/reporte_base.html" %}
+
+
+{% block title %}Reporte Histórico · {{ unidad.nombre }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .kpi-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 12px 0 14px 0;
+  }
+  .kpi{
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: #ffffff;
+  }
+  .kpi .label{
+    font-size: 11px;
+    color:#6b7280;
+    margin-bottom: 4px;
+  }
+  .kpi .value{
+    font-size: 18px;
+    font-weight: 700;
+    color:#111827;
+    line-height: 1.1;
+  }
+  .kpi .hint{
+    margin-top: 4px;
+    font-size: 11px;
+    color:#6b7280;
+  }
+
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    color: #374151;
+  }
+
+  .toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    margin: 10px 0 14px 0;
+  }
+  .toolbar .left{
+    display:flex;
+    align-items:center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toolbar .right{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .print-btn{
+    border: 1px solid #e5e7eb;
+    background: #111827;
+    color: #fff;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .print-btn .material-icons{
+    font-size: 18px;
+  }
+
+  .section{
+    margin-top: 14px;
+  }
+  .section-title{
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    color: #111827;
+  }
+  .section-subtitle{
+    margin: 0 0 10px 0;
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  table{
+    width:100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 11px;
+  }
+  thead th{
+    text-align:left;
+    padding: 10px 10px;
+    background: #f3f4f6;
+    color:#374151;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  thead th:first-child{
+    border-left: 1px solid #e5e7eb;
+    border-top-left-radius: 10px;
+  }
+  thead th:last-child{
+    border-right: 1px solid #e5e7eb;
+    border-top-right-radius: 10px;
+  }
+  tbody td{
+    padding: 9px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    color:#111827;
+    vertical-align: top;
+    background:#fff;
+  }
+  tbody tr td:first-child{ border-left: 1px solid #e5e7eb; }
+  tbody tr td:last-child{ border-right: 1px solid #e5e7eb; }
+  tbody tr:last-child td:first-child{ border-bottom-left-radius: 10px; }
+  tbody tr:last-child td:last-child{ border-bottom-right-radius: 10px; }
+
+  .muted{ color:#6b7280; }
+  .nowrap{ white-space: nowrap; }
+  .wrap{ white-space: normal; }
+  .small{ font-size: 10px; }
+
+  .empty{
+    border: 1px dashed #d1d5db;
+    background: #fafafa;
+    padding: 12px;
+    border-radius: 12px;
+    color:#6b7280;
+    font-size: 12px;
+  }
+
+  @media print{
+    .kpi-grid{
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .kpi{
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
+    .print-btn{ display:none !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+  <div class="toolbar">
+    <div class="left">
+      <div>
+        <div class="report-title">Reporte Histórico de la Unidad</div>
+        <div class="report-subtitle">
+          Unidad: <strong>{{ unidad.nombre }}</strong>
+          {% if unidad.tipo %}<span class="muted">· {{ unidad.tipo }}</span>{% endif %}
+        </div>
+
+        <div class="report-meta">
+            {% if fecha_creacion %}
+            <span>Creada el: <strong>{{ fecha_creacion|date:"d/m/Y" }}</strong></span>
+            {% else %}
+            <span class="muted">Fecha de creación: —</span>
+            {% endif %}
+
+          <span>Fecha de emisión: <strong>{{ hoy|date:"d/m/Y" }}</strong></span>
+          {% if desde or hasta %}
+            <span>Rango:
+              <strong>
+                {% if desde %}{{ desde }}{% else %}—{% endif %}
+                →
+                {% if hasta %}{{ hasta }}{% else %}—{% endif %}
+              </strong>
+            </span>
+          {% else %}
+            <span class="muted">Rango: Todo el histórico</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if unidad.edad_min != None or unidad.edad_max != None %}
+        <span class="badge">
+          <span class="material-icons">filter_alt</span>
+          Rango edad:
+          {% if unidad.edad_min != None %}mín {{ unidad.edad_min }}{% else %}sin mín{% endif %}
+          ·
+          {% if unidad.edad_max != None %}máx {{ unidad.edad_max }}{% else %}sin máx{% endif %}
+        </span>
+      {% endif %}
+    </div>
+
+    <div class="right no-print">
+      <button class="print-btn" onclick="window.print()">
+        <span class="material-icons">print</span>
+        Imprimir / Guardar PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="label">Miembros actuales (vigentes)</div>
+      <div class="value">{{ miembros_actuales }}</div>
+      <div class="hint">Personas únicas activas en la unidad.</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Miembros históricos (ha tenido)</div>
+      <div class="value">{{ miembros_historicos }}</div>
+      <div class="hint">Personas únicas (vigentes + salidas).</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Salidas registradas</div>
+      <div class="value">{{ total_salidas }}</div>
+      <div class="hint">Registros marcados como salida.</div>
+    </div>
+
+    <div class="kpi">
+      <div class="label">Líderes actuales</div>
+      <div class="value">{{ lideres_actuales }}</div>
+      <div class="hint">Personas con cargos vigentes.</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Líderes históricos (ha tenido)</div>
+      <div class="value">{{ lideres_historicos }}</div>
+      <div class="hint">Personas con cargos (vigentes + terminados).</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Cargos terminados</div>
+      <div class="value">{{ total_cargos_terminados }}</div>
+      <div class="hint">Registros de liderazgo finalizados.</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: SALIDAS -->
+  <section class="section">
+    <h3 class="section-title">A) Miembros que han salido</h3>
+    <p class="section-subtitle">
+      Listado de salidas registradas (participación/trabajo). Incluye motivo y notas extra cuando existan.
+    </p>
+
+    {% if memb_rows and memb_rows|length %}
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 24%;">Miembro</th>
+            <th style="width: 14%;">Rol</th>
+            <th class="nowrap" style="width: 12%;">Ingreso</th>
+            <th class="nowrap" style="width: 12%;">Salida</th>
+            <th style="width: 18%;">Motivo</th>
+            <th style="width: 20%;">Nota / Observación</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in memb_rows %}
+            <tr>
+              <td class="wrap">
+                <strong>{{ r.miembro }}</strong>
+                {% if r.notas_raw %}
+                  <div class="muted small">Registro con notas</div>
+                {% endif %}
+              </td>
+              <td class="wrap">{{ r.rol }}</td>
+              <td class="nowrap">
+                {% if r.fecha_ingreso %}{{ r.fecha_ingreso|date:"d/m/Y" }}{% else %}<span class="muted">—</span>{% endif %}
+              </td>
+              <td class="nowrap">
+                {% if r.fecha_salida %}{{ r.fecha_salida|date:"d/m/Y" }}{% else %}<span class="muted">—</span>{% endif %}
+              </td>
+              <td class="wrap">
+                {% if r.motivo and r.motivo != "—" %}
+                  {{ r.motivo }}
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td class="wrap">
+                {% if r.nota %}
+                  {{ r.nota }}
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No hay salidas registradas para la unidad en el rango seleccionado.</div>
+    {% endif %}
+  </section>
+
+  <!-- SECCIÓN: LIDERAZGO HISTÓRICO -->
+  <section class="section">
+    <h3 class="section-title">B) Liderazgo terminado</h3>
+    <p class="section-subtitle">
+      Cargos de liderazgo que ya no están vigentes (finalizados), con motivo/nota si existe.
+    </p>
+
+    {% if cargo_rows and cargo_rows|length %}
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 28%;">Miembro</th>
+            <th style="width: 18%;">Cargo</th>
+            <th class="nowrap" style="width: 12%;">Inicio</th>
+            <th class="nowrap" style="width: 12%;">Fin</th>
+            <th style="width: 15%;">Motivo</th>
+            <th style="width: 15%;">Nota / Observación</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in cargo_rows %}
+            <tr>
+              <td class="wrap"><strong>{{ r.miembro }}</strong></td>
+              <td class="wrap">{{ r.cargo }}</td>
+              <td class="nowrap">
+                {% if r.fecha_inicio %}{{ r.fecha_inicio|date:"d/m/Y" }}{% else %}<span class="muted">—</span>{% endif %}
+              </td>
+              <td class="nowrap">
+                {% if r.fecha_fin %}{{ r.fecha_fin|date:"d/m/Y" }}{% else %}<span class="muted">—</span>{% endif %}
+              </td>
+              <td class="wrap">
+                {% if r.motivo and r.motivo != "—" %}
+                  {{ r.motivo }}
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td class="wrap">
+                {% if r.nota %}
+                  {{ r.nota }}
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No hay cargos terminados de liderazgo para la unidad en el rango seleccionado.</div>
+    {% endif %}
+  </section>
+
+{% endblock %}

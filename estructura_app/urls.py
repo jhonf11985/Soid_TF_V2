@@ -56,5 +56,11 @@ path(
     views.reporte_miembros_multi_unidad,
     name="reporte_miembros_multi_unidad"
 ),
+path(
+    "unidades/<int:pk>/reportes/historico/imprimir/",
+    views.reporte_unidad_historico_imprimir,
+    name="reporte_unidad_historico_imprimir",
+),
+
 
 ]

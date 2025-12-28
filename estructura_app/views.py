@@ -16,6 +16,8 @@ from .forms import ReporteCierreForm
 from itertools import chain
 from miembros_app.models import Miembro
 from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriodoForm
+from datetime import datetime
+import datetime
 
 from .models import (
     Unidad,
@@ -27,6 +29,7 @@ from .models import (
     ReporteUnidadPeriodo,ReporteUnidadCierre,
 )
 
+import re
 
 
 
@@ -1094,15 +1097,30 @@ def asignacion_remover(request):
     rol_id = str(payload.get("rol_id", "")).strip()
     miembro_ids = payload.get("miembro_ids") or []
 
+    # NUEVO: datos de salida masiva
+    fecha_salida = (payload.get("fecha_salida") or "").strip()
+    motivo = (payload.get("motivo") or "").strip()
+    notas_extra = (payload.get("notas") or "").strip()
+
     if not unidad_id or not rol_id:
         return JsonResponse({"ok": False, "error": "Falta unidad o rol"}, status=400)
 
     if not isinstance(miembro_ids, list) or not miembro_ids:
         return JsonResponse({"ok": False, "error": "No hay miembros seleccionados"}, status=400)
 
+    if not fecha_salida or not motivo:
+        return JsonResponse({"ok": False, "error": "Falta fecha de salida o motivo"}, status=400)
+
+    # Parse fecha
+    try:
+        fecha_salida_date = datetime.date.fromisoformat(fecha_salida)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Fecha inválida (usa formato YYYY-MM-DD)"}, status=400)
+
     unidad = get_object_or_404(Unidad, pk=unidad_id)
     rol = get_object_or_404(RolUnidad, pk=rol_id)
 
+    # Sanitizar IDs
     clean_ids = []
     for x in miembro_ids:
         try:
@@ -1113,53 +1131,95 @@ def asignacion_remover(request):
     if not clean_ids:
         return JsonResponse({"ok": False, "error": "Selección inválida"}, status=400)
 
-    removidos = 0
     tipo = getattr(rol, "tipo", None)
 
-    # ─────────────────────────────────────────────
-    # 🔴 1) LIDERAZGO => desactivar UnidadCargo
+        # ─────────────────────────────────────────────
+    # ✅ LIDERAZGO: ahora SÍ se puede remover
     # ─────────────────────────────────────────────
     if tipo == RolUnidad.TIPO_LIDERAZGO:
-        cargos = UnidadCargo.objects.filter(
+
+        # Traer cargos vigentes de esa unidad + ese rol + esos miembros
+        qs = UnidadCargo.objects.filter(
             unidad=unidad,
+            rol=rol,
             miembo_fk_id__in=clean_ids,
             vigente=True,
-            rol__tipo=RolUnidad.TIPO_LIDERAZGO,  # importante: por tipo
         )
 
-        for c in cargos:
-            c.vigente = False
-            if hasattr(c, "fecha_fin"):
-                c.fecha_fin = timezone.now().date()
-                c.save(update_fields=["vigente", "fecha_fin"])
-            else:
-                c.save(update_fields=["vigente"])
+        removidos = 0
+        sello = f"[SALIDA MASIVA - LIDERAZGO] Fecha: {fecha_salida_date.isoformat()} | Motivo: {motivo}"
+        if notas_extra:
+            sello = sello + f" | Nota: {notas_extra}"
+
+        for cargo in qs:
+            cargo.vigente = False
+
+            update_fields = ["vigente"]
+
+            # Fecha fin si existe el campo
+            if hasattr(cargo, "fecha_fin"):
+                cargo.fecha_fin = fecha_salida_date
+                update_fields.append("fecha_fin")
+
+            # Guardar rastro en notas/observaciones si existen
+            if hasattr(cargo, "notas"):
+                cargo.notas = (cargo.notas.rstrip() + "\n" + sello) if cargo.notas else sello
+                update_fields.append("notas")
+            elif hasattr(cargo, "observaciones"):
+                cargo.observaciones = (cargo.observaciones.rstrip() + "\n" + sello) if cargo.observaciones else sello
+                update_fields.append("observaciones")
+
+            cargo.save(update_fields=update_fields)
             removidos += 1
 
-        # ✅ NO tocamos la membresía aquí (solo quitamos liderazgo)
-        return JsonResponse({"ok": True, "modo": "liderazgo", "removidos": removidos})
+        return JsonResponse({
+            "ok": True,
+            "modo": "liderazgo",
+            "removidos": removidos,
+        })
 
     # ─────────────────────────────────────────────
-    # 🟢 2) PARTICIPACIÓN / TRABAJO => desactivar UnidadMembresia
-    # ✅ NO filtrar por rol, porque puede ser NULL o distinto
+    # ✅ SOLO PARTICIPACIÓN / TRABAJO => salida de membresía
     # ─────────────────────────────────────────────
-    membresias = UnidadMembresia.objects.filter(
+    if tipo not in (RolUnidad.TIPO_PARTICIPACION, RolUnidad.TIPO_TRABAJO):
+        return JsonResponse({"ok": False, "error": "Tipo de rol no permitido para remoción"}, status=400)
+
+    # Traer membresías activas de esa unidad (y opcionalmente ese rol)
+    qs = UnidadMembresia.objects.filter(
         unidad=unidad,
         miembo_fk_id__in=clean_ids,
-        activo=True
+        activo=True,
     )
 
-    for m in membresias:
-        m.activo = False
-        if hasattr(m, "fecha_salida"):
-            m.fecha_salida = timezone.now().date()
-            m.save(update_fields=["activo", "fecha_salida"])
+    # Importante: aquí removemos “la membresía de ese rol”
+    # (si quieres que solo quite los que tienen ese rol exacto)
+    # quitar TODOS los roles del miembro en esa unidad
+    qs = qs
+
+
+    removidos = 0
+    sello = f"[SALIDA MASIVA] Fecha: {fecha_salida_date.isoformat()} | Motivo: {motivo}"
+    if notas_extra:
+        sello = sello + f" | Nota: {notas_extra}"
+
+    for memb in qs:
+        memb.activo = False
+        memb.fecha_salida = fecha_salida_date
+
+        # Guardar rastro en notas sin romper tu modelo (no tienes campo “motivo”)
+        if memb.notas:
+            memb.notas = memb.notas.rstrip() + "\n" + sello
         else:
-            m.save(update_fields=["activo"])
+            memb.notas = sello
+
+        memb.save(update_fields=["activo", "fecha_salida", "notas"])
         removidos += 1
 
-    return JsonResponse({"ok": True, "modo": "membresia", "removidos": removidos})
-
+    return JsonResponse({
+        "ok": True,
+        "modo": "membresia",
+        "removidos": removidos,
+    })
 
 @login_required
 @require_POST
@@ -2372,3 +2432,227 @@ def reporte_miembros_multi_unidad(request):
         "per_page": 999999,
     }
     return render(request, "estructura_app/reportes/reporte_miembros_multi_unidad.html", context)
+
+
+@login_required
+def reporte_unidad_historico_imprimir(request, pk):
+    """
+    REPORTE HISTÓRICO (Imprimible)
+    - Salidas de miembros (UnidadMembresia.activo=False)
+    - Histórico de liderazgo (UnidadCargo.vigente=False)  ✅ incluido en el mismo reporte
+    - Extrae Motivo/Nota desde 'notas' usando el sello que guardas en salida masiva.
+    """
+   
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    # ─────────────────────────────────────────────
+    # Filtros opcionales (por si quieres luego)
+    # ─────────────────────────────────────────────
+    # ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+    desde = (request.GET.get("desde") or "").strip()
+    hasta = (request.GET.get("hasta") or "").strip()
+    # Fecha de creación de la unidad (ajusta el nombre del campo si es distinto)
+  
+
+
+    def _parse_date(s):
+        try:
+            return datetime.date.fromisoformat(s)
+        except Exception:
+            return None
+
+    desde_date = _parse_date(desde) if desde else None
+    hasta_date = _parse_date(hasta) if hasta else None
+
+    # ─────────────────────────────────────────────
+    # Helpers para extraer Motivo/Nota desde notas
+    # ─────────────────────────────────────────────
+    def _extraer_motivo_y_nota(texto: str):
+        """
+        Busca la última línea que contenga "Motivo:" y extrae:
+          - Motivo: ...
+          - Nota: ...
+        Ejemplo sello:
+          [SALIDA MASIVA] Fecha: 2025-12-27 | Motivo: Traslado | Nota: Se mudó
+        """
+        if not texto:
+            return ("—", "")
+
+        lineas = [l.strip() for l in str(texto).splitlines() if l.strip()]
+        sello = ""
+        for l in reversed(lineas):
+            if "Motivo:" in l:
+                sello = l
+                break
+
+        if not sello:
+            return ("—", "")
+
+        motivo = "—"
+        m = re.search(r"Motivo:\s*([^|]+)", sello)
+        if m:
+            motivo = (m.group(1) or "").strip() or "—"
+
+        nota = ""
+        n = re.search(r"Nota:\s*(.+)$", sello)
+        if n:
+            nota = (n.group(1) or "").strip()
+
+        return (motivo, nota)
+
+    # ─────────────────────────────────────────────
+    # 1) HISTÓRICO DE MIEMBROS (SALIDAS)
+    # ─────────────────────────────────────────────
+    memb_qs = (
+        UnidadMembresia.objects
+        .filter(unidad=unidad, activo=False)
+        .select_related("miembo_fk", "rol")
+        .order_by("-fecha_salida", "-fecha_ingreso")
+    )
+
+    if desde_date:
+        memb_qs = memb_qs.filter(fecha_salida__gte=desde_date)
+    if hasta_date:
+        memb_qs = memb_qs.filter(fecha_salida__lte=hasta_date)
+
+    memb_rows = []
+    for mem in memb_qs:
+        persona = getattr(mem, "miembo_fk", None)
+
+        nombre = "—"
+        if persona:
+            nombres = getattr(persona, "nombres", "") or ""
+            apellidos = getattr(persona, "apellidos", "") or ""
+            nombre = (nombres + " " + apellidos).strip() or str(persona)
+
+        rol_nombre = getattr(getattr(mem, "rol", None), "nombre", None) or "—"
+
+        motivo, nota = _extraer_motivo_y_nota(getattr(mem, "notas", "") or "")
+
+        memb_rows.append({
+            "miembro": nombre,
+            "rol": rol_nombre,
+            "fecha_ingreso": getattr(mem, "fecha_ingreso", None),
+            "fecha_salida": getattr(mem, "fecha_salida", None),
+            "motivo": motivo,
+            "nota": nota,
+            "notas_raw": getattr(mem, "notas", "") or "",
+        })
+
+    # ─────────────────────────────────────────────
+    # 2) HISTÓRICO DE LIDERAZGO (CARGOS TERMINADOS)
+    # ─────────────────────────────────────────────
+    # Nota: aquí usamos hasattr para no romper si tu modelo varía.
+    # Se filtra por vigente=False y rol tipo liderazgo.
+    cargo_qs = (
+        UnidadCargo.objects
+        .filter(unidad=unidad, vigente=False, rol__tipo=RolUnidad.TIPO_LIDERAZGO)
+        .select_related("miembo_fk", "rol")
+        .order_by("-fecha_fin", "-fecha_inicio")
+    )
+
+    # Filtro por rango de fecha fin (si existe)
+    if desde_date:
+        cargo_qs = cargo_qs.filter(fecha_fin__gte=desde_date)
+    if hasta_date:
+        cargo_qs = cargo_qs.filter(fecha_fin__lte=hasta_date)
+
+    cargo_rows = []
+    for cargo in cargo_qs:
+        persona = getattr(cargo, "miembo_fk", None)
+
+        nombre = "—"
+        if persona:
+            nombres = getattr(persona, "nombres", "") or ""
+            apellidos = getattr(persona, "apellidos", "") or ""
+            nombre = (nombres + " " + apellidos).strip() or str(persona)
+
+        rol_nombre = getattr(getattr(cargo, "rol", None), "nombre", None) or "—"
+
+        # notas/observaciones (según exista)
+        texto_notas = ""
+        if hasattr(cargo, "notas"):
+            texto_notas = getattr(cargo, "notas", "") or ""
+        elif hasattr(cargo, "observaciones"):
+            texto_notas = getattr(cargo, "observaciones", "") or ""
+
+        motivo, nota = _extraer_motivo_y_nota(texto_notas)
+
+        cargo_rows.append({
+            "miembro": nombre,
+            "cargo": rol_nombre,
+            "fecha_inicio": getattr(cargo, "fecha_inicio", None),
+            "fecha_fin": getattr(cargo, "fecha_fin", None),
+            "motivo": motivo,
+            "nota": nota,
+            "notas_raw": texto_notas,
+        })
+
+    # ─────────────────────────────────────────────
+    # RESUMEN (KPIs básicos del histórico)
+    # ─────────────────────────────────────────────
+    # Miembros actuales (únicos) y total histórico (únicos)
+    fecha_creacion = (
+        getattr(unidad, "creado_en", None)
+        or getattr(unidad, "fecha_creacion", None)
+        or None
+    )
+    miembros_actuales = (
+        UnidadMembresia.objects
+        .filter(unidad=unidad, activo=True)
+        .values_list("miembo_fk_id", flat=True)
+        .distinct()
+        .count()
+    )
+
+    miembros_historicos = (
+        UnidadMembresia.objects
+        .filter(unidad=unidad)
+        .values_list("miembo_fk_id", flat=True)
+        .distinct()
+        .count()
+    )
+
+    total_salidas = memb_qs.count()
+
+    lideres_actuales = (
+        UnidadCargo.objects
+        .filter(unidad=unidad, vigente=True, rol__tipo=RolUnidad.TIPO_LIDERAZGO)
+        .values_list("miembo_fk_id", flat=True)
+        .distinct()
+        .count()
+    )
+
+    lideres_historicos = (
+        UnidadCargo.objects
+        .filter(unidad=unidad, rol__tipo=RolUnidad.TIPO_LIDERAZGO)
+        .values_list("miembo_fk_id", flat=True)
+        .distinct()
+        .count()
+    )
+
+    total_cargos_terminados = cargo_qs.count()
+
+    context = {
+        "unidad": unidad,
+        "hoy": timezone.now().date(),
+        "fecha_creacion": fecha_creacion,
+
+        # filtros
+        "desde": desde,
+        "hasta": hasta,
+
+        # tablas
+        "memb_rows": memb_rows,
+        "cargo_rows": cargo_rows,
+
+        # KPIs
+        "miembros_actuales": miembros_actuales,
+        "miembros_historicos": miembros_historicos,
+        "total_salidas": total_salidas,
+        "lideres_actuales": lideres_actuales,
+        "lideres_historicos": lideres_historicos,
+        "total_cargos_terminados": total_cargos_terminados,
+    }
+
+    return render(request, "estructura_app/reportes/reporte_unidad_historico.html", context)
