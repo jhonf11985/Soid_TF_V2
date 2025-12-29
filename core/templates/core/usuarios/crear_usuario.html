@@ -7,6 +7,13 @@
 <form method="post" class="odoo-form">
     {% csrf_token %}
 
+    {% if form.non_field_errors %}
+  <div class="odoo-form-errors">
+    {{ form.non_field_errors }}
+  </div>
+{% endif %}
+
+
     <div class="odoo-control-bar">
         <div class="odoo-control-left">
             <a href="javascript:history.back()" class="odoo-breadcrumb-link">
@@ -25,7 +32,8 @@
             <div class="odoo-form-header">
                 <div class="odoo-avatar-section">
                     <div class="odoo-avatar">
-                        <span class="material-icons" style="font-size: 50px; color: #714B67;">person_add</span>
+                       <span class="material-icons odoo-avatar-icon">person_add</span>
+
                     </div>
                 </div>
 
@@ -93,6 +101,10 @@
     --odoo-secondary-text: #111827;
     --odoo-secondary-hover: #f3f4f6;
 }
+.odoo-avatar-icon {
+    font-size: 50px;
+    color: var(--color-text-muted);
+}
 
 /* Inputs estilo línea · integrado con main.css */
 .odoo-form input:not([type="checkbox"]),
@@ -127,15 +139,17 @@
         gap: 10px;
         margin-bottom: 8px;
     }
-    .odoo-name-field input {
-        font-size: 24px !important;
-        font-weight: 600;
-        border: none !important;
-        border-bottom: 2px solid #eee !important;
-        border-radius: 0 !important;
-        padding: 4px 0 !important;
-        color: #4c4c4c;
-    }
+.odoo-name-field input {
+    font-size: 24px !important;
+    font-weight: 600;
+    border: none !important;
+    border-bottom: 2px solid var(--color-border-subtle) !important;
+    border-radius: 0 !important;
+    padding: 4px 0 !important;
+    color: var(--color-text-main);
+}
+
+
     .odoo-name-field input:focus {
         border-bottom-color: #714B67 !important;
     }
@@ -250,5 +264,77 @@
         font-size: 12px;
         margin-top: 4px;
     }
+
+@media (max-width: 768px){
+    .odoo-form-container{
+        margin: 0 12px;
+        flex-direction: column;
+    }
+    .odoo-form-main{
+        border-right: none;
+        border-bottom: 1px solid var(--color-border-subtle);
+        padding: 18px;
+    }
+    .odoo-form-aside{
+        width: 100%;
+        padding: 14px;
+    }
+    .odoo-form-body{
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+    .odoo-quick-fields{
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 6px;
+}
+
+.odoo-quick-field{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 10px;
+    background: #ffffff;
+    min-width: 260px;
+}
+
+.odoo-quick-field .material-icons{
+    font-size: 18px;
+    color: var(--color-text-muted);
+}
+.odoo-form-errors{
+    border: 1px solid #fca5a5;
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    margin: 12px 20px 0;
+}
+
+}
+
 </style>
+
+<script>
+  (function(){
+    const form = document.querySelector("form.odoo-form");
+    if(!form) return;
+
+    const btn = form.querySelector(".odoo-btn-primary");
+    if(!btn) return;
+
+    form.addEventListener("submit", function(){
+      btn.disabled = true;
+      btn.setAttribute("aria-disabled", "true");
+      btn.style.opacity = "0.75";
+      btn.style.cursor = "not-allowed";
+    });
+  })();
+</script>
+
 {% endblock %}

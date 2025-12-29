@@ -164,11 +164,45 @@ class UsuarioIglesiaForm(UserCreationForm):
     grupo = forms.ModelChoiceField(
         label="Rol / Grupo",
         queryset=Group.objects.all(),
-        required=False,
+        required=True,
         widget=forms.Select(attrs={
             "class": "form-input",
         })
     )
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+
+        # Guardar email/nombres (por si acaso, aunque ya vienen en cleaned_data)
+        user.first_name = self.cleaned_data.get("first_name", "")
+        user.last_name = self.cleaned_data.get("last_name", "")
+        user.email = self.cleaned_data.get("email", "")
+
+        if commit:
+            user.save()
+
+            # Asignar grupo si se eligió
+            grupo = self.cleaned_data.get("grupo")
+            if grupo:
+                user.groups.set([grupo])  # si quieres permitir solo un grupo
+
+        return user
+    def save(self, commit=True):
+        user = super().save(commit=False)
+
+        user.first_name = self.cleaned_data.get("first_name", "")
+        user.last_name = self.cleaned_data.get("last_name", "")
+        user.email = self.cleaned_data.get("email", "")
+
+        if commit:
+            user.save()
+
+            grupo = self.cleaned_data.get("grupo")
+            if grupo:
+                user.groups.set([grupo])
+
+        return user
+
 
     class Meta:
         model = User
