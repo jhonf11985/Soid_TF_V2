@@ -17,8 +17,17 @@ from .forms import (
     ConfiguracionContactoForm,
     ConfiguracionReportesForm,
 )
+from django.shortcuts import redirect
+
+def root_redirect(request):
+    # Si ya está autenticado, lo mandamos al home (dashboard)
+    if request.user.is_authenticated:
+        return redirect("core:home")
+    # Si no, al login
+    return redirect("/accounts/login/")
 
 
+@login_required(login_url="/accounts/login/")
 def home(request):
     """
     Pantalla principal de Soid_Tf_2.
@@ -27,7 +36,6 @@ def home(request):
     modules = Module.objects.filter(is_enabled=True)
     context = {"modules": modules}
     return render(request, "core/home.html", context)
-
 
 def es_staff(user):
     return user.is_staff or user.is_superuser

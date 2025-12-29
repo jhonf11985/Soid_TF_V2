@@ -3,9 +3,14 @@ from . import views, ajax_views
 
 app_name = "core"
 
+
+
 urlpatterns = [
-    # Página de inicio del sistema
-    path("", views.home, name="home"),
+    path("", views.root_redirect, name="root_redirect"),
+    path("home/", views.home, name="home"),
+ 
+
+
 
     # Menú principal de configuración
     path("configuracion/", views.configuracion_sistema, name="configuracion"),
