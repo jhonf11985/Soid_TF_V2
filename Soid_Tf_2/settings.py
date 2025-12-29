@@ -135,6 +135,9 @@ EDAD_MINIMA_MIEMBRO_OFICIAL = 14
 
 STATIC_URL = '/static/'
 
+STATICFILES_DIRS = [
+    BASE_DIR / "core" / "static",
+]
 
 # Render necesita esto para servir archivos estáticos
 STATIC_ROOT = BASE_DIR / 'staticfiles'
