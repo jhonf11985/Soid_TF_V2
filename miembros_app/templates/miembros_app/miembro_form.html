@@ -14,6 +14,14 @@
 <form method="post" enctype="multipart/form-data" class="odoo-form">
     {% csrf_token %}
 
+{% if bloquear_identidad %}
+  <div class="odoo-alert odoo-alert-warning" style="margin-bottom: 16px;">
+    ⚠️ <strong>Algunos campos están bloqueados</strong> porque este miembro
+    está asignado a una o más unidades.
+    <br>
+    Para poder modificarlos, primero debes retirarlo de sus unidades.
+  </div>
+{% endif %}
 
 
     <!-- ══════════════════════════════════════════════════════════════════
@@ -84,18 +92,22 @@
                 <div class="odoo-header-info">
                     
                     <!-- Radio: Género -->
-                    <div class="odoo-radio-group">
-                        <label class="odoo-radio">
-                            <input type="radio" name="genero" value="masculino"
-                                {% if form.genero.value == 'masculino' %}checked{% endif %}>
-                            <span>Masculino</span>
-                        </label>
-                        <label class="odoo-radio">
-                            <input type="radio" name="genero" value="femenino"
-                                {% if form.genero.value == 'femenino' %}checked{% endif %}>
-                            <span>Femenino</span>
-                        </label>
-                    </div>
+                <label class="odoo-radio">
+                <input type="radio" name="genero" value="masculino"
+                        {% if form.genero.value == 'masculino' %}checked{% endif %}
+                        {% if bloquear_identidad %}disabled{% endif %}>
+                <span>Masculino</span>
+                </label>
+
+                <label class="odoo-radio">
+                <input type="radio" name="genero" value="femenino"
+                        {% if form.genero.value == 'femenino' %}checked{% endif %}
+                        {% if bloquear_identidad %}disabled{% endif %}>
+                <span>Femenino</span>
+                </label>
+
+
+
 
 
                     <!-- Nombre grande -->
@@ -229,14 +241,16 @@
                                placeholder="000-0000000-0" class="odoo-input">
                     </div>
 
-<div class="odoo-field">
-    <label class="odoo-label">Fecha nacimiento</label>
-    <input type="date"
-           name="fecha_nacimiento"
-           id="{{ form.fecha_nacimiento.id_for_label }}"
-           class="odoo-input"
-           value="{{ form.fecha_nacimiento.value|date:'Y-m-d' }}">
-</div>
+<input type="date"
+       name="fecha_nacimiento"
+       id="{{ form.fecha_nacimiento.id_for_label }}"
+       class="odoo-input"
+       value="{{ form.fecha_nacimiento.value|date:'Y-m-d' }}"
+       {% if bloquear_identidad %}disabled{% endif %}>
+{% if bloquear_identidad %}
+  <input type="hidden" name="fecha_nacimiento" value="{{ form.fecha_nacimiento.value|date:'Y-m-d' }}">
+{% endif %}
+
 
                     <!-- Aviso de edad mínima -->
                     <div id="edad_aviso" class="odoo-alert odoo-alert-warning" style="display:none;">
@@ -279,10 +293,7 @@
                 {# Si está disabled, NO se envía en POST, así que lo preservamos #}
                 <input type="hidden" name="estado_miembro" value="{{ form.estado_miembro.value|default:'' }}">
 
-                <div class="odoo-field-help" style="margin-top:6px;">
-                    🔒 No puedes cambiar el estado porque este miembro está asignado a una unidad.
-                    Primero retíralo de la(s) unidad(es).
-                </div>
+
                 {% endif %}
 
 
@@ -832,31 +843,34 @@
                 </ul>
             </div>
 
+
             <!-- Actividad reciente -->
-            <div class="odoo-aside-activity">
-                <h4 class="odoo-aside-title">Actividad</h4>
-                {% if modo == "editar" and miembro %}
-                <div class="odoo-activity-item">
-                    <div class="odoo-activity-avatar">
-                        <span class="material-icons">person</span>
+            <div class="odoo-activity">
+
+                {% if miembro %}
+                    <div class="odoo-activity-item">
+                        <span class="odoo-activity-label">Creado el</span>
+                        <span class="odoo-activity-date">
+                            {{ miembro.fecha_creacion|date:"d/m/Y H:i" }}
+                        </span>
                     </div>
-                    <div class="odoo-activity-content">
-                        <span class="odoo-activity-text">Registro creado</span>
-                        <span class="odoo-activity-date">{{ miembro.fecha_creacion|date:"d M Y" }}</span>
+
+                    <div class="odoo-activity-item">
+                        <span class="odoo-activity-label">Última actualización</span>
+                        <span class="odoo-activity-date">
+                            {{ miembro.fecha_actualizacion|date:"d/m/Y H:i" }}
+                        </span>
                     </div>
-                </div>
                 {% else %}
-                <div class="odoo-activity-item">
-                    <div class="odoo-activity-avatar">
-                        <span class="material-icons">add_circle</span>
-                    </div>
-                    <div class="odoo-activity-content">
-                        <span class="odoo-activity-text">Creando nuevo registro...</span>
+                    <div class="odoo-activity-item">
+                        <span class="odoo-activity-label">Creando nuevo registro</span>
                         <span class="odoo-activity-date">Ahora</span>
                     </div>
-                </div>
                 {% endif %}
+
             </div>
+
+
         </div>
     </div>
 </form>
@@ -1645,46 +1659,65 @@ select.odoo-input {
 }
 
 @media (max-width: 768px) {
+
     .odoo-form-header {
         flex-direction: column;
         align-items: center;
         text-align: center;
     }
-    
+
     .odoo-name-field {
         flex-direction: column;
     }
-    
+
     .odoo-form-body {
         grid-template-columns: 1fr;
     }
-    
+
     .odoo-field,
     .odoo-field-group {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .odoo-label {
         width: auto;
         text-align: left;
         padding-top: 0;
         margin-bottom: 4px;
     }
-    
+
     .odoo-field-checkbox,
     .odoo-field-checkboxes {
         padding-left: 0;
     }
-    
+
     .odoo-field-error {
         padding-left: 0;
     }
-    
+
     .odoo-tab-grid {
         grid-template-columns: 1fr;
     }
-    /* Separador de sección limpio (texto azulado/gris) */
+
+    /* ======================================================
+       ⚠️ CLAVE: NO BLOQUEAR SCROLL HORIZONTAL DE TABLAS
+       ====================================================== */
+
+    /* El layout general no debe desbordarse */
+    .odoo-form,
+    .odoo-form-container {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* ⬅️ AQUÍ ESTÁ LA CORRECCIÓN IMPORTANTE */
+    .odoo-form-main {
+        max-width: 100%;
+        overflow-x: visible; /* permite scroll interno */
+    }
+}
+
 .odoo-separator {
     display: block;
     color: #017e84;
@@ -1767,6 +1800,7 @@ select.odoo-input {
 .odoo-control-bar{
   padding: 8px 12px !important;
 }
+
 @media (max-width: 768px){
   .odoo-form,
   .odoo-form-container,
@@ -1777,8 +1811,10 @@ select.odoo-input {
 }
 
 
-.odoo-form-main {
-    border-right: none !important;
+ .odoo-form-main{
+    max-width: 100%;
+    overflow-x: visible;
+  }
 }
 
 /* el aside pasa abajo y ocupa 100% */
@@ -1788,7 +1824,7 @@ select.odoo-input {
 }
 
 
-}
+
 
 
     /* =====================================
@@ -2045,6 +2081,38 @@ select.odoo-input {
 
     .spinner {
         animation: spin 1s linear infinite;
+    }
+    /* ==========================================================
+    ACTIVIDAD (estilo sistema / Odoo)
+    ========================================================== */
+
+    .odoo-activity {
+        margin-top: 24px;
+        padding-top: 12px;
+        border-top: 1px dashed #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .odoo-activity-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .odoo-activity-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: #6c757d; /* gris sistema */
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .odoo-activity-date {
+        font-size: 12px;
+        font-weight: 500;
+        color: #495057;
     }
 
 </style>

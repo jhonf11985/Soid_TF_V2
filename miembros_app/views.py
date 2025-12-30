@@ -720,6 +720,7 @@ class MiembroUpdateView(View):
             .order_by("nombres", "apellidos")
         )
 
+        bloquear_identidad = _miembro_tiene_asignacion_en_unidades(miembro)
 
         bloquear_estado = _miembro_tiene_asignacion_en_unidades(miembro)
         context = {
@@ -730,6 +731,8 @@ class MiembroUpdateView(View):
             "familiares": familiares_qs,
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
               "bloquear_estado": bloquear_estado,
+              "bloquear_identidad": bloquear_identidad,
+
 
             
         }
@@ -763,6 +766,53 @@ class MiembroUpdateView(View):
         if form.is_valid():
             
             miembro_editado = form.save(commit=False)
+            # =============================
+            # BLOQUEO: NO CAMBIAR GÉNERO / FECHA NACIMIENTO SI ESTÁ EN UNIDADES
+            # =============================
+            genero_antes = miembro.genero
+            fn_antes = miembro.fecha_nacimiento
+
+            genero_despues = miembro_editado.genero
+            fn_despues = miembro_editado.fecha_nacimiento
+
+            cambio_genero = (genero_antes != genero_despues)
+            cambio_fn = (fn_antes != fn_despues)
+
+            if (cambio_genero or cambio_fn) and _miembro_tiene_asignacion_en_unidades(miembro):
+
+
+        
+
+
+                # Volvemos a renderizar la misma pantalla con el formulario (NO guarda)
+                familiares_qs = (
+                    MiembroRelacion.objects
+                    .filter(miembro=miembro)
+                    .select_related("familiar")
+                )
+                familiares_ids = familiares_qs.values_list("familiar_id", flat=True)
+
+                todos_miembros = (
+                    Miembro.objects
+                    .exclude(pk=miembro.pk)
+                    .exclude(pk__in=familiares_ids)
+                    .order_by("nombres", "apellidos")
+                )
+
+                context = {
+                    "form": form,
+                    "miembro": miembro,
+                    "modo": "editar",
+                    "todos_miembros": todos_miembros,
+                    "familiares": familiares_qs,
+                    "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+
+                    # flags para UI (si luego quieres bloquear en el template)
+                    "bloquear_estado": True,
+                    "bloquear_identidad": True,
+                }
+                return render(request, "miembros_app/miembro_form.html", context)
+
 
             # =============================
             # Lógica de edad mínima
