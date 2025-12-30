@@ -489,18 +489,76 @@ def _genero_label(miembro):
 # ============================================================
 # ASIGNACIÓN (VISTA + AJAX)
 # ============================================================
+def get_unidades_con_nivel(queryset=None):
+    """
+    Devuelve las unidades ordenadas jerárquicamente con su nivel de profundidad.
+    """
+    if queryset is None:
+        queryset = Unidad.objects.filter(activa=True, visible=True)
+    
+    unidades = list(queryset.select_related('tipo', 'categoria', 'padre'))
+    
+    # Calcular nivel para cada unidad
+    def calcular_nivel(unidad, cache={}):
+        if unidad.id in cache:
+            return cache[unidad.id]
+        
+        if unidad.padre is None:
+            nivel = 0
+        else:
+            nivel = calcular_nivel(unidad.padre, cache) + 1
+        
+        cache[unidad.id] = nivel
+        return nivel
+    
+    # Asignar nivel a cada unidad
+    for unidad in unidades:
+        unidad.nivel = calcular_nivel(unidad)
+    
+    # Ordenar jerárquicamente
+    def ordenar_jerarquico(unidades):
+        # Crear diccionario de hijos
+        hijos_de = {}
+        raices = []
+        
+        for u in unidades:
+            padre_id = u.padre_id if u.padre else None
+            if padre_id is None:
+                raices.append(u)
+            else:
+                if padre_id not in hijos_de:
+                    hijos_de[padre_id] = []
+                hijos_de[padre_id].append(u)
+        
+        # Ordenar recursivamente
+        resultado = []
+        
+        def agregar_con_hijos(unidad):
+            resultado.append(unidad)
+            hijos = hijos_de.get(unidad.id, [])
+            for hijo in sorted(hijos, key=lambda x: (x.orden, x.nombre)):
+                agregar_con_hijos(hijo)
+        
+        for raiz in sorted(raices, key=lambda x: (x.orden, x.nombre)):
+            agregar_con_hijos(raiz)
+        
+        return resultado
+    
+    return ordenar_jerarquico(unidades)
 
 @login_required
-def asignacion_unidad(request):
-    unidades = Unidad.objects.filter(activa=True).order_by("nombre")
-    roles = RolUnidad.objects.filter(activo=True).order_by("orden", "nombre")
 
-    # NO precargamos personas, se cargan por AJAX al guardar contexto
-    return render(request, "estructura_app/asignacion_unidad.html", {
-        "unidades": unidades,
-        "roles": roles,
-        "personas": [],
-    })
+# En tu vista de asignación:
+def asignacion_unidad(request):
+    unidades = get_unidades_con_nivel()
+    roles = RolUnidad.objects.filter(activo=True)
+    
+    context = {
+        'unidades': unidades,
+        'roles': roles,
+    }
+    return render(request, 'estructura_app/asignacion_unidad.html', context)
+
 
 def _get_edad_value(miembro):
     """

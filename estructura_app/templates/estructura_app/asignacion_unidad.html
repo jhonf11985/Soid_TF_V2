@@ -49,17 +49,75 @@
                 </div>
                 <div class="au-card-body">
                     <div class="au-field">
-                        <label for="select-unidad">Seleccionar unidad</label>
-                        <select id="select-unidad">
-                            <option value="">Selecciona una unidad...</option>
-                            {% if unidades %}
-                                {% for unidad in unidades %}
-                                    <option value="{{ unidad.id }}">{{ unidad.nombre }}</option>
-                                {% endfor %}
-                            {% else %}
-                                <option value="" disabled>No hay unidades disponibles</option>
-                            {% endif %}
-                        </select>
+                        <label>Seleccionar unidad</label>
+                        
+                        <!-- ═══════════════════════════════════════════════════
+                             DROPDOWN JERÁRQUICO DE UNIDADES
+                             ═══════════════════════════════════════════════════ -->
+                        <div class="unit-dropdown" id="unit-dropdown">
+                            <!-- Trigger button -->
+                            <button type="button" class="unit-trigger" id="unit-trigger">
+                                <span class="unit-trigger-text" id="unit-trigger-text">
+                                    <span class="material-icons" style="font-size: 18px; color: #6c757d;">apartment</span>
+                                    <span>Selecciona una unidad...</span>
+                                </span>
+                                <span class="material-icons unit-arrow">expand_more</span>
+                            </button>
+                            
+                            <!-- Panel desplegable -->
+                            <div class="unit-panel" id="unit-panel">
+                                <!-- Buscador -->
+                                <div class="unit-search-box">
+                                    <span class="material-icons">search</span>
+                                    <input type="text" id="unit-search-input" placeholder="Buscar unidad...">
+                                </div>
+                                
+                                <!-- Lista de unidades -->
+                                <div class="unit-list" id="unit-list">
+                                    {% for unidad in unidades %}
+                                    <div class="unit-option" 
+                                         data-id="{{ unidad.id }}"
+                                         data-nombre="{{ unidad.nombre }}"
+                                         data-tipo="{{ unidad.tipo.nombre }}"
+                                         data-icono="{{ unidad.tipo.icono|default:'folder' }}"
+                                         data-categoria="{{ unidad.categoria.nombre }}"
+                                         data-categoria-slug="{{ unidad.categoria.codigo|default:unidad.categoria.nombre|slugify }}"
+                                         data-nivel="{{ unidad.nivel|default:0 }}"
+                                         data-search="{{ unidad.nombre|lower }} {{ unidad.tipo.nombre|lower }} {{ unidad.categoria.nombre|lower }}">
+                                        
+                                        <!-- Indentación según nivel -->
+                                        <span class="unit-indent" style="width: {{ unidad.nivel|default:0 }}0px;"></span>
+                                        
+                                        <!-- Conector visual (solo si tiene padre) -->
+                                        {% if unidad.nivel|default:0 > 0 %}
+                                        <span class="unit-connector">└</span>
+                                        {% endif %}
+                                        
+                                        <!-- Icono del tipo -->
+                                        <span class="unit-icon">
+                                            <span class="material-icons">{{ unidad.tipo.icono|default:"folder" }}</span>
+                                        </span>
+                                        
+                                        <!-- Nombre -->
+                                        <span class="unit-name">{{ unidad.nombre }}</span>
+                                        
+                                        <!-- Badge de categoría -->
+                                        <span class="unit-badge" data-cat="{{ unidad.categoria.codigo|default:unidad.categoria.nombre|slugify }}">
+                                            {{ unidad.categoria.nombre }}
+                                        </span>
+                                    </div>
+                                    {% empty %}
+                                    <div class="unit-empty">
+                                        <span class="material-icons">info</span>
+                                        No hay unidades disponibles
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Input oculto para compatibilidad -->
+                        <input type="hidden" id="select-unidad" name="unidad" value="">
                     </div>
 
                     <!-- Info de la unidad -->
@@ -193,18 +251,101 @@
      ══════════════════════════════════════════════════════════════════════════ -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // ─── Referencias DOM ───────────────────────────────────────────────────
-    const selectUnidad = document.getElementById('select-unidad');
+    // ═══════════════════════════════════════════════════════════════════════
+    // DROPDOWN JERÁRQUICO DE UNIDADES
+    // ═══════════════════════════════════════════════════════════════════════
+    const dropdown = document.getElementById('unit-dropdown');
+    const trigger = document.getElementById('unit-trigger');
+    const triggerText = document.getElementById('unit-trigger-text');
+    const panel = document.getElementById('unit-panel');
+    const unitSearchInput = document.getElementById('unit-search-input');
+    const unitList = document.getElementById('unit-list');
+    const selectUnidad = document.getElementById('select-unidad'); // Hidden input
+    const unitOptions = unitList.querySelectorAll('.unit-option');
+    
+    // Toggle dropdown
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('open');
+        if (dropdown.classList.contains('open')) {
+            unitSearchInput.focus();
+            unitSearchInput.value = '';
+            unitOptions.forEach(o => o.classList.remove('hidden'));
+        }
+    });
+    
+    // Cerrar al hacer click fuera
+    document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('open');
+        }
+    });
+    
+    // Cerrar con Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            dropdown.classList.remove('open');
+        }
+    });
+    
+    // Buscar unidades
+    unitSearchInput.addEventListener('input', () => {
+        const term = unitSearchInput.value.toLowerCase().trim();
+        unitOptions.forEach(opt => {
+            const searchText = opt.dataset.search || '';
+            opt.classList.toggle('hidden', term !== '' && !searchText.includes(term));
+        });
+    });
+    
+    // Seleccionar unidad
+    unitOptions.forEach(opt => {
+        opt.addEventListener('click', () => {
+            // Quitar selección anterior
+            unitOptions.forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            
+            // Actualizar hidden input
+            const id = opt.dataset.id;
+            selectUnidad.value = id;
+            
+            // Actualizar trigger
+            const nombre = opt.dataset.nombre;
+            const icono = opt.dataset.icono || 'folder';
+            const categoria = opt.dataset.categoria;
+            const catSlug = opt.dataset.categoriaSlug || categoria.toLowerCase().replace(/\s+/g, '-');
+            
+            triggerText.innerHTML = `
+                <span class="unit-trigger-icon">
+                    <span class="material-icons">${icono}</span>
+                </span>
+                <span>${nombre}</span>
+                <span class="unit-badge" data-cat="${catSlug}">${categoria}</span>
+            `;
+            trigger.classList.add('has-selection');
+            
+            // Cerrar dropdown
+            dropdown.classList.remove('open');
+            
+            // Disparar evento change para compatibilidad con lógica existente
+            selectUnidad.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LÓGICA ORIGINAL (sin cambios)
+    // ═══════════════════════════════════════════════════════════════════════
+    
     const selectRol = document.getElementById('select-rol');
-    // ─── Precargar unidad desde la URL (?unidad_id=) ─────────────
+    
+    // Precargar unidad desde la URL (?unidad_id=)
     const params = new URLSearchParams(window.location.search);
     const unidadFromUrl = params.get('unidad_id');
 
-    if (unidadFromUrl && selectUnidad) {
-        selectUnidad.value = unidadFromUrl;
-
-        // Disparamos el cambio como si el usuario la hubiera elegido
-        selectUnidad.dispatchEvent(new Event('change', { bubbles: true }));
+    if (unidadFromUrl) {
+        const opt = unitList.querySelector(`[data-id="${unidadFromUrl}"]`);
+        if (opt) {
+            opt.click();
+        }
     }
 
     const tbody = document.getElementById('personas-tbody');
@@ -217,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAsignar = document.getElementById('btn-asignar');
     const btnRemover = document.getElementById('btn-remover');
 
-    // ─── Modal salida masiva ─────────────────────────────────────────
+    // Modal salida masiva
     const modalSalida = document.getElementById('au-modal-salida');
     const modalClose = document.getElementById('au-modal-close');
     const modalCancel = document.getElementById('au-salida-cancel');
@@ -238,10 +379,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewSelect = document.getElementById('view-filter-select');
     const footerCount = document.getElementById('footer-count');
 
-    // ─── Estado ────────────────────────────────────────────────────────────
+    // Estado
     const selectedIds = new Set();
 
-    // ─── Utilidades ────────────────────────────────────────────────────────
+    // Utilidades
     function getCookie(name) {
         const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
         return m ? decodeURIComponent(m[2]) : '';
@@ -299,18 +440,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function todayISO() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function getSelectedUnidadText() {
+        const selectedOpt = unitList.querySelector('.unit-option.selected');
+        return selectedOpt ? selectedOpt.dataset.nombre : '—';
     }
 
     function openModalSalida() {
         if (!modalSalida) return;
 
-        // Resumen
-        const unidadTxt = selectUnidad?.options?.[selectUnidad.selectedIndex]?.text || '—';
+        const unidadTxt = getSelectedUnidadText();
         const rolTxt = selectRol?.options?.[selectRol.selectedIndex]?.text || '—';
         const n = selectedIds.size;
 
@@ -318,7 +463,6 @@ document.addEventListener('DOMContentLoaded', () => {
             salidaResumen.textContent = `Unidad: ${unidadTxt} · Rol: ${rolTxt} · Seleccionados: ${n}`;
         }
 
-        // Defaults
         if (salidaFecha) salidaFecha.value = todayISO();
         if (salidaMotivo) salidaMotivo.value = '';
         if (salidaNotas) salidaNotas.value = '';
@@ -345,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return map[slug] || `Solo ${slug}`;
     }
 
-    // ─── Filtros ───────────────────────────────────────────────────────────
+    // Filtros
     function buildViewFilterOptions(reglasAplicadas, personas) {
         const allowed = new Set(['activo']);
         const r = reglasAplicadas || {};
@@ -393,10 +537,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyFilters() {
-        const q = (searchInput?.value || '').trim().toLowerCase();
-        const mode = viewSelect ? viewSelect.value : 'todos';
-
-        const rows = document.querySelectorAll('#personas-tbody tr[data-estado]');
+        const q = (searchInput?.value || '').toLowerCase().trim();
+        const mode = viewSelect?.value || 'todos';
+        const rows = tbody.querySelectorAll('tr[data-id]');
         let visibleCount = 0;
 
         rows.forEach(row => {
@@ -427,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ─── Renderizado de filas ──────────────────────────────────────────────
+    // Renderizado de filas
     function rowHTML(p) {
         const estadoSlug = normalizeEstadoSlug(p.estado_slug);
         const enUnidadBadge = p.ya_en_unidad
@@ -467,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    // ─── Selección ─────────────────────────────────────────────────────────
+    // Selección
     function attachSelectionHandlers() {
         tbody.querySelectorAll('.au-checkbox[data-check]').forEach(chk => {
             chk.addEventListener('click', (ev) => {
@@ -534,7 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSelectedUI();
     }
 
-    // ─── API: Guardar y Cargar ─────────────────────────────────────────────
+    // API: Guardar y Cargar
     async function guardarYcargar() {
         const unidadId = selectUnidad.value;
         const rolId = selectRol.value;
@@ -589,7 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
             infoMiembros.textContent = data2.unidad?.miembros_actuales ?? 0;
 
             const personas = data2.personas || [];
-            // ─── Contexto de liderazgo ───────────────────────────
+            // Contexto de liderazgo
             const reglasUnidad = data2.unidad?.reglas_aplicadas || {};
             const permiteLiderazgo = !!reglasUnidad.permite_liderazgo;
 
@@ -633,6 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateGuardarState();
         }
     }
+
     function validarContextoLiderazgoUI() {
         const ctx = window.__contextoAsignacion;
         if (!ctx) return true;
@@ -644,7 +788,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Si el rol NO es liderazgo, no hacemos nada especial
         if (rolTipo !== 'LIDERAZGO') {
-            // No fuerces aquí: updateSelectedUI ya decide por selectedIds
             return true;
         }
 
@@ -666,7 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    // ─── API: Asignar ──────────────────────────────────────────────────────
+    // API: Asignar
     async function aplicarAsignacion() {
         const unidadId = selectUnidad.value;
         const rolId = selectRol.value;
@@ -720,7 +863,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // En vez de confirm(), abrimos el modal
         openModalSalida();
     }
 
@@ -799,7 +941,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // ─── Event Listeners ───────────────────────────────────────────────────
+    // Event Listeners
     selectUnidad.addEventListener('change', () => {
         updateGuardarState();
         unitInfo.classList.toggle('au-visible', !!selectUnidad.value);
@@ -829,11 +971,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAsignar) btnAsignar.addEventListener('click', aplicarAsignacion);
     if (btnRemover) btnRemover.addEventListener('click', aplicarRemocion);
 
-        // Modal events
+    // Modal events
     if (modalClose) modalClose.addEventListener('click', closeModalSalida);
     if (modalCancel) modalCancel.addEventListener('click', closeModalSalida);
 
-    // Click fuera (opcional, pero útil)
+    // Click fuera
     const backdrop = modalSalida?.querySelector('.au-modal-backdrop');
     if (backdrop) backdrop.addEventListener('click', closeModalSalida);
 
@@ -843,7 +985,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewSelect) viewSelect.addEventListener('change', applyFilters);
     if (searchInput) searchInput.addEventListener('input', applyFilters);
 
-    // ─── Estado inicial ────────────────────────────────────────────────────
+    // Estado inicial
     unitInfo.classList.remove('au-visible');
     renderEmpty("Selecciona una unidad y un rol para comenzar");
     updateGuardarState();
@@ -979,13 +1121,14 @@ document.addEventListener('DOMContentLoaded', () => {
     grid-template-columns: 1fr 1fr auto;
     gap: 16px;
     align-items: start;
+    overflow: visible;
 }
 
 .au-card {
     background: #fff;
     border: 1px solid var(--au-gray-300);
     border-radius: var(--au-radius);
-    overflow: hidden;
+    overflow: visible;
     box-shadow: var(--au-shadow);
 }
 
@@ -1008,6 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 .au-card-body {
     padding: 16px;
+    overflow: visible;
 }
 
 .au-card-actions {
@@ -1048,6 +1192,275 @@ document.addEventListener('DOMContentLoaded', () => {
 .au-field select:focus {
     outline: none;
     border-color: var(--au-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DROPDOWN JERÁRQUICO DE UNIDADES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.unit-dropdown {
+    position: relative;
+    width: 100%;
+    z-index: 100;
+}
+
+.unit-dropdown.open {
+    z-index: 9999;
+}
+
+.unit-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid var(--au-gray-300);
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--au-gray-700);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    min-height: 42px;
+}
+
+.unit-trigger:hover {
+    border-color: var(--au-gray-500);
+}
+
+.unit-trigger:focus {
+    outline: none;
+    border-color: var(--au-primary);
+    box-shadow: 0 0 0 2px rgba(1, 126, 132, 0.15);
+}
+
+.unit-trigger-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.unit-arrow {
+    font-size: 20px;
+    color: var(--au-gray-500);
+    transition: transform 0.2s ease;
+}
+
+.unit-dropdown.open .unit-arrow {
+    transform: rotate(180deg);
+}
+
+.unit-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--au-gray-300);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    z-index: 9999;
+    display: none;
+    max-height: 360px;
+    overflow: hidden;
+}
+
+.unit-dropdown.open .unit-panel {
+    display: block;
+    animation: unitDropdownIn 0.15s ease;
+}
+
+@keyframes unitDropdownIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.unit-search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--au-gray-200);
+    background: var(--au-gray-100);
+}
+
+.unit-search-box .material-icons {
+    font-size: 18px;
+    color: var(--au-gray-500);
+}
+
+.unit-search-box input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    outline: none;
+    color: var(--au-gray-900);
+}
+
+.unit-search-box input::placeholder {
+    color: var(--au-gray-500);
+}
+
+.unit-list {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 6px;
+}
+
+.unit-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.unit-option:hover {
+    background: var(--au-gray-100);
+}
+
+.unit-option.selected {
+    background: #e8f4f4;
+}
+
+.unit-option.hidden {
+    display: none;
+}
+
+.unit-indent {
+    flex-shrink: 0;
+}
+
+.unit-connector {
+    flex-shrink: 0;
+    color: var(--au-gray-300);
+    font-size: 12px;
+    font-family: monospace;
+    margin-right: 2px;
+}
+
+.unit-icon {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: var(--au-gray-200);
+}
+
+.unit-icon .material-icons {
+    font-size: 15px;
+    color: var(--au-gray-700);
+}
+
+.unit-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--au-gray-900);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.unit-badge {
+    flex-shrink: 0;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-radius: 3px;
+    background: var(--au-gray-200);
+    color: var(--au-gray-700);
+}
+
+/* Colores por categoría */
+.unit-badge[data-cat="congregacion"],
+.unit-badge[data-cat="iglesia"] {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.unit-badge[data-cat="ministerio"] {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.unit-badge[data-cat="celula"],
+.unit-badge[data-cat="grupo"],
+.unit-badge[data-cat="pequeno-grupo"] {
+    background: #fff3cd;
+    color: #664d03;
+}
+
+.unit-badge[data-cat="departamento"] {
+    background: #e2d9f3;
+    color: #59359a;
+}
+
+.unit-badge[data-cat="zona"],
+.unit-badge[data-cat="region"],
+.unit-badge[data-cat="area"] {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.unit-badge[data-cat="comision"],
+.unit-badge[data-cat="comite"],
+.unit-badge[data-cat="junta"] {
+    background: #cff4fc;
+    color: #055160;
+}
+
+.unit-badge[data-cat="servicio"],
+.unit-badge[data-cat="equipo"] {
+    background: #e2e3e5;
+    color: #41464b;
+}
+
+.unit-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    color: var(--au-gray-500);
+    font-size: 13px;
+}
+
+.unit-trigger.has-selection {
+    color: var(--au-gray-900);
+}
+
+.unit-trigger.has-selection .unit-trigger-icon {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--au-gray-200);
+    border-radius: 3px;
+}
+
+.unit-trigger.has-selection .unit-trigger-icon .material-icons {
+    font-size: 14px;
+    color: var(--au-gray-700);
+}
+
+.unit-trigger .unit-badge {
+    margin-left: auto;
+    margin-right: 8px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1138,6 +1551,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 .au-btn-danger:hover:not(:disabled) {
     background: #c82333;
+}
+
+.au-btn-light {
+    background: var(--au-gray-200);
+    color: var(--au-gray-700);
+}
+
+.au-btn-light:hover:not(:disabled) {
+    background: var(--au-gray-300);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1454,166 +1876,148 @@ document.addEventListener('DOMContentLoaded', () => {
         align-self: flex-end;
     }
 }
+
 .au-input-error {
     border-color: #dc3545 !important;
     background: #fff5f5 !important;
 }
 
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
    MODAL (Salida masiva)
-   ───────────────────────────────────────────── */
-/* ─────────────────────────────────────────────
-   MODAL (Salida masiva) - estilo AU
-   ───────────────────────────────────────────── */
-.au-modal{
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: none;
+   ═══════════════════════════════════════════════════════════════════════════ */
+.au-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
 }
 
-.au-modal-backdrop{
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, .45); /* oscuro suave */
-  backdrop-filter: blur(2px);
+.au-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, .45);
+    backdrop-filter: blur(2px);
 }
 
-.au-modal-card{
-  position: relative;
-  width: min(620px, calc(100% - 24px));
-  margin: 56px auto;
-  background: var(--au-white, #fff);
-  border: 1px solid var(--au-border, var(--au-gray-200));
-  border-radius: var(--au-radius, 12px);
-  box-shadow: var(--au-shadow, 0 12px 40px rgba(2, 6, 23, .18));
-  overflow: hidden;
+.au-modal-card {
+    position: relative;
+    width: min(620px, calc(100% - 24px));
+    margin: 56px auto;
+    background: #fff;
+    border: 1px solid var(--au-gray-200);
+    border-radius: var(--au-radius);
+    box-shadow: 0 12px 40px rgba(2, 6, 23, .18);
+    overflow: hidden;
 }
 
-.au-modal-header{
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--au-surface, var(--au-gray-50));
-  border-bottom: 1px solid var(--au-border, var(--au-gray-200));
+.au-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--au-gray-100);
+    border-bottom: 1px solid var(--au-gray-200);
 }
 
-.au-modal-header h3{
-  margin: 0;
-  font-size: 15px;
-  font-weight: 650;
-  color: var(--au-text, var(--au-gray-900));
-  letter-spacing: .2px;
+.au-modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 650;
+    color: var(--au-gray-900);
+    letter-spacing: .2px;
 }
 
-.au-modal-body{
-  padding: 16px;
+.au-modal-body {
+    padding: 16px;
 }
 
-.au-modal-footer{
-  display:flex;
-  justify-content:flex-end;
-  gap: 10px;
-  padding: 14px 16px;
-  background: var(--au-surface, var(--au-gray-50));
-  border-top: 1px solid var(--au-border, var(--au-gray-200));
+.au-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--au-gray-100);
+    border-top: 1px solid var(--au-gray-200);
 }
 
-/* Inputs/labels compatibles con tu look */
-.au-label{
-  display:block;
-  margin: 10px 0 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--au-muted, var(--au-gray-600));
+.au-label {
+    display: block;
+    margin: 10px 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--au-gray-500);
 }
 
-.au-input{
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--au-border, var(--au-gray-200));
-  border-radius: 10px;
-  font-size: 14px;
-  background: var(--au-white, #fff);
-  color: var(--au-text, var(--au-gray-900));
+.au-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--au-gray-200);
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+    color: var(--au-gray-900);
 }
 
-.au-input:focus{
-  outline: none;
-  border-color: var(--au-primary, #0ea5e9);
-  box-shadow: 0 0 0 3px rgba(14,165,233,.15);
+.au-input:focus {
+    outline: none;
+    border-color: var(--au-primary);
+    box-shadow: 0 0 0 3px rgba(1, 126, 132, .15);
 }
 
-.au-muted{
-  color: var(--au-muted, var(--au-gray-500));
-  font-size: 13px;
-  margin: 0 0 12px;
+.au-muted {
+    color: var(--au-gray-500);
+    font-size: 13px;
+    margin: 0 0 12px;
 }
 
-/* Botón cerrar más discreto */
-.au-modal-header .au-btn{
-  padding: 8px 10px;
-  border-radius: 10px;
+.au-modal-header .au-btn {
+    padding: 8px 10px;
+    border-radius: 6px;
 }
-
-/* Danger button: respeta tu au-btn-danger si existe */
-.au-btn-danger{
-  background: var(--au-danger, #ef4444);
-  color: #fff;
-  border: 1px solid rgba(0,0,0,.05);
-}
-
-.au-btn-danger:hover:not(:disabled){
-  filter: brightness(.95);
-}
-
-
 </style>
 
 <!-- Modal Salida Masiva -->
 <div id="au-modal-salida" class="au-modal" style="display:none;">
-  <div class="au-modal-backdrop"></div>
-  <div class="au-modal-card">
-    <div class="au-modal-header">
-      <h3>Dar salida (en masa)</h3>
-      <button type="button" id="au-modal-close" class="au-btn au-btn-light">Cerrar</button>
+    <div class="au-modal-backdrop"></div>
+    <div class="au-modal-card">
+        <div class="au-modal-header">
+            <h3>Dar salida (en masa)</h3>
+            <button type="button" id="au-modal-close" class="au-btn au-btn-light">Cerrar</button>
+        </div>
+
+        <div class="au-modal-body">
+            <p id="au-salida-resumen" class="au-muted"></p>
+
+            <label class="au-label">Fecha de salida</label>
+            <input type="date" id="au-salida-fecha" class="au-input">
+
+            <label class="au-label" style="margin-top:10px;">Motivo</label>
+            <select id="au-salida-motivo" class="au-input">
+                <option value="">— Selecciona —</option>
+                <option value="Cierre de unidad">Cierre de unidad</option>
+                <option value="Reorganización">Reorganización</option>
+                <option value="Traslado">Traslado</option>
+                <option value="Fin de período">Fin de período</option>
+                <option value="Error de asignación">Error de asignación</option>
+                <option value="Cambio de Estado">Cambio de Estado</option>
+                <option value="Otro">Otro</option>
+            </select>
+
+            <label class="au-label" style="margin-top:10px;">Notas (opcional)</label>
+            <textarea id="au-salida-notas" class="au-input" rows="3" placeholder="Detalle adicional…"></textarea>
+
+            <label style="display:flex; gap:10px; align-items:center; margin-top:12px;">
+                <input type="checkbox" id="au-salida-confirm">
+                <span>Confirmo que deseo dar salida a los seleccionados</span>
+            </label>
+        </div>
+
+        <div class="au-modal-footer">
+            <button type="button" id="au-salida-cancel" class="au-btn au-btn-light">Cancelar</button>
+            <button type="button" id="au-salida-aplicar" class="au-btn au-btn-danger">Confirmar salida</button>
+        </div>
     </div>
-
-    <div class="au-modal-body">
-      <p id="au-salida-resumen" class="au-muted"></p>
-
-      <label class="au-label">Fecha de salida</label>
-      <input type="date" id="au-salida-fecha" class="au-input">
-
-      <label class="au-label" style="margin-top:10px;">Motivo</label>
-      <select id="au-salida-motivo" class="au-input">
-        <option value="">— Selecciona —</option>
-        <option value="Cierre de unidad">Cierre de unidad</option>
-        <option value="Reorganización">Reorganización</option>
-        <option value="Traslado">Traslado</option>
-        <option value="Fin de período">Fin de período</option>
-        <option value="Error de asignación">Error de asignación</option>
-        <option value="Error de asignación">Cambio de Estado</option>
-        <option value="Otro">Otro</option>
-      </select>
-
-      <label class="au-label" style="margin-top:10px;">Notas (opcional)</label>
-      <textarea id="au-salida-notas" class="au-input" rows="3" placeholder="Detalle adicional…"></textarea>
-
-      <label style="display:flex; gap:10px; align-items:center; margin-top:12px;">
-        <input type="checkbox" id="au-salida-confirm">
-        <span>Confirmo que deseo dar salida a los seleccionados</span>
-      </label>
-    </div>
-
-    <div class="au-modal-footer">
-      <button type="button" id="au-salida-cancel" class="au-btn au-btn-light">Cancelar</button>
-      <button type="button" id="au-salida-aplicar" class="au-btn au-btn-danger">Confirmar salida</button>
-    </div>
-  </div>
 </div>
-
 
 {% endblock %}
