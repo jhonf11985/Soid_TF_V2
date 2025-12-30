@@ -83,6 +83,8 @@
                                          data-categoria="{{ unidad.categoria.nombre }}"
                                          data-categoria-slug="{{ unidad.categoria.codigo|default:unidad.categoria.nombre|slugify }}"
                                          data-nivel="{{ unidad.nivel|default:0 }}"
+                                         data-imagen="{% if unidad.imagen %}{{ unidad.imagen.url }}{% endif %}"
+                                         data-iniciales="{{ unidad.nombre|make_list|first|upper }}"
                                          data-search="{{ unidad.nombre|lower }} {{ unidad.tipo.nombre|lower }} {{ unidad.categoria.nombre|lower }}">
                                         
                                         <!-- Indentación según nivel -->
@@ -93,9 +95,13 @@
                                         <span class="unit-connector">└</span>
                                         {% endif %}
                                         
-                                        <!-- Icono del tipo -->
-                                        <span class="unit-icon">
-                                            <span class="material-icons">{{ unidad.tipo.icono|default:"folder" }}</span>
+                                        <!-- Avatar: imagen o iniciales -->
+                                        <span class="unit-avatar">
+                                            {% if unidad.imagen %}
+                                                <img src="{{ unidad.imagen.url }}" alt="{{ unidad.nombre }}">
+                                            {% else %}
+                                                <span class="unit-initials">{{ unidad.nombre|make_list|first|upper }}</span>
+                                            {% endif %}
                                         </span>
                                         
                                         <!-- Nombre -->
@@ -142,17 +148,67 @@
                 </div>
                 <div class="au-card-body">
                     <div class="au-field">
-                        <label for="select-rol">Seleccionar rol</label>
-                        <select id="select-rol">
-                            <option value="">Selecciona un rol...</option>
-                            {% if roles %}
-                                {% for rol in roles %}
-                                    <option value="{{ rol.id }}" data-tipo="{{ rol.tipo }}">{{ rol.nombre }}</option>
-                                {% endfor %}
-                            {% else %}
-                                <option value="" disabled>No hay roles disponibles</option>
-                            {% endif %}
-                        </select>
+                        <label>Seleccionar rol</label>
+                        
+                        <!-- ═══════════════════════════════════════════════════
+                             DROPDOWN DE ROLES AGRUPADO POR TIPO
+                             ═══════════════════════════════════════════════════ -->
+                        <div class="rol-dropdown" id="rol-dropdown">
+                            <!-- Trigger button -->
+                            <button type="button" class="rol-trigger" id="rol-trigger">
+                                <span class="rol-trigger-text" id="rol-trigger-text">
+                                    <span class="material-icons" style="font-size: 18px; color: #6c757d;">badge</span>
+                                    <span>Selecciona un rol...</span>
+                                </span>
+                                <span class="material-icons rol-arrow">expand_more</span>
+                            </button>
+                            
+                            <!-- Panel desplegable -->
+                            <div class="rol-panel" id="rol-panel">
+                                <div class="rol-list" id="rol-list">
+                                    {% regroup roles by tipo as roles_por_tipo %}
+                                    {% for grupo in roles_por_tipo %}
+                                    <div class="rol-group">
+                                        <div class="rol-group-header" data-tipo="{{ grupo.grouper }}">
+                                            {% if grupo.grouper == 'LIDERAZGO' %}
+                                                <span class="material-icons">stars</span>
+                                                <span>Liderazgo</span>
+                                            {% elif grupo.grouper == 'PARTICIPACION' %}
+                                                <span class="material-icons">groups</span>
+                                                <span>Participación</span>
+                                            {% else %}
+                                                <span class="material-icons">build</span>
+                                                <span>Servicio</span>
+                                            {% endif %}
+                                        </div>
+                                        {% for rol in grupo.list %}
+                                        <div class="rol-option" 
+                                             data-id="{{ rol.id }}"
+                                             data-nombre="{{ rol.nombre }}"
+                                             data-tipo="{{ rol.tipo }}"
+                                             data-descripcion="{{ rol.descripcion|default:'' }}">
+                                            <span class="rol-indicator" data-tipo="{{ rol.tipo }}"></span>
+                                            <span class="rol-name">{{ rol.nombre }}</span>
+                                            {% if rol.descripcion %}
+                                            <span class="rol-desc-icon" title="{{ rol.descripcion }}">
+                                                <span class="material-icons">info_outline</span>
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% empty %}
+                                    <div class="rol-empty">
+                                        <span class="material-icons">info</span>
+                                        No hay roles disponibles
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Input oculto para compatibilidad -->
+                        <input type="hidden" id="select-rol" name="rol" value="">
                     </div>
                 </div>
             </div>
@@ -266,6 +322,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Toggle dropdown
     trigger.addEventListener('click', (e) => {
         e.stopPropagation();
+        // Cerrar dropdown de roles si está abierto
+        if (typeof rolDropdown !== 'undefined') {
+            rolDropdown.classList.remove('open');
+        }
         dropdown.classList.toggle('open');
         if (dropdown.classList.contains('open')) {
             unitSearchInput.focus();
@@ -279,12 +339,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!dropdown.contains(e.target)) {
             dropdown.classList.remove('open');
         }
+        if (!rolDropdown.contains(e.target)) {
+            rolDropdown.classList.remove('open');
+        }
     });
     
-    // Cerrar con Escape
+    // Cerrar con Escape (ambos dropdowns)
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             dropdown.classList.remove('open');
+            rolDropdown.classList.remove('open');
         }
     });
     
@@ -310,14 +374,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Actualizar trigger
             const nombre = opt.dataset.nombre;
-            const icono = opt.dataset.icono || 'folder';
             const categoria = opt.dataset.categoria;
             const catSlug = opt.dataset.categoriaSlug || categoria.toLowerCase().replace(/\s+/g, '-');
+            const imagen = opt.dataset.imagen;
+            const iniciales = opt.dataset.iniciales || nombre.charAt(0).toUpperCase();
+            
+            // Avatar HTML
+            const avatarHTML = imagen 
+                ? `<img src="${imagen}" alt="${nombre}">`
+                : `<span class="unit-initials">${iniciales}</span>`;
             
             triggerText.innerHTML = `
-                <span class="unit-trigger-icon">
-                    <span class="material-icons">${icono}</span>
-                </span>
+                <span class="unit-avatar">${avatarHTML}</span>
                 <span>${nombre}</span>
                 <span class="unit-badge" data-cat="${catSlug}">${categoria}</span>
             `;
@@ -335,7 +403,59 @@ document.addEventListener('DOMContentLoaded', () => {
     // LÓGICA ORIGINAL (sin cambios)
     // ═══════════════════════════════════════════════════════════════════════
     
-    const selectRol = document.getElementById('select-rol');
+    // ═══════════════════════════════════════════════════════════════════════
+    // DROPDOWN DE ROLES AGRUPADO
+    // ═══════════════════════════════════════════════════════════════════════
+    const rolDropdown = document.getElementById('rol-dropdown');
+    const rolTrigger = document.getElementById('rol-trigger');
+    const rolTriggerText = document.getElementById('rol-trigger-text');
+    const rolPanel = document.getElementById('rol-panel');
+    const rolList = document.getElementById('rol-list');
+    const selectRol = document.getElementById('select-rol'); // Hidden input
+    const rolOptions = rolList.querySelectorAll('.rol-option');
+    
+    // Toggle dropdown roles
+    rolTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Cerrar dropdown de unidades si está abierto
+        dropdown.classList.remove('open');
+        rolDropdown.classList.toggle('open');
+    });
+    
+    // Seleccionar rol
+    rolOptions.forEach(opt => {
+        opt.addEventListener('click', () => {
+            // Quitar selección anterior
+            rolOptions.forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            
+            // Actualizar hidden input
+            const id = opt.dataset.id;
+            selectRol.value = id;
+            
+            // Obtener datos
+            const nombre = opt.dataset.nombre;
+            const tipo = opt.dataset.tipo;
+            
+            // Etiqueta del tipo
+            const tipoLabel = tipo === 'LIDERAZGO' ? 'Liderazgo' 
+                           : tipo === 'PARTICIPACION' ? 'Participación' 
+                           : 'Servicio';
+            
+            rolTriggerText.innerHTML = `
+                <span class="rol-indicator" data-tipo="${tipo}"></span>
+                <span>${nombre}</span>
+                <span class="rol-tipo-badge" data-tipo="${tipo}">${tipoLabel}</span>
+            `;
+            rolTrigger.classList.add('has-selection');
+            
+            // Cerrar dropdown
+            rolDropdown.classList.remove('open');
+            
+            // Disparar evento change
+            selectRol.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
     
     // Precargar unidad desde la URL (?unidad_id=)
     const params = new URLSearchParams(window.location.search);
@@ -452,11 +572,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return selectedOpt ? selectedOpt.dataset.nombre : '—';
     }
 
+    function getSelectedRolText() {
+        const selectedOpt = rolList.querySelector('.rol-option.selected');
+        return selectedOpt ? selectedOpt.dataset.nombre : '—';
+    }
+
     function openModalSalida() {
         if (!modalSalida) return;
 
         const unidadTxt = getSelectedUnidadText();
-        const rolTxt = selectRol?.options?.[selectRol.selectedIndex]?.text || '—';
+        const rolTxt = getSelectedRolText();
         const n = selectedIds.size;
 
         if (salidaResumen) {
@@ -736,9 +861,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const reglasUnidad = data2.unidad?.reglas_aplicadas || {};
             const permiteLiderazgo = !!reglasUnidad.permite_liderazgo;
 
-            // Tipo de rol seleccionado
-            const rolOption = selectRol.options[selectRol.selectedIndex];
-            const rolTipo = rolOption?.dataset?.tipo || null;
+            // Tipo de rol seleccionado (desde el dropdown personalizado)
+            const rolOptionSelected = rolList.querySelector('.rol-option.selected');
+            const rolTipo = rolOptionSelected?.dataset?.tipo || null;
 
             // Guardamos en estado global
             window.__contextoAsignacion = {
@@ -783,8 +908,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const { permiteLiderazgo, rolTipo } = ctx;
 
-        // Limpieza visual por defecto
-        selectRol.classList.remove('au-input-error');
+        // Limpieza visual por defecto (aplicar al trigger del dropdown)
+        rolTrigger.classList.remove('au-input-error');
 
         // Si el rol NO es liderazgo, no hacemos nada especial
         if (rolTipo !== 'LIDERAZGO') {
@@ -793,7 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Rol es liderazgo pero la unidad NO lo permite
         if (!permiteLiderazgo) {
-            selectRol.classList.add('au-input-error');
+            rolTrigger.classList.add('au-input-error');
 
             if (btnAsignar) btnAsignar.disabled = true;
             if (btnRemover) btnRemover.disabled = true;
@@ -1349,20 +1474,28 @@ document.addEventListener('DOMContentLoaded', () => {
     margin-right: 2px;
 }
 
-.unit-icon {
+.unit-avatar {
     flex-shrink: 0;
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
-    background: var(--au-gray-200);
+    border-radius: 6px;
+    background: linear-gradient(135deg, #e8f4f4 0%, #d4e8e8 100%);
+    overflow: hidden;
 }
 
-.unit-icon .material-icons {
-    font-size: 15px;
-    color: var(--au-gray-700);
+.unit-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.unit-initials {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--au-primary);
 }
 
 .unit-name {
@@ -1443,24 +1576,266 @@ document.addEventListener('DOMContentLoaded', () => {
     color: var(--au-gray-900);
 }
 
-.unit-trigger.has-selection .unit-trigger-icon {
-    width: 22px;
-    height: 22px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--au-gray-200);
-    border-radius: 3px;
-}
-
-.unit-trigger.has-selection .unit-trigger-icon .material-icons {
-    font-size: 14px;
-    color: var(--au-gray-700);
+.unit-trigger .unit-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
 }
 
 .unit-trigger .unit-badge {
     margin-left: auto;
     margin-right: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DROPDOWN DE ROLES AGRUPADO POR TIPO
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rol-dropdown {
+    position: relative;
+    width: 100%;
+    z-index: 100;
+}
+
+.rol-dropdown.open {
+    z-index: 9998;
+}
+
+.rol-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid var(--au-gray-300);
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--au-gray-700);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    min-height: 42px;
+}
+
+.rol-trigger:hover {
+    border-color: var(--au-gray-500);
+}
+
+.rol-trigger:focus {
+    outline: none;
+    border-color: var(--au-primary);
+    box-shadow: 0 0 0 2px rgba(1, 126, 132, 0.15);
+}
+
+.rol-trigger-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rol-arrow {
+    font-size: 20px;
+    color: var(--au-gray-500);
+    transition: transform 0.2s ease;
+}
+
+.rol-dropdown.open .rol-arrow {
+    transform: rotate(180deg);
+}
+
+.rol-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--au-gray-300);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    z-index: 9998;
+    display: none;
+    max-height: 320px;
+    overflow: hidden;
+}
+
+.rol-dropdown.open .rol-panel {
+    display: block;
+    animation: rolDropdownIn 0.15s ease;
+}
+
+@keyframes rolDropdownIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.rol-list {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+}
+
+/* Grupos */
+.rol-group {
+    margin-bottom: 4px;
+}
+
+.rol-group:last-child {
+    margin-bottom: 0;
+}
+
+.rol-group-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--au-gray-500);
+    background: var(--au-gray-100);
+    border-radius: 4px;
+    margin-bottom: 2px;
+}
+
+.rol-group-header .material-icons {
+    font-size: 14px;
+}
+
+.rol-group-header[data-tipo="LIDERAZGO"] {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.rol-group-header[data-tipo="LIDERAZGO"] .material-icons {
+    color: #d97706;
+}
+
+.rol-group-header[data-tipo="PARTICIPACION"] {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.rol-group-header[data-tipo="PARTICIPACION"] .material-icons {
+    color: #3b82f6;
+}
+
+.rol-group-header[data-tipo="TRABAJO"] {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.rol-group-header[data-tipo="TRABAJO"] .material-icons {
+    color: #10b981;
+}
+
+/* Opciones */
+.rol-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    padding-left: 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.rol-option:hover {
+    background: var(--au-gray-100);
+}
+
+.rol-option.selected {
+    background: #e8f4f4;
+}
+
+.rol-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.rol-indicator[data-tipo="LIDERAZGO"] {
+    background: #f59e0b;
+}
+
+.rol-indicator[data-tipo="PARTICIPACION"] {
+    background: #3b82f6;
+}
+
+.rol-indicator[data-tipo="TRABAJO"] {
+    background: #10b981;
+}
+
+.rol-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--au-gray-900);
+}
+
+.rol-desc-icon {
+    color: var(--au-gray-400);
+    cursor: help;
+}
+
+.rol-desc-icon .material-icons {
+    font-size: 16px;
+}
+
+.rol-desc-icon:hover {
+    color: var(--au-gray-600);
+}
+
+.rol-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    color: var(--au-gray-500);
+    font-size: 13px;
+}
+
+/* Trigger con selección */
+.rol-trigger.has-selection {
+    color: var(--au-gray-900);
+}
+
+.rol-trigger .rol-indicator {
+    width: 10px;
+    height: 10px;
+}
+
+.rol-tipo-badge {
+    padding: 2px 6px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-radius: 3px;
+    margin-left: auto;
+}
+
+.rol-tipo-badge[data-tipo="LIDERAZGO"] {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.rol-tipo-badge[data-tipo="PARTICIPACION"] {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.rol-tipo-badge[data-tipo="TRABAJO"] {
+    background: #d1fae5;
+    color: #065f46;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
