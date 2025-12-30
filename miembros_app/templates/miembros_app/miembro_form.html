@@ -14,6 +14,8 @@
 <form method="post" enctype="multipart/form-data" class="odoo-form">
     {% csrf_token %}
 
+
+
     <!-- ══════════════════════════════════════════════════════════════════
          BARRA SUPERIOR (Control Bar)
          ══════════════════════════════════════════════════════════════════ -->
@@ -263,7 +265,9 @@
 
                     <div class="odoo-field">
                         <label class="odoo-label">Estado miembro</label>
-                        <select name="estado_miembro" id="id_estado_miembro" class="odoo-input">
+                        <select name="estado_miembro" id="id_estado_miembro" class="odoo-input"
+                           {% if bloquear_estado %}disabled{% endif %}>
+
                             {% for value, label in form.estado_miembro.field.choices %}
                                 <option value="{{ value }}" {% if form.estado_miembro.value == value %}selected{% endif %}>
                                     {{ label }}
@@ -271,6 +275,16 @@
                             {% endfor %}
                         </select>
                     </div>
+                        {% if bloquear_estado %}
+                {# Si está disabled, NO se envía en POST, así que lo preservamos #}
+                <input type="hidden" name="estado_miembro" value="{{ form.estado_miembro.value|default:'' }}">
+
+                <div class="odoo-field-help" style="margin-top:6px;">
+                    🔒 No puedes cambiar el estado porque este miembro está asignado a una unidad.
+                    Primero retíralo de la(s) unidad(es).
+                </div>
+                {% endif %}
+
 
                     <div class="odoo-field odoo-field-checkbox">
                         <label class="odoo-checkbox-label">
@@ -851,6 +865,31 @@
      ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
+.odoo-alert{
+  padding:10px 12px;
+  border-radius:10px;
+  margin-bottom:8px;
+  font-size:14px;
+  border:1px solid transparent;
+}
+
+.odoo-alert-danger{
+  background:#fdecec;
+  border-color:#f5c2c7;
+  color:#842029;
+}
+
+.odoo-alert-success{
+  background:#eaf7ee;
+  border-color:#b7e4c7;
+  color:#0f5132;
+}
+
+.odoo-alert-info{
+  background:#e8f4fd;
+  border-color:#b6daff;
+  color:#084298;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    RESET Y BASE - Estilo Odoo

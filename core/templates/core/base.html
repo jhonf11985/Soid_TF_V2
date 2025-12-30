@@ -343,19 +343,37 @@ document.addEventListener("DOMContentLoaded", function () {
   (function () {
     if (!("serviceWorker" in navigator)) return;
 
+    // ✅ No registrar SW en desarrollo
+    const isDev =
+      location.hostname === "127.0.0.1" ||
+      location.hostname === "localhost" ||
+      location.hostname.endsWith(".local");
+
+    if (isDev) {
+      // Si ya había un SW registrado de antes, lo desregistramos
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => reg.unregister());
+      });
+
+      // Y limpiamos caches para que no te sirva plantillas viejas
+      if ("caches" in window) {
+        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+      }
+
+      return;
+    }
+
+    // ✅ Producción: registrar normal
     window.addEventListener("load", function () {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
-        .then(function (reg) {
-          // OK
-          // console.log("SW registrado:", reg.scope);
-        })
         .catch(function (err) {
           console.warn("SW NO registrado:", err);
         });
     });
   })();
 </script>
+
 {% block extra_js %}{% endblock %}
 </body>
 </html>

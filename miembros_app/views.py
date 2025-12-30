@@ -1,3 +1,4 @@
+from urllib import request
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.db.models import Q, Count
@@ -695,11 +696,14 @@ def miembro_crear(request):
 # EDITAR MIEMBRO
 # -------------------------------------
 class MiembroUpdateView(View):
+    
     def get(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
         form = MiembroForm(instance=miembro)
 
         edad_minima = get_edad_minima_miembro_oficial()
+
+       
 
         familiares_qs = (
             MiembroRelacion.objects
@@ -717,7 +721,7 @@ class MiembroUpdateView(View):
         )
 
 
-
+        bloquear_estado = _miembro_tiene_asignacion_en_unidades(miembro)
         context = {
             "form": form,
             "miembro": miembro,
@@ -725,11 +729,14 @@ class MiembroUpdateView(View):
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+              "bloquear_estado": bloquear_estado,
+
             
         }
         return render(request, "miembros_app/miembro_form.html", context)
 
     def post(self, request, pk):
+
         miembro = get_object_or_404(Miembro, pk=pk)
         edad_minima = get_edad_minima_miembro_oficial()
 
@@ -754,9 +761,12 @@ class MiembroUpdateView(View):
         form = MiembroForm(request.POST, request.FILES, instance=miembro)
 
         if form.is_valid():
+            
             miembro_editado = form.save(commit=False)
 
+            # =============================
             # Lógica de edad mínima
+            # =============================
             edad = None
             if miembro_editado.fecha_nacimiento:
                 hoy = date.today()
@@ -776,8 +786,61 @@ class MiembroUpdateView(View):
                         ),
                     )
 
+            # =============================
+            # BLOQUEO: NO CAMBIAR ESTADO/ACTIVO SI ESTÁ EN UNIDADES
+            # =============================
+            estado_antes = miembro.estado_miembro
+            activo_antes = miembro.activo
+
+            estado_despues = miembro_editado.estado_miembro
+            activo_despues = miembro_editado.activo
+
+            cambio_estado = (estado_antes != estado_despues)
+            cambio_activo = (activo_antes != activo_despues)
+
+            if (cambio_estado or cambio_activo) and _miembro_tiene_asignacion_en_unidades(miembro):
+                form.add_error(
+                    "estado_miembro",
+                    "No puedes cambiar el estado mientras el miembro esté asignado a una unidad. "
+                    "Primero quítalo de sus unidades (liderazgo/miembros/equipo)."
+                )
+                messages.error(
+                    request,
+                    "Acción bloqueada: este miembro está asignado a una o más unidades. "
+                    "Primero debes retirarlo de esas unidades."
+                )
+
+                # Volvemos a renderizar la misma pantalla con el formulario (NO guarda)
+                familiares_qs = (
+                    MiembroRelacion.objects
+                    .filter(miembro=miembro)
+                    .select_related("familiar")
+                )
+                familiares_ids = familiares_qs.values_list("familiar_id", flat=True)
+
+                todos_miembros = (
+                    Miembro.objects
+                    .exclude(pk=miembro.pk)
+                    .exclude(pk__in=familiares_ids)
+                    .order_by("nombres", "apellidos")
+                )
+
+                context = {
+                    "form": form,
+                    "miembro": miembro,
+                    "modo": "editar",
+                    "todos_miembros": todos_miembros,
+                    "familiares": familiares_qs,
+                    "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+                    "bloquear_estado": True
+                   
+                }
+                return render(request, "miembros_app/miembro_form.html", context)
+
             miembro_editado.save()
 
+      
+    
             # =============================
             # GUARDAR FAMILIARES (líneas)
             # =============================
@@ -853,6 +916,7 @@ class MiembroUpdateView(View):
             .exclude(pk__in=familiares_ids)
             .order_by("nombres", "apellidos")
         )
+        
 
         context = {
             "form": form,
@@ -861,6 +925,9 @@ class MiembroUpdateView(View):
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+          
+
+
         }
         return render(request, "miembros_app/miembro_form.html", context)
 
@@ -2621,3 +2688,45 @@ def miembro_dar_salida(request, pk):
         "form": form,
     }
     return render(request, "miembros_app/miembro_salida_form.html", context)
+
+def _miembro_tiene_asignacion_en_unidades(miembro_obj):
+    """
+    True si el miembro está asignado a alguna unidad (UnidadCargo o UnidadMembresia).
+    Intenta filtrar solo asignaciones vigentes si el modelo tiene campo de fin/activo.
+    """
+    if not _modulo_estructura_activo():
+        return False
+
+    modelos = ("UnidadMembresia", "UnidadCargo")
+
+    for model_name in modelos:
+        Modelo = _safe_get_model("estructura_app", model_name)
+        if not Modelo:
+            continue
+
+        # Detectar automáticamente el FK a Miembro dentro del modelo
+        fk_name = None
+        for f in Modelo._meta.fields:
+            if getattr(f, "remote_field", None) and f.remote_field and f.remote_field.model == Miembro:
+                fk_name = f.name
+                break
+
+        if not fk_name:
+            continue
+
+        qs = Modelo.objects.filter(**{fk_name: miembro_obj})
+
+        # Si hay un campo de fin, intentamos tomar solo "vigentes"
+        for end_field in ("fecha_fin", "fecha_final", "fecha_hasta", "fecha_salida"):
+            if hasattr(Modelo, end_field):
+                qs = qs.filter(**{f"{end_field}__isnull": True})
+                break
+
+        # Si existe un boolean "activo" en el modelo, también lo usamos
+        if hasattr(Modelo, "activo"):
+            qs = qs.filter(activo=True)
+
+        if qs.exists():
+            return True
+
+    return False
