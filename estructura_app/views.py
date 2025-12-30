@@ -122,6 +122,7 @@ def unidad_crear(request):
         "form": form,
         "modo": "crear",
         "unidad": None,
+        "reglas": {},  # ← AGREGAR ESTO
     }
     return render(request, "estructura_app/unidad_form.html", context)
 
@@ -130,8 +131,13 @@ def unidad_editar(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
     bloqueada = unidad.esta_bloqueada
-
     if request.method == "POST":
+        print("="*50)
+        print("POST DATA:")
+        for key in request.POST:
+            if "regla" in key:
+                print(f"  {key}: {request.POST[key]}")
+        print("="*50)
 
         # 🔒 SI ESTÁ BLOQUEADA → SOLO GUARDAMOS IMAGEN
         if bloqueada:
@@ -151,8 +157,9 @@ def unidad_editar(request, pk):
             unidad_obj.edad_min = _to_int_from_post(request.POST, "edad_min")
             unidad_obj.edad_max = _to_int_from_post(request.POST, "edad_max")
 
-            if any(k.startswith("regla_") for k in request.POST.keys()):
-                unidad_obj.reglas = _reglas_mvp_from_post(request.POST)
+            # ✅ siempre recalculamos reglas (manteniendo valores anteriores si un checkbox no vino)
+            unidad_obj.reglas = _reglas_mvp_from_post(request.POST, base_reglas=(unidad.reglas or {}))
+
 
             unidad_obj.save()
             messages.success(request, "Cambios guardados correctamente.")
@@ -175,6 +182,7 @@ def unidad_editar(request, pk):
         "modo": "editar",
         "unidad": unidad,
         "bloqueada": bloqueada,
+        "reglas": unidad.reglas or {},  # ← AGREGAR ESTO
     })
 
 
@@ -364,61 +372,64 @@ def unidad_detalle(request, pk):
         "capacidad_excedida": capacidad_excedida,
     })
 
-
-def _reglas_mvp_from_post(post):
+def _reglas_mvp_from_post(post, base_reglas=None):
     """
     Lee reglas MVP desde request.POST y devuelve un dict listo para guardar en JSONField.
-    'solo_activos' bloquea todas las demás reglas de membresía.
+    
+    CLAVE: Los checkboxes HTML NO se envían cuando están desmarcados.
+    En un POST, ausencia de checkbox = False (el usuario lo desmarcó).
     """
 
-    def is_on(name, default=False):
-        if name not in post:
-            return default
-        return post.get(name) in ("on", "1", "true", "True")
+    base_reglas = base_reglas or {}
 
     def to_int(name, default=None):
         raw = (post.get(name) or "").strip()
         if raw == "":
+            key = name.replace("regla_", "")
+            if key in base_reglas and base_reglas.get(key) is not None:
+                return base_reglas.get(key)
             return default
         try:
             return int(raw)
         except ValueError:
             return default
 
-    solo_activos = is_on("regla_solo_activos", default=False)
+    # ── Checkboxes: si está en POST = True, si no está = False ──
+    solo_activos = post.get("regla_solo_activos") in ("on", "1", "true", "True")
+    admite_hombres = post.get("regla_admite_hombres") in ("on", "1", "true", "True")
+    admite_mujeres = post.get("regla_admite_mujeres") in ("on", "1", "true", "True")
+    permite_liderazgo = post.get("regla_perm_liderazgo") in ("on", "1", "true", "True")
+    permite_subunidades = post.get("regla_perm_subunidades") in ("on", "1", "true", "True")
+    requiere_aprobacion = post.get("regla_req_aprob_lider") in ("on", "1", "true", "True")
+    unidad_privada = post.get("regla_unidad_privada") in ("on", "1", "true", "True")
+
+    # Estados (se fuerzan a False si solo_activos está marcado)
+    permite_observacion = False if solo_activos else post.get("regla_perm_observacion") in ("on", "1", "true", "True")
+    permite_pasivos = False if solo_activos else post.get("regla_perm_pasivos") in ("on", "1", "true", "True")
+    permite_disciplina = False if solo_activos else post.get("regla_perm_disciplina") in ("on", "1", "true", "True")
+    permite_catecumenos = False if solo_activos else post.get("regla_perm_catecumenos") in ("on", "1", "true", "True")
+    permite_nuevos = False if solo_activos else post.get("regla_perm_nuevos") in ("on", "1", "true", "True")
+    permite_menores = False if solo_activos else post.get("regla_perm_menores") in ("on", "1", "true", "True")
 
     reglas = {
         "solo_activos": solo_activos,
-
-        # ── Reglas por género (NUEVO) ──
-        # Default: True/True (admite ambos)
-        "admite_hombres": is_on("regla_admite_hombres", default=True),
-        "admite_mujeres": is_on("regla_admite_mujeres", default=True),
-
-        # ── Reglas de estado ──
-        "permite_observacion": False if solo_activos else is_on("regla_perm_observacion"),
-        "permite_pasivos": False if solo_activos else is_on("regla_perm_pasivos"),
-        "permite_disciplina": False if solo_activos else is_on("regla_perm_disciplina"),
-        "permite_catecumenos": False if solo_activos else is_on("regla_perm_catecumenos"),
-        "permite_nuevos": False if solo_activos else is_on("regla_perm_nuevos"),
-        "permite_menores": False if solo_activos else is_on("regla_perm_menores"),
-
+        "admite_hombres": admite_hombres,
+        "admite_mujeres": admite_mujeres,
+        "permite_observacion": permite_observacion,
+        "permite_pasivos": permite_pasivos,
+        "permite_disciplina": permite_disciplina,
+        "permite_catecumenos": permite_catecumenos,
+        "permite_nuevos": permite_nuevos,
+        "permite_menores": permite_menores,
         "lider_edad_min": to_int("regla_lider_edad_min"),
         "lider_edad_max": to_int("regla_lider_edad_max"),
-
-        # ── Liderazgo ──
-        "permite_liderazgo": is_on("regla_perm_liderazgo", default=True),
+        "permite_liderazgo": permite_liderazgo,
         "limite_lideres": to_int("regla_limite_lideres"),
-
-        # ── Estructura ──
         "capacidad_maxima": to_int("regla_capacidad_maxima"),
-        "permite_subunidades": is_on("regla_perm_subunidades", default=True),
-
-        # ── Control ──
-        "requiere_aprobacion_lider": is_on("regla_req_aprob_lider"),
-        "unidad_privada": is_on("regla_unidad_privada"),
+        "permite_subunidades": permite_subunidades,
+        "requiere_aprobacion_lider": requiere_aprobacion,
+        "unidad_privada": unidad_privada,
     }
-
 
     return reglas
 
@@ -459,6 +470,21 @@ def _estado_slug(estado):
            .replace("ó", "o").replace("ú", "u").replace("ñ", "n"))
     return s
 
+def _genero_label(miembro):
+    """Devuelve 'Hombre' / 'Mujer' / '—' de forma robusta."""
+    try:
+        label = (miembro.get_genero_display() or "").strip()
+        if label:
+            return label
+    except Exception:
+        pass
+
+    raw = (getattr(miembro, "genero", "") or "").strip().lower()
+    if raw in ("m", "masculino", "hombre"):
+        return "Hombre"
+    if raw in ("f", "femenino", "mujer"):
+        return "Mujer"
+    return "—"
 
 # ============================================================
 # ASIGNACIÓN (VISTA + AJAX)
@@ -590,6 +616,35 @@ def asignacion_unidad_contexto(request):
     qs = Miembro.objects.filter(activo=True)
 
     # =====================================================
+    # REGLA DE GÉNERO (hombres / mujeres)
+    # =====================================================
+    admite_hombres = bool(reglas.get("admite_hombres", True))
+    admite_mujeres = bool(reglas.get("admite_mujeres", True))
+
+    # Si NO es liderazgo, aplicamos la regla de género
+    if not rol_es_liderazgo:
+
+        # Si solo admite hombres
+        if admite_hombres and not admite_mujeres:
+            qs = qs.filter(
+                Q(genero__iexact="m") |
+                Q(genero__iexact="masculino") |
+                Q(genero__iexact="hombre")
+            )
+
+        # Si solo admite mujeres
+        elif admite_mujeres and not admite_hombres:
+            qs = qs.filter(
+                Q(genero__iexact="f") |
+                Q(genero__iexact="femenino") |
+                Q(genero__iexact="mujer")
+            )
+
+        # Si ninguno está permitido → no mostrar nadie
+        elif not admite_hombres and not admite_mujeres:
+            qs = qs.none()
+
+    # =====================================================
     # REGLA CRÍTICA:
     # - Si unidad es solo_activos -> solo activos (por estado pastoral)
     # - Si rol seleccionado es liderazgo -> solo activos SIEMPRE
@@ -678,6 +733,7 @@ def asignacion_unidad_contexto(request):
             "nombre": f"{p.nombres} {p.apellidos}",
             "codigo": p.codigo_miembro or "",
             "edad": getattr(p, "edad", None),
+            "genero": _genero_label(p),
             "estado": estado_label,
             "estado_slug": estado_slug,
             "categoria": p.get_categoria_edad_display() if p.categoria_edad else "",
