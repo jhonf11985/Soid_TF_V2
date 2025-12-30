@@ -390,6 +390,11 @@ def _reglas_mvp_from_post(post):
     reglas = {
         "solo_activos": solo_activos,
 
+        # ── Reglas por género (NUEVO) ──
+        # Default: True/True (admite ambos)
+        "admite_hombres": is_on("regla_admite_hombres", default=True),
+        "admite_mujeres": is_on("regla_admite_mujeres", default=True),
+
         # ── Reglas de estado ──
         "permite_observacion": False if solo_activos else is_on("regla_perm_observacion"),
         "permite_pasivos": False if solo_activos else is_on("regla_perm_pasivos"),
@@ -409,11 +414,11 @@ def _reglas_mvp_from_post(post):
         "capacidad_maxima": to_int("regla_capacidad_maxima"),
         "permite_subunidades": is_on("regla_perm_subunidades", default=True),
 
-
         # ── Control ──
         "requiere_aprobacion_lider": is_on("regla_req_aprob_lider"),
         "unidad_privada": is_on("regla_unidad_privada"),
     }
+
 
     return reglas
 

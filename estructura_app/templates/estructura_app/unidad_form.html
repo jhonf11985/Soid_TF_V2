@@ -330,7 +330,38 @@
                                 
                                 <!-- SECCIÓN: MEMBRESÍA -->
                                 <div class="odoo-section-title">MEMBRESÍA</div>
-                                
+
+                                <div class="odoo-section-field">
+                                    <label class="odoo-section-label">Admite hombres</label>
+                                    <label class="odoo-switch-inline">
+                                        <input type="checkbox" name="regla_admite_hombres" id="id_regla_admite_hombres"
+                                            {% if modo == "crear" %}
+                                                checked
+                                            {% else %}
+                                                {% if r.admite_hombres|default:1 %}checked{% endif %}
+                                            {% endif %}>
+                                        <span class="odoo-switch-slider-sm"></span>
+                                    </label>
+                                </div>
+
+                                <div class="odoo-section-field">
+                                    <label class="odoo-section-label">Admite mujeres</label>
+                                    <label class="odoo-switch-inline">
+                                        <input type="checkbox" name="regla_admite_mujeres" id="id_regla_admite_mujeres"
+                                            {% if modo == "crear" %}
+                                                checked
+                                            {% else %}
+                                                {% if r.admite_mujeres|default:1 %}checked{% endif %}
+                                            {% endif %}>
+                                        <span class="odoo-switch-slider-sm"></span>
+                                    </label>
+                                </div>
+                                <div id="genero-error"
+                                    style="display:none; color:#d9534f; font-size:13px; margin-top:4px;">
+                                    Debes admitir al menos hombres o mujeres.
+                                </div>
+
+
                                 <div class="odoo-section-field">
                                     <label class="odoo-section-label">Solo activos</label>
                                     <label class="odoo-switch-inline">
@@ -339,6 +370,7 @@
                                         <span class="odoo-switch-slider-sm"></span>
                                     </label>
                                 </div>
+
 
                                 <div class="odoo-section-field">
                                     <label class="odoo-section-label">Capacidad máxima</label>
@@ -825,6 +857,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
     chk.addEventListener("change", sync);
     sync(); // estado inicial
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const chkHombres = document.getElementById("id_regla_admite_hombres");
+    const chkMujeres = document.getElementById("id_regla_admite_mujeres");
+    const errorBox = document.getElementById("genero-error");
+
+    // intenta detectar el botón guardar (ajusta si el id es otro)
+    const btnGuardar = document.querySelector('button[type="submit"]');
+
+    function validarGenero() {
+        const admiteHombres = chkHombres.checked;
+        const admiteMujeres = chkMujeres.checked;
+
+        if (!admiteHombres && !admiteMujeres) {
+            errorBox.style.display = "block";
+            if (btnGuardar) btnGuardar.disabled = true;
+        } else {
+            errorBox.style.display = "none";
+            if (btnGuardar) btnGuardar.disabled = false;
+        }
+    }
+
+    chkHombres.addEventListener("change", validarGenero);
+    chkMujeres.addEventListener("change", validarGenero);
+
+    // validar al cargar (por si editan una unidad vieja)
+    validarGenero();
 });
 </script>
 
