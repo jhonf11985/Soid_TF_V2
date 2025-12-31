@@ -6,12 +6,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block titulo %}Recibo{% endblock %}</title>
 
-    <!-- CSS GLOBAL DE RECIBOS -->
-   <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Tipografía -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
+    <!-- CSS GLOBAL DE RECIBOS -->
     <link rel="stylesheet" href="{% static 'core/css/recibos.css' %}">
+
+    <!-- ✅ OVERRIDES CRÍTICOS PARA QUE NO SALGA EN BLANCO AL IMPRIMIR -->
+    <style>
+        html, body{
+            font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+        /* Encabezado institucional (solo impresión) */
+        .only-print{ display:none; }
+
+        .receipt-print{
+            width: 80mm;
+            max-width: 80mm;
+            margin: 12px auto 20px auto;
+        }
+
+        .receipt{
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .receipt-divider{
+            border-top: 1px dashed #d1d5db;
+            margin: 6px 0;
+        }
+
+        .receipt-header{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            text-align:center;
+            margin-bottom: 6px;
+        }
+
+        .receipt-header-logo{
+            display:block;
+            margin: 0 auto 6px auto;
+            max-height: 45px;
+        }
+
+        .receipt-header-title{
+            margin: 0;
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: .3px;
+        }
+
+        .receipt-header-denom{
+            font-size: 10px;
+            color: #4b5563;
+            margin-top: 2px;
+        }
+
+        .receipt-header-lema{
+            font-size: 10px;
+            color: #6b7280;
+            margin-top: 3px;
+            font-style: italic;
+        }
+
+        .receipt-contact{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            gap: 1px;
+            font-size: 10px;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        .receipt-contact span{
+            display:block;
+            text-align:center;
+            white-space: nowrap;
+        }
+
+        .receipt-address{
+            text-align:center;
+            font-size: 10px;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+        .receipt-signatures{
+            display:flex;
+            justify-content:space-between;
+            gap: 12px;
+            margin-top: 18px;
+            font-size: 10px;
+        }
+
+        .signature-line{
+            width: 48%;
+            text-align:center;
+        }
+
+        .signature-line .line{
+            border-top: 1px solid #111827;
+            margin-bottom: 4px;
+        }
+
+        .signature-line .label{
+            color: #374151;
+        }
+
+        @media print{
+            html, body{
+                background: #fff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* ✅ FORZAR VISIBILIDAD (esto evita el “en blanco”) */
+            .receipt-print,
+            .receipt{
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                transform: none !important;
+                position: static !important;
+            }
+
+            /* Quitar margen “bonito” de pantalla */
+            .receipt-print{
+                margin: 0 !important;
+                width: 80mm !important;
+                max-width: 80mm !important;
+            }
+            .receipt{
+                border: 0 !important;
+                border-radius: 0 !important;
+                padding: 6mm 4mm !important;
+            }
+
+            .only-print{ display:block !important; }
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
 </head>
 
 <body>
@@ -19,6 +164,48 @@
     <!-- CONTENEDOR DE IMPRESIÓN -->
     <div class="receipt-print">
         <div class="receipt">
+
+            <!-- ✅ ENCABEZADO INSTITUCIONAL (SOLO IMPRESIÓN) -->
+            <header class="receipt-header only-print">
+                {% if CFG.logo %}
+                    <img src="{{ CFG.logo.url }}"
+                         alt="{{ CFG.nombre_iglesia|default:'Logo iglesia' }}"
+                         class="receipt-header-logo">
+                {% endif %}
+
+                <h1 class="receipt-header-title">
+                    {% if CFG.nombre_iglesia %}
+                        {{ CFG.nombre_iglesia|upper }}
+                    {% else %}
+                        IGLESIA TORRE FUERTE
+                    {% endif %}
+                </h1>
+
+                {% if CFG.denominacion %}
+                    <div class="receipt-header-denom">{{ CFG.denominacion }}</div>
+                {% endif %}
+
+                {% if CFG.lema %}
+                    <div class="receipt-header-lema">“{{ CFG.lema }}”</div>
+                {% endif %}
+            </header>
+
+            {% if CFG.telefono_oficial or CFG.whatsapp_oficial or CFG.email_oficial or CFG.sitio_web %}
+                <div class="receipt-contact only-print">
+                    {% if CFG.telefono_oficial %}<span>📞 {{ CFG.telefono_oficial }}</span>{% endif %}
+                    {% if CFG.whatsapp_oficial %}<span>💬 {{ CFG.whatsapp_oficial }}</span>{% endif %}
+                    {% if CFG.email_oficial %}<span>✉ {{ CFG.email_oficial }}</span>{% endif %}
+                    {% if CFG.sitio_web %}<span>🌐 {{ CFG.sitio_web }}</span>{% endif %}
+                </div>
+            {% endif %}
+
+            {% if CFG.mostrar_direccion_en_reportes and CFG.direccion %}
+                <div class="receipt-address only-print">
+                    {{ CFG.direccion }}
+                </div>
+            {% endif %}
+
+            <div class="receipt-divider only-print"></div>
 
             {% block recibo_contenido %}
             <!-- Aquí cada módulo inyecta su recibo -->

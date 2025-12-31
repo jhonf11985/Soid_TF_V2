@@ -8,246 +8,418 @@
 
   <style>
     :root {
-      --primary: #1e293b;
-      --accent: #8b5cf6; /* Tono violeta para diferenciar transferencias */
-      --success: #10b981;
-      --danger: #ef4444;
-      --bg: #f8fafc;
-      --border: #e2e8f0;
+      --primary: #714B67;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --text-light: #9ca3af;
+      --success: #28a745;
+      --danger: #dc3545;
+      --border: #dee2e6;
+      --bg: #f8f9fa;
+      --bg-white: #ffffff;
     }
 
     @page { size: A4 landscape; margin: 10mm; }
 
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body { 
-      font-family: 'Inter', -apple-system, sans-serif; 
-      color: var(--primary); 
-      background-color: var(--bg);
-      margin: 0;
-      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.5;
     }
 
-    .report-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      background: #ffffff;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    }
-
-    /* Visibilidad */
+    /* Print */
     .print-only { display: none; }
     @media print {
-      body { background: white; padding: 0; }
-      .report-container { box-shadow: none; padding: 0; border-radius: 0; max-width: 100%; }
+      body { background: white; }
       .no-print { display: none !important; }
       .print-only { display: block !important; }
-      .table { border: 1px solid #eee; }
     }
 
-    /* Encabezado */
-    .header { 
-      display: flex; 
+    /* Control Panel - Odoo Style */
+    .o-control-panel {
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .o-cp-top {
+      display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center; 
-      border-bottom: 2px solid var(--bg); 
-      padding-bottom: 20px; 
-      margin-bottom: 24px; 
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
     }
-    .h-title { margin: 0; font-size: 22px; font-weight: 800; }
-    .muted { color: #64748b; font-size: 13px; }
 
-    /* Filtros */
-    .filters-form { 
-      display: flex; 
-      gap: 12px; 
-      flex-wrap: wrap; 
-      align-items: flex-end; 
-      padding: 20px; 
-      background: #f1f5f9;
-      border-radius: 12px; 
-      margin-bottom: 25px;
+    .o-cp-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
-    .f-group { display: flex; flex-direction: column; gap: 4px; }
-    .f-group label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; }
-    .f-control { 
-      padding: 8px 10px; 
-      border: 1px solid var(--border); 
-      border-radius: 8px; 
+
+    .o-cp-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .o-cp-buttons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .o-btn-export {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-white);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .o-btn-export:hover {
+      background: var(--bg);
+    }
+
+    /* Filter Pills - Odoo Style */
+    .o-cp-bottom {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 0;
+      flex-wrap: wrap;
+    }
+
+    .o-filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .o-filter-pill:hover {
+      border-color: var(--primary);
+      background: #faf5f8;
+    }
+
+    .o-filter-pill .material-icons {
+      font-size: 16px;
+      color: var(--text-muted);
+    }
+
+    .o-filter-pill select,
+    .o-filter-pill input {
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .o-cp-right {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .o-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-white);
+      color: var(--text);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .o-btn:hover {
+      background: var(--bg);
+    }
+
+    .o-btn .material-icons {
+      font-size: 16px;
+    }
+
+    /* Content */
+    .o-content {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Table - Odoo Style */
+    .o-table-wrapper {
+      background: var(--bg-white);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .o-table {
+      width: 100%;
+      border-collapse: collapse;
       font-size: 13px;
     }
 
-    /* Botones */
-    .btn { 
-      padding: 9px 16px; 
-      border-radius: 8px; 
-      cursor: pointer; 
-      font-weight: 600; 
-      display: inline-flex; 
-      align-items: center; 
-      gap: 6px;
-      border: 1px solid var(--border);
-      background: white;
-    }
-    .btn-primary { background: var(--primary); color: white; border: none; }
-
-    /* Tabla */
-    .table-wrapper { overflow-x: auto; }
-    .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    .table th { 
-      background: #f8fafc; 
-      text-align: left; 
-      padding: 12px;
-      font-size: 11px;
-      text-transform: uppercase;
-      color: #64748b;
-      border-bottom: 2px solid var(--border);
-    }
-    .table td { 
-      padding: 12px; 
+    .o-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: var(--bg-white);
       border-bottom: 1px solid var(--border);
-      font-size: 13px; 
+      white-space: nowrap;
     }
-    .right { text-align: right; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
-    
-    /* Pillas / Badges */
-    .pill {
-      padding: 4px 10px;
-      border-radius: 10px;
+
+    .o-table th.right {
+      text-align: right;
+    }
+
+    .o-table th.center {
+      text-align: center;
+    }
+
+    .o-table td {
+      padding: 10px 16px;
+      color: var(--text);
+      vertical-align: middle;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .o-table tr:hover {
+      background: #fafafa;
+    }
+
+    .o-table .right {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .o-table .center {
+      text-align: center;
+    }
+
+    .o-table .muted {
+      color: var(--text-light);
+    }
+
+    .o-table .bold {
+      font-weight: 600;
+    }
+
+    /* Route/Flow cell */
+    .route-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .route-arrow {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* User cell */
+    .user-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .user-cell .material-icons {
+      font-size: 16px;
+      color: var(--text-light);
+    }
+
+    /* Badges */
+    .o-badge {
+      display: inline-block;
+      padding: 2px 8px;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 500;
+      border-radius: 3px;
       text-transform: uppercase;
     }
-    .pill-ok { background: #ecfdf5; color: #059669; }
-    .pill-anul { background: #fef2f2; color: #dc2626; }
 
-    .route-info { display: flex; align-items: center; gap: 8px; font-weight: 500; }
-    .route-arrow { color: var(--accent); font-weight: 900; }
+    .o-badge-success { background: #d1fae5; color: #065f46; }
+    .o-badge-danger { background: #fee2e2; color: #b91c1c; }
+
+    /* Empty state */
+    .o-empty {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--text-muted);
+    }
+
+    .o-empty .material-icons {
+      font-size: 48px;
+      color: var(--border);
+      margin-bottom: 16px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .o-cp-bottom {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .o-cp-right {
+        margin-left: 0;
+        margin-top: 12px;
+        width: 100%;
+      }
+    }
   </style>
 </head>
 
 <body>
 
-  <div class="report-container">
-    
-    <div class="header no-print">
-      <div>
-        <h1 class="h-title">Auditoría de Transferencias</h1>
-        <div class="muted">Historial detallado de movimientos entre cuentas financieras</div>
+<!-- Control Panel -->
+<form method="get" class="o-control-panel no-print">
+  <div class="o-cp-top">
+    <div class="o-cp-left">
+      <div class="o-cp-buttons">
+        <button type="submit" name="print" value="1" class="o-btn-export">PDF</button>
       </div>
-      <span class="material-icons" style="font-size: 40px; color: var(--accent); opacity: 0.5;">compare_arrows</span>
+      <span class="o-cp-title">Auditoría de Transferencias</span>
     </div>
-
-    <div class="no-print">
-      <form method="get" class="filters-form">
-        <div class="f-group">
-          <label>Año</label>
-          <input class="f-control" type="number" name="year" value="{{ year }}" style="width:90px;">
-        </div>
-
-        <div class="f-group">
-          <label>Mes</label>
-          <select class="f-control" name="month">
-            {% for m, nombre in meses %}
-              <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ nombre }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="f-group">
-          <label>Cuenta vinculada</label>
-          <select class="f-control" name="cuenta" style="min-width:180px;">
-            <option value="">Todas las cuentas</option>
-            {% for c in cuentas %}
-              <option value="{{ c.id }}" {% if cuenta_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="f-group">
-          <label>Estado</label>
-          <select class="f-control" name="estado">
-            <option value="">Cualquier estado</option>
-            <option value="activo" {% if estado == "activo" %}selected{% endif %}>Activas</option>
-            <option value="anulado" {% if estado == "anulado" %}selected{% endif %}>Anuladas</option>
-          </select>
-        </div>
-
-        <div style="flex-grow: 1;"></div>
-
-        <button type="submit" class="btn"><span class="material-icons" style="font-size:18px">refresh</span></button>
-        <button type="submit" name="print" value="1" class="btn btn-primary"><span class="material-icons" style="font-size:18px">print</span> Imprimir</button>
-      </form>
-    </div>
-
-    <div class="header print-only">
-      <div>
-        <h1 class="h-title">REPORTE DE TRANSFERENCIAS ENTRE CUENTAS</h1>
-        <div class="muted">
-          Periodo: <strong>{{ mes_label }} {{ year }}</strong> 
-          <span style="margin: 0 10px">|</span>
-          Generado: {{ fecha_hoy|date:"d/m/Y" }}
-        </div>
-      </div>
-      <div class="right muted">
-        {% if CFG.nombre_organizacion %}{{ CFG.nombre_organizacion }}{% endif %}
-      </div>
-    </div>
-
-    <div class="table-wrapper">
-      <table class="table">
-        <thead>
-          <tr>
-            <th style="width: 100px;">Fecha</th>
-            <th>Flujo (Origen → Destino)</th>
-            <th class="right">Monto</th>
-            <th>Referencia / Nota</th>
-            <th>Usuario</th>
-            <th style="text-align: center;">Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for t in transferencias %}
-            <tr>
-              <td>{{ t.fecha|date:"d/m/Y" }}</td>
-              <td>
-                <div class="route-info">
-                    <span>{{ t.origen.nombre|default:"—" }}</span>
-                    <span class="route-arrow">→</span>
-                    <span>{{ t.destino.nombre|default:"—" }}</span>
-                </div>
-              </td>
-              <td class="right">{{ t.monto }}</td>
-              <td style="color: #64748b;">{{ t.referencia|default:"—" }}</td>
-              <td>
-                <small style="display: flex; align-items: center; gap: 4px;">
-                    <span class="material-icons" style="font-size:14px; color:#94a3b8">person</span>
-                    {% if t.creado_por %}{{ t.creado_por.get_full_name|default:t.creado_por.username }}{% else %}—{% endif %}
-                </small>
-              </td>
-              <td style="text-align: center;">
-                {% if t.estado == "anulado" %}
-                  <span class="pill pill-anul">Anulada</span>
-                {% else %}
-                  <span class="pill pill-ok">Activa</span>
-                {% endif %}
-              </td>
-            </tr>
-          {% empty %}
-            <tr>
-              <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
-                No se registraron transferencias en este periodo.
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
   </div>
 
-  {% if auto_print %}
-    <script>window.addEventListener('load', () => window.print());</script>
-  {% endif %}
+  <div class="o-cp-bottom">
+    <div class="o-filter-pill">
+      <span class="material-icons">event</span>
+      <select name="month">
+        {% for m, nombre in meses %}
+          <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ nombre }}</option>
+        {% endfor %}
+      </select>
+      <input type="number" name="year" value="{{ year }}" style="width: 60px;">
+    </div>
+
+    <div class="o-filter-pill">
+      <span class="material-icons">account_balance_wallet</span>
+      <select name="cuenta">
+        <option value="">Todas las cuentas</option>
+        {% for c in cuentas %}
+          <option value="{{ c.id }}" {% if cuenta_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="o-filter-pill">
+      <span class="material-icons">toggle_on</span>
+      <select name="estado">
+        <option value="">Cualquier estado</option>
+        <option value="activo" {% if estado == "activo" %}selected{% endif %}>Activas</option>
+        <option value="anulado" {% if estado == "anulado" %}selected{% endif %}>Anuladas</option>
+      </select>
+    </div>
+
+    <div class="o-cp-right">
+      <button type="submit" class="o-btn">
+        <span class="material-icons">refresh</span>
+      </button>
+      <a href="{% url 'finanzas_app:reportes_home' %}" class="o-btn">
+        <span class="material-icons">arrow_back</span>
+        Regresar
+      </a>
+    </div>
+  </div>
+</form>
+
+<!-- Print Header -->
+<div class="print-only" style="padding: 20px 24px; border-bottom: 1px solid #dee2e6;">
+  <h1 style="font-size: 18px; font-weight: 600; margin: 0 0 4px 0;">Auditoría de Transferencias</h1>
+  <p style="font-size: 13px; color: #6c757d; margin: 0;">
+    {{ mes_label }} {{ year }} · Generado: {{ fecha_hoy|date:"d/m/Y" }}
+    {% if CFG.nombre_organizacion %} · {{ CFG.nombre_organizacion }}{% endif %}
+  </p>
+</div>
+
+<!-- Content -->
+<div class="o-content">
+  <div class="o-table-wrapper">
+    <table class="o-table">
+      <thead>
+        <tr>
+          <th style="width: 100px;">Fecha</th>
+          <th>Flujo (Origen → Destino)</th>
+          <th class="right">Monto</th>
+          <th>Referencia</th>
+          <th>Usuario</th>
+          <th class="center">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transferencias %}
+        <tr>
+          <td>{{ t.fecha|date:"d/m/Y" }}</td>
+          <td>
+            <div class="route-cell">
+              <span>{{ t.origen.nombre|default:"—" }}</span>
+              <span class="route-arrow">→</span>
+              <span>{{ t.destino.nombre|default:"—" }}</span>
+            </div>
+          </td>
+          <td class="right bold">{{ t.monto }}</td>
+          <td class="muted">{{ t.referencia|default:"—" }}</td>
+          <td>
+            <span class="user-cell">
+              <span class="material-icons">person_outline</span>
+              {% if t.creado_por %}{{ t.creado_por.get_full_name|default:t.creado_por.username }}{% else %}—{% endif %}
+            </span>
+          </td>
+          <td class="center">
+            {% if t.estado == "anulado" %}
+              <span class="o-badge o-badge-danger">Anulada</span>
+            {% else %}
+              <span class="o-badge o-badge-success">Activa</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">
+            <div class="o-empty">
+              <span class="material-icons">compare_arrows</span>
+              <div>No se registraron transferencias en este periodo.</div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if auto_print %}
+  <script>window.addEventListener('load', () => window.print());</script>
+{% endif %}
+
 </body>
 </html>

@@ -1,0 +1,114 @@
+{% extends "core/print/base_recibo.html" %}
+
+{% block titulo %}Recibo · Egreso EG-{{ egreso.id|stringformat:"04d" }}{% endblock %}
+
+{% block recibo_contenido %}
+
+
+<div class="receipt-meta">
+  <div><span class="k">No. Documento</span> <span class="v mono">EG-{{ egreso.id|stringformat:"04d" }}</span></div>
+  <div><span class="k">Fecha Movimiento</span> <span class="v">{{ egreso.fecha|date:"d/m/Y" }}</span></div>
+</div>
+
+<div class="receipt-amount-box">
+  <div class="receipt-amount-label">Monto Total Pagado</div>
+  <div class="receipt-amount">RD$ {{ egreso.monto|floatformat:2 }}</div>
+</div>
+
+<div class="receipt-section">
+  <div class="receipt-section-title">Detalle del Movimiento</div>
+
+  <div class="receipt-row">
+    <span class="k">Categoría</span>
+    <span class="v">{{ egreso.categoria.nombre|default:"—" }}</span>
+  </div>
+
+  <div class="receipt-row">
+    <span class="k">Forma de pago</span>
+    <span class="v">{{ egreso.get_forma_pago_display|default:"—" }}</span>
+  </div>
+
+  <div class="receipt-row">
+    <span class="k">Cuenta Origen</span>
+    <span class="v">{{ egreso.cuenta.nombre|default:"—" }}</span>
+  </div>
+
+  {% if egreso.referencia %}
+  <div class="receipt-row">
+    <span class="k">Referencia / No. Cheque</span>
+    <span class="v mono">{{ egreso.referencia }}</span>
+  </div>
+  {% endif %}
+
+  {% if egreso.concepto %}
+  <div class="receipt-row">
+    <span class="k">Concepto</span>
+    <span class="v">{{ egreso.concepto }}</span>
+  </div>
+  {% endif %}
+
+</div>
+
+{% if egreso.persona_asociada %}
+<div class="receipt-section">
+  <div class="receipt-section-title">Pagado a</div>
+
+  <div class="receipt-row">
+    <span class="k">Nombre</span>
+    <span class="v">{{ egreso.persona_asociada }}</span>
+  </div>
+
+  {% if egreso.persona_asociada.codigo_tf %}
+  <div class="receipt-row">
+    <span class="k">Código Persona</span>
+    <span class="v mono">{{ egreso.persona_asociada.codigo_tf }}</span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="receipt-section">
+  <div class="receipt-section-title">Auditoría del Sistema</div>
+
+  <div class="receipt-row">
+    <span class="k">Registrado por</span>
+    <span class="v">{{ egreso.creado_por.get_full_name|default:egreso.creado_por.username|default:"Sistema" }}</span>
+  </div>
+
+  <div class="receipt-row">
+    <span class="k">Fecha de Registro</span>
+    <span class="v">{{ egreso.creado_en|date:"d/m/Y H:i"|default:"—" }}</span>
+  </div>
+
+  {% if egreso.estado %}
+  <div class="receipt-row">
+    <span class="k">Estado</span>
+    <span class="v">{{ egreso.estado }}</span>
+  </div>
+  {% endif %}
+</div>
+
+<div class="receipt-footer">
+  Documento interno no fiscal · Generado por Soid_tf_2
+</div>
+<div class="receipt-signatures only-print">
+
+  <div class="signature-line">
+    <div class="line"></div>
+    <div class="label">Entregado por</div>
+  </div>
+
+  <div class="signature-line">
+    <div class="line"></div>
+    <div class="label">Recibido por</div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block auto_print %}
+<script>
+  window.print();
+</script>
+{% endblock %}

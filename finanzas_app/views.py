@@ -29,6 +29,28 @@ from django.utils import timezone
 # ============================================
 
 @login_required
+def egreso_recibo(request, pk):
+    """
+    Vista SOLO para imprimir el recibo de un EGRESO (formato 80mm).
+    """
+    egreso = get_object_or_404(
+        MovimientoFinanciero,
+        pk=pk,
+        tipo="egreso"
+    )
+
+    context = {
+        "egreso": egreso,
+        "auto_print": True,
+    }
+    return render(
+        request,
+        "finanzas_app/recibos/egreso_recibo.html",
+        context
+    )
+
+
+@login_required
 def dashboard(request):
     """
     Dashboard de Finanzas con datos reales.

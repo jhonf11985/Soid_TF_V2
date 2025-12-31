@@ -70,5 +70,5 @@ path(
     views.reporte_transferencias,
     name="reporte_transferencias",
 ),
-
+ path("egresos/<int:pk>/recibo/", views.egreso_recibo, name="egreso_recibo"),
 ]
