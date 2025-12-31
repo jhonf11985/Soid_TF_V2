@@ -105,7 +105,7 @@
 <div class="odoo-filter-panel no-print" id="filter-panel" style="display: none;">
     <form method="get" class="odoo-filter-form">
         {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
-        
+        <input type="hidden" name="filtros_abiertos" value="1">
         <div class="odoo-filter-grid">
             <div class="odoo-filter-group">
                 <label>Género</label>
@@ -900,6 +900,15 @@ function removeFilter(filterName) {
     if (hiddenInput) {
         hiddenInput.remove();
     }
+    // Agregar filtros_abiertos antes de submit
+    let hidden = form.querySelector('input[name="filtros_abiertos"]');
+    if (!hidden) {
+        hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'filtros_abiertos';
+        form.appendChild(hidden);
+    }
+    hidden.value = '1';
     form.submit();
 }
 
@@ -912,6 +921,13 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// Mantener panel abierto si hay filtros activos en la URL
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('filtros_abiertos') === '1') {
+        document.getElementById('filter-panel').style.display = 'block';
+    }
+});
 // Select all checkbox
 document.getElementById('select-all')?.addEventListener('change', function() {
     const checkboxes = document.querySelectorAll('.row-check');
