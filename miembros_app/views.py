@@ -38,11 +38,42 @@ from django.db.models import Sum
 from .forms import MiembroSalidaForm
 from django.apps import apps
 from core.models import Module
+from nuevo_creyente_app.models import NuevoCreyenteExpediente
+
 
 
 
 
 CHROME_PATH = getattr(settings, "CHROME_PATH", None) or os.environ.get("CHROME_PATH")
+@login_required
+def enviar_a_nuevo_creyente(request, pk):
+    miembro = get_object_or_404(Miembro, pk=pk)
+
+    # Validación: ya existe expediente
+    if hasattr(miembro, "expediente_nuevo_creyente"):
+        messages.info(
+            request,
+            "Este miembro ya fue enviado al módulo de Nuevo Creyente."
+        )
+        return redirect("miembros_app:detalle", pk=miembro.pk)
+
+    # Crear expediente
+    NuevoCreyenteExpediente.objects.create(
+        miembro=miembro,
+        responsable=request.user
+    )
+
+    # (opcional) marcar bandera informativa
+    if not miembro.nuevo_creyente:
+        miembro.nuevo_creyente = True
+        miembro.save(update_fields=["nuevo_creyente"])
+
+    messages.success(
+        request,
+        "El miembro fue enviado correctamente a Nuevo Creyente."
+    )
+
+    return redirect("miembros_app:detalle", pk=miembro.pk)
 
 
 def _modulo_estructura_activo():

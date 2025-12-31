@@ -1,0 +1,110 @@
+{% extends "core/base_sidebar.html" %}
+{% load static %}
+
+{% block title %}Nuevo Creyente | En seguimiento{% endblock %}
+
+{% block sidebar_icon %}group_add{% endblock %}
+{% block sidebar_role_label %}Nuevo Creyente{% endblock %}
+
+{% block sidebar_menu %}
+<a class="sidebar-link" href="{% url 'nuevo_creyente_app:nuevo_creyente' %}">
+  <span class="material-icons">dashboard</span>
+  <span>Dashboard</span>
+</a>
+
+<a class="sidebar-link active" href="{% url 'nuevo_creyente_app:seguimiento_lista' %}">
+  <span class="material-icons">list</span>
+  <span>En seguimiento</span>
+</a>
+{% endblock %}
+
+{% block page_content %}
+<div class="page-header">
+  <div>
+    <h1 style="margin:0;">En seguimiento</h1>
+    <div style="opacity:.75; margin-top:4px;">
+      Total: <strong>{{ total }}</strong>
+    </div>
+  </div>
+</div>
+
+<form method="get" style="margin: 12px 0; display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+  <div>
+    <label>Buscar</label>
+    <input type="text" name="q" value="{{ query }}" placeholder="Nombre, teléfono, código NC..." class="input">
+  </div>
+
+  <div>
+    <label>Género</label>
+    <select name="genero" class="input">
+      <option value="">Todos</option>
+      {% for val, lbl in generos_choices %}
+        <option value="{{ val }}" {% if genero_filtro == val %}selected{% endif %}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label>Desde</label>
+    <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="input">
+  </div>
+
+  <div>
+    <label>Hasta</label>
+    <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="input">
+  </div>
+
+  <div style="display:flex; gap:8px; align-items:center; padding-bottom:6px;">
+    <input type="checkbox" name="solo_contacto" value="1" {% if solo_contacto %}checked{% endif %}>
+    <label style="margin:0;">Solo con contacto</label>
+  </div>
+
+  <div>
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+    <a href="{% url 'nuevo_creyente_app:seguimiento_lista' %}" class="btn">Limpiar</a>
+  </div>
+</form>
+
+<div class="card" style="overflow:auto;">
+  <table class="table" style="min-width: 920px;">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nombre</th>
+        <th>Edad</th>
+        <th>Género</th>
+        <th>Teléfono</th>
+        <th>Conversión</th>
+        <th>Mentor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in miembros %}
+      <tr>
+        <td style="white-space:nowrap;">
+          {{ m.codigo_seguimiento|default:"—" }}
+        </td>
+        <td style="white-space:nowrap;">
+          {{ m.nombres }} {{ m.apellidos }}
+        </td>
+        <td>{{ m.edad|default:"—" }}</td>
+        <td>{{ m.get_genero_display|default:"—" }}</td>
+        <td style="white-space:nowrap;">
+          {{ m.telefono|default:m.whatsapp|default:"—" }}
+        </td>
+        <td style="white-space:nowrap;">
+          {% if m.fecha_conversion %}{{ m.fecha_conversion|date:"d/m/Y" }}{% else %}—{% endif %}
+        </td>
+        <td>{{ m.mentor|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" style="padding:18px; text-align:center; opacity:.7;">
+          No hay nuevos creyentes con estos filtros.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

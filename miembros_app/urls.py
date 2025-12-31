@@ -109,6 +109,11 @@ path(
         views.importar_miembros_excel,
         name="importar_miembros_excel",
     ),
+path(
+    "miembro/<int:pk>/enviar-nuevo-creyente/",
+    views.enviar_a_nuevo_creyente,
+    name="enviar_a_nuevo_creyente",
+),
 
     path("salida/<int:pk>/", views.miembro_dar_salida, name="miembro_dar_salida"),
     
