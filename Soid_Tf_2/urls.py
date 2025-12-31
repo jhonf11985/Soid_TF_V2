@@ -36,6 +36,8 @@ urlpatterns = [
         ),
         name="service-worker",
     ),
+    path("nuevo-creyente/", include("nuevo_creyente_app.urls")),
+
 
 
 ]

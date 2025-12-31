@@ -459,13 +459,29 @@ class MiembroForm(forms.ModelForm):
                 )
 
         return cleaned_data
-
 class NuevoCreyenteForm(forms.ModelForm):
     """
     Formulario sencillo para registrar nuevos creyentes.
     Usa el mismo modelo Miembro, pero con pocos campos esenciales,
     pensado para usarse rápido desde el móvil.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # ✅ Forzar requerido en backend, aunque el modelo permita blank=True
+        if "genero" in self.fields:
+            self.fields["genero"].required = True
+
+        # Si es un registro nuevo, proponemos la fecha de hoy en el formulario
+        if not self.instance.pk and not self.initial.get("fecha_conversion"):
+            self.initial["fecha_conversion"] = date.today()
+
+    def clean_genero(self):
+        genero = self.cleaned_data.get("genero")
+        if not genero:
+            raise forms.ValidationError("Debe seleccionar el género.")
+        return genero
 
     def clean_fecha_nacimiento(self):
         fecha = self.cleaned_data.get("fecha_nacimiento")
@@ -489,13 +505,9 @@ class NuevoCreyenteForm(forms.ModelForm):
             "fecha_conversion",
             "notas",
         ]
-
-        
-
         widgets = {
             "fecha_conversion": forms.DateInput(attrs={"type": "date"}),
             "fecha_nacimiento": forms.DateInput(attrs={"type": "date"}),
-
             "telefono": forms.TextInput(
                 attrs={
                     "type": "tel",
@@ -509,7 +521,6 @@ class NuevoCreyenteForm(forms.ModelForm):
                     "placeholder": "Notas breves (opcional)",
                 }
             ),
-
             "whatsapp": forms.TextInput(
                 attrs={
                     "type": "tel",
@@ -529,12 +540,6 @@ class NuevoCreyenteForm(forms.ModelForm):
                 }
             ),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Si es un registro nuevo, proponemos la fecha de hoy en el formulario
-        if not self.instance.pk and not self.initial.get("fecha_conversion"):
-            self.initial["fecha_conversion"] = date.today()
 
     def save(self, commit=True):
         miembro = super().save(commit=False)
