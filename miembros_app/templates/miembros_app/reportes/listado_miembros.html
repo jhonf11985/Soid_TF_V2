@@ -159,7 +159,7 @@
     <form method="get" class="odoo-filter-form">
         <!-- Mantener búsqueda actual -->
         <input type="hidden" name="q" value="{{ query }}">
-        
+        <input type="hidden" name="filtros_abiertos" value="1">
         <div class="odoo-filter-grid">
             <!-- Estado -->
             <div class="odoo-filter-group">
@@ -251,9 +251,9 @@
         </div>
 
         <div class="odoo-filter-actions">
-            <a href="{{ request.path }}" class="odoo-btn odoo-btn-text">
-                Limpiar filtros
-            </a>
+            
+              
+           
             <button type="submit" class="odoo-btn odoo-btn-primary">
                 Aplicar
             </button>
@@ -1477,16 +1477,30 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Remover filtro individual
 function removeFilter(filterName) {
     const form = document.getElementById('main-search-form');
     const input = form.querySelector(`input[name="${filterName}"]`);
     if (input) {
         input.value = '';
-        form.submit();
     }
+    // Agregar filtros_abiertos antes de submit
+    let hidden = form.querySelector('input[name="filtros_abiertos"]');
+    if (!hidden) {
+        hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'filtros_abiertos';
+        form.appendChild(hidden);
+    }
+    hidden.value = '1';
+    form.submit();
 }
-
+// Mantener panel abierto si hay filtros activos en la URL
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('filtros_abiertos') === '1') {
+        document.getElementById('filter-panel').style.display = 'block';
+    }
+});
 // Toggle de vistas (lista/cuadrícula)
 document.addEventListener('DOMContentLoaded', function() {
     const btnLista = document.querySelector('.odoo-view-btn[data-view="lista"]');
