@@ -33,16 +33,15 @@
 
     <div class="odoo-control-center">
         <form method="get" class="odoo-search-form" id="search-form">
-            <!-- Mantener filtros existentes -->
             <input type="hidden" name="genero" value="{{ genero_filtro }}">
             <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
             <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
             {% if solo_contacto %}<input type="hidden" name="solo_contacto" value="1">{% endif %}
-            
+
             <div class="odoo-search-box">
                 <span class="material-icons">search</span>
                 <input type="text" name="q" placeholder="Buscar nombre, teléfono, código NC..." value="{{ query }}">
-                
+
                 {% if query or genero_filtro or fecha_desde or fecha_hasta or solo_contacto %}
                 <div class="odoo-filter-chips">
                     {% if query %}
@@ -73,7 +72,7 @@
                 </div>
                 {% endif %}
             </div>
-            
+
             <button type="button" class="odoo-filter-btn" onclick="toggleFilterPanel()">
                 <span class="material-icons">filter_list</span>
                 Filtros
@@ -85,7 +84,7 @@
         <span class="odoo-pagination-info">
             {% if miembros %}1-{{ miembros|length }} / {{ total }}{% else %}0{% endif %}
         </span>
-        
+
         <div class="odoo-view-toggle">
             <button type="button" class="odoo-view-btn active" title="Vista lista">
                 <span class="material-icons">view_list</span>
@@ -113,6 +112,7 @@
     <form method="get" class="odoo-filter-form">
         {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
         <input type="hidden" name="filtros_abiertos" value="1">
+
         <div class="odoo-filter-grid">
             <div class="odoo-filter-group">
                 <label>Género</label>
@@ -174,15 +174,15 @@
                 <th class="col-num">#</th>
                 <th>Código</th>
                 <th>Nombre</th>
-                <th>Edad</th>
-                <th>Género</th>
+                <th>Etapa</th>
                 <th>Contacto</th>
                 <th>Conversión</th>
-                <th>Tiempo</th> 
-                <th>Mentor</th>
+                <th>Tiempo</th>
+                <th>Padres espirituales</th>
                 <th class="col-actions no-print">Acciones</th>
             </tr>
         </thead>
+
         <tbody>
             {% if miembros %}
                 {% for m in miembros %}
@@ -190,6 +190,7 @@
                     <td class="col-check no-print" onclick="event.stopPropagation();">
                         <input type="checkbox" class="row-check" value="{{ m.pk }}">
                     </td>
+
                     <td class="col-num">{{ forloop.counter }}</td>
 
                     <td>
@@ -201,17 +202,38 @@
                             <span class="odoo-empty-cell">—</span>
                         {% endif %}
                     </td>
-                       
+
+                    <!-- NOMBRE + (Edad + Género) debajo -->
                     <td>
-                        <a href="{% url 'nuevo_creyente_app:seguimiento_detalle' m.id %}" class="odoo-link" onclick="event.stopPropagation();">
-                            {{ m.nombres }} {{ m.apellidos }}
+                        <a href="{% url 'nuevo_creyente_app:seguimiento_detalle' m.id %}" class="odoo-link nc-nombre-link" onclick="event.stopPropagation();">
+                            <div class="nc-nombre">
+                                {{ m.nombres }} {{ m.apellidos }}
+                            </div>
+
+                            <div class="nc-subinfo">
+                                {% if m.edad %}
+                                    {{ m.edad }} años
+                                {% else %}
+                                    Edad —
+                                {% endif %}
+                                ·
+                                {{ m.get_genero_display|default:"Género —" }}
+                            </div>
                         </a>
                     </td>
 
-                    <td>{{ m.edad|default:"—" }}</td>
+                    <!-- ETAPA en columna -->
+                    <td>
+                        {% if m.expediente_nuevo_creyente %}
+                            <span class="odoo-badge odoo-badge-etapa">
+                                {{ m.expediente_nuevo_creyente.get_etapa_display }}
+                            </span>
+                        {% else %}
+                            <span class="odoo-empty-cell">—</span>
+                        {% endif %}
+                    </td>
 
-                    <td>{{ m.get_genero_display|default:"—" }}</td>
-
+                    <!-- CONTACTO -->
                     <td>
                         {% if m.telefono or m.whatsapp %}
                         <div class="odoo-contact-info">
@@ -234,6 +256,7 @@
                         {% endif %}
                     </td>
 
+                    <!-- CONVERSIÓN -->
                     <td>
                         {% if m.fecha_conversion %}
                             {{ m.fecha_conversion|date:"d/m/Y" }}
@@ -241,40 +264,40 @@
                             <span class="odoo-empty-cell">—</span>
                         {% endif %}
                     </td>
-                        
-                            <td>
-                            {% if m.nc_dias is not None %}
-                                <span class="odoo-badge odoo-badge-time">
+
+                    <!-- TIEMPO (días) -->
+                    <td>
+                        {% if m.nc_dias is not None %}
+                            <span class="odoo-badge odoo-badge-time">
                                 {% if m.nc_dias == 0 %}
                                     Hoy
                                 {% else %}
                                     {{ m.nc_dias }} día{{ m.nc_dias|pluralize:"s" }}
                                 {% endif %}
-                                </span>
-                            {% else %}
-                                <span class="odoo-empty-cell">—</span>
-                            {% endif %}
-                            </td>
+                            </span>
+                        {% else %}
+                            <span class="odoo-empty-cell">—</span>
+                        {% endif %}
+                    </td>
 
-
-                            <td>
-                                {% with exp=m.expediente_nuevo_creyente %}
-                                    {% if exp %}
-                                    {% with padres=exp.padres_espirituales.all %}
-                                        {% if padres %}
+                    <!-- PADRES ESPIRITUALES -->
+                    <td>
+                        {% with exp=m.expediente_nuevo_creyente %}
+                            {% if exp %}
+                                {% with padres=exp.padres_espirituales.all %}
+                                    {% if padres %}
                                         {% for p in padres %}
                                             {{ p }}{% if not forloop.last %}, {% endif %}
                                         {% endfor %}
-                                        {% else %}
-                                        <span class="odoo-empty-cell">—</span>
-                                        {% endif %}
-                                    {% endwith %}
                                     {% else %}
-                                    <span class="odoo-empty-cell">—</span>
+                                        <span class="odoo-empty-cell">—</span>
                                     {% endif %}
                                 {% endwith %}
-                                </td>
-
+                            {% else %}
+                                <span class="odoo-empty-cell">—</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
 
                     <td class="col-actions no-print" onclick="event.stopPropagation();">
                         <div class="odoo-action-buttons">
@@ -305,20 +328,6 @@
      ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
-
-/* Badge Tiempo en módulo */
-.odoo-badge-time {
-    display: inline-block;
-    padding: 2px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #1f2937;
-    background: #e5e7eb;
-    border-radius: 12px;
-    letter-spacing: 0.2px;
-    white-space: nowrap;
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    CONTROL BAR
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -332,38 +341,13 @@
     border-bottom: 1px solid #e9ecef;
     flex-wrap: wrap;
 }
-
-.odoo-control-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.odoo-control-center {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-}
-
-.odoo-control-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
+.odoo-control-left { display: flex; align-items: center; gap: 12px; }
+.odoo-control-center { flex: 1; display: flex; justify-content: center; }
+.odoo-control-right { display: flex; align-items: center; gap: 8px; }
 
 /* Breadcrumb */
-.odoo-breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.odoo-breadcrumb-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #212529;
-}
-
+.odoo-breadcrumb { display: flex; align-items: center; gap: 8px; }
+.odoo-breadcrumb-title { font-size: 18px; font-weight: 600; color: #212529; }
 .odoo-breadcrumb-settings {
     font-size: 18px;
     color: #6c757d;
@@ -371,10 +355,7 @@
     opacity: 0;
     transition: opacity 0.2s;
 }
-
-.odoo-breadcrumb:hover .odoo-breadcrumb-settings {
-    opacity: 1;
-}
+.odoo-breadcrumb:hover .odoo-breadcrumb-settings { opacity: 1; }
 
 /* Buttons */
 .odoo-btn {
@@ -392,26 +373,10 @@
     transition: all 0.15s;
     text-decoration: none;
 }
-
-.odoo-btn:hover {
-    background: #f8f9fa;
-    border-color: #adb5bd;
-}
-
-.odoo-btn-primary {
-    background: #714B67;
-    border-color: #714B67;
-    color: #fff;
-}
-
-.odoo-btn-primary:hover {
-    background: #5a3c52;
-    border-color: #5a3c52;
-}
-
-.odoo-btn-secondary {
-    background: #f8f9fa;
-}
+.odoo-btn:hover { background: #f8f9fa; border-color: #adb5bd; }
+.odoo-btn-primary { background: #714B67; border-color: #714B67; color: #fff; }
+.odoo-btn-primary:hover { background: #5a3c52; border-color: #5a3c52; }
+.odoo-btn-secondary { background: #f8f9fa; }
 
 .odoo-btn-icon {
     display: flex;
@@ -425,20 +390,10 @@
     cursor: pointer;
     color: #6c757d;
 }
-
-.odoo-btn-icon:hover {
-    background: #f8f9fa;
-}
+.odoo-btn-icon:hover { background: #f8f9fa; }
 
 /* Search */
-.odoo-search-form {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    max-width: 500px;
-    width: 100%;
-}
-
+.odoo-search-form { display: flex; align-items: center; gap: 8px; max-width: 500px; width: 100%; }
 .odoo-search-box {
     display: flex;
     align-items: center;
@@ -450,19 +405,8 @@
     border-radius: 4px;
     background: #fff;
 }
-
-.odoo-search-box > .material-icons {
-    color: #adb5bd;
-    font-size: 20px;
-}
-
-.odoo-search-box input {
-    flex: 1;
-    min-width: 120px;
-    border: none;
-    outline: none;
-    font-size: 14px;
-}
+.odoo-search-box > .material-icons { color: #adb5bd; font-size: 20px; }
+.odoo-search-box input { flex: 1; min-width: 120px; border: none; outline: none; font-size: 14px; }
 
 .odoo-filter-btn {
     display: flex;
@@ -476,20 +420,10 @@
     font-size: 13px;
     color: #495057;
 }
-
-.odoo-filter-btn:hover {
-    background: #f8f9fa;
-}
+.odoo-filter-btn:hover { background: #f8f9fa; }
 
 /* Filter chips */
-.odoo-filter-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    width: 100%;
-    margin-top: 4px;
-}
-
+.odoo-filter-chips { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; margin-top: 4px; }
 .odoo-chip {
     display: inline-flex;
     align-items: center;
@@ -500,7 +434,6 @@
     font-size: 12px;
     color: #0d6efd;
 }
-
 .odoo-chip button {
     display: flex;
     align-items: center;
@@ -514,26 +447,13 @@
     color: #0d6efd;
     border-radius: 50%;
 }
-
-.odoo-chip button:hover {
-    background: rgba(13, 110, 253, 0.2);
-}
+.odoo-chip button:hover { background: rgba(13, 110, 253, 0.2); }
 
 /* Pagination */
-.odoo-pagination-info {
-    font-size: 13px;
-    color: #6c757d;
-    white-space: nowrap;
-}
+.odoo-pagination-info { font-size: 13px; color: #6c757d; white-space: nowrap; }
 
 /* View toggle */
-.odoo-view-toggle {
-    display: flex;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
+.odoo-view-toggle { display: flex; border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; }
 .odoo-view-btn {
     display: flex;
     align-items: center;
@@ -545,21 +465,11 @@
     cursor: pointer;
     color: #6c757d;
 }
-
-.odoo-view-btn:hover {
-    background: #f8f9fa;
-}
-
-.odoo-view-btn.active {
-    background: #714B67;
-    color: #fff;
-}
+.odoo-view-btn:hover { background: #f8f9fa; }
+.odoo-view-btn.active { background: #714B67; color: #fff; }
 
 /* Actions menu */
-.odoo-actions-menu {
-    position: relative;
-}
-
+.odoo-actions-menu { position: relative; }
 .odoo-dropdown {
     position: absolute;
     top: 100%;
@@ -572,11 +482,7 @@
     display: none;
     z-index: 100;
 }
-
-.odoo-dropdown.show {
-    display: block;
-}
-
+.odoo-dropdown.show { display: block; }
 .odoo-dropdown button,
 .odoo-dropdown a {
     display: flex;
@@ -591,16 +497,9 @@
     cursor: pointer;
     text-decoration: none;
 }
-
 .odoo-dropdown button:hover,
-.odoo-dropdown a:hover {
-    background: #f8f9fa;
-}
-
-.odoo-dropdown .material-icons {
-    font-size: 18px;
-    color: #6c757d;
-}
+.odoo-dropdown a:hover { background: #f8f9fa; }
+.odoo-dropdown .material-icons { font-size: 18px; color: #6c757d; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    FILTER PANEL
@@ -610,14 +509,7 @@
     border-bottom: 1px solid #e9ecef;
     padding: 16px;
 }
-
-.odoo-filter-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 16px;
-}
-
+.odoo-filter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
 .odoo-filter-group label {
     display: block;
     font-size: 12px;
@@ -625,7 +517,6 @@
     color: #6c757d;
     margin-bottom: 4px;
 }
-
 .odoo-filter-group input,
 .odoo-filter-group select {
     width: 100%;
@@ -634,7 +525,6 @@
     border-radius: 4px;
     font-size: 14px;
 }
-
 .odoo-filter-checkbox label {
     display: flex;
     align-items: center;
@@ -642,37 +532,15 @@
     cursor: pointer;
     padding-top: 20px;
 }
-
-.odoo-filter-checkbox input {
-    width: auto;
-}
-
-.odoo-filter-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-}
+.odoo-filter-checkbox input { width: auto; }
+.odoo-filter-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TABLE
    ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-table-container {
-    background: #fff;
-    overflow-x: auto;
-}
-
-.odoo-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-.odoo-table thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
+.odoo-table-container { background: #fff; overflow-x: auto; }
+.odoo-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.odoo-table thead { position: sticky; top: 0; z-index: 10; }
 .odoo-table th {
     padding: 10px 12px;
     text-align: left;
@@ -682,69 +550,69 @@
     color: #495057;
     white-space: nowrap;
 }
-
 .odoo-table td {
     padding: 10px 12px;
     border-bottom: 1px solid #e9ecef;
     vertical-align: middle;
 }
+.odoo-row-clickable { cursor: pointer; transition: background 0.15s; }
+.odoo-row-clickable:hover { background: #f8f9fa; }
 
-.odoo-row-clickable {
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.odoo-row-clickable:hover {
-    background: #f8f9fa;
-}
-
-.col-check {
-    width: 40px;
-    text-align: center;
-}
-
-.col-num {
-    width: 50px;
-    color: #6c757d;
-}
-
-.col-actions {
-    width: 80px;
-}
+.col-check { width: 40px; text-align: center; }
+.col-num { width: 50px; color: #6c757d; }
+.col-actions { width: 80px; }
 
 /* Contact info */
-.odoo-contact-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.odoo-contact-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-}
-
-.odoo-contact-row .material-icons {
-    font-size: 14px;
-    color: #6c757d;
-}
-
-.odoo-wa-link {
-    display: flex;
-    margin-left: 4px;
-}
+.odoo-contact-info { display: flex; flex-direction: column; gap: 4px; }
+.odoo-contact-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.odoo-contact-row .material-icons { font-size: 14px; color: #6c757d; }
+.odoo-wa-link { display: flex; margin-left: 4px; }
 
 /* Link styles */
-.odoo-link {
-    color: #714B67;
-    text-decoration: none;
-    font-weight: 500;
+.odoo-link { color: #714B67; text-decoration: none; font-weight: 500; }
+.odoo-link:hover { text-decoration: underline; }
+
+.odoo-empty-cell { color: #adb5bd; }
+
+/* Nombre principal + subinfo (edad + género) */
+.nc-nombre-link { display: block; }
+.nc-nombre {
+    font-weight: 600;
+    font-size: 14px;
+    color: #111827;
+    line-height: 1.2;
+}
+.nc-subinfo {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+    line-height: 1.2;
 }
 
-.odoo-link:hover {
-    text-decoration: underline;
+/* Badge Etapa */
+.odoo-badge-etapa {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1f2937;
+    background: #eef2ff;
+    border-radius: 12px;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+
+/* Badge Tiempo (días) */
+.odoo-badge-time {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1f2937;
+    background: #e5e7eb;
+    border-radius: 12px;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
 }
 
 /* Badge NC */
@@ -759,16 +627,8 @@
     letter-spacing: 0.3px;
 }
 
-.odoo-empty-cell {
-    color: #adb5bd;
-}
-
 /* Action buttons */
-.odoo-action-buttons {
-    display: flex;
-    gap: 4px;
-}
-
+.odoo-action-buttons { display: flex; gap: 4px; }
 .odoo-action-btn {
     display: flex;
     align-items: center;
@@ -780,30 +640,16 @@
     text-decoration: none;
     transition: all 0.15s;
 }
-
-.odoo-action-btn:hover {
-    background: #e9ecef;
-    color: #212529;
-}
-
-.odoo-action-btn .material-icons {
-    font-size: 16px;
-}
+.odoo-action-btn:hover { background: #e9ecef; color: #212529; }
+.odoo-action-btn .material-icons { font-size: 16px; }
 
 .odoo-empty-table {
     text-align: center;
     padding: 48px !important;
     color: #6c757d;
 }
-
-.odoo-empty-table .material-icons {
-    font-size: 48px;
-    opacity: 0.5;
-}
-
-.odoo-empty-table p {
-    margin: 8px 0 0;
-}
+.odoo-empty-table .material-icons { font-size: 48px; opacity: 0.5; }
+.odoo-empty-table p { margin: 8px 0 0; }
 
 .odoo-table-footer {
     padding: 10px 16px;
@@ -816,15 +662,10 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    PRINT STYLES
    ═══════════════════════════════════════════════════════════════════════════ */
-.print-header {
-    display: none;
-}
+.print-header { display: none; }
 
 @media print {
-    .no-print {
-        display: none !important;
-    }
-
+    .no-print { display: none !important; }
     .print-header {
         display: block;
         text-align: center;
@@ -832,68 +673,34 @@
         padding-bottom: 10px;
         border-bottom: 2px solid #000;
     }
-
-    .print-header h1 {
-        margin: 0;
-        font-size: 18px;
-    }
-
-    .print-header p {
-        margin: 5px 0 0;
-        font-size: 12px;
-        color: #666;
-    }
-
-    .odoo-table thead {
-        position: static;
-    }
-
+    .print-header h1 { margin: 0; font-size: 18px; }
+    .print-header p { margin: 5px 0 0; font-size: 12px; color: #666; }
+    .odoo-table thead { position: static; }
     .odoo-table th {
         background: #f0f0f0 !important;
         -webkit-print-color-adjust: exact;
     }
-
-    .odoo-row-clickable:hover {
-        background: transparent;
-    }
+    .odoo-row-clickable:hover { background: transparent; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
-    .odoo-filter-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    .odoo-filter-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 768px) {
-    .odoo-control-bar {
-        flex-wrap: wrap;
-    }
-
-    .odoo-control-center {
-        order: 3;
-        width: 100%;
-        margin-top: 8px;
-    }
-
-    .odoo-search-form {
-        max-width: 100%;
-    }
-
-    .odoo-filter-grid {
-        grid-template-columns: 1fr;
-    }
+    .odoo-control-bar { flex-wrap: wrap; }
+    .odoo-control-center { order: 3; width: 100%; margin-top: 8px; }
+    .odoo-search-form { max-width: 100%; }
+    .odoo-filter-grid { grid-template-columns: 1fr; }
 
     .odoo-table-container {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
-
-    .odoo-table {
-        min-width: 800px;
-    }
+    .odoo-table { min-width: 900px; }
 }
 </style>
 
