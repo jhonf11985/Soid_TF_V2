@@ -122,8 +122,86 @@
   <form method="post" style="display:grid; gap:12px;">
     {% csrf_token %}
 
+    
+  <!-- PADRE ESPIRITUAL (AQUÍ VA EL AUTOCOMPLETE) -->
+   <div class="odoo-field-value" style="min-width:0;">
+    
+  <div class="odoo-field-row">
+    <label>Padre espiritual</label>
+    <div class="odoo-field-value">
+
+      <!-- 👇 AQUÍ PEGAS COMPLETO EL HTML DEL AUTOCOMPLETE QUE TE DI -->
+<div
+  class="autocomplete-wrapper"
+  data-autocomplete-id="id_padre_espiritual"
+  data-endpoint="/api/buscar-miembros/"
+  data-filtro="activos"
+  data-limit="15"
+>
+  <!-- hidden -->
+  <input
+    type="hidden"
+    name="padre_espiritual_id"
+    id="id_padre_espiritual"
+    value="{% if expediente.padre_espiritual %}{{ expediente.padre_espiritual.id }}{% endif %}"
+  >
+
+  <div class="autocomplete-field">
+    <!-- Chip (se muestra si ya hay padre espiritual asignado) -->
+    <div class="autocomplete-chip" style="{% if not expediente.padre_espiritual %}display:none{% endif %}">
+      <div class="chip-avatar">
+        {% if expediente.padre_espiritual %}
+          {{ expediente.padre_espiritual.nombres|slice:":1" }}{{ expediente.padre_espiritual.apellidos|slice:":1" }}
+        {% endif %}
+      </div>
+
+      <div class="chip-text">
+        <div class="chip-name">
+          {% if expediente.padre_espiritual %}
+            {{ expediente.padre_espiritual.nombres }} {{ expediente.padre_espiritual.apellidos }}
+          {% endif %}
+        </div>
+        <div class="chip-code">
+          {% if expediente.padre_espiritual %}
+            {{ expediente.padre_espiritual.codigo|default:"" }}
+          {% endif %}
+        </div>
+      </div>
+
+      <button type="button" class="chip-remove" title="Quitar">×</button>
+    </div>
+
+    <!-- input de búsqueda -->
+    <input
+      type="text"
+      class="autocomplete-search input"
+      placeholder="Escriba para buscar..."
+      autocomplete="off"
+      {% if expediente.padre_espiritual %}style="display:none"{% endif %}
+    >
+  </div>
+
+  <div class="autocomplete-dropdown">
+    <div class="autocomplete-loading" style="display:none;">Buscando…</div>
+    <ul class="autocomplete-list"></ul>
+    <div class="autocomplete-empty" style="display:none;">Sin resultados</div>
+  </div>
+</div>
+
     <div style="display:grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap:10px;">
-      <div>
+    
+        <div>
+    <label>Unidad responsable</label>
+    {{ form.unidad_responsable }}
+    {% if form.unidad_responsable.errors %}
+        <div style="color:#b42318; font-size:.9em;">
+        {{ form.unidad_responsable.errors }}
+        </div>
+    {% endif %}
+    </div>
+
+    
+        <div>
         <label>Responsable</label>
         {{ form.responsable }}
         {% if form.responsable.errors %}
@@ -154,7 +232,7 @@
     </div>
   </form>
 </div>
-
+</div>
 <style>
 @media (max-width: 900px) {
   form[style*="grid-template-columns"] {
@@ -171,4 +249,36 @@
   }
 }
 </style>
+<style>
+/* --- Fix: que el chip NO se quede en "..." en el detalle --- */
+.autocomplete-wrapper { width: 100%; }
+.autocomplete-field { width: 100%; }
+
+.autocomplete-chip {
+  max-width: 100%;
+}
+
+.chip-text{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;        /* permite que baje a la siguiente línea */
+  min-width: 180px;       /* evita que se quede en 0px */
+}
+
+.chip-name{
+  max-width: none !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+}
+
+.chip-code{
+  white-space: nowrap;
+  opacity: .75;
+}
+</style>
+
+<script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
+
 {% endblock %}

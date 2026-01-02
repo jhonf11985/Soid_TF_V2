@@ -6,6 +6,51 @@ from django.shortcuts import get_object_or_404
 from miembros_app.models import Miembro  # 👈 usamos el mismo modelo Miembro
 from .forms import NuevoCreyenteExpedienteForm
 
+from django.views.decorators.http import require_POST
+
+@require_POST
+@login_required
+def seguimiento_padre_add(request, miembro_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    padre_id = (request.POST.get("padre_espiritual_id") or "").strip()
+    if padre_id:
+        try:
+            padre = Miembro.objects.get(pk=int(padre_id))
+            # agrega (si ya existe, no duplica por unique_together)
+            expediente.padres_espirituales.add(padre)
+            messages.success(request, "Padre espiritual añadido.")
+        except (ValueError, Miembro.DoesNotExist):
+            messages.error(request, "Padre espiritual inválido.")
+    else:
+        messages.error(request, "Selecciona un padre espiritual para añadir.")
+
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+
+@require_POST
+@login_required
+def seguimiento_padre_remove(request, miembro_id, padre_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    try:
+        padre = Miembro.objects.get(pk=int(padre_id))
+        expediente.padres_espirituales.remove(padre)
+        messages.success(request, "Padre espiritual quitado.")
+    except (ValueError, Miembro.DoesNotExist):
+        messages.error(request, "Padre espiritual inválido.")
+
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
 
 @login_required
 def dashboard(request):

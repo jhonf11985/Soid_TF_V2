@@ -17,6 +17,15 @@ class NuevoCreyenteExpediente(models.Model):
         related_name="expediente_nuevo_creyente",
         help_text="Miembro enviado al módulo de Nuevo Creyente."
     )
+    unidad_responsable = models.ForeignKey(
+        "estructura_app.Unidad",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="expedientes_nuevo_creyente",
+        help_text="Unidad responsable del seguimiento del nuevo creyente."
+    )
+
 
     estado = models.CharField(
         max_length=20,
@@ -33,6 +42,14 @@ class NuevoCreyenteExpediente(models.Model):
         blank=True,
         related_name="expedientes_nuevo_creyente"
     )
+    # Padre espiritual (Miembro que acompaña)
+    padres_espirituales = models.ManyToManyField(
+        "miembros_app.Miembro",
+        through="NuevoCreyentePadreEspiritual",
+        blank=True,
+        related_name="expedientes_nuevo_creyente_padrinos"
+    )
+
 
     # Fechas clave
     fecha_envio = models.DateTimeField(default=timezone.now, db_index=True)
@@ -54,3 +71,24 @@ class NuevoCreyenteExpediente(models.Model):
 
     def __str__(self):
         return f"NC - {self.miembro} ({self.get_estado_display()})"
+
+class NuevoCreyentePadreEspiritual(models.Model):
+    expediente = models.ForeignKey(
+        "NuevoCreyenteExpediente",
+        on_delete=models.CASCADE,
+        related_name="padres_links"
+    )
+    padre = models.ForeignKey(
+        "miembros_app.Miembro",
+        on_delete=models.CASCADE,
+        related_name="nuevo_creyente_padrino_links"
+    )
+    fecha_asignacion = models.DateTimeField(auto_now_add=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ("expediente", "padre")
+
+    def __str__(self):
+        return f"{self.expediente_id} -> {self.padre_id}"
+
