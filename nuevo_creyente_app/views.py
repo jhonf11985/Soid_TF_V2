@@ -25,6 +25,15 @@ def seguimiento_padre_add(request, miembro_id):
         try:
             padre = Miembro.objects.get(pk=int(padre_id))
             expediente.padres_espirituales.add(padre)
+
+            # ✅ Bitácora
+            expediente.log_padre(
+                accion="add",
+                padre_miembro_id=padre.id,
+                padre_nombre=f"{padre.nombres} {padre.apellidos}".strip(),
+                user=request.user,
+            )
+
             messages.success(request, "Padre espiritual añadido.")
         except (ValueError, Miembro.DoesNotExist):
             messages.error(request, "Padre espiritual inválido.")
@@ -47,11 +56,21 @@ def seguimiento_padre_remove(request, miembro_id, padre_id):
     try:
         padre = Miembro.objects.get(pk=int(padre_id))
         expediente.padres_espirituales.remove(padre)
+
+        # ✅ Bitácora
+        expediente.log_padre(
+            accion="remove",
+            padre_miembro_id=padre.id,
+            padre_nombre=f"{padre.nombres} {padre.apellidos}".strip(),
+            user=request.user,
+        )
+
         messages.success(request, "Padre espiritual quitado.")
     except (ValueError, Miembro.DoesNotExist):
         messages.error(request, "Padre espiritual inválido.")
 
     return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
 
 
 @login_required
@@ -159,8 +178,6 @@ def seguimiento_detalle(request, miembro_id):
     }
     return render(request, "nuevo_creyente_app/seguimiento_detalle.html", context)
 
-
-# ✅ NUEVO: cambiar etapa del ciclo (manual asistido)
 @require_POST
 @login_required
 def seguimiento_set_etapa(request, miembro_id):
@@ -171,11 +188,11 @@ def seguimiento_set_etapa(request, miembro_id):
     )
     expediente = miembro.expediente_nuevo_creyente
 
-    etapa = (request.POST.get("etapa") or "").strip()
+    etapa_nueva = (request.POST.get("etapa") or "").strip()
 
     # Validar etapa
     etapas_validas = [e[0] for e in NuevoCreyenteExpediente.Etapas.choices]
-    if etapa not in etapas_validas:
+    if etapa_nueva not in etapas_validas:
         messages.error(request, "Etapa inválida.")
         return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
 
@@ -184,14 +201,26 @@ def seguimiento_set_etapa(request, miembro_id):
         messages.error(request, "Este seguimiento está cerrado. No se puede cambiar la etapa.")
         return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
 
-    expediente.etapa = etapa
+    etapa_anterior = expediente.etapa
+
+    # Si no cambia, no hacer nada
+    if etapa_anterior == etapa_nueva:
+        messages.info(request, "La etapa ya estaba seleccionada.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    expediente.etapa = etapa_nueva
     expediente.save(update_fields=["etapa", "fecha_actualizacion"])
+
+    # ✅ Bitácora
+    expediente.log_cambio_etapa(
+        etapa_from=etapa_anterior,
+        etapa_to=etapa_nueva,
+        user=request.user,
+    )
 
     messages.success(request, "Etapa actualizada.")
     return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
 
-
-# ✅ NUEVO: cerrar seguimiento
 @require_POST
 @login_required
 def seguimiento_cerrar(request, miembro_id):
@@ -211,5 +240,89 @@ def seguimiento_cerrar(request, miembro_id):
         return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
 
     expediente.cerrar(user=request.user)
+
+    # ✅ Bitácora
+    expediente.log_cierre(user=request.user)
+
     messages.success(request, "Seguimiento cerrado correctamente.")
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+from datetime import date
+
+@require_POST
+@login_required
+def seguimiento_primer_contacto(request, miembro_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.error(request, "Este expediente está cerrado. No se pueden registrar acciones.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    fecha_str = (request.POST.get("fecha_contacto") or "").strip()
+    canal = (request.POST.get("canal") or "").strip()
+    resultado = (request.POST.get("resultado") or "").strip()
+    nota = (request.POST.get("nota") or "").strip()
+
+    if not fecha_str or not canal or not resultado or not nota:
+        messages.error(request, "Completa fecha, canal, resultado y nota.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # Parse fecha
+    try:
+        fecha_contacto = date.fromisoformat(fecha_str)
+    except ValueError:
+        messages.error(request, "La fecha del contacto no es válida.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # Crear entrada de bitácora (CONTACTO)
+    # Nota: guardamos la nota en detalle, y canal/resultado en sus campos.
+    expediente.log_event(
+        tipo="contacto",
+        titulo="Primer contacto registrado",
+        detalle=nota,
+        user=request.user,
+        canal=canal,
+        resultado_contacto=resultado,
+    )
+
+    # Opcional: si aún estaba en INICIO, pasar a PRIMER_CONTACTO automáticamente
+    if expediente.etapa == "INICIO":
+        expediente.etapa = "PRIMER_CONTACTO"
+        expediente.save(update_fields=["etapa", "fecha_actualizacion"])
+        expediente.log_cambio_etapa(etapa_from="INICIO", etapa_to="PRIMER_CONTACTO", user=request.user)
+    else:
+        # al menos refresca fecha_actualizacion
+        expediente.save(update_fields=["fecha_actualizacion"])
+
+    messages.success(request, "Primer contacto guardado y registrado en la bitácora.")
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+@require_POST
+@login_required
+def seguimiento_nota_add(request, miembro_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.error(request, "Este expediente está cerrado. No se pueden añadir notas.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    texto = (request.POST.get("texto") or "").strip()
+    if not texto:
+        messages.error(request, "Escribe una nota antes de añadirla.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    expediente.log_nota(texto=texto, user=request.user)
+    expediente.save(update_fields=["fecha_actualizacion"])
+
+    messages.success(request, "Nota añadida a la bitácora.")
     return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)

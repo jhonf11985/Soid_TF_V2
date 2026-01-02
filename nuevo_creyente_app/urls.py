@@ -14,5 +14,19 @@ urlpatterns = [
 
     # Padres espirituales
     path("seguimiento/<int:miembro_id>/padre/add/", views.seguimiento_padre_add, name="seguimiento_padre_add"),
+   
     path("seguimiento/<int:miembro_id>/padre/<int:padre_id>/remove/", views.seguimiento_padre_remove, name="seguimiento_padre_remove"),
+    path(
+        "seguimiento/<int:miembro_id>/primer-contacto/",
+        views.seguimiento_primer_contacto,
+        name="seguimiento_primer_contacto",
+    ),
+    path(
+        "seguimiento/<int:miembro_id>/nota/add/",
+        views.seguimiento_nota_add,
+        name="seguimiento_nota_add",
+    ),
+
 ]
+
+

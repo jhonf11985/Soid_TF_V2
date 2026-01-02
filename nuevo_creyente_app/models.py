@@ -81,6 +81,96 @@ class NuevoCreyenteExpediente(models.Model):
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
+    from django.utils import timezone
+
+    def log_event(
+        self,
+        *,
+        tipo,
+        titulo,
+        detalle="",
+        user=None,
+        canal="",
+        resultado_contacto="",
+        etapa_from="",
+        etapa_to="",
+        padre_miembro_id=None,
+        padre_nombre="",
+        padre_accion="",
+    ):
+        """
+        Crea una entrada en la bitácora del expediente.
+        """
+        from .models import NuevoCreyenteBitacora  # evita imports circulares
+
+        NuevoCreyenteBitacora.objects.create(
+            expediente=self,
+            tipo=tipo,
+            titulo=titulo,
+            detalle=detalle or "",
+            canal=canal or "",
+            resultado_contacto=resultado_contacto or "",
+            etapa_from=etapa_from or "",
+            etapa_to=etapa_to or "",
+            padre_miembro_id=padre_miembro_id,
+            padre_nombre=padre_nombre or "",
+            padre_accion=padre_accion or "",
+            creado_por=user if user and getattr(user, "is_authenticated", False) else None,
+            fecha=timezone.now(),
+        )
+
+
+    def log_inicio(self, user=None):
+        self.log_event(
+            tipo="sistema",
+            titulo="Seguimiento iniciado",
+            detalle="Enviado al módulo de Nuevo Creyente.",
+            user=user,
+        )
+
+
+    def log_cambio_etapa(self, *, etapa_from, etapa_to, user=None):
+        self.log_event(
+            tipo="etapa",
+            titulo="Cambio de etapa",
+            detalle=f"De: {etapa_from} → {etapa_to}",
+            etapa_from=etapa_from,
+            etapa_to=etapa_to,
+            user=user,
+        )
+
+
+    def log_padre(self, *, accion, padre_miembro_id=None, padre_nombre="", user=None):
+        # accion: "add" | "remove"
+        titulo = "Padre espiritual asignado" if accion == "add" else "Padre espiritual retirado"
+        self.log_event(
+            tipo="padre",
+            titulo=titulo,
+            detalle=padre_nombre,
+            padre_miembro_id=padre_miembro_id,
+            padre_nombre=padre_nombre,
+            padre_accion=accion,
+            user=user,
+        )
+
+
+    def log_cierre(self, user=None):
+        self.log_event(
+            tipo="cierre",
+            titulo="Seguimiento cerrado",
+            detalle="El expediente fue cerrado.",
+            user=user,
+        )
+
+
+    def log_nota(self, *, texto, user=None):
+        self.log_event(
+            tipo="nota",
+            titulo="Nota",
+            detalle=texto,
+            user=user,
+        )
+
 
     class Meta:
         verbose_name = "Expediente (Nuevo Creyente)"
@@ -135,3 +225,75 @@ class NuevoCreyentePadreEspiritual(models.Model):
 
     def __str__(self):
         return f"{self.expediente_id} -> {self.padre_id}"
+
+
+class NuevoCreyenteBitacora(models.Model):
+    """
+    Bitácora (historial) de un expediente de Nuevo Creyente.
+    Guarda eventos automáticos (etapa, cierre, padres espirituales) y notas manuales.
+    """
+
+    class Tipos(models.TextChoices):
+        SISTEMA = "sistema", "Sistema"
+        CONTACTO = "contacto", "Contacto"
+        ETAPA = "etapa", "Cambio de etapa"
+        PADRE = "padre", "Padre espiritual"
+        NOTA = "nota", "Nota"
+        CIERRE = "cierre", "Cierre"
+
+    class Canales(models.TextChoices):
+        LLAMADA = "llamada", "Llamada"
+        WHATSAPP = "whatsapp", "WhatsApp"
+        PRESENCIAL = "presencial", "Presencial"
+        REFERIDO = "referido", "Familiar / Referido"
+        OTRO = "otro", "Otro"
+
+    class ResultadosContacto(models.TextChoices):
+        CONTACTADO = "contactado", "Contactado"
+        NO_RESPONDE = "no_responde", "No respondió"
+        NUM_ERR = "num_err", "Número incorrecto"
+        PENDIENTE = "pendiente", "Pendiente (acordado luego)"
+
+    expediente = models.ForeignKey(
+        "nuevo_creyente_app.NuevoCreyenteExpediente",
+        on_delete=models.CASCADE,
+        related_name="bitacora",
+    )
+
+    tipo = models.CharField(max_length=20, choices=Tipos.choices, default=Tipos.SISTEMA)
+
+    # Texto principal visible
+    titulo = models.CharField(max_length=120)
+    detalle = models.TextField(blank=True, default="")
+
+    # Datos opcionales para eventos específicos (sin crear mil tablas)
+    canal = models.CharField(max_length=20, choices=Canales.choices, blank=True, default="")
+    resultado_contacto = models.CharField(
+        max_length=20, choices=ResultadosContacto.choices, blank=True, default=""
+    )
+
+    etapa_from = models.CharField(max_length=30, blank=True, default="")
+    etapa_to = models.CharField(max_length=30, blank=True, default="")
+
+    # Para registrar padres espirituales sin acoplar a Miembro (guardamos ids y nombres)
+    padre_miembro_id = models.IntegerField(null=True, blank=True)
+    padre_nombre = models.CharField(max_length=120, blank=True, default="")
+    padre_accion = models.CharField(max_length=20, blank=True, default="")  # "add" / "remove"
+
+    # Auditoría
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="nc_bitacoras",
+    )
+    fecha = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+        verbose_name = "Bitácora Nuevo Creyente"
+        verbose_name_plural = "Bitácoras Nuevo Creyente"
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.titulo}"
