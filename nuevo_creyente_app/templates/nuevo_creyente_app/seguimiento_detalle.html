@@ -655,31 +655,81 @@
                         <h3>Unidades asignadas</h3>
                     </div>
                     
-                    <div class="odoo-assign-body">
-                        {% if miembro.unidades.all %}
-                            {% for asignacion in miembro.unidades.all %}
+                   <div class="odoo-assign-body">
+
+                    {% if not membresias_unidad and not cargos_unidad %}
+                        <div class="odoo-assign-empty">
+                            <span class="material-icons">folder_off</span>
+                            <span>No está asignado a ninguna unidad</span>
+                        </div>
+                    {% endif %}
+
+                    {# ===================== MEMBRESÍAS (Participación/Trabajo) ===================== #}
+                    {% if membresias_unidad %}
+                        <div style="margin-bottom:10px; font-weight:600; color:#374151;">Participación / Trabajo</div>
+
+                        {% for m in membresias_unidad %}
                             <div class="odoo-assign-card">
                                 <div class="odoo-assign-icon">
                                     <span class="material-icons">groups</span>
                                 </div>
+
                                 <div class="odoo-assign-info">
-                                    <span class="odoo-assign-name">{{ asignacion.unidad.nombre }}</span>
+                                    <span class="odoo-assign-name">{{ m.unidad.nombre }}</span>
+
                                     <span class="odoo-assign-meta">
-                                        <span class="odoo-assign-badge">{{ asignacion.get_rol_display|default:"Miembro" }}</span>
-                                        {% if asignacion.fecha_asignacion %}
-                                        <span class="odoo-assign-date">desde {{ asignacion.fecha_asignacion|date:"d/m/Y" }}</span>
+                                        <span class="odoo-assign-badge">
+                                            {% if m.rol %}{{ m.rol.nombre }}{% else %}Miembro{% endif %}
+                                        </span>
+
+                                        {% if m.activo %}
+                                            <span class="odoo-assign-badge" style="background:#e8f7ee; color:#166534;">Activo</span>
+                                        {% else %}
+                                            <span class="odoo-assign-badge" style="background:#f3f4f6; color:#6b7280;">Inactivo</span>
+                                        {% endif %}
+
+                                        {% if m.fecha_ingreso %}
+                                            <span class="odoo-assign-date">desde {{ m.fecha_ingreso|date:"d/m/Y" }}</span>
                                         {% endif %}
                                     </span>
                                 </div>
                             </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="odoo-assign-empty">
-                                <span class="material-icons">folder_off</span>
-                                <span>No está asignado a ninguna unidad</span>
+                        {% endfor %}
+                    {% endif %}
+
+                    {# ===================== CARGOS (Liderazgo) ===================== #}
+                    {% if cargos_unidad %}
+                        <div style="margin:14px 0 10px; font-weight:600; color:#374151;">Liderazgo</div>
+
+                        {% for c in cargos_unidad %}
+                            <div class="odoo-assign-card">
+                                <div class="odoo-assign-icon">
+                                    <span class="material-icons">workspace_premium</span>
+                                </div>
+
+                                <div class="odoo-assign-info">
+                                    <span class="odoo-assign-name">{{ c.unidad.nombre }}</span>
+
+                                    <span class="odoo-assign-meta">
+                                        <span class="odoo-assign-badge">{{ c.rol.nombre }}</span>
+
+                                        {% if c.vigente %}
+                                            <span class="odoo-assign-badge" style="background:#eef2ff; color:#3730a3;">Vigente</span>
+                                        {% else %}
+                                            <span class="odoo-assign-badge" style="background:#f3f4f6; color:#6b7280;">Finalizado</span>
+                                        {% endif %}
+
+                                        {% if c.fecha_inicio %}
+                                            <span class="odoo-assign-date">desde {{ c.fecha_inicio|date:"d/m/Y" }}</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
                             </div>
-                        {% endif %}
-                    </div>
+                        {% endfor %}
+                    {% endif %}
+
+                </div>
+
                 </div>
             </div>
         </div>

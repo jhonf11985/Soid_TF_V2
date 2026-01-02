@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 from miembros_app.models import Miembro
 from .forms import NuevoCreyenteExpedienteForm
 from .models import NuevoCreyenteExpediente
+from estructura_app.models import UnidadMembresia, UnidadCargo
 
 
 @require_POST
@@ -159,6 +160,23 @@ def seguimiento_detalle(request, miembro_id):
     )
     expediente = miembro.expediente_nuevo_creyente
 
+    # ===============================
+    # UNIDADES ASIGNADAS (ESTRUCTURA)
+    # ===============================
+    membresias_unidad = (
+        UnidadMembresia.objects
+        .filter(miembo_fk=miembro)
+        .select_related("unidad", "rol")
+        .order_by("-activo", "unidad__nombre")
+    )
+
+    cargos_unidad = (
+        UnidadCargo.objects
+        .filter(miembo_fk=miembro)
+        .select_related("unidad", "rol")
+        .order_by("-vigente", "unidad__nombre")
+    )
+
     if request.method == "POST":
         form = NuevoCreyenteExpedienteForm(request.POST, instance=expediente)
         if form.is_valid():
@@ -175,6 +193,8 @@ def seguimiento_detalle(request, miembro_id):
         "expediente": expediente,
         "form": form,
         "hoy": timezone.localdate(),
+        "cargos_unidad": cargos_unidad,
+        "membresias_unidad": membresias_unidad,
     }
     return render(request, "nuevo_creyente_app/seguimiento_detalle.html", context)
 
