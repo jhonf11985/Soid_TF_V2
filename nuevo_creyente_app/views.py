@@ -326,3 +326,4 @@ def seguimiento_nota_add(request, miembro_id):
 
     messages.success(request, "Nota añadida a la bitácora.")
     return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
