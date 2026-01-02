@@ -178,6 +178,7 @@
                 <th>Género</th>
                 <th>Contacto</th>
                 <th>Conversión</th>
+                <th>Tiempo</th> 
                 <th>Mentor</th>
                 <th class="col-actions no-print">Acciones</th>
             </tr>
@@ -200,7 +201,7 @@
                             <span class="odoo-empty-cell">—</span>
                         {% endif %}
                     </td>
-
+                       
                     <td>
                         <a href="{% url 'nuevo_creyente_app:seguimiento_detalle' m.id %}" class="odoo-link" onclick="event.stopPropagation();">
                             {{ m.nombres }} {{ m.apellidos }}
@@ -240,8 +241,40 @@
                             <span class="odoo-empty-cell">—</span>
                         {% endif %}
                     </td>
+                        
+                            <td>
+                            {% if m.nc_dias is not None %}
+                                <span class="odoo-badge odoo-badge-time">
+                                {% if m.nc_dias == 0 %}
+                                    Hoy
+                                {% else %}
+                                    {{ m.nc_dias }} día{{ m.nc_dias|pluralize:"s" }}
+                                {% endif %}
+                                </span>
+                            {% else %}
+                                <span class="odoo-empty-cell">—</span>
+                            {% endif %}
+                            </td>
 
-                    <td>{{ m.mentor|default:"—" }}</td>
+
+                            <td>
+                                {% with exp=m.expediente_nuevo_creyente %}
+                                    {% if exp %}
+                                    {% with padres=exp.padres_espirituales.all %}
+                                        {% if padres %}
+                                        {% for p in padres %}
+                                            {{ p }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                        {% else %}
+                                        <span class="odoo-empty-cell">—</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                    {% else %}
+                                    <span class="odoo-empty-cell">—</span>
+                                    {% endif %}
+                                {% endwith %}
+                                </td>
+
 
                     <td class="col-actions no-print" onclick="event.stopPropagation();">
                         <div class="odoo-action-buttons">
@@ -272,6 +305,20 @@
      ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
+
+/* Badge Tiempo en módulo */
+.odoo-badge-time {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1f2937;
+    background: #e5e7eb;
+    border-radius: 12px;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    CONTROL BAR
    ═══════════════════════════════════════════════════════════════════════════ */

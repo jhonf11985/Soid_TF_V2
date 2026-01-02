@@ -19,16 +19,475 @@
 {% endblock %}
 
 {% block page_content %}
-<h1 style="margin:0 0 12px;">Dashboard</h1>
 
-<div class="card" style="padding:16px;">
-  <div style="font-size:14px; opacity:.75;">Nuevos creyentes registrados</div>
-  <div style="font-size:34px; font-weight:700; line-height:1.1;">{{ total_nc }}</div>
-
-  <div style="margin-top:12px;">
-    <a class="btn btn-primary" href="{% url 'nuevo_creyente_app:seguimiento_lista' %}">
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo - igual que Miembros)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+  <div class="odoo-control-left">
+    <a href="{% url 'nuevo_creyente_app:seguimiento_lista' %}" class="odoo-btn odoo-btn-primary">
+      <span class="material-icons">list</span>
       Ver lista
     </a>
+
+    <div class="odoo-breadcrumb">
+      <span class="odoo-breadcrumb-title">Dashboard</span>
+      <span class="material-icons odoo-breadcrumb-icon">group_add</span>
+    </div>
+  </div>
+
+  <div class="odoo-control-right">
+    <div class="odoo-chip">
+      <span class="material-icons">today</span>
+      <span>{{ hoy|date:"d/m/Y" }}</span>
+    </div>
   </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTENIDO
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-dashboard">
+
+  <!-- KPIs -->
+  <div class="odoo-kpi-row">
+
+    <div class="odoo-kpi-card">
+      <div class="odoo-kpi-icon" style="background:#e0f2fe; color:#0284c7;">
+        <span class="material-icons">groups</span>
+      </div>
+      <div class="odoo-kpi-content">
+        <div class="odoo-kpi-value">{{ total|default:"0" }}</div>
+        <div class="odoo-kpi-label">Expedientes</div>
+        <div class="odoo-kpi-sub">Total enviados al módulo</div>
+      </div>
+    </div>
+
+    <div class="odoo-kpi-card">
+      <div class="odoo-kpi-icon" style="background:#d1fae5; color:#059669;">
+        <span class="material-icons">autorenew</span>
+      </div>
+      <div class="odoo-kpi-content">
+        <div class="odoo-kpi-value">{{ en_seguimiento|default:"0" }}</div>
+        <div class="odoo-kpi-label">En seguimiento</div>
+        <div class="odoo-kpi-sub">Activos en proceso</div>
+      </div>
+    </div>
+
+    <div class="odoo-kpi-card">
+      <div class="odoo-kpi-icon" style="background:#fef3c7; color:#d97706;">
+        <span class="material-icons">event_upcoming</span>
+      </div>
+      <div class="odoo-kpi-content">
+        <div class="odoo-kpi-value">{{ proximos_7|default:"0" }}</div>
+        <div class="odoo-kpi-label">Próx. contacto (7 días)</div>
+        <div class="odoo-kpi-sub">Hasta {{ hoy|date:"d/m" }} + 7</div>
+      </div>
+    </div>
+
+    <div class="odoo-kpi-card">
+      <div class="odoo-kpi-icon" style="background:#fee2e2; color:#dc2626;">
+        <span class="material-icons">warning</span>
+      </div>
+      <div class="odoo-kpi-content">
+        <div class="odoo-kpi-value">{{ vencidos|default:"0" }}</div>
+        <div class="odoo-kpi-label">Contactos vencidos</div>
+        <div class="odoo-kpi-sub">Con fecha anterior a hoy</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Alertas rápidas -->
+  <div class="odoo-panel">
+    <div class="odoo-panel-header">
+      <h2>Alertas</h2>
+      <span class="odoo-panel-sub">Cosas que conviene revisar</span>
+    </div>
+
+    <div class="odoo-alerts-grid">
+      <div class="odoo-alert-item">
+        <span class="material-icons">account_tree</span>
+        <div>
+          <div class="odoo-alert-value">{{ sin_unidad|default:"0" }}</div>
+          <div class="odoo-alert-label">Sin unidad responsable</div>
+        </div>
+      </div>
+
+      <div class="odoo-alert-item">
+        <span class="material-icons">person_off</span>
+        <div>
+          <div class="odoo-alert-value">{{ sin_responsable|default:"0" }}</div>
+          <div class="odoo-alert-label">Sin responsable asignado</div>
+        </div>
+      </div>
+
+      <a class="odoo-alert-item odoo-alert-link" href="{% url 'nuevo_creyente_app:seguimiento_lista' %}?solo_contacto=1">
+        <span class="material-icons">phone_in_talk</span>
+        <div>
+          <div class="odoo-alert-value">Ver</div>
+          <div class="odoo-alert-label">Solo con contacto disponible</div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- 2 columnas -->
+  <div class="odoo-panels-grid">
+
+    <!-- Etapas -->
+    <div class="odoo-panel">
+      <div class="odoo-panel-header">
+        <h2>Etapas (en seguimiento)</h2>
+        <a href="{% url 'nuevo_creyente_app:seguimiento_lista' %}" class="odoo-panel-link">Ir a lista →</a>
+      </div>
+
+      <div class="odoo-etapas-list">
+        {% for e in etapas %}
+        <div class="odoo-etapa-row">
+          <div class="odoo-etapa-left">
+            <div class="odoo-etapa-title">{{ e.label }}</div>
+            <div class="odoo-etapa-sub">{{ e.total }} expediente{{ e.total|pluralize:"s" }}</div>
+          </div>
+
+          <div class="odoo-etapa-meter">
+            <div class="odoo-etapa-track">
+              <div class="odoo-etapa-bar" style="width: {{ e.pct }}%;"></div>
+            </div>
+            <div class="odoo-etapa-pct">{{ e.pct }}%</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Unidades -->
+    <div class="odoo-panel">
+      <div class="odoo-panel-header">
+        <h2>Unidades responsables (top)</h2>
+        <span class="odoo-panel-sub">Dónde está el peso del seguimiento</span>
+      </div>
+
+      {% if unidades %}
+      <ul class="odoo-simple-list">
+        {% for u in unidades %}
+        <li class="odoo-simple-item">
+          <div class="odoo-simple-title">{{ u.unidad_responsable__nombre }}</div>
+          <span class="odoo-badge">{{ u.total }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="odoo-empty">Aún no hay unidades asignadas.</p>
+      {% endif %}
+    </div>
+
+    <!-- Próximos contactos -->
+    <div class="odoo-panel">
+      <div class="odoo-panel-header">
+        <h2>Próximos contactos</h2>
+        <span class="odoo-panel-sub">Ordenado por fecha</span>
+      </div>
+
+      {% if proximos_contactos %}
+      <ul class="odoo-recent-list">
+        {% for ex in proximos_contactos %}
+        <li class="odoo-recent-item">
+          <div class="odoo-recent-avatar">
+            {{ ex.miembro.nombres|slice:":1"|upper }}
+          </div>
+
+          <div class="odoo-recent-info">
+            <a class="odoo-recent-name" href="{% url 'nuevo_creyente_app:seguimiento_detalle' ex.miembro.id %}">
+              {{ ex.miembro.nombres }} {{ ex.miembro.apellidos }}
+            </a>
+            <div class="odoo-recent-sub">
+              Próximo: {{ ex.proximo_contacto|date:"d/m/Y" }}
+              {% if ex.unidad_responsable %} · {{ ex.unidad_responsable.nombre }}{% endif %}
+            </div>
+          </div>
+
+          {% if ex.proximo_contacto < hoy %}
+            <span class="odoo-recent-badge odoo-badge-danger">Vencido</span>
+          {% else %}
+            <span class="odoo-recent-badge odoo-badge-ok">Pendiente</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="odoo-empty">No hay próximos contactos definidos.</p>
+      {% endif %}
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="odoo-panel">
+      <div class="odoo-panel-header">
+        <h2>Acciones rápidas</h2>
+        <span class="odoo-panel-sub">Flujo típico</span>
+      </div>
+
+      <div class="odoo-quick-actions">
+        <a class="odoo-quick-action" href="{% url 'nuevo_creyente_app:seguimiento_lista' %}">
+          <span class="material-icons">list</span>
+          <div>
+            <div class="odoo-qa-title">Abrir lista</div>
+            <div class="odoo-qa-sub">Filtrar, buscar y entrar al detalle</div>
+          </div>
+          <span class="material-icons odoo-qa-arrow">chevron_right</span>
+        </a>
+
+        <a class="odoo-quick-action" href="{% url 'nuevo_creyente_app:seguimiento_lista' %}?solo_contacto=1">
+          <span class="material-icons">contact_phone</span>
+          <div>
+            <div class="odoo-qa-title">Contactar hoy</div>
+            <div class="odoo-qa-sub">Solo quienes tienen teléfono/WhatsApp/email</div>
+          </div>
+          <span class="material-icons odoo-qa-arrow">chevron_right</span>
+        </a>
+
+        <a class="odoo-quick-action odoo-quick-action-warning" href="{% url 'nuevo_creyente_app:seguimiento_lista' %}">
+          <span class="material-icons">warning</span>
+          <div>
+            <div class="odoo-qa-title">Revisar vencidos</div>
+            <div class="odoo-qa-sub">Priorizar próximos contactos atrasados</div>
+          </div>
+          <span class="material-icons odoo-qa-arrow">chevron_right</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Recientes -->
+    <div class="odoo-panel">
+      <div class="odoo-panel-header">
+        <h2>Envíos recientes</h2>
+        <span class="odoo-panel-sub">Últimos expedientes creados</span>
+      </div>
+
+      {% if recientes %}
+      <ul class="odoo-recent-list">
+        {% for ex in recientes %}
+        <li class="odoo-recent-item">
+          <div class="odoo-recent-avatar">
+            {{ ex.miembro.nombres|slice:":1"|upper }}
+          </div>
+          <div class="odoo-recent-info">
+            <a class="odoo-recent-name" href="{% url 'nuevo_creyente_app:seguimiento_detalle' ex.miembro.id %}">
+              {{ ex.miembro.nombres }} {{ ex.miembro.apellidos }}
+            </a>
+            <div class="odoo-recent-sub">
+              Enviado: {{ ex.fecha_envio|date:"d/m/Y H:i" }}
+              · Etapa: {{ ex.get_etapa_display }}
+            </div>
+          </div>
+          <span class="odoo-recent-badge odoo-badge-new">Nuevo</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="odoo-empty">No hay envíos recientes.</p>
+      {% endif %}
+    </div>
+
+    <!-- Cierres recientes -->
+    <div class="odoo-panel">
+      <div class="odoo-panel-header">
+        <h2>Cierres recientes</h2>
+        <span class="odoo-panel-sub">Últimos seguimientos completados</span>
+      </div>
+
+      {% if cierres_recientes %}
+      <ul class="odoo-recent-list">
+        {% for ex in cierres_recientes %}
+        <li class="odoo-recent-item">
+          <div class="odoo-recent-avatar odoo-avatar-closed">
+            {{ ex.miembro.nombres|slice:":1"|upper }}
+          </div>
+          <div class="odoo-recent-info">
+            <a class="odoo-recent-name" href="{% url 'nuevo_creyente_app:seguimiento_detalle' ex.miembro.id %}">
+              {{ ex.miembro.nombres }} {{ ex.miembro.apellidos }}
+            </a>
+            <div class="odoo-recent-sub">
+              Cerrado: {{ ex.fecha_cierre|date:"d/m/Y H:i" }}
+            </div>
+          </div>
+          <span class="odoo-recent-badge odoo-badge-closed">Cerrado</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="odoo-empty">Aún no hay cierres.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS (copiados/adaptados del dashboard de Miembros)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* Barra control (igual que Miembros) */
+.odoo-control-bar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 16px; background:#f8f9fa; border-bottom:1px solid #dee2e6;
+}
+.odoo-control-left,.odoo-control-right{display:flex; align-items:center; gap:12px;}
+
+.odoo-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px; font-size:13px; font-weight:500;
+  border:none; border-radius:6px; cursor:pointer; text-decoration:none;
+  transition:all .15s ease;
+}
+.odoo-btn .material-icons{font-size:18px;}
+.odoo-btn-primary{background:#017e84; color:#fff;}
+.odoo-btn-primary:hover{background:#016166;}
+.odoo-breadcrumb{
+  display:flex; align-items:center; gap:6px; padding:4px 10px;
+  background:#fff; border:1px solid #dee2e6; border-radius:6px; font-size:13px;
+}
+.odoo-breadcrumb-title{font-weight:600; color:#495057;}
+.odoo-breadcrumb-icon{font-size:16px; color:#6c757d;}
+
+.odoo-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border:1px solid #dee2e6; background:#fff;
+  border-radius:999px; font-size:12px; color:#495057;
+}
+.odoo-chip .material-icons{font-size:16px; color:#017e84;}
+
+/* Contenedor dashboard */
+.odoo-dashboard{
+  padding:16px; background:#f8f9fa;
+  min-height: calc(100vh - 120px);
+  display:flex; flex-direction:column; gap:16px;
+}
+
+/* KPIs */
+.odoo-kpi-row{
+  display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;
+}
+.odoo-kpi-card{
+  background:#fff; border:1px solid #e9ecef; border-radius:12px;
+  padding:14px; display:flex; gap:12px; align-items:flex-start;
+}
+.odoo-kpi-icon{
+  width:42px; height:42px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+}
+.odoo-kpi-icon .material-icons{font-size:22px;}
+.odoo-kpi-value{font-size:22px; font-weight:800; color:#212529; line-height:1.1;}
+.odoo-kpi-label{font-size:12px; font-weight:700; color:#495057; margin-top:2px;}
+.odoo-kpi-sub{font-size:11px; color:#6c757d; margin-top:2px;}
+
+/* Panel base */
+.odoo-panel{
+  background:#fff; border:1px solid #e9ecef; border-radius:12px; padding:14px;
+}
+.odoo-panel-header{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  margin-bottom:10px;
+}
+.odoo-panel-header h2{font-size:14px; font-weight:800; margin:0; color:#212529;}
+.odoo-panel-sub{font-size:11px; color:#6c757d;}
+.odoo-panel-link{font-size:12px; text-decoration:none; color:#017e84; font-weight:700;}
+.odoo-panel-link:hover{text-decoration:underline;}
+
+.odoo-panels-grid{
+  display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;
+}
+
+/* Alertas */
+.odoo-alerts-grid{
+  display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;
+}
+.odoo-alert-item{
+  display:flex; align-items:center; gap:10px;
+  padding:12px; background:#fef2f2; border-radius:10px;
+  text-decoration:none;
+}
+.odoo-alert-item .material-icons{font-size:20px; color:#dc2626;}
+.odoo-alert-value{font-size:18px; font-weight:900; color:#991b1b;}
+.odoo-alert-label{font-size:11px; color:#991b1b;}
+.odoo-alert-link{background:#f3f4f6;}
+.odoo-alert-link .material-icons{color:#111827;}
+.odoo-alert-link .odoo-alert-value,
+.odoo-alert-link .odoo-alert-label{color:#111827;}
+
+/* Etapas */
+.odoo-etapas-list{display:flex; flex-direction:column; gap:10px;}
+.odoo-etapa-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+.odoo-etapa-title{font-size:13px; font-weight:700; color:#212529;}
+.odoo-etapa-sub{font-size:11px; color:#6c757d;}
+.odoo-etapa-meter{display:flex; align-items:center; gap:10px; min-width: 180px;}
+.odoo-etapa-track{flex:1; height:8px; background:#e9ecef; border-radius:999px; overflow:hidden;}
+.odoo-etapa-bar{height:100%; background:linear-gradient(90deg, #017e84, #0ea5e9); border-radius:999px;}
+.odoo-etapa-pct{width:44px; text-align:right; font-size:11px; font-weight:700; color:#6c757d;}
+
+/* Listas simples */
+.odoo-simple-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;}
+.odoo-simple-item{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; background:#f8f9fa; border:1px solid #e9ecef; border-radius:10px;
+}
+.odoo-simple-title{font-size:13px; font-weight:700; color:#212529;}
+.odoo-badge{
+  background:#e0f2fe; color:#0284c7; border-radius:999px;
+  padding:4px 10px; font-size:12px; font-weight:800;
+}
+
+/* Recientes */
+.odoo-recent-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;}
+.odoo-recent-item{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; background:#f8f9fa; border:1px solid #e9ecef; border-radius:10px;
+}
+.odoo-recent-avatar{
+  width:34px; height:34px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  background:#e0f2fe; color:#0284c7; font-weight:900;
+}
+.odoo-avatar-closed{background:#e5e7eb; color:#111827;}
+.odoo-recent-info{flex:1; min-width:0;}
+.odoo-recent-name{
+  font-size:13px; font-weight:800; color:#212529; text-decoration:none;
+  display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.odoo-recent-name:hover{text-decoration:underline;}
+.odoo-recent-sub{font-size:11px; color:#6c757d; margin-top:2px;}
+.odoo-recent-badge{
+  font-size:11px; font-weight:900; padding:4px 10px; border-radius:999px;
+  white-space:nowrap;
+}
+.odoo-badge-new{background:#d1fae5; color:#065f46;}
+.odoo-badge-ok{background:#dbeafe; color:#1d4ed8;}
+.odoo-badge-danger{background:#fee2e2; color:#991b1b;}
+.odoo-badge-closed{background:#e5e7eb; color:#111827;}
+.odoo-empty{margin:0; font-size:12px; color:#6c757d;}
+
+/* Acciones rápidas */
+.odoo-quick-actions{display:flex; flex-direction:column; gap:8px;}
+.odoo-quick-action{
+  display:flex; align-items:center; gap:12px;
+  padding:10px 12px; background:#f8f9fa; border:1px solid #e9ecef;
+  border-radius:10px; text-decoration:none; transition:all .15s ease;
+}
+.odoo-quick-action:hover{background:#e9ecef; border-color:#dee2e6;}
+.odoo-quick-action > .material-icons:first-child{font-size:20px; color:#017e84;}
+.odoo-quick-action > div{flex:1;}
+.odoo-qa-title{font-size:13px; font-weight:800; color:#212529;}
+.odoo-qa-sub{font-size:11px; color:#6c757d;}
+.odoo-qa-arrow{font-size:18px; color:#adb5bd;}
+.odoo-quick-action-warning > .material-icons:first-child{color:#dc2626;}
+
+/* Responsive */
+@media (max-width: 992px){
+  .odoo-kpi-row{grid-template-columns: repeat(2, 1fr);}
+  .odoo-panels-grid{grid-template-columns: 1fr;}
+  .odoo-alerts-grid{grid-template-columns: 1fr;}
+}
+</style>
+
 {% endblock %}

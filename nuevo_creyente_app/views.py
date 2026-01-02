@@ -9,7 +9,9 @@ from miembros_app.models import Miembro
 from .forms import NuevoCreyenteExpedienteForm
 from .models import NuevoCreyenteExpediente
 from estructura_app.models import UnidadMembresia, UnidadCargo
-
+from datetime import timedelta
+from django.db.models import Count, Q
+from miembros_app.models import Miembro  # ajusta si tu import es distinto
 
 @require_POST
 @login_required
@@ -74,11 +76,72 @@ def seguimiento_padre_remove(request, miembro_id, padre_id):
 
 
 
+
 @login_required
 def dashboard(request):
-    total_nc = Miembro.objects.filter(nuevo_creyente=True).count()
-    context = {"total_nc": total_nc}
+    hoy = timezone.localdate()
+    manana = hoy + timedelta(days=1)
+
+    # Base: expedientes existentes
+    qs = NuevoCreyenteExpediente.objects.select_related("miembro").all()
+
+    total_expedientes = qs.count()
+    en_seguimiento = qs.filter(estado=NuevoCreyenteExpediente.Estados.EN_SEGUIMIENTO).count()
+    cerrados = qs.filter(estado=NuevoCreyenteExpediente.Estados.CERRADO).count()
+
+    # Por etapa (solo en seguimiento)
+    etapas = dict(NuevoCreyenteExpediente.Etapas.choices)
+    conteo_etapas = (
+        qs.filter(estado=NuevoCreyenteExpediente.Estados.EN_SEGUIMIENTO)
+          .values("etapa")
+          .annotate(total=Count("id"))
+          .order_by("etapa")
+    )
+    conteo_etapas_map = {x["etapa"]: x["total"] for x in conteo_etapas}
+
+    # Alertas de próximo contacto
+    con_proximo = qs.filter(estado=NuevoCreyenteExpediente.Estados.EN_SEGUIMIENTO, proximo_contacto__isnull=False)
+    prox_hoy = con_proximo.filter(proximo_contacto=hoy).count()
+    prox_manana = con_proximo.filter(proximo_contacto=manana).count()
+    atrasados = con_proximo.filter(proximo_contacto__lt=hoy).count()
+    sin_proximo = qs.filter(
+        estado=NuevoCreyenteExpediente.Estados.EN_SEGUIMIENTO,
+        proximo_contacto__isnull=True
+    ).count()
+
+    # Listas rápidas
+    ultimos_enviados = (
+        qs.order_by("-fecha_envio")
+          .select_related("miembro")[:6]
+    )
+
+    proximos_contactos = (
+        con_proximo.filter(proximo_contacto__in=[hoy, manana])
+                  .order_by("proximo_contacto", "-fecha_envio")[:8]
+    )
+
+    context = {
+        "hoy": hoy,
+        "total_expedientes": total_expedientes,
+        "en_seguimiento": en_seguimiento,
+        "cerrados": cerrados,
+
+        "etapas": etapas,
+        "conteo_etapas": conteo_etapas_map,
+
+        "prox_hoy": prox_hoy,
+        "prox_manana": prox_manana,
+        "atrasados": atrasados,
+        "sin_proximo": sin_proximo,
+
+        "ultimos_enviados": ultimos_enviados,
+        "proximos_contactos": proximos_contactos,
+    }
     return render(request, "nuevo_creyente_app/dashboard.html", context)
+
+
+
+
 
 
 @login_required
@@ -93,6 +156,7 @@ def seguimiento_lista(request):
         Miembro.objects
         .filter(expediente_nuevo_creyente__isnull=False)
         .select_related("expediente_nuevo_creyente")
+        .prefetch_related("expediente_nuevo_creyente__padres_espirituales")  # clave
     )
 
     if query:
@@ -135,21 +199,30 @@ def seguimiento_lista(request):
         "nombres",
     )
 
+    hoy = timezone.localdate()
+
+    miembros = list(qs)  # ✅ ahora sí existe
+    for m in miembros:
+        exp = getattr(m, "expediente_nuevo_creyente", None)
+        if exp and exp.fecha_envio:
+            m.nc_dias = max((hoy - exp.fecha_envio.date()).days, 0)
+        else:
+            m.nc_dias = None
+
     generos_choices = Miembro._meta.get_field("genero").choices
 
     context = {
-        "miembros": qs,
+        "miembros": miembros,  # ✅ pasamos la lista con nc_dias calculado
         "query": query,
         "genero_filtro": genero_filtro,
         "generos_choices": generos_choices,
         "fecha_desde": fecha_desde,
         "fecha_hasta": fecha_hasta,
         "solo_contacto": solo_contacto,
-        "hoy": timezone.localdate(),
+        "hoy": hoy,
         "total": qs.count(),
     }
     return render(request, "nuevo_creyente_app/seguimiento_lista.html", context)
-
 
 @login_required
 def seguimiento_detalle(request, miembro_id):
