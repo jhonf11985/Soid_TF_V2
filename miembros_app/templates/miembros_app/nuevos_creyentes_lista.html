@@ -171,6 +171,9 @@
                 <th>Conversión</th>
                 <th>Edad</th>
                 <th>Notas</th>
+                {% if 'nuevo_creyente' in MODULOS_ACTIVOS %}
+                <th class="col-estado">Estado</th>
+                  {% endif %}
                 <th class="col-actions no-print">Acciones</th>
             </tr>
         </thead>
@@ -247,17 +250,61 @@
                         <span class="odoo-empty-cell">Sin notas</span>
                         {% endif %}
                     </td>
-                    <td class="col-actions no-print" onclick="event.stopPropagation();">
-                        <div class="odoo-row-actions">
-                            <a href="{% url 'miembros_app:nuevo_creyente_editar' m.pk %}" class="odoo-action-btn" title="Editar">
-                                <span class="material-icons">edit</span>
-                            </a>
-                            <a href="{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}" class="odoo-action-btn" title="Ver ficha">
-                                <span class="material-icons">visibility</span>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
+                        {% if 'nuevo_creyente' in MODULOS_ACTIVOS %}
+                        <td class="col-estado">
+                        {% if m.nc_enviado %}
+                            <span class="badge-estado badge-enviado">
+                            <span class="material-icons">check_circle</span>
+                            En seguimiento
+                            </span>
+                        {% else %}
+                            <span class="badge-estado badge-pendiente">
+                            <span class="material-icons">schedule</span>
+                            Pendiente
+                            </span>
+                        {% endif %}
+                        </td>
+                        {% endif %}
+
+
+<td class="col-actions no-print" onclick="event.stopPropagation();">
+  <div class="odoo-row-actions" style="display:flex; align-items:center; gap:8px;">
+
+    <a href="{% url 'miembros_app:nuevo_creyente_editar' m.pk %}" class="odoo-action-btn" title="Editar">
+      <span class="material-icons">edit</span>
+    </a>
+
+    <a href="{% url 'miembros_app:nuevo_creyente_ficha' m.pk %}" class="odoo-action-btn" title="Ver ficha">
+      <span class="material-icons">visibility</span>
+    </a>
+
+    {% if 'nuevo_creyente' in MODULOS_ACTIVOS %}
+      {% if m.nc_enviado %}
+        <span class="odoo-action-btn" title="Ya fue enviado" style="opacity:.35; cursor:not-allowed;">
+          <span class="material-icons">send</span>
+        </span>
+      {% else %}
+        <form method="post"
+              action="{% url 'miembros_app:enviar_a_nuevo_creyente' m.pk %}"
+              style="display:inline;"
+              onsubmit="return confirm('¿Enviar este nuevo creyente al módulo de Nuevo Creyente?');">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit"
+                  class="odoo-action-btn"
+                  title="Enviar a seguimiento"
+                  style="border:none; background:transparent; cursor:pointer;">
+            <span class="material-icons">send</span>
+          </button>
+        </form>
+      {% endif %}
+    {% endif %}
+
+  </div>
+</td>
+
+</tr>
+
                 {% endfor %}
             {% else %}
                 <tr>
@@ -867,6 +914,40 @@
     background: #d1fae5;
     border-radius: 12px;
     letter-spacing: 0.3px;
+}
+
+.col-estado{
+  width: 150px;
+  white-space: nowrap;
+}
+
+.badge-estado{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+}
+
+.badge-estado .material-icons{
+  font-size: 16px;
+}
+
+/* En seguimiento */
+.badge-enviado{
+  background: #eef2ff;      /* suave */
+  color: #3730a3;           /* azul oscuro */
+  border-color: #c7d2fe;
+}
+
+/* Pendiente */
+.badge-pendiente{
+  background: #fff7ed;      /* suave */
+  color: #9a3412;           /* naranja oscuro */
+  border-color: #fed7aa;
 }
 
 </style>

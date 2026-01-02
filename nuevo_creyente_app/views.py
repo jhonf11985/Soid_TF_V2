@@ -32,7 +32,14 @@ def seguimiento_lista(request):
     fecha_hasta = request.GET.get("fecha_hasta", "").strip()
     solo_contacto = request.GET.get("solo_contacto", "") == "1"
 
-    qs = Miembro.objects.filter(nuevo_creyente=True)  # 👈 base del módulo NC :contentReference[oaicite:1]{index=1}
+    
+
+
+    qs = (
+        Miembro.objects
+        .filter(expediente_nuevo_creyente__isnull=False)
+        .select_related("expediente_nuevo_creyente")
+    )
 
     if query:
         qs = qs.filter(

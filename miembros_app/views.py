@@ -39,23 +39,39 @@ from .forms import MiembroSalidaForm
 from django.apps import apps
 from core.models import Module
 from nuevo_creyente_app.models import NuevoCreyenteExpediente
+from django.db.models import Exists, OuterRef
 
 
 
 
 
 CHROME_PATH = getattr(settings, "CHROME_PATH", None) or os.environ.get("CHROME_PATH")
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.urls import reverse
+
+from .models import Miembro
+from nuevo_creyente_app.models import NuevoCreyenteExpediente
+
+
 @login_required
 def enviar_a_nuevo_creyente(request, pk):
     miembro = get_object_or_404(Miembro, pk=pk)
 
+    # Mantenerte en la misma lista (con filtros) si mandamos "next"
+    next_url = request.POST.get("next") or request.GET.get("next")
+
+    # Si no hay next, lo enviamos al módulo Nuevo Creyente
+    if not next_url:
+        # Ajusta este name si tu módulo usa otro
+        # (si tu ruta es /nuevo-creyente/ normalmente es "nuevo_creyente_app:dashboard" o "nuevo_creyente_app:lista")
+        next_url = reverse("nuevo_creyente_app:dashboard")
+
     # Validación: ya existe expediente
     if hasattr(miembro, "expediente_nuevo_creyente"):
-        messages.info(
-            request,
-            "Este miembro ya fue enviado al módulo de Nuevo Creyente."
-        )
-        return redirect("miembros_app:detalle", pk=miembro.pk)
+        messages.info(request, "Este miembro ya fue enviado al módulo de Nuevo Creyente.")
+        return redirect(next_url)
 
     # Crear expediente
     NuevoCreyenteExpediente.objects.create(
@@ -63,17 +79,13 @@ def enviar_a_nuevo_creyente(request, pk):
         responsable=request.user
     )
 
-    # (opcional) marcar bandera informativa
+    # Marcar bandera informativa
     if not miembro.nuevo_creyente:
         miembro.nuevo_creyente = True
         miembro.save(update_fields=["nuevo_creyente"])
 
-    messages.success(
-        request,
-        "El miembro fue enviado correctamente a Nuevo Creyente."
-    )
-
-    return redirect("miembros_app:detalle", pk=miembro.pk)
+    messages.success(request, "Enviado correctamente al módulo de Nuevo Creyente.")
+    return redirect(next_url)
 
 
 def _modulo_estructura_activo():
@@ -1902,6 +1914,14 @@ def nuevo_creyente_lista(request):
             | Q(telefono_secundario__isnull=False, telefono_secundario__gt="")
             | Q(email__isnull=False, email__gt="")
         )
+
+    # ✅ Marcar si ya fue enviado al módulo Nuevo Creyente (tiene expediente)
+    miembros = miembros.annotate(
+        nc_enviado=Exists(
+            NuevoCreyenteExpediente.objects.filter(miembro_id=OuterRef("pk"))
+        )
+    )
+
 
     miembros = miembros.order_by(
         "-fecha_conversion",
