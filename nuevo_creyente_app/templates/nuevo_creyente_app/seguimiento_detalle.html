@@ -36,17 +36,56 @@
         </div>
     </div>
 
-    <div class="odoo-control-right">
-        {% if expediente.puede_cerrar and expediente.estado != "CERRADO" %}
-        <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_cerrar' miembro.id %}" style="margin:0;">
-            {% csrf_token %}
-            <button type="submit" class="odoo-btn odoo-btn-primary" onclick="return confirm('¿Cerrar seguimiento?');">
-                <span class="material-icons">check_circle</span>
-                Cerrar seguimiento
-            </button>
-        </form>
-        {% endif %}
-    </div>
+{% if expediente.puede_cerrar and expediente.estado != "CERRADO" %}
+<form method="post" action="{% url 'nuevo_creyente_app:seguimiento_cerrar' miembro.id %}" style="margin:0;">
+    {% csrf_token %}
+
+    <details class="odoo-details" style="min-width: 320px;">
+        <summary class="odoo-details-summary">
+            <span class="material-icons">check_circle</span>
+            Cerrar seguimiento
+            <span class="odoo-details-badge">Evaluación</span>
+        </summary>
+
+        <div class="odoo-details-body">
+            <div class="odoo-fields-grid" style="gap:10px;">
+                <div class="odoo-field">
+                    <label>Resultado final</label>
+                    <select name="resultado_final">
+                        <option value="">— Seleccionar —</option>
+                        <option value="integrado_celula">Integrado a célula / grupo pequeño</option>
+                        <option value="inicio_discipulado">Inició discipulado</option>
+                        <option value="congrega_regular">Se congrega regularmente</option>
+                        <option value="trasladado">Se trasladó a otra iglesia</option>
+                        <option value="no_responde">No respondió tras varios intentos</option>
+                        <option value="rechazo">Rechazó el seguimiento</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+
+                <div class="odoo-field">
+                    <label>Siguiente paso (opcional)</label>
+                    <input type="text" name="siguiente_paso" placeholder="Ej: Discipulado 1 con Juan / célula martes 7pm">
+                </div>
+
+                <div class="odoo-field" style="grid-column: 1 / -1;">
+                    <label>Resumen / nota final (obligatoria)</label>
+                    <textarea name="nota_cierre" rows="3" required placeholder="Escribe un resumen breve del cierre..."></textarea>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+                <button type="submit" class="odoo-btn odoo-btn-primary"
+                        onclick="return confirm('¿Confirmas que deseas cerrar este seguimiento?');">
+                    <span class="material-icons">lock</span>
+                    Confirmar cierre
+                </button>
+            </div>
+        </div>
+    </details>
+</form>
+{% endif %}
+
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
@@ -273,6 +312,216 @@
                         Al guardar, se creará una entrada en la bitácora. Luego puedes avanzar de etapa.
                     </div>
                 </div>
+
+                {% elif expediente.etapa == "ACOMPANAMIENTO" %}
+                    <!-- FORM: ACOMPAÑAMIENTO (acción distinta) -->
+                    <div class="odoo-action-block">
+                        <div class="odoo-action-block-title">
+                            <span class="material-icons">volunteer_activism</span>
+                            Registrar encuentro de acompañamiento
+                        </div>
+
+                        <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_acompanamiento_add' miembro.id %}" class="odoo-mini-form">
+                            {% csrf_token %}
+
+                            <div class="odoo-fields-grid odoo-mini-grid">
+                                <div class="odoo-field">
+                                    <label>Fecha</label>
+                                    <input type="date" name="fecha_evento" required>
+                                </div>
+
+                                <div class="odoo-field">
+                                    <label>Tipo de acompañamiento</label>
+                                    <select name="tipo_acompanamiento" required>
+                                        <option value="">— Seleccionar —</option>
+                                        <option value="oracion">Oración</option>
+                                        <option value="conversacion">Conversación</option>
+                                        <option value="visita">Visita</option>
+                                        <option value="culto">Culto</option>
+                                        <option value="celula">Célula / Grupo pequeño</option>
+                                        <option value="llamada_seguimiento">Llamada de seguimiento</option>
+                                    </select>
+                                </div>
+
+                                <div class="odoo-field">
+                                    <label>Estado del nuevo creyente</label>
+                                    <select name="estado_persona" required>
+                                        <option value="">— Seleccionar —</option>
+                                        <option value="bien">Bien / animado</option>
+                                        <option value="neutro">Neutro</option>
+                                        <option value="desanimado">Desanimado</option>
+                                        <option value="riesgo">En riesgo</option>
+                                    </select>
+                                </div>
+
+                                <div class="odoo-field">
+                                    <label>Próximo contacto (opcional)</label>
+                                    <input type="date" name="proximo_contacto">
+                                </div>
+
+                                <div class="odoo-field odoo-field-full" style="margin-top:12px;">
+                                    <label>Nota pastoral (breve)</label>
+                                    <textarea name="nota" rows="3" required placeholder="Ej: Oramos, está animado, vendrá el domingo."></textarea>
+                                </div>
+                            </div>
+
+                            <div class="odoo-mini-actions">
+                                <button type="submit" class="odoo-btn odoo-btn-primary">
+                                    <span class="material-icons">save</span>
+                                    Guardar acompañamiento
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="odoo-action-hint">
+                            Este registro es diferente al primer contacto: aquí documentas el cuidado, el estado y el siguiente paso.
+                        </div>
+                    </div>
+                        {% elif expediente.etapa == "INTEGRACION" %}
+                        <div class="odoo-action-block">
+                        <div class="odoo-action-block-title">
+                            <span class="material-icons">hub</span>
+                            Registrar integración
+                        </div>
+
+                        <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_integracion_add' miembro.id %}" class="odoo-mini-form">
+                            {% csrf_token %}
+
+                            <div class="odoo-fields-grid odoo-mini-grid">
+                            <div class="odoo-field">
+                                <label>Fecha</label>
+                                <input type="date" name="fecha_integracion" required>
+                            </div>
+
+                            <div class="odoo-field">
+                                <label>Tipo de integración</label>
+                                <select name="tipo_integracion" required>
+                                <option value="">— Seleccionar —</option>
+                                <option value="celula">Célula / Grupo pequeño</option>
+                                <option value="culto">Culto / Servicio</option>
+                                <option value="actividad">Actividad / Evento</option>
+                                <option value="unidad">Unidad / Ministerio</option>
+                                <option value="mentoria">Mentoría / Acompañante</option>
+                                </select>
+                            </div>
+
+                            <div class="odoo-field">
+                                <label>Próximo paso (opcional)</label>
+                                <select name="proximo_paso">
+                                <option value="">— Ninguno —</option>
+                                <option value="confirmar_asistencia">Confirmar asistencia</option>
+                                <option value="presentar_lider">Presentarlo al líder</option>
+                                <option value="agendar_visita">Agendar visita</option>
+                                <option value="pasar_discipulado">Pasar a discipulado</option>
+                                </select>
+                            </div>
+
+                            <div class="odoo-field odoo-field-full" style="margin-top:12px;">
+                                <label>¿A dónde se integró?</label>
+                                <input type="text" name="destino" required placeholder="Ej: Célula Jóvenes (martes 7pm) / Culto 6pm / Ministerio ujieres">
+                            </div>
+
+                            <div class="odoo-field odoo-field-full" style="margin-top:12px;">
+                                <label>Responsable / contacto (opcional)</label>
+                                <input type="text" name="responsable_txt" placeholder="Ej: Líder Juan Pérez / Tel. ...">
+                            </div>
+
+                            <div class="odoo-field odoo-field-full" style="margin-top:12px;">
+                                <label>Nota breve (opcional)</label>
+                                <textarea name="nota" rows="3" placeholder="Ej: Se le presentó al líder, quedó motivado."></textarea>
+                            </div>
+                            </div>
+
+                            <div class="odoo-mini-actions">
+                            <button type="submit" class="odoo-btn odoo-btn-primary">
+                                <span class="material-icons">save</span>
+                                Guardar integración
+                            </button>
+                            </div>
+                        </form>
+
+                        <div class="odoo-action-hint">
+                            Integración = dejar registrado con qué grupo/actividad quedó conectado y cuál es el siguiente paso.
+                        </div>
+                        </div>
+{% elif expediente.etapa == "EVALUACION" %}
+<div class="odoo-action-block">
+  <div class="odoo-action-block-title">
+    <span class="material-icons">fact_check</span>
+    Registrar evaluación (decisión final)
+  </div>
+
+  <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_evaluacion_add' miembro.id %}" class="odoo-mini-form">
+    {% csrf_token %}
+
+    <div class="odoo-fields-grid odoo-mini-grid">
+      <div class="odoo-field">
+        <label>Fecha</label>
+        <input type="date" name="fecha_evaluacion" required>
+      </div>
+
+      <div class="odoo-field">
+        <label>Decisión</label>
+        <select name="decision" required>
+          <option value="">— Seleccionar —</option>
+          <option value="discipulado">Pasar a Discipulado</option>
+          <option value="mantener_integracion">Mantener en Integración</option>
+          <option value="visita_pastoral">Requiere visita pastoral</option>
+          <option value="reasignar_responsable">Reasignar responsable</option>
+          <option value="cerrar">Cerrar seguimiento</option>
+        </select>
+      </div>
+
+      <div class="odoo-field odoo-field-full" style="margin-top:12px;">
+        <label>Barreras detectadas (opcional)</label>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-top:6px;">
+          <label style="display:flex; gap:8px; align-items:center;">
+            <input type="checkbox" name="barreras" value="transporte"> Transporte
+          </label>
+          <label style="display:flex; gap:8px; align-items:center;">
+            <input type="checkbox" name="barreras" value="horarios"> Horarios / trabajo
+          </label>
+          <label style="display:flex; gap:8px; align-items:center;">
+            <input type="checkbox" name="barreras" value="falta_interes"> Falta de interés
+          </label>
+          <label style="display:flex; gap:8px; align-items:center;">
+            <input type="checkbox" name="barreras" value="temor_vergüenza"> Temor / vergüenza
+          </label>
+          <label style="display:flex; gap:8px; align-items:center;">
+            <input type="checkbox" name="barreras" value="familia"> Situación familiar
+          </label>
+          <label style="display:flex; gap:8px; align-items:center;">
+            <input type="checkbox" name="barreras" value="salud"> Salud
+          </label>
+          <label style="display:flex; gap:8px; align-items:center;">
+            <input type="checkbox" name="barreras" value="sin_contacto"> Sin contacto / fuera de alcance
+          </label>
+          <label style="display:flex; gap:8px; align-items:center;">
+            <input type="checkbox" name="barreras" value="otra"> Otra
+          </label>
+        </div>
+      </div>
+
+      <div class="odoo-field odoo-field-full" style="margin-top:12px;">
+        <label>Nota final (obligatoria)</label>
+        <textarea name="nota" rows="4" required placeholder="Ej: Se integró a célula, asistió 2 veces, listo para discipulado."></textarea>
+      </div>
+    </div>
+
+    <div class="odoo-mini-actions">
+      <button type="submit" class="odoo-btn odoo-btn-primary">
+        <span class="material-icons">save</span>
+        Guardar evaluación
+      </button>
+    </div>
+  </form>
+
+  <div class="odoo-action-hint">
+    Evaluación = detectar barreras y decidir el siguiente paso. Si eliges “Cerrar seguimiento”, se cerrará automáticamente.
+  </div>
+</div>
+
+
 
             {% else %}
                 <div class="odoo-action-muted">

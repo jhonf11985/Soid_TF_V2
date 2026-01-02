@@ -236,10 +236,14 @@ class NuevoCreyenteBitacora(models.Model):
     class Tipos(models.TextChoices):
         SISTEMA = "sistema", "Sistema"
         CONTACTO = "contacto", "Contacto"
+        ACOMPANAMIENTO = "acompanamiento", "Acompañamiento"  # ✅ NUEVO
+        EVALUACION = "evaluacion", "Evaluación"
+        INTEGRACION = "integracion", "Integración" 
         ETAPA = "etapa", "Cambio de etapa"
         PADRE = "padre", "Padre espiritual"
         NOTA = "nota", "Nota"
         CIERRE = "cierre", "Cierre"
+
 
     class Canales(models.TextChoices):
         LLAMADA = "llamada", "Llamada"

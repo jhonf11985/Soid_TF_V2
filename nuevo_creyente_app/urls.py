@@ -26,6 +26,27 @@ urlpatterns = [
         views.seguimiento_nota_add,
         name="seguimiento_nota_add",
     ),
+path(
+    "seguimiento/<int:miembro_id>/acompanamiento/add/",
+    views.seguimiento_acompanamiento_add,
+    name="seguimiento_acompanamiento_add",
+),
+path(
+    "seguimiento/<int:miembro_id>/integracion/add/",
+    views.seguimiento_integracion_add,
+    name="seguimiento_integracion_add",
+),
+path(
+    "seguimiento/<int:miembro_id>/evaluacion/add/",
+    views.seguimiento_evaluacion_add,
+    name="seguimiento_evaluacion_add",
+),
+
+    path(
+        "seguimiento/<int:miembro_id>/cerrar/",
+        views.seguimiento_cerrar,
+        name="seguimiento_cerrar",
+    ),
 
 ]
 

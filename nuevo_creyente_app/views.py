@@ -327,3 +327,255 @@ def seguimiento_nota_add(request, miembro_id):
     messages.success(request, "Nota añadida a la bitácora.")
     return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
 
+
+
+@require_POST
+@login_required
+def seguimiento_acompanamiento_add(request, miembro_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.error(request, "Este expediente está cerrado. No se pueden registrar acciones.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # ✅ Campos PROPIOS de ACOMPANAMIENTO
+    fecha_str = (request.POST.get("fecha_evento") or "").strip()
+    tipo_acomp = (request.POST.get("tipo_acompanamiento") or "").strip()
+    estado_persona = (request.POST.get("estado_persona") or "").strip()
+    nota = (request.POST.get("nota") or "").strip()
+    prox_fecha_str = (request.POST.get("proximo_contacto") or "").strip()
+
+    if not fecha_str or not tipo_acomp or not estado_persona or not nota:
+        messages.error(request, "Completa fecha, tipo de acompañamiento, estado y nota.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # Parse fecha_evento
+    try:
+        fecha_evento = date.fromisoformat(fecha_str)
+    except ValueError:
+        messages.error(request, "La fecha del acompañamiento no es válida.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # (Opcional) Parse próximo contacto
+    proximo_contacto = None
+    if prox_fecha_str:
+        try:
+            proximo_contacto = date.fromisoformat(prox_fecha_str)
+        except ValueError:
+            messages.error(request, "La fecha del próximo contacto no es válida.")
+            return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # ✅ Guardar en bitácora como ACOMPANAMIENTO (acción distinta)
+    # Reutilizamos canal/resultado_contacto como "tipo_acompanamiento" y "estado_persona"
+    expediente.log_event(
+        tipo="acompanamiento",
+        titulo="Encuentro de acompañamiento",
+        detalle=nota,
+        user=request.user,
+        canal=tipo_acomp,
+        resultado_contacto=estado_persona,
+    )
+
+    # ✅ Si estaba en PRIMER_CONTACTO, al registrar acompañamiento sugerimos avanzar a ACOMPANAMIENTO
+    # (NO lo forzamos si no quieres; aquí lo pongo automático solo cuando todavía está en PRIMER_CONTACTO)
+    if expediente.etapa == "PRIMER_CONTACTO":
+        expediente.etapa = "ACOMPANAMIENTO"
+        expediente.save(update_fields=["etapa", "fecha_actualizacion"])
+        expediente.log_cambio_etapa(etapa_from="PRIMER_CONTACTO", etapa_to="ACOMPANAMIENTO", user=request.user)
+    else:
+        expediente.save(update_fields=["fecha_actualizacion"])
+
+    # ✅ Guardar próximo contacto si lo enviaron
+    if proximo_contacto:
+        expediente.proximo_contacto = proximo_contacto
+        expediente.save(update_fields=["proximo_contacto", "fecha_actualizacion"])
+
+    messages.success(request, "Acompañamiento registrado en la bitácora.")
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+
+@require_POST
+@login_required
+def seguimiento_integracion_add(request, miembro_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.error(request, "Este expediente está cerrado. No se pueden registrar acciones.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    fecha_str = (request.POST.get("fecha_integracion") or "").strip()
+    tipo_integracion = (request.POST.get("tipo_integracion") or "").strip()
+    destino = (request.POST.get("destino") or "").strip()
+    responsable_txt = (request.POST.get("responsable_txt") or "").strip()
+    proximo_paso = (request.POST.get("proximo_paso") or "").strip()
+    nota = (request.POST.get("nota") or "").strip()
+
+    if not fecha_str or not tipo_integracion or not destino:
+        messages.error(request, "Completa fecha, tipo de integración y a dónde se integró.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    try:
+        fecha_integracion = date.fromisoformat(fecha_str)
+    except ValueError:
+        messages.error(request, "La fecha de integración no es válida.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # Guardamos un resumen bonito en el detalle
+    detalle = f"Destino: {destino}"
+    if responsable_txt:
+        detalle += f"\nResponsable/contacto: {responsable_txt}"
+    if proximo_paso:
+        detalle += f"\nPróximo paso: {proximo_paso}"
+    if nota:
+        detalle += f"\nNota: {nota}"
+
+    expediente.log_event(
+        tipo="integracion",
+        titulo="Integración registrada",
+        detalle=detalle,
+        user=request.user,
+        canal=tipo_integracion,           # reutilizamos 'canal' como tipo de integración
+        resultado_contacto=proximo_paso,  # reutilizamos para el próximo paso (opcional)
+    )
+
+    # Si quieres: al registrar integración, sugerimos mover etapa a INTEGRACION (o mantener)
+    if expediente.etapa != "INTEGRACION":
+        etapa_from = expediente.etapa
+        expediente.etapa = "INTEGRACION"
+        expediente.save(update_fields=["etapa", "fecha_actualizacion"])
+        expediente.log_cambio_etapa(etapa_from=etapa_from, etapa_to="INTEGRACION", user=request.user)
+    else:
+        expediente.save(update_fields=["fecha_actualizacion"])
+
+    messages.success(request, "Integración registrada.")
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+
+
+@require_POST
+@login_required
+def seguimiento_evaluacion_add(request, miembro_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.error(request, "Este expediente está cerrado. No se pueden registrar acciones.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # Campos
+    fecha_str = (request.POST.get("fecha_evaluacion") or "").strip()
+    decision = (request.POST.get("decision") or "").strip()
+    nota = (request.POST.get("nota") or "").strip()
+
+    # Checkboxes (pueden venir múltiples)
+    barreras = request.POST.getlist("barreras")
+
+    if not fecha_str or not decision or not nota:
+        messages.error(request, "Completa fecha, decisión y nota final.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    try:
+        fecha_eval = date.fromisoformat(fecha_str)
+    except ValueError:
+        messages.error(request, "La fecha de evaluación no es válida.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # Construir detalle “bonito”
+    barreras_txt = ", ".join(barreras) if barreras else "—"
+    detalle = (
+        f"Fecha: {fecha_eval}\n"
+        f"Barreras: {barreras_txt}\n"
+        f"Decisión: {decision}\n\n"
+        f"Nota:\n{nota}"
+    )
+
+    # ✅ Registrar evento Evaluación en bitácora
+    expediente.log_event(
+        tipo="evaluacion",
+        titulo="Evaluación registrada",
+        detalle=detalle,
+        user=request.user,
+    )
+
+    # ✅ Asegurar etapa EVALUACION (si no lo estaba)
+    if expediente.etapa != NuevoCreyenteExpediente.Etapas.EVALUACION:
+        etapa_from = expediente.etapa
+        expediente.etapa = NuevoCreyenteExpediente.Etapas.EVALUACION
+        expediente.save(update_fields=["etapa", "fecha_actualizacion"])
+        expediente.log_cambio_etapa(etapa_from=etapa_from, etapa_to=NuevoCreyenteExpediente.Etapas.EVALUACION, user=request.user)
+    else:
+        expediente.save(update_fields=["fecha_actualizacion"])
+
+    # ✅ Si la decisión es cerrar, cerramos en el acto (usando tus reglas)
+    if decision == "cerrar":
+        # Ya estamos en evaluación, así que puede cerrar (tu método lo valida a nivel de flujo) :contentReference[oaicite:5]{index=5}
+        expediente.cerrar(user=request.user)
+        expediente.log_cierre(user=request.user)  # bitácora cierre :contentReference[oaicite:6]{index=6}
+        messages.success(request, "Evaluación registrada y seguimiento cerrado.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    messages.success(request, "Evaluación registrada.")
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+
+@require_POST
+@login_required
+def seguimiento_cerrar(request, miembro_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.info(request, "Este seguimiento ya está cerrado.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    if not expediente.puede_cerrar():
+        messages.error(request, "Para cerrar, coloca la etapa en 'Evaluación'.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    resultado_final = (request.POST.get("resultado_final") or "").strip()
+    siguiente_paso = (request.POST.get("siguiente_paso") or "").strip()
+    nota_cierre = (request.POST.get("nota_cierre") or "").strip()
+
+    if not nota_cierre:
+        messages.error(request, "Para cerrar, escribe un resumen (nota final).")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    detalle = ""
+    if resultado_final:
+        detalle += f"Resultado: {resultado_final}\n"
+    if siguiente_paso:
+        detalle += f"Siguiente paso: {siguiente_paso}\n"
+    if detalle:
+        detalle += "\n"
+    detalle += nota_cierre
+
+    expediente.cerrar(user=request.user)  # cambia estado/etapa/fecha :contentReference[oaicite:6]{index=6}
+
+    # Un solo evento “cierre” con detalle (no usamos log_cierre genérico)
+    expediente.log_event(
+        tipo="cierre",
+        titulo="Seguimiento cerrado",
+        detalle=detalle,
+        user=request.user,
+    )
+
+    messages.success(request, "Seguimiento cerrado correctamente.")
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
