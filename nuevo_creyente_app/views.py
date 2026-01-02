@@ -1,12 +1,14 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
-from django.shortcuts import get_object_or_404
-from miembros_app.models import Miembro  # 👈 usamos el mismo modelo Miembro
-from .forms import NuevoCreyenteExpedienteForm
-
 from django.views.decorators.http import require_POST
+
+from miembros_app.models import Miembro
+from .forms import NuevoCreyenteExpedienteForm
+from .models import NuevoCreyenteExpediente
+
 
 @require_POST
 @login_required
@@ -14,7 +16,7 @@ def seguimiento_padre_add(request, miembro_id):
     miembro = get_object_or_404(
         Miembro.objects.select_related("expediente_nuevo_creyente"),
         pk=miembro_id,
-        expediente_nuevo_creyente__isnull=False
+        expediente_nuevo_creyente__isnull=False,
     )
     expediente = miembro.expediente_nuevo_creyente
 
@@ -22,7 +24,6 @@ def seguimiento_padre_add(request, miembro_id):
     if padre_id:
         try:
             padre = Miembro.objects.get(pk=int(padre_id))
-            # agrega (si ya existe, no duplica por unique_together)
             expediente.padres_espirituales.add(padre)
             messages.success(request, "Padre espiritual añadido.")
         except (ValueError, Miembro.DoesNotExist):
@@ -39,7 +40,7 @@ def seguimiento_padre_remove(request, miembro_id, padre_id):
     miembro = get_object_or_404(
         Miembro.objects.select_related("expediente_nuevo_creyente"),
         pk=miembro_id,
-        expediente_nuevo_creyente__isnull=False
+        expediente_nuevo_creyente__isnull=False,
     )
     expediente = miembro.expediente_nuevo_creyente
 
@@ -52,34 +53,21 @@ def seguimiento_padre_remove(request, miembro_id, padre_id):
 
     return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
 
+
 @login_required
 def dashboard(request):
-    """
-    Dashboard básico del módulo Nuevo Creyente.
-    """
     total_nc = Miembro.objects.filter(nuevo_creyente=True).count()
-
-    context = {
-        "total_nc": total_nc,
-    }
+    context = {"total_nc": total_nc}
     return render(request, "nuevo_creyente_app/dashboard.html", context)
 
 
 @login_required
 def seguimiento_lista(request):
-    """
-    Lista del módulo Nuevo Creyente (NC).
-    Por ahora: todo Miembro con nuevo_creyente=True.
-    Luego, cuando implementemos 'expediente', aquí filtraremos por 'en seguimiento'.
-    """
     query = request.GET.get("q", "").strip()
     genero_filtro = request.GET.get("genero", "").strip()
     fecha_desde = request.GET.get("fecha_desde", "").strip()
     fecha_hasta = request.GET.get("fecha_hasta", "").strip()
     solo_contacto = request.GET.get("solo_contacto", "") == "1"
-
-    
-
 
     qs = (
         Miembro.objects
@@ -127,7 +115,7 @@ def seguimiento_lista(request):
         "nombres",
     )
 
-    generos_choices = Miembro._meta.get_field("genero").choices  # :contentReference[oaicite:2]{index=2}
+    generos_choices = Miembro._meta.get_field("genero").choices
 
     context = {
         "miembros": qs,
@@ -142,18 +130,14 @@ def seguimiento_lista(request):
     }
     return render(request, "nuevo_creyente_app/seguimiento_lista.html", context)
 
+
 @login_required
 def seguimiento_detalle(request, miembro_id):
-    """
-    Detalle del seguimiento de un Nuevo Creyente.
-    Permite editar responsable / próximo contacto / notas (inline).
-    """
     miembro = get_object_or_404(
         Miembro.objects.select_related("expediente_nuevo_creyente"),
         pk=miembro_id,
-        expediente_nuevo_creyente__isnull=False
+        expediente_nuevo_creyente__isnull=False,
     )
-
     expediente = miembro.expediente_nuevo_creyente
 
     if request.method == "POST":
@@ -174,3 +158,58 @@ def seguimiento_detalle(request, miembro_id):
         "hoy": timezone.localdate(),
     }
     return render(request, "nuevo_creyente_app/seguimiento_detalle.html", context)
+
+
+# ✅ NUEVO: cambiar etapa del ciclo (manual asistido)
+@require_POST
+@login_required
+def seguimiento_set_etapa(request, miembro_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    etapa = (request.POST.get("etapa") or "").strip()
+
+    # Validar etapa
+    etapas_validas = [e[0] for e in NuevoCreyenteExpediente.Etapas.choices]
+    if etapa not in etapas_validas:
+        messages.error(request, "Etapa inválida.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    # Si está cerrado, no dejar cambiar
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.error(request, "Este seguimiento está cerrado. No se puede cambiar la etapa.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    expediente.etapa = etapa
+    expediente.save(update_fields=["etapa", "fecha_actualizacion"])
+
+    messages.success(request, "Etapa actualizada.")
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+
+# ✅ NUEVO: cerrar seguimiento
+@require_POST
+@login_required
+def seguimiento_cerrar(request, miembro_id):
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.info(request, "Este seguimiento ya está cerrado.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    if not expediente.puede_cerrar():
+        messages.error(request, "Para cerrar, coloca la etapa en 'Evaluación'.")
+        return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+    expediente.cerrar(user=request.user)
+    messages.success(request, "Seguimiento cerrado correctamente.")
+    return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)

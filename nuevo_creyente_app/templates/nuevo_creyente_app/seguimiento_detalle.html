@@ -19,266 +19,1113 @@
 {% endblock %}
 
 {% block page_content %}
-<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
-  <div>
-    <h1 style="margin:0;">Detalle de seguimiento</h1>
-    <div style="opacity:.75; margin-top:4px;">
-      {{ miembro.nombres }} {{ miembro.apellidos }}
-      {% if miembro.codigo_seguimiento %} · <strong>{{ miembro.codigo_seguimiento }}</strong>{% endif %}
-    </div>
-  </div>
 
-  <div style="display:flex; gap:8px;">
-    <a href="{% url 'nuevo_creyente_app:seguimiento_lista' %}" class="btn">Volver</a>
-    <!-- Más adelante: botones de acciones (cambiar etapa, asignar responsable, cerrar) -->
-  </div>
-</div>
-
-<div class="card" style="padding:14px; margin-bottom:12px;">
-  <h3 style="margin:0 0 10px 0;">Datos del miembro</h3>
-  <div style="display:grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap:10px;">
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Nombre</div>
-      <div><strong>{{ miembro.nombres }} {{ miembro.apellidos }}</strong></div>
-    </div>
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Edad</div>
-      <div>{{ miembro.edad|default:"—" }}</div>
-    </div>
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Género</div>
-      <div>{{ miembro.get_genero_display|default:"—" }}</div>
-    </div>
-
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Teléfono</div>
-      <div style="white-space:nowrap;">{{ miembro.telefono|default:miembro.whatsapp|default:"—" }}</div>
-    </div>
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Email</div>
-      <div style="white-space:nowrap;">{{ miembro.email|default:"—" }}</div>
-    </div>
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Fecha de conversión</div>
-      <div style="white-space:nowrap;">
-        {% if miembro.fecha_conversion %}{{ miembro.fecha_conversion|date:"d/m/Y" }}{% else %}—{% endif %}
-      </div>
-    </div>
-  </div>
-</div>
-<div class="card" style="padding:14px; margin-bottom:12px;">
-  <h3 style="margin:0 0 10px 0;">Expediente de seguimiento</h3>
-
-  <div style="display:grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap:10px;">
-
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Estado</div>
-      <div><strong>{{ expediente.get_estado_display }}</strong></div>
-    </div>
-
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Responsable</div>
-      <div>{{ expediente.responsable|default:"—" }}</div>
-    </div>
-
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Fecha de envío</div>
-      <div>{{ expediente.fecha_envio|date:"d/m/Y H:i" }}</div>
-    </div>
-
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Próximo contacto</div>
-      <div>
-        {% if expediente.proximo_contacto %}
-          {{ expediente.proximo_contacto|date:"d/m/Y" }}
-        {% else %}
-          —
-        {% endif %}
-      </div>
-    </div>
-
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Fecha de cierre</div>
-      <div>
-        {% if expediente.fecha_cierre %}
-          {{ expediente.fecha_cierre|date:"d/m/Y H:i" }}
-        {% else %}
-          —
-        {% endif %}
-      </div>
-    </div>
-
-    <div>
-      <div style="opacity:.7; font-size:.9em;">Última actualización</div>
-      <div>{{ expediente.fecha_actualizacion|date:"d/m/Y H:i" }}</div>
-    </div>
-
-  </div>
-</div>
-
-<div class="card" style="padding:14px; margin-bottom:12px;">
-  <h3 style="margin:0 0 10px 0;">Editar seguimiento</h3>
-
-  <form method="post" style="display:grid; gap:12px;">
-    {% csrf_token %}
-
-    
-  <!-- PADRE ESPIRITUAL (AQUÍ VA EL AUTOCOMPLETE) -->
-   <div class="odoo-field-value" style="min-width:0;">
-    
-  <div class="odoo-field-row">
-    <label>Padre espiritual</label>
-    <div class="odoo-field-value">
-
-      <!-- 👇 AQUÍ PEGAS COMPLETO EL HTML DEL AUTOCOMPLETE QUE TE DI -->
-<div
-  class="autocomplete-wrapper"
-  data-autocomplete-id="id_padre_espiritual"
-  data-endpoint="/api/buscar-miembros/"
-  data-filtro="activos"
-  data-limit="15"
->
-  <!-- hidden -->
-  <input
-    type="hidden"
-    name="padre_espiritual_id"
-    id="id_padre_espiritual"
-    value="{% if expediente.padre_espiritual %}{{ expediente.padre_espiritual.id }}{% endif %}"
-  >
-
-  <div class="autocomplete-field">
-    <!-- Chip (se muestra si ya hay padre espiritual asignado) -->
-    <div class="autocomplete-chip" style="{% if not expediente.padre_espiritual %}display:none{% endif %}">
-      <div class="chip-avatar">
-        {% if expediente.padre_espiritual %}
-          {{ expediente.padre_espiritual.nombres|slice:":1" }}{{ expediente.padre_espiritual.apellidos|slice:":1" }}
-        {% endif %}
-      </div>
-
-      <div class="chip-text">
-        <div class="chip-name">
-          {% if expediente.padre_espiritual %}
-            {{ expediente.padre_espiritual.nombres }} {{ expediente.padre_espiritual.apellidos }}
-          {% endif %}
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+    <div class="odoo-control-left">
+        <a href="{% url 'nuevo_creyente_app:seguimiento_lista' %}" class="odoo-btn odoo-btn-secondary">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        
+        <div class="odoo-breadcrumb">
+            <a href="{% url 'nuevo_creyente_app:seguimiento_lista' %}" class="odoo-breadcrumb-link">En seguimiento</a>
+            <span class="material-icons">chevron_right</span>
+            <span class="odoo-breadcrumb-current">{{ miembro.codigo_seguimiento|default:miembro.codigo_miembro }}</span>
         </div>
-        <div class="chip-code">
-          {% if expediente.padre_espiritual %}
-            {{ expediente.padre_espiritual.codigo|default:"" }}
-          {% endif %}
-        </div>
-      </div>
-
-      <button type="button" class="chip-remove" title="Quitar">×</button>
     </div>
 
-    <!-- input de búsqueda -->
-    <input
-      type="text"
-      class="autocomplete-search input"
-      placeholder="Escriba para buscar..."
-      autocomplete="off"
-      {% if expediente.padre_espiritual %}style="display:none"{% endif %}
-    >
-  </div>
-
-  <div class="autocomplete-dropdown">
-    <div class="autocomplete-loading" style="display:none;">Buscando…</div>
-    <ul class="autocomplete-list"></ul>
-    <div class="autocomplete-empty" style="display:none;">Sin resultados</div>
-  </div>
-</div>
-
-    <div style="display:grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap:10px;">
-    
-        <div>
-    <label>Unidad responsable</label>
-    {{ form.unidad_responsable }}
-    {% if form.unidad_responsable.errors %}
-        <div style="color:#b42318; font-size:.9em;">
-        {{ form.unidad_responsable.errors }}
-        </div>
-    {% endif %}
-    </div>
-
-    
-        <div>
-        <label>Responsable</label>
-        {{ form.responsable }}
-        {% if form.responsable.errors %}
-          <div style="color:#b42318; font-size:.9em;">{{ form.responsable.errors }}</div>
+    <div class="odoo-control-right">
+        {% if expediente.puede_cerrar and expediente.estado != "CERRADO" %}
+        <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_cerrar' miembro.id %}" style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="odoo-btn odoo-btn-primary" onclick="return confirm('¿Cerrar seguimiento?');">
+                <span class="material-icons">check_circle</span>
+                Cerrar seguimiento
+            </button>
+        </form>
         {% endif %}
-      </div>
+    </div>
+</div>
 
-      <div>
-        <label>Próximo contacto</label>
-        {{ form.proximo_contacto }}
-        {% if form.proximo_contacto.errors %}
-          <div style="color:#b42318; font-size:.9em;">{{ form.proximo_contacto.errors }}</div>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTENIDO PRINCIPAL (Layout estilo Odoo Form)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-detail-container">
+
+    <!-- HEADER: Avatar + Nombre + Info rápida -->
+    <div class="odoo-detail-header">
+        
+        <!-- Avatar -->
+        <div class="odoo-detail-avatar" style="background: {% if miembro.genero == 'M' %}#3b82f6{% else %}#ec4899{% endif %};">
+            {% if miembro.foto %}
+                <img src="{{ miembro.foto.url }}" alt="{{ miembro.nombres }}">
+            {% else %}
+                <span class="odoo-avatar-initial">{{ miembro.nombres|slice:":1"|upper }}</span>
+            {% endif %}
+        </div>
+
+        <!-- Info principal -->
+        <div class="odoo-detail-info">
+            <h1 class="odoo-detail-name">{{ miembro.nombres }} {{ miembro.apellidos }}</h1>
+            
+            <div class="odoo-detail-badges">
+                {% if expediente.estado == "CERRADO" %}
+                    <span class="odoo-badge odoo-badge-neutral">Cerrado</span>
+                {% else %}
+                    <span class="odoo-badge odoo-badge-info">{{ expediente.get_etapa_display }}</span>
+                {% endif %}
+                
+                {% if miembro.edad %}
+                    <span class="odoo-badge odoo-badge-neutral">{{ miembro.edad }} años</span>
+                {% endif %}
+            </div>
+
+            <!-- Quick info -->
+            <div class="odoo-detail-quick">
+                {% if miembro.email %}
+                <div class="odoo-quick-item">
+                    <span class="material-icons">mail</span>
+                    <a href="mailto:{{ miembro.email }}">{{ miembro.email }}</a>
+                </div>
+                {% endif %}
+                {% if miembro.telefono or miembro.whatsapp %}
+                <div class="odoo-quick-item">
+                    <span class="material-icons">phone</span>
+                    <span>{{ miembro.telefono|default:miembro.whatsapp }}</span>
+                </div>
+                {% endif %}
+                {% if miembro.whatsapp %}
+                <div class="odoo-quick-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#25d366">
+                        <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2z"/>
+                    </svg>
+                    <a href="https://wa.me/{{ miembro.whatsapp|cut:' '|cut:'-' }}" target="_blank">{{ miembro.whatsapp }}</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Código del seguimiento -->
+        <div class="odoo-detail-code">
+            <span class="odoo-code-label">Código</span>
+            <span class="odoo-code-value">{{ miembro.codigo_seguimiento|default:"—" }}</span>
+        </div>
+    </div>
+
+    <!-- CICLO DE SEGUIMIENTO (Card destacada) -->
+    <div class="odoo-situation-card {% if expediente.estado == 'CERRADO' %}odoo-situation-ok{% else %}odoo-situation-active{% endif %}">
+        <div class="odoo-situation-icon">
+            {% if expediente.estado == "CERRADO" %}
+                <span class="material-icons">task_alt</span>
+            {% else %}
+                <span class="material-icons">trending_up</span>
+            {% endif %}
+        </div>
+        <div class="odoo-situation-content">
+            <strong>Ciclo de seguimiento</strong>
+            <p><span class="odoo-sit-label">Sugerencia:</span> {{ expediente.etapa_sugerencia }}</p>
+            {% if expediente.estado != "CERRADO" %}
+            <p><span class="odoo-sit-label">Etapa actual:</span> {{ expediente.get_etapa_display }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- STEPPER DE ETAPAS -->
+    <div class="odoo-stepper-card">
+        <div class="odoo-stepper">
+            {% for e in expediente.ETAPAS_ORDEN %}
+            <div class="odoo-step {% if expediente.etapa == e %}is-current{% endif %} {% if expediente.etapa_index > forloop.counter0 %}is-done{% endif %}">
+                <div class="odoo-step-dot">
+                    {% if expediente.etapa_index > forloop.counter0 %}
+                        <span class="material-icons">check</span>
+                    {% else %}
+                        {{ forloop.counter }}
+                    {% endif %}
+                </div>
+                <div class="odoo-step-content">
+                    {% if e == "INICIO" %}
+                        <div class="odoo-step-label">Inicio</div>
+                        <div class="odoo-step-tip">Asigna responsable y define el próximo contacto.</div>
+                    {% elif e == "PRIMER_CONTACTO" %}
+                        <div class="odoo-step-label">Primer contacto</div>
+                        <div class="odoo-step-tip">Llamada o mensaje personal en 3–5 días.</div>
+                    {% elif e == "ACOMPANAMIENTO" %}
+                        <div class="odoo-step-label">Acompañamiento</div>
+                        <div class="odoo-step-tip">Segundo contacto y escucha activa.</div>
+                    {% elif e == "INTEGRACION" %}
+                        <div class="odoo-step-label">Integración</div>
+                        <div class="odoo-step-tip">Invitar a célula / grupo pequeño o actividad.</div>
+                    {% elif e == "EVALUACION" %}
+                        <div class="odoo-step-label">Evaluación</div>
+                        <div class="odoo-step-tip">Detecta barreras y define el siguiente paso.</div>
+                    {% elif e == "CIERRE" %}
+                        <div class="odoo-step-label">Cierre</div>
+                        <div class="odoo-step-tip">Seguimiento completado.</div>
+                    {% else %}
+                        <div class="odoo-step-label">{{ e }}</div>
+                    {% endif %}
+                    
+                    {% if expediente.estado != "CERRADO" %}
+                    <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_set_etapa' miembro.id %}" style="margin:4px 0 0 0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="etapa" value="{{ e }}">
+                        <button type="submit" class="odoo-step-btn">Marcar</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        {% if expediente.estado == "CERRADO" %}
+        <div class="odoo-stepper-closed">
+            <span class="material-icons">lock</span>
+            Este seguimiento está cerrado. No se puede cambiar la etapa.
+        </div>
         {% endif %}
-      </div>
     </div>
 
-    <div>
-      <label>Notas</label>
-      {{ form.notas }}
-      {% if form.notas.errors %}
-        <div style="color:#b42318; font-size:.9em;">{{ form.notas.errors }}</div>
-      {% endif %}
+    <!-- TABS DE INFORMACIÓN -->
+    <div class="odoo-detail-tabs">
+        <button type="button" class="odoo-tab active" data-tab="datos">
+            <span class="material-icons">person</span>
+            Datos del miembro
+        </button>
+        <button type="button" class="odoo-tab" data-tab="expediente">
+            <span class="material-icons">folder_open</span>
+            Expediente
+        </button>
+        <button type="button" class="odoo-tab" data-tab="editar">
+            <span class="material-icons">edit</span>
+            Editar seguimiento
+        </button>
     </div>
 
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <button type="submit" class="btn btn-primary">Guardar cambios</button>
-      <a href="{% url 'nuevo_creyente_app:seguimiento_detalle' miembro.id %}" class="btn">Cancelar</a>
+    <!-- CONTENIDO DE TABS -->
+    <div class="odoo-tab-contents">
+        
+        <!-- TAB: Datos del miembro -->
+        <div class="odoo-tab-content active" id="tab-datos">
+            <div class="odoo-fields-grid">
+                <div class="odoo-field">
+                    <label>Nombre completo</label>
+                    <span><strong>{{ miembro.nombres }} {{ miembro.apellidos }}</strong></span>
+                </div>
+                <div class="odoo-field">
+                    <label>Edad</label>
+                    <span>{{ miembro.edad|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Género</label>
+                    <span>{{ miembro.get_genero_display|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Teléfono</label>
+                    <span>{{ miembro.telefono|default:miembro.whatsapp|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Email</label>
+                    <span>
+                        {% if miembro.email %}
+                            <a href="mailto:{{ miembro.email }}">{{ miembro.email }}</a>
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="odoo-field">
+                    <label>Fecha de conversión</label>
+                    <span>{% if miembro.fecha_conversion %}{{ miembro.fecha_conversion|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Expediente -->
+        <div class="odoo-tab-content" id="tab-expediente">
+            <div class="odoo-fields-grid">
+                <div class="odoo-field">
+                    <label>Estado</label>
+                    <span>
+                        <span class="odoo-badge odoo-badge-{% if expediente.estado == 'CERRADO' %}success{% else %}info{% endif %}">
+                            {{ expediente.get_estado_display }}
+                        </span>
+                    </span>
+                </div>
+                <div class="odoo-field">
+                    <label>Responsable</label>
+                    <span>{{ expediente.responsable|default:"—" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Fecha de envío</label>
+                    <span>{{ expediente.fecha_envio|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Próximo contacto</label>
+                    <span>{% if expediente.proximo_contacto %}{{ expediente.proximo_contacto|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Fecha de cierre</label>
+                    <span>{% if expediente.fecha_cierre %}{{ expediente.fecha_cierre|date:"d/m/Y H:i" }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="odoo-field">
+                    <label>Última actualización</label>
+                    <span>{{ expediente.fecha_actualizacion|date:"d/m/Y H:i" }}</span>
+                </div>
+            </div>
+
+            <!-- Padres espirituales -->
+            <div class="odoo-notes-section">
+                <h3>Padres espirituales asignados</h3>
+                {% if expediente.padres_links.all %}
+                <div class="odoo-table-container">
+                    <table class="odoo-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Código</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for link in expediente.padres_links.all %}
+                            <tr>
+                                <td><strong>{{ link.padre.nombres }} {{ link.padre.apellidos }}</strong></td>
+                                <td>{{ link.padre.codigo|default:"—" }}</td>
+                                <td style="text-align:right;">
+                                    <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_padre_remove' miembro.id link.padre.id %}" style="margin:0;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="odoo-btn odoo-btn-secondary odoo-btn-sm" onclick="return confirm('¿Quitar este padre espiritual?');">
+                                            Quitar
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="odoo-empty">Sin padres espirituales asignados.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- TAB: Editar seguimiento -->
+        <div class="odoo-tab-content" id="tab-editar">
+            <form method="post" class="odoo-form">
+                {% csrf_token %}
+
+                <div class="odoo-fields-grid">
+                    <!-- Etapa -->
+                    <div class="odoo-field">
+                        <label>Etapa</label>
+                        {{ form.etapa }}
+                        {% if form.etapa.errors %}
+                            <div class="odoo-field-error">{{ form.etapa.errors }}</div>
+                        {% endif %}
+                        <div class="odoo-field-hint">Usa el ciclo arriba para marcar la etapa (o cambia aquí).</div>
+                    </div>
+
+                    <!-- Unidad responsable -->
+                    <div class="odoo-field">
+                        <label>Unidad responsable</label>
+                        {{ form.unidad_responsable }}
+                        {% if form.unidad_responsable.errors %}
+                            <div class="odoo-field-error">{{ form.unidad_responsable.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Responsable -->
+                    <div class="odoo-field">
+                        <label>Responsable</label>
+                        {{ form.responsable }}
+                        {% if form.responsable.errors %}
+                            <div class="odoo-field-error">{{ form.responsable.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Próximo contacto -->
+                    <div class="odoo-field">
+                        <label>Próximo contacto</label>
+                        {{ form.proximo_contacto }}
+                        {% if form.proximo_contacto.errors %}
+                            <div class="odoo-field-error">{{ form.proximo_contacto.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Padre espiritual (autocomplete) -->
+                <div class="odoo-field odoo-field-full" style="margin-top:20px;">
+                    <label>Añadir padre espiritual</label>
+                    <div class="odoo-autocomplete-row">
+                        <div
+                            class="autocomplete-wrapper"
+                            data-autocomplete-id="id_padre_espiritual"
+                            data-endpoint="/api/buscar-miembros/"
+                            data-filtro="activos"
+                            data-limit="15"
+                        >
+                            <input
+                                type="hidden"
+                                name="padre_espiritual_id"
+                                id="id_padre_espiritual"
+                                value=""
+                            >
+
+                            <div class="autocomplete-field">
+                                <div class="autocomplete-chip" style="display:none;">
+                                    <div class="chip-avatar"></div>
+                                    <div class="chip-text">
+                                        <div class="chip-name"></div>
+                                        <div class="chip-code"></div>
+                                    </div>
+                                    <button type="button" class="chip-remove" title="Quitar">×</button>
+                                </div>
+
+                                <input
+                                    type="text"
+                                    class="autocomplete-search input"
+                                    placeholder="Escriba para buscar..."
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <div class="autocomplete-dropdown">
+                                <div class="autocomplete-loading" style="display:none;">Buscando…</div>
+                                <ul class="autocomplete-list"></ul>
+                                <div class="autocomplete-empty" style="display:none;">Sin resultados</div>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="odoo-btn odoo-btn-secondary"
+                            formaction="{% url 'nuevo_creyente_app:seguimiento_padre_add' miembro.id %}"
+                            formmethod="post"
+                        >
+                            <span class="material-icons">person_add</span>
+                            Añadir
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Notas -->
+                <div class="odoo-field odoo-field-full" style="margin-top:20px;">
+                    <label>Notas</label>
+                    {{ form.notas }}
+                    {% if form.notas.errors %}
+                        <div class="odoo-field-error">{{ form.notas.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Botones -->
+                <div class="odoo-form-actions">
+                    <button type="submit" class="odoo-btn odoo-btn-primary">
+                        <span class="material-icons">save</span>
+                        Guardar cambios
+                    </button>
+                    <a href="{% url 'nuevo_creyente_app:seguimiento_detalle' miembro.id %}" class="odoo-btn odoo-btn-secondary">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+
     </div>
-  </form>
 </div>
-</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
 <style>
-@media (max-width: 900px) {
-  form[style*="grid-template-columns"] {
-    grid-template-columns: 1fr !important;
-  }
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTROL BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.odoo-control-left,
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.odoo-breadcrumb-link {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-breadcrumb-current {
+    color: #212529;
+    font-weight: 500;
+}
+
+.odoo-breadcrumb .material-icons {
+    font-size: 18px;
+    color: #adb5bd;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: #fff;
+    border-color: #017e84;
+}
+
+.odoo-btn-primary:hover {
+    background: #015f64;
+    border-color: #015f64;
+}
+
+.odoo-btn-secondary {
+    background: #fff;
+    color: #495057;
+    border-color: #dee2e6;
+}
+
+.odoo-btn-secondary:hover {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+.odoo-btn-sm {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DETAIL CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-detail-container {
+    background: #fff;
+    border-radius: 8px;
+    margin: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DETAIL HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 24px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.odoo-detail-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.odoo-detail-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.odoo-avatar-initial {
+    font-size: 32px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.odoo-detail-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.odoo-detail-name {
+    font-size: 24px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 8px 0;
+}
+
+.odoo-detail-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.odoo-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.odoo-badge-success { background: #d1fae5; color: #065f46; }
+.odoo-badge-warning { background: #fef3c7; color: #92400e; }
+.odoo-badge-danger { background: #fee2e2; color: #991b1b; }
+.odoo-badge-info { background: #dbeafe; color: #1e40af; }
+.odoo-badge-neutral { background: #f3f4f6; color: #374151; }
+
+.odoo-detail-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.odoo-quick-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-quick-item .material-icons {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+.odoo-quick-item a {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-quick-item a:hover {
+    text-decoration: underline;
+}
+
+.odoo-detail-code {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.odoo-code-label {
+    display: block;
+    font-size: 11px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.odoo-code-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #212529;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SITUATION CARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-situation-card {
+    display: flex;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e9ecef;
+    align-items: flex-start;
+}
+
+.odoo-situation-ok { background: #f0fdf4; }
+.odoo-situation-active { background: #eff6ff; }
+.odoo-situation-warning { background: #fffbeb; }
+.odoo-situation-inactive { background: #fef2f2; }
+
+.odoo-situation-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.8);
+}
+
+.odoo-situation-ok .odoo-situation-icon { color: #16a34a; }
+.odoo-situation-active .odoo-situation-icon { color: #2563eb; }
+.odoo-situation-warning .odoo-situation-icon { color: #d97706; }
+.odoo-situation-inactive .odoo-situation-icon { color: #dc2626; }
+
+.odoo-situation-content {
+    flex: 1;
+}
+
+.odoo-situation-content strong {
+    display: block;
+    font-size: 14px;
+    color: #212529;
+    margin-bottom: 4px;
+}
+
+.odoo-situation-content p {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-sit-label {
+    font-weight: 500;
+    color: #6c757d;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STEPPER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-stepper-card {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e9ecef;
+    background: #fafbfc;
+}
+
+.odoo-stepper {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.odoo-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    min-width: 140px;
+    flex: 1;
+    max-width: 180px;
+}
+
+.odoo-step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    background: #f3f4f6;
+    color: #6b7280;
+    flex-shrink: 0;
+}
+
+.odoo-step-dot .material-icons {
+    font-size: 16px;
+}
+
+.odoo-step.is-done .odoo-step-dot {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.odoo-step.is-current {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.odoo-step.is-current .odoo-step-dot {
+    background: #2563eb;
+    color: #fff;
+}
+
+.odoo-step-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.odoo-step-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 2px;
+}
+
+.odoo-step-tip {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1.3;
+}
+
+.odoo-step-btn {
+    margin-top: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #495057;
+    transition: all 0.15s ease;
+}
+
+.odoo-step-btn:hover {
+    background: #e5e7eb;
+}
+
+.odoo-stepper-closed {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.odoo-stepper-closed .material-icons {
+    font-size: 18px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-detail-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0 24px;
+    overflow-x: auto;
+}
+
+.odoo-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6c757d;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.odoo-tab .material-icons {
+    font-size: 18px;
+}
+
+.odoo-tab:hover {
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.odoo-tab.active {
+    color: #017e84;
+    border-bottom-color: #017e84;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB CONTENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-tab-contents {
+    padding: 24px;
+}
+
+.odoo-tab-content {
+    display: none;
+}
+
+.odoo-tab-content.active {
+    display: block;
+}
+
+.odoo-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.odoo-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.odoo-field-full {
+    grid-column: 1 / -1;
+}
+
+.odoo-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.odoo-field span {
+    font-size: 14px;
+    color: #212529;
+}
+
+.odoo-field a {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-field a:hover {
+    text-decoration: underline;
+}
+
+.odoo-field-error {
+    color: #dc2626;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.odoo-field-hint {
+    color: #6b7280;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+/* Form inputs */
+.odoo-field select,
+.odoo-field input[type="text"],
+.odoo-field input[type="date"],
+.odoo-field textarea {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #212529;
+    background: #fff;
+    transition: border-color 0.15s ease;
+}
+
+.odoo-field select:focus,
+.odoo-field input:focus,
+.odoo-field textarea:focus {
+    outline: none;
+    border-color: #017e84;
+    box-shadow: 0 0 0 3px rgba(1, 126, 132, 0.1);
+}
+
+.odoo-field textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTOCOMPLETE ROW
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-autocomplete-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.odoo-autocomplete-row .autocomplete-wrapper {
+    flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORM ACTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-table-container {
+    overflow-x: auto;
+}
+
+.odoo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.odoo-table th {
+    text-align: left;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 500;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.odoo-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9ecef;
+    color: #212529;
+}
+
+.odoo-table tr:hover {
+    background: #f8f9fa;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NOTES SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-notes-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.odoo-notes-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 12px 0;
+}
+
+.odoo-empty {
+    font-size: 13px;
+    color: #6c757d;
+    text-align: center;
+    padding: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1100px) {
+    .odoo-step {
+        max-width: none;
+    }
+}
+
+@media (max-width: 992px) {
+    .odoo-fields-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-detail-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .odoo-detail-quick {
+        justify-content: center;
+    }
+
+    .odoo-detail-code {
+        text-align: center;
+    }
+
+    .odoo-fields-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .odoo-control-bar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .odoo-control-right {
+        flex-wrap: wrap;
+    }
+
+    .odoo-stepper {
+        flex-direction: column;
+    }
+
+    .odoo-step {
+        max-width: none;
+    }
+
+    .odoo-autocomplete-row {
+        flex-direction: column;
+    }
 }
 </style>
 
-
-<style>
-@media (max-width: 900px) {
-  .card > div[style*="grid-template-columns"] {
-    grid-template-columns: 1fr !important;
-  }
-}
-</style>
-<style>
-/* --- Fix: que el chip NO se quede en "..." en el detalle --- */
-.autocomplete-wrapper { width: 100%; }
-.autocomplete-field { width: 100%; }
-
-.autocomplete-chip {
-  max-width: 100%;
-}
-
-.chip-text{
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;        /* permite que baje a la siguiente línea */
-  min-width: 180px;       /* evita que se quede en 0px */
-}
-
-.chip-name{
-  max-width: none !important;
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: unset !important;
-}
-
-.chip-code{
-  white-space: nowrap;
-  opacity: .75;
-}
-</style>
-
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
 <script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching
+    const tabs = document.querySelectorAll('.odoo-tab');
+    const contents = document.querySelectorAll('.odoo-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetId = 'tab-' + this.dataset.tab;
+
+            // Remove active from all
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            // Add active to clicked
+            this.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+
+    // Check URL for tab parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+        const targetTab = document.querySelector(`.odoo-tab[data-tab="${tabParam}"]`);
+        if (targetTab) {
+            targetTab.click();
+        }
+    }
+});
+</script>
 
 {% endblock %}
