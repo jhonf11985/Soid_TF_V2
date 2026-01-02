@@ -1,0 +1,174 @@
+{% extends "core/base_sidebar.html" %}
+{% load static %}
+
+{% block title %}Nuevo Creyente | Detalle{% endblock %}
+
+{% block sidebar_icon %}group_add{% endblock %}
+{% block sidebar_role_label %}Nuevo Creyente{% endblock %}
+
+{% block sidebar_menu %}
+<a class="sidebar-link" href="{% url 'nuevo_creyente_app:nuevo_creyente' %}">
+  <span class="material-icons">dashboard</span>
+  <span>Dashboard</span>
+</a>
+
+<a class="sidebar-link active" href="{% url 'nuevo_creyente_app:seguimiento_lista' %}">
+  <span class="material-icons">list</span>
+  <span>En seguimiento</span>
+</a>
+{% endblock %}
+
+{% block page_content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+  <div>
+    <h1 style="margin:0;">Detalle de seguimiento</h1>
+    <div style="opacity:.75; margin-top:4px;">
+      {{ miembro.nombres }} {{ miembro.apellidos }}
+      {% if miembro.codigo_seguimiento %} · <strong>{{ miembro.codigo_seguimiento }}</strong>{% endif %}
+    </div>
+  </div>
+
+  <div style="display:flex; gap:8px;">
+    <a href="{% url 'nuevo_creyente_app:seguimiento_lista' %}" class="btn">Volver</a>
+    <!-- Más adelante: botones de acciones (cambiar etapa, asignar responsable, cerrar) -->
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-bottom:12px;">
+  <h3 style="margin:0 0 10px 0;">Datos del miembro</h3>
+  <div style="display:grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap:10px;">
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Nombre</div>
+      <div><strong>{{ miembro.nombres }} {{ miembro.apellidos }}</strong></div>
+    </div>
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Edad</div>
+      <div>{{ miembro.edad|default:"—" }}</div>
+    </div>
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Género</div>
+      <div>{{ miembro.get_genero_display|default:"—" }}</div>
+    </div>
+
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Teléfono</div>
+      <div style="white-space:nowrap;">{{ miembro.telefono|default:miembro.whatsapp|default:"—" }}</div>
+    </div>
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Email</div>
+      <div style="white-space:nowrap;">{{ miembro.email|default:"—" }}</div>
+    </div>
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Fecha de conversión</div>
+      <div style="white-space:nowrap;">
+        {% if miembro.fecha_conversion %}{{ miembro.fecha_conversion|date:"d/m/Y" }}{% else %}—{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<div class="card" style="padding:14px; margin-bottom:12px;">
+  <h3 style="margin:0 0 10px 0;">Expediente de seguimiento</h3>
+
+  <div style="display:grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap:10px;">
+
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Estado</div>
+      <div><strong>{{ expediente.get_estado_display }}</strong></div>
+    </div>
+
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Responsable</div>
+      <div>{{ expediente.responsable|default:"—" }}</div>
+    </div>
+
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Fecha de envío</div>
+      <div>{{ expediente.fecha_envio|date:"d/m/Y H:i" }}</div>
+    </div>
+
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Próximo contacto</div>
+      <div>
+        {% if expediente.proximo_contacto %}
+          {{ expediente.proximo_contacto|date:"d/m/Y" }}
+        {% else %}
+          —
+        {% endif %}
+      </div>
+    </div>
+
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Fecha de cierre</div>
+      <div>
+        {% if expediente.fecha_cierre %}
+          {{ expediente.fecha_cierre|date:"d/m/Y H:i" }}
+        {% else %}
+          —
+        {% endif %}
+      </div>
+    </div>
+
+    <div>
+      <div style="opacity:.7; font-size:.9em;">Última actualización</div>
+      <div>{{ expediente.fecha_actualizacion|date:"d/m/Y H:i" }}</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-bottom:12px;">
+  <h3 style="margin:0 0 10px 0;">Editar seguimiento</h3>
+
+  <form method="post" style="display:grid; gap:12px;">
+    {% csrf_token %}
+
+    <div style="display:grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap:10px;">
+      <div>
+        <label>Responsable</label>
+        {{ form.responsable }}
+        {% if form.responsable.errors %}
+          <div style="color:#b42318; font-size:.9em;">{{ form.responsable.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div>
+        <label>Próximo contacto</label>
+        {{ form.proximo_contacto }}
+        {% if form.proximo_contacto.errors %}
+          <div style="color:#b42318; font-size:.9em;">{{ form.proximo_contacto.errors }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div>
+      <label>Notas</label>
+      {{ form.notas }}
+      {% if form.notas.errors %}
+        <div style="color:#b42318; font-size:.9em;">{{ form.notas.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button type="submit" class="btn btn-primary">Guardar cambios</button>
+      <a href="{% url 'nuevo_creyente_app:seguimiento_detalle' miembro.id %}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<style>
+@media (max-width: 900px) {
+  form[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+
+
+<style>
+@media (max-width: 900px) {
+  .card > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+{% endblock %}

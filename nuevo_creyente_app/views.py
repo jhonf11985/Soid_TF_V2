@@ -2,8 +2,9 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import render
 from django.utils import timezone
-
+from django.shortcuts import get_object_or_404
 from miembros_app.models import Miembro  # 👈 usamos el mismo modelo Miembro
+from .forms import NuevoCreyenteExpedienteForm
 
 
 @login_required
@@ -95,3 +96,36 @@ def seguimiento_lista(request):
         "total": qs.count(),
     }
     return render(request, "nuevo_creyente_app/seguimiento_lista.html", context)
+
+@login_required
+def seguimiento_detalle(request, miembro_id):
+    """
+    Detalle del seguimiento de un Nuevo Creyente.
+    Permite editar responsable / próximo contacto / notas (inline).
+    """
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False
+    )
+
+    expediente = miembro.expediente_nuevo_creyente
+
+    if request.method == "POST":
+        form = NuevoCreyenteExpedienteForm(request.POST, instance=expediente)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Seguimiento actualizado correctamente.")
+            return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+        else:
+            messages.error(request, "Revisa los campos. Hay errores en el formulario.")
+    else:
+        form = NuevoCreyenteExpedienteForm(instance=expediente)
+
+    context = {
+        "miembro": miembro,
+        "expediente": expediente,
+        "form": form,
+        "hoy": timezone.localdate(),
+    }
+    return render(request, "nuevo_creyente_app/seguimiento_detalle.html", context)
