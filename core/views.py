@@ -173,8 +173,11 @@ def probar_envio_correo(request):
 # =================================================
 # CREAR USUARIO DESDE EL SISTEMA (SOLO ADMIN)
 # =================================================
+from django.views.decorators.csrf import ensure_csrf_cookie
+
 @login_required
 @permission_required('auth.add_user', raise_exception=True)
+@ensure_csrf_cookie
 def crear_usuario(request):
     if request.method == "POST":
         form = UsuarioIglesiaForm(request.POST)
@@ -186,10 +189,8 @@ def crear_usuario(request):
     else:
         form = UsuarioIglesiaForm()
 
-    context = {
-        "form": form,
-    }
-    return render(request, "core/usuarios/crear_usuario.html", context)
+    return render(request, "core/usuarios/crear_usuario.html", {"form": form})
+
 
 @login_required
 def perfil_usuario(request):
