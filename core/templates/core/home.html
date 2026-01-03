@@ -3,39 +3,65 @@
 {% block title %}Inicio · Soid_Tf_2{% endblock %}
 
 {% block content %}
-<div class="app-container">
-    <div class="app-grid">
+<!-- ========== VISTA MÓVIL (estilo Amadita) ========== -->
+<div class="home-mobile">
+    <!-- Saludo personalizado -->
+    <div class="home-mobile-greeting">
+        <h1>¡Hola {{ user.first_name|default:user.username }}!</h1>
+        <p>¿En qué te podemos ayudar?</p>
+    </div>
+
+    <!-- Grid de módulos circulares -->
+    <div class="home-mobile-grid">
         {% for module in modules %}
-    <a href="{% url module.url_name %}" class="odoo-app">
-        <div class="odoo-app-icon" style="background-color: {{ module.color|default:'#6772e5' }}">
-            <span class="material-icons">
-                {{ module.icon|default:"apps" }}
-            </span>
-        </div>
-        <div class="odoo-app-name">
-            {{ module.name }}
-        </div>
-    </a>
-{% empty %}
-    <p>No hay módulos activos.</p>
-{% endfor %}
+        <a href="{% url module.url_name %}" class="home-mobile-app">
+            <div class="home-mobile-icon" style="background-color: {{ module.color|default:'#6772e5' }}">
+                <span class="material-icons">{{ module.icon|default:"apps" }}</span>
+            </div>
+            <span class="home-mobile-label">{{ module.name }}</span>
+        </a>
+        {% empty %}
+        <p class="home-mobile-empty">No hay módulos activos.</p>
+        {% endfor %}
 
-{% if user.is_staff %}
-    <a href="{% url 'admin:index' %}" class="odoo-app">
-        <div class="odoo-app-icon" style="background-color: #444;">
-            <span class="material-icons">
-                admin_panel_settings
-            </span>
-        </div>
-        <div class="odoo-app-name">
-            Administración
-        </div>
-    </a>
-{% endif %}
-
-
+        {% if user.is_staff %}
+        <a href="{% url 'admin:index' %}" class="home-mobile-app">
+            <div class="home-mobile-icon" style="background-color: #64748b">
+                <span class="material-icons">admin_panel_settings</span>
+            </div>
+            <span class="home-mobile-label">Admin</span>
+        </a>
+        {% endif %}
     </div>
 </div>
+
+<!-- ========== VISTA ESCRITORIO (estilo Odoo original) ========== -->
+<div class="home-desktop">
+    <div class="app-container">
+        <div class="app-grid">
+            {% for module in modules %}
+            <a href="{% url module.url_name %}" class="odoo-app">
+                <div class="odoo-app-icon" style="background-color: {{ module.color|default:'#6772e5' }}">
+                    <span class="material-icons">{{ module.icon|default:"apps" }}</span>
+                </div>
+                <div class="odoo-app-name">{{ module.name }}</div>
+            </a>
+            {% empty %}
+            <p>No hay módulos activos.</p>
+            {% endfor %}
+
+            {% if user.is_staff %}
+            <a href="{% url 'admin:index' %}" class="odoo-app">
+                <div class="odoo-app-icon" style="background-color: #444;">
+                    <span class="material-icons">admin_panel_settings</span>
+                </div>
+                <div class="odoo-app-name">Administración</div>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 <!-- BOTÓN FLOTANTE CON MENÚ – HOME -->
 <div class="fab-home-wrapper" id="fabHomeWrapper">
     <!-- Botón principal -->
@@ -86,5 +112,151 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 {% endblock %}
 
-<!-- Versión: 2025-12-01-1 -->
+{% block extra_css %}
+<style>
+/* ============================
+   HOME MÓVIL - ESTILO AMADITA
+   ============================ */
 
+/* Por defecto: ocultar móvil, mostrar escritorio */
+.home-mobile {
+    display: none;
+}
+
+.home-desktop {
+    display: block;
+}
+
+/* En móvil: mostrar móvil, ocultar escritorio */
+@media (max-width: 768px) {
+    .home-mobile {
+        display: block;
+        padding: 30px 20px 100px;
+        min-height: calc(100vh - 120px);
+    }
+
+    .home-desktop {
+        display: none;
+    }
+
+    /* Ocultar el nav secundario en móvil para la home */
+    .main-nav {
+        display: none;
+    }
+}
+
+/* Saludo */
+.home-mobile-greeting {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.home-mobile-greeting h1 {
+    font-size: 26px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 6px 0;
+}
+
+.home-mobile-greeting p {
+    font-size: 17px;
+    color: #6b7280;
+    margin: 0;
+    font-weight: 400;
+}
+
+/* Grid de módulos */
+.home-mobile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px 20px;
+    max-width: 340px;
+    margin: 0 auto;
+}
+
+/* Cada módulo */
+.home-mobile-app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    gap: 10px;
+}
+
+/* Círculo del icono */
+.home-mobile-icon {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-mobile-icon .material-icons {
+    font-size: 48px;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.home-mobile-app:active .home-mobile-icon {
+    transform: scale(0.95);
+}
+
+/* Nombre del módulo */
+.home-mobile-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #374151;
+    text-align: center;
+    max-width: 120px;
+}
+
+.home-mobile-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* Ajustes para pantallas muy pequeñas */
+@media (max-width: 380px) {
+    .home-mobile-icon {
+        width: 95px;
+        height: 95px;
+    }
+
+    .home-mobile-icon .material-icons {
+        font-size: 42px;
+    }
+
+    .home-mobile-grid {
+        gap: 20px 15px;
+    }
+
+    .home-mobile-greeting h1 {
+        font-size: 23px;
+    }
+}
+
+/* Para 3 columnas en tablets pequeñas si hay muchos módulos */
+@media (min-width: 500px) and (max-width: 768px) {
+    .home-mobile-grid {
+        grid-template-columns: repeat(3, 1fr);
+        max-width: 480px;
+    }
+
+    .home-mobile-icon {
+        width: 100px;
+        height: 100px;
+    }
+
+    .home-mobile-icon .material-icons {
+        font-size: 44px;
+    }
+}
+</style>
+{% endblock %}
+
+<!-- Versión: 2025-01-03-mobile-amadita -->
