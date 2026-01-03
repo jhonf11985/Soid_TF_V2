@@ -583,13 +583,15 @@ class MiembroRelacionForm(forms.ModelForm):
             "es_responsable": "Responsable principal",
             "notas": "Notas (opcional)",
         }
+       
         widgets = {
             "familiar": forms.HiddenInput(attrs={"id": "id_familiar_miembro"}),
-            "tipo_relacion": forms.Select(attrs={"class": "input", "style": "width:100%;"}),
+            "tipo_relacion": forms.Select(attrs={"class": "odoo-input", "style": "width:100%;"}),
             "vive_junto": forms.CheckboxInput(attrs={"class": "checkbox"}),
             "es_responsable": forms.CheckboxInput(attrs={"class": "checkbox"}),
             "notas": forms.Textarea(attrs={"rows": 2, "class": "textarea"}),
         }
+
 
 class EnviarFichaMiembroEmailForm(forms.Form):
     destinatario = forms.EmailField(

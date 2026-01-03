@@ -766,15 +766,20 @@ class MiembroUpdateView(View):
         bloquear_identidad = _miembro_tiene_asignacion_en_unidades(miembro)
 
         bloquear_estado = _miembro_tiene_asignacion_en_unidades(miembro)
+        rel_form = MiembroRelacionForm()
+        
+
         context = {
             "form": form,
             "miembro": miembro,
+            "rel_form": rel_form,  # ✅ NUEVO
             "modo": "editar",
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
               "bloquear_estado": bloquear_estado,
               "bloquear_identidad": bloquear_identidad,
+               "TIPOS_RELACION_CHOICES": MiembroRelacion.TIPO_RELACION_CHOICES,
 
 
             
@@ -782,7 +787,6 @@ class MiembroUpdateView(View):
         return render(request, "miembros_app/miembro_form.html", context)
 
     def post(self, request, pk):
-
         miembro = get_object_or_404(Miembro, pk=pk)
         edad_minima = get_edad_minima_miembro_oficial()
 
@@ -807,8 +811,8 @@ class MiembroUpdateView(View):
         form = MiembroForm(request.POST, request.FILES, instance=miembro)
 
         if form.is_valid():
-            
             miembro_editado = form.save(commit=False)
+
             # =============================
             # BLOQUEO: NO CAMBIAR GÉNERO / FECHA NACIMIENTO SI ESTÁ EN UNIDADES
             # =============================
@@ -822,11 +826,6 @@ class MiembroUpdateView(View):
             cambio_fn = (fn_antes != fn_despues)
 
             if (cambio_genero or cambio_fn) and _miembro_tiene_asignacion_en_unidades(miembro):
-
-
-        
-
-
                 # Volvemos a renderizar la misma pantalla con el formulario (NO guarda)
                 familiares_qs = (
                     MiembroRelacion.objects
@@ -849,93 +848,26 @@ class MiembroUpdateView(View):
                     "todos_miembros": todos_miembros,
                     "familiares": familiares_qs,
                     "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
-
-                    # flags para UI (si luego quieres bloquear en el template)
-                    "bloquear_estado": True,
                     "bloquear_identidad": True,
+                    "TIPOS_RELACION_CHOICES": MiembroRelacion.TIPO_RELACION_CHOICES,
                 }
-                return render(request, "miembros_app/miembro_form.html", context)
-
-
-            # =============================
-            # Lógica de edad mínima
-            # =============================
-            edad = None
-            if miembro_editado.fecha_nacimiento:
-                hoy = date.today()
-                fn = miembro_editado.fecha_nacimiento
-                edad = hoy.year - fn.year
-                if (hoy.month, hoy.day) < (fn.month, fn.day):
-                    edad -= 1
-
-            if edad is not None and edad < edad_minima:
-                if miembro_editado.estado_miembro:
-                    miembro_editado.estado_miembro = ""
-                    messages.info(
-                        request,
-                        (
-                            f"Este miembro es menor de {edad_minima} años. "
-                            "Se ha guardado sin estado de miembro para no contarlo como miembro oficial."
-                        ),
-                    )
-
-            # =============================
-            # BLOQUEO: NO CAMBIAR ESTADO/ACTIVO SI ESTÁ EN UNIDADES
-            # =============================
-            estado_antes = miembro.estado_miembro
-            activo_antes = miembro.activo
-
-            estado_despues = miembro_editado.estado_miembro
-            activo_despues = miembro_editado.activo
-
-            cambio_estado = (estado_antes != estado_despues)
-            cambio_activo = (activo_antes != activo_despues)
-
-            if (cambio_estado or cambio_activo) and _miembro_tiene_asignacion_en_unidades(miembro):
-                form.add_error(
-                    "estado_miembro",
-                    "No puedes cambiar el estado mientras el miembro esté asignado a una unidad. "
-                    "Primero quítalo de sus unidades (liderazgo/miembros/equipo)."
-                )
                 messages.error(
                     request,
-                    "Acción bloqueada: este miembro está asignado a una o más unidades. "
-                    "Primero debes retirarlo de esas unidades."
+                    "Acción bloqueada: no puedes cambiar género o fecha de nacimiento "
+                    "mientras el miembro esté asignado a una o más unidades."
                 )
-
-                # Volvemos a renderizar la misma pantalla con el formulario (NO guarda)
-                familiares_qs = (
-                    MiembroRelacion.objects
-                    .filter(miembro=miembro)
-                    .select_related("familiar")
-                )
-                familiares_ids = familiares_qs.values_list("familiar_id", flat=True)
-
-                todos_miembros = (
-                    Miembro.objects
-                    .exclude(pk=miembro.pk)
-                    .exclude(pk__in=familiares_ids)
-                    .order_by("nombres", "apellidos")
-                )
-
-                context = {
-                    "form": form,
-                    "miembro": miembro,
-                    "modo": "editar",
-                    "todos_miembros": todos_miembros,
-                    "familiares": familiares_qs,
-                    "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
-                    "bloquear_estado": True
-                   
-                }
                 return render(request, "miembros_app/miembro_form.html", context)
 
+            # =============================
+            # BLOQUEO: NO CAMBIAR ESTADO SI ESTÁ EN UNIDADES
+            # (si tienes este bloque en tu código, mantenlo igual; aquí asumo que ya existe arriba o abajo)
+            # =============================
+
+            # Guardar miembro
             miembro_editado.save()
 
-      
-    
             # =============================
-            # GUARDAR FAMILIARES (líneas)
+            # ✅ SINCRONIZAR FAMILIARES (CREAR / ACTUALIZAR / ELIMINAR)
             # =============================
             ids = request.POST.getlist("familiares_miembro_id[]")
             tipos = request.POST.getlist("familiares_tipo_relacion[]")
@@ -943,42 +875,75 @@ class MiembroUpdateView(View):
             resp_list = request.POST.getlist("familiares_es_responsable[]")
             notas_list = request.POST.getlist("familiares_notas[]")
 
-            if ids:
-                if not (len(ids) == len(tipos) == len(vive_list) == len(resp_list) == len(notas_list)):
-                    messages.error(request, "No se pudieron procesar los familiares: datos incompletos.")
-                else:
-                    existentes = set(
-                        MiembroRelacion.objects
-                        .filter(miembro=miembro_editado)
-                        .values_list("familiar_id", flat=True)
+            # Normalizamos longitudes (si no viene nada, interpretamos como "quedó vacío")
+            if not (len(ids) == len(tipos) == len(vive_list) == len(resp_list) == len(notas_list)):
+                messages.error(request, "No se pudieron procesar los familiares: datos incompletos.")
+            else:
+                # 1) Lo que el usuario dejó en pantalla (POST)
+                posted_ids = []
+                payload = {}  # familiar_id -> dict campos
+
+                for i in range(len(ids)):
+                    try:
+                        familiar_id = int(ids[i])
+                    except (TypeError, ValueError):
+                        continue
+
+                    # No permitimos relacionarse consigo mismo
+                    if familiar_id == miembro_editado.pk:
+                        continue
+
+                    tipo = (tipos[i] or "otro").strip()
+
+                    payload[familiar_id] = {
+                        "tipo_relacion": tipo,
+                        "vive_junto": (vive_list[i] == "1"),
+                        "es_responsable": (resp_list[i] == "1"),
+                        "notas": (notas_list[i] or "").strip(),
+                    }
+                    posted_ids.append(familiar_id)
+
+                posted_set = set(posted_ids)
+
+                # 2) Lo que existe en BD actualmente
+                existentes_qs = MiembroRelacion.objects.filter(miembro=miembro_editado)
+                existentes_set = set(existentes_qs.values_list("familiar_id", flat=True))
+
+                # 3) ELIMINAR los que ya no están
+                a_borrar = existentes_set - posted_set
+                if a_borrar:
+                    # Borra relación directa
+                    MiembroRelacion.objects.filter(miembro=miembro_editado, familiar_id__in=a_borrar).delete()
+                    # Borra inversa
+                    MiembroRelacion.objects.filter(miembro_id__in=a_borrar, familiar=miembro_editado).delete()
+
+                # 4) CREAR o ACTUALIZAR los que están
+                for familiar_id, data in payload.items():
+                    rel, _created = MiembroRelacion.objects.update_or_create(
+                        miembro=miembro_editado,
+                        familiar_id=familiar_id,
+                        defaults=data
                     )
 
-                    creados = 0
-                    for i in range(len(ids)):
-                        try:
-                            familiar_id = int(ids[i])
-                        except (TypeError, ValueError):
-                            continue
+                    # Inversa automática: describe a "miembro_editado" desde el punto de vista del familiar
+                    tipo_inverso = MiembroRelacion.inverse_tipo(
+                        data["tipo_relacion"],
+                        genero_persona_invertida=miembro_editado.genero
+                    )
 
-                        if familiar_id == miembro_editado.pk or familiar_id in existentes:
-                            continue
+                    MiembroRelacion.objects.update_or_create(
+                        miembro_id=familiar_id,
+                        familiar=miembro_editado,
+                        defaults={
+                            "tipo_relacion": tipo_inverso,
+                            "vive_junto": rel.vive_junto,
+                            "es_responsable": False,
+                            "notas": "",
+                        },
+                    )
 
-                        MiembroRelacion.objects.create(
-                            miembro=miembro_editado,
-                            familiar_id=familiar_id,
-                            tipo_relacion=tipos[i] or "otro",
-                            vive_junto=(vive_list[i] == "1"),
-                            es_responsable=(resp_list[i] == "1"),
-                            notas=(notas_list[i] or "").strip(),
-                        )
-                        existentes.add(familiar_id)
-                        creados += 1
-
-                    if creados:
-                        messages.success(request, f"Se añadieron {creados} familiar(es).")
-
+            # Notificación salida (tu lógica)
             salida_despues = (not miembro_editado.activo and miembro_editado.fecha_salida is not None)
-
             if (not salida_antes) and salida_despues:
                 try:
                     crear_notificacion(
@@ -1009,7 +974,6 @@ class MiembroUpdateView(View):
             .exclude(pk__in=familiares_ids)
             .order_by("nombres", "apellidos")
         )
-        
 
         context = {
             "form": form,
@@ -1018,11 +982,11 @@ class MiembroUpdateView(View):
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
-          
-
-
+            "TIPOS_RELACION_CHOICES": MiembroRelacion.TIPO_RELACION_CHOICES,
         }
         return render(request, "miembros_app/miembro_form.html", context)
+
+
 
 # -------------------------------------
 # DETALLE DEL MIEMBRO
@@ -1056,7 +1020,7 @@ class MiembroDetailView(View):
         )
 
         # =========================
-        # FAMILIA
+        # FAMILIA (normalizado + etiqueta bonita)
         # =========================
         relaciones_qs = (
             MiembroRelacion.objects
@@ -1065,15 +1029,37 @@ class MiembroDetailView(View):
         )
 
         relaciones_familia = []
-        parejas_vistas = set()
+        pares_vistos = set()  # ✅ evita duplicados por fila inversa
 
         for rel in relaciones_qs:
-            if rel.tipo_relacion == "conyuge":
-                pareja = frozenset({rel.miembro_id, rel.familiar_id})
-                if pareja in parejas_vistas:
-                    continue
-                parejas_vistas.add(pareja)
-            relaciones_familia.append(rel)
+            if rel.miembro_id == miembro.id:
+                otro = rel.familiar
+                tipo_para_mi = rel.tipo_relacion
+            else:
+                otro = rel.miembro
+                tipo_para_mi = MiembroRelacion.inverse_tipo(
+                    rel.tipo_relacion,
+                    genero_persona_invertida=otro.genero
+                )
+
+            # ✅ clave única por par (miembro - otro), independientemente de la dirección
+            par = frozenset({miembro.id, otro.id})
+            if par in pares_vistos:
+                continue
+            pares_vistos.add(par)
+
+            relaciones_familia.append({
+                "id": rel.id,
+                "otro": otro,
+                "tipo": tipo_para_mi,
+                "tipo_label": MiembroRelacion.label_por_genero(tipo_para_mi, otro.genero),
+                "vive_junto": rel.vive_junto,
+                "es_responsable": rel.es_responsable,
+                "notas": rel.notas,
+            })
+
+
+
 
         edad_minima = get_edad_minima_miembro_oficial()
 

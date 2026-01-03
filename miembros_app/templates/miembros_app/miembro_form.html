@@ -106,6 +106,11 @@
                 <span>Femenino</span>
                 </label>
 
+                {% if bloquear_identidad %}
+                <input type="hidden" name="genero" value="{{ miembro.genero }}">
+                {% endif %}
+
+
 
 
 
@@ -596,42 +601,33 @@
     </thead>
 
     <!-- ✅ ÚNICO tbody: aquí van tanto los existentes como los nuevos -->
-    <tbody id="familiares-pendientes">
-      {% for rel in familiares %}
-        <tr
-          data-miembro-id="{{ rel.familiar_id }}"
-          data-payload='{
-            "id":"{{ rel.familiar_id }}",
-            "nombre":"{{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}",
-            "codigo":"{{ rel.familiar.codigo|default_if_none:"" }}",
-            "tipo_relacion":"{{ rel.tipo_relacion }}",
-            "tipo_relacion_label":"{{ rel.get_tipo_relacion_display }}",
-            "vive_junto":{{ rel.vive_junto|yesno:"true,false" }},
-            "es_responsable":{{ rel.es_responsable|yesno:"true,false" }},
-            "notas":"{{ rel.notas|default_if_none:""|escapejs }}"
-          }'
-        >
-          <td>
-            {{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}
-            {% if rel.familiar.codigo %}
-              <div style="font-size:11px;color:#6c757d;">{{ rel.familiar.codigo }}</div>
-            {% endif %}
-          </td>
-          <td>{{ rel.get_tipo_relacion_display }}</td>
-          <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
-          <td>
-            <!-- ✅ ahora SI borra -->
-            <a href="javascript:void(0)" class="odoo-link-danger js-remove-familiar-line" title="Quitar">
-              <span class="material-icons">delete</span>
-            </a>
-          </td>
-        </tr>
-      {% empty %}
-        <tr id="familiares-empty-row">
-          <td colspan="4" class="odoo-empty-text">No hay familiares registrados.</td>
-        </tr>
-      {% endfor %}
-    </tbody>
+<!-- ✅ ÚNICO tbody: aquí van tanto los existentes como los nuevos -->
+<tbody id="familiares-pendientes">
+  {% for rel in familiares %}
+    <tr
+      data-miembro-id="{{ rel.familiar_id }}"
+      data-payload='{"id":"{{ rel.familiar_id }}","nombre":"{{ rel.familiar.nombres }} {{ rel.familiar.apellidos|escapejs }}","codigo":"{{ rel.familiar.codigo|default_if_none:""|escapejs }}","tipo_relacion":"{{ rel.tipo_relacion }}","tipo_relacion_label":"{{ rel.get_tipo_relacion_display }}","vive_junto":{{ rel.vive_junto|yesno:"true,false" }},"es_responsable":{{ rel.es_responsable|yesno:"true,false" }},"notas":"{{ rel.notas|default_if_none:""|escapejs }}"}'
+    >
+      <td>
+        {{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}
+        {% if rel.familiar.codigo %}
+          <div style="font-size:11px;color:#6c757d;">{{ rel.familiar.codigo }}</div>
+        {% endif %}
+      </td>
+      <td>{{ rel.get_tipo_relacion_display }}</td>
+      <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
+      <td>
+        <a href="javascript:void(0)" class="odoo-link-danger js-remove-familiar-line" title="Quitar">
+          <span class="material-icons">delete</span>
+        </a>
+      </td>
+    </tr>
+  {% empty %}
+    <tr id="familiares-empty-row">
+      <td colspan="4" class="odoo-empty-text">No hay familiares registrados.</td>
+    </tr>
+  {% endfor %}
+</tbody>
   </table>
 </div>
 
@@ -711,15 +707,13 @@
             <div class="odoo-field">
                 <label class="odoo-label">Relación</label>
                 <div class="odoo-field-stack">
-                    <select name="tipo_relacion" id="id_tipo_relacion" class="odoo-input">
-                        <option value="">Seleccione tipo...</option>
-                        <option value="padre">Padre</option>
-                        <option value="madre">Madre</option>
-                        <option value="hijo">Hijo / Hija</option>
-                        <option value="hermano">Hermano / Hermana</option>
-                        <option value="conyuge">Cónyuge</option>
-                        <option value="otro">Otro</option>
-                    </select>
+                <select name="tipo_relacion" class="odoo-input" id="id_tipo_relacion">
+                <option value="" selected disabled>Selecciona…</option>
+                {% for value, label in TIPOS_RELACION_CHOICES %}
+                    <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+                </select>
+
 
                     <div class="odoo-field-row" style="margin-top: 8px;">
                         <label class="odoo-checkbox-label">

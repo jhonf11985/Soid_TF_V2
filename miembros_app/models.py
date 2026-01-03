@@ -391,14 +391,53 @@ class Miembro(models.Model):
 
 
 class MiembroRelacion(models.Model):
+    # ✅ Tipos (guardamos CLAVES neutras y mostramos bonito según género)
     TIPO_RELACION_CHOICES = [
+        # Núcleo
         ("padre", "Padre"),
         ("madre", "Madre"),
         ("hijo", "Hijo/a"),
         ("conyuge", "Cónyuge"),
         ("hermano", "Hermano/a"),
+
+        # Familia extendida
+        ("abuelo", "Abuelo/Abuela"),
+        ("nieto", "Nieto/Nieta"),
+        ("tio", "Tío/Tía"),
+        ("sobrino", "Sobrino/Sobrina"),
+        ("primo", "Primo/Prima"),
+
+        # Familia política
+        ("suegro", "Suegro/Suegra"),
+        ("yerno", "Yerno/Nuera"),
+        ("cunado", "Cuñado/Cuñada"),
+
+        # Otros
+        ("tutor", "Tutor/a"),
         ("otro", "Otro"),
     ]
+
+    # ⬅️ Inversa base (cuando NO depende del género)
+    RELACION_INVERSA_BASE = {
+        "padre": "hijo",
+        "madre": "hijo",
+        "hijo": "padre",       # ⚠️ se ajusta por género en inverse_tipo()
+        "conyuge": "conyuge",
+        "hermano": "hermano",
+
+        "abuelo": "nieto",
+        "nieto": "abuelo",
+        "tio": "sobrino",
+        "sobrino": "tio",
+        "primo": "primo",
+
+        "suegro": "yerno",     # ⚠️ se ajusta por género en inverse_tipo()
+        "yerno": "suegro",
+        "cunado": "cunado",
+
+        "tutor": "tutelado",   # opcional si quieres; si no, lo dejamos como "otro"
+        "otro": "otro",
+    }
 
     miembro = models.ForeignKey(
         Miembro,
@@ -416,18 +455,9 @@ class MiembroRelacion(models.Model):
         max_length=20,
         choices=TIPO_RELACION_CHOICES,
     )
-    vive_junto = models.BooleanField(
-        default=False,
-        help_text="Marcar si viven en la misma casa.",
-    )
-    es_responsable = models.BooleanField(
-        default=False,
-        help_text="Marcar si es responsable principal (económico / tutor).",
-    )
-    notas = models.TextField(
-        blank=True,
-        help_text="Notas breves sobre la relación familiar (opcional).",
-    )
+    vive_junto = models.BooleanField(default=False, help_text="Marcar si viven en la misma casa.")
+    es_responsable = models.BooleanField(default=False, help_text="Marcar si es responsable principal (económico / tutor).")
+    notas = models.TextField(blank=True, help_text="Notas breves sobre la relación familiar (opcional).")
 
     class Meta:
         verbose_name = "Relación familiar"
@@ -435,3 +465,74 @@ class MiembroRelacion(models.Model):
 
     def __str__(self):
         return f"{self.miembro} - {self.get_tipo_relacion_display()} de {self.familiar}"
+
+    # =========================
+    # ✅ Helpers inteligentes
+    # =========================
+    @staticmethod
+    def _norm_genero(g):
+        g = (g or "").strip().lower()
+        if g in ("m", "masculino", "hombre"):
+            return "m"
+        if g in ("f", "femenino", "mujer"):
+            return "f"
+        return ""
+
+    @classmethod
+    def label_por_genero(cls, tipo, genero):
+        """
+        Devuelve la etiqueta bonita (Hermano/Hermana, Tío/Tía, etc.)
+        usando el género de la PERSONA que tiene ese rol.
+        """
+        genero = cls._norm_genero(genero)
+
+        etiquetas = {
+            "padre": ("Padre", "Padre"),
+            "madre": ("Madre", "Madre"),
+            "hijo": ("Hijo", "Hija"),
+            "conyuge": ("Cónyuge", "Cónyuge"),  # si quieres: ("Esposo","Esposa")
+            "hermano": ("Hermano", "Hermana"),
+
+            "abuelo": ("Abuelo", "Abuela"),
+            "nieto": ("Nieto", "Nieta"),
+            "tio": ("Tío", "Tía"),
+            "sobrino": ("Sobrino", "Sobrina"),
+            "primo": ("Primo", "Prima"),
+
+            "suegro": ("Suegro", "Suegra"),
+            "yerno": ("Yerno", "Nuera"),
+            "cunado": ("Cuñado", "Cuñada"),
+
+            "tutor": ("Tutor", "Tutora"),
+            "otro": ("Otro", "Otro"),
+        }
+
+        masc, fem = etiquetas.get(tipo, ("Otro", "Otro"))
+        if genero == "f":
+            return fem
+        return masc
+
+    @classmethod
+    def inverse_tipo(cls, tipo, genero_persona_invertida=None):
+        """
+        Devuelve el tipo inverso.
+        Ej:
+          - si A es hijo de B -> B es padre/madre de A (depende del género de B)
+          - si A es suegro de B -> B es yerno/nuera de A (depende del género de B)
+        """
+        base = cls.RELACION_INVERSA_BASE.get(tipo, "otro")
+
+        # Ajustes por género
+        gen = cls._norm_genero(genero_persona_invertida)
+
+        if tipo == "hijo":
+            # Si A dice: "B es mi hijo"
+            # inversa: "yo soy padre/madre de B" => depende del género de "yo" (persona invertida)
+            return "madre" if gen == "f" else "padre"
+
+        if tipo == "suegro":
+            # Si A dice: "B es mi suegro/suegra"
+            # inversa: "yo soy yerno/nuera de B" => depende del género de "yo"
+            return "yerno"  # la etiqueta bonita se resuelve por género al mostrar
+
+        return base
