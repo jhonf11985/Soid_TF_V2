@@ -794,7 +794,10 @@ class MiembroUpdateView(View):
 
         # --- SI VIENE DEL BOTÓN "AGREGAR FAMILIAR" ---
         if "agregar_familiar" in request.POST:
-            rel_form = MiembroRelacionForm(request.POST)
+            rel_form = MiembroRelacionForm(
+                request.POST,
+                miembro=miembro
+            )
             if rel_form.is_valid():
                 relacion = rel_form.save(commit=False)
                 relacion.miembro = miembro
@@ -891,6 +894,10 @@ class MiembroUpdateView(View):
 
                     # No permitimos relacionarse consigo mismo
                     if familiar_id == miembro_editado.pk:
+                        messages.error(
+                            request,
+                            "No puedes asignar un miembro como familiar de sí mismo."
+                        )
                         continue
 
                     tipo = (tipos[i] or "otro").strip()

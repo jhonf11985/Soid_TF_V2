@@ -571,8 +571,23 @@ class NuevoCreyenteForm(forms.ModelForm):
 class MiembroRelacionForm(forms.ModelForm):
     """
     Formulario para gestionar los familiares (relaciones entre miembros).
-    Lo usaremos solo en la pestaña 'Familiares'.
     """
+
+    def __init__(self, *args, **kwargs):
+        self.miembro = kwargs.pop("miembro", None)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        familiar = cleaned_data.get("familiar")
+
+        if self.miembro and familiar and self.miembro.pk == familiar.pk:
+            raise forms.ValidationError(
+                "Un miembro no puede asignarse a sí mismo como familiar."
+            )
+
+        return cleaned_data
+
     class Meta:
         model = MiembroRelacion
         fields = ["familiar", "tipo_relacion", "vive_junto", "es_responsable", "notas"]
@@ -583,7 +598,6 @@ class MiembroRelacionForm(forms.ModelForm):
             "es_responsable": "Responsable principal",
             "notas": "Notas (opcional)",
         }
-       
         widgets = {
             "familiar": forms.HiddenInput(attrs={"id": "id_familiar_miembro"}),
             "tipo_relacion": forms.Select(attrs={"class": "odoo-input", "style": "width:100%;"}),
