@@ -1457,85 +1457,294 @@ def reporte_miembros_salida(request):
     )
 
 
-# -------------------------------------
-# REPORTE: RELACIONES FAMILIARES
-# -------------------------------------
-# -------------------------------------
-# REPORTE: RELACIONES FAMILIARES
-# -------------------------------------
+from django.shortcuts import render
+from django.db.models import Q
+from django.utils import timezone
+from collections import defaultdict
+
+from .models import Miembro, MiembroRelacion
+from core.utils_config import get_config
+
+
 def reporte_relaciones_familiares(request):
     """
-    Reporte de relaciones familiares entre miembros.
-    Muestra quién está relacionado con quién (cónyuges, hijos, etc.),
-    con filtros por tipo de relación, convivencia y responsable.
+    Reporte: Familias de la Iglesia
+    
+    Muestra los núcleos familiares agrupados por apellido.
+    Cada familia es un grupo de personas conectadas por relaciones familiares.
     """
 
-    # Texto de búsqueda
+    hoy = timezone.localdate()
+    CFG = get_config()
+
+    # Parámetros
     query = request.GET.get("q", "").strip()
 
-    # Filtros booleanos
-    solo_miembros = request.GET.get("solo_miembros", "") == "1"
-    solo_conviven = request.GET.get("solo_conviven", "") == "1"
-    solo_responsables = request.GET.get("solo_responsables", "") == "1"
-
-    # Filtro por tipo de relación (padre, madre, hijo, conyuge, etc.)
-    tipo_relacion = request.GET.get("tipo_relacion", "").strip()
-
-    # Base queryset
-    relaciones = (
+    # ═══════════════════════════════════════════════════════════════════════════
+    # OBTENER TODAS LAS RELACIONES
+    # ═══════════════════════════════════════════════════════════════════════════
+    relaciones_qs = (
         MiembroRelacion.objects
         .select_related("miembro", "familiar")
-        .all()
+        .filter(miembro__activo=True, familiar__activo=True)  # Solo miembros activos
     )
 
-    # Búsqueda por nombres / apellidos de miembro o familiar
     if query:
-        relaciones = relaciones.filter(
-            Q(miembro__nombres__icontains=query)
-            | Q(miembro__apellidos__icontains=query)
-            | Q(familiar__nombres__icontains=query)
-            | Q(familiar__apellidos__icontains=query)
+        relaciones_qs = relaciones_qs.filter(
+            Q(miembro__nombres__icontains=query) |
+            Q(miembro__apellidos__icontains=query) |
+            Q(familiar__nombres__icontains=query) |
+            Q(familiar__apellidos__icontains=query)
         )
 
-    # Solo relaciones donde el familiar también es miembro registrado
-    # (en tu modelo 'familiar' siempre es un Miembro, pero mantenemos el filtro
-    # por si en el futuro se permite null)
-    if solo_miembros:
-        relaciones = relaciones.filter(familiar__isnull=False)
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CONSTRUIR GRAFO DE CONEXIONES
+    # ═══════════════════════════════════════════════════════════════════════════
+    conexiones = defaultdict(set)
+    relaciones_info = {}  # {(id1, id2): relacion}
 
-    # Filtro por tipo de relación
-    if tipo_relacion:
-        relaciones = relaciones.filter(tipo_relacion=tipo_relacion)
+    for rel in relaciones_qs:
+        mid = rel.miembro_id
+        fid = rel.familiar_id
 
-    # Solo los que viven juntos
-    if solo_conviven:
-        relaciones = relaciones.filter(vive_junto=True)
+        if mid == fid:
+            continue
 
-    # Solo responsables principales
-    if solo_responsables:
-        relaciones = relaciones.filter(es_responsable=True)
+        conexiones[mid].add(fid)
+        conexiones[fid].add(mid)
 
-    # Orden: por miembro y tipo de relación
-    relaciones = relaciones.order_by(
-        "miembro__apellidos",
-        "miembro__nombres",
-        "tipo_relacion",
-    )
+        # Guardar info de la relación
+        relaciones_info[(mid, fid)] = {
+            "tipo": rel.tipo_relacion,
+            "vive_junto": rel.vive_junto,
+            "es_responsable": rel.es_responsable,
+        }
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ENCONTRAR GRUPOS FAMILIARES (componentes conectados)
+    # ═══════════════════════════════════════════════════════════════════════════
+    visitados = set()
+    grupos = []
+
+    for persona_id in list(conexiones.keys()):
+        if persona_id in visitados:
+            continue
+
+        # BFS para encontrar todos los conectados
+        grupo = set()
+        cola = [persona_id]
+
+        while cola:
+            actual = cola.pop(0)
+            if actual in visitados:
+                continue
+            visitados.add(actual)
+            grupo.add(actual)
+
+            for conectado in conexiones[actual]:
+                if conectado not in visitados:
+                    cola.append(conectado)
+
+        if len(grupo) >= 2:
+            grupos.append(grupo)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CARGAR DATOS DE MIEMBROS
+    # ═══════════════════════════════════════════════════════════════════════════
+    todos_ids = set()
+    for grupo in grupos:
+        todos_ids.update(grupo)
+
+    miembros_map = {}
+    if todos_ids:
+        miembros_map = {m.id: m for m in Miembro.objects.filter(id__in=todos_ids)}
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CONSTRUIR LISTA DE FAMILIAS
+    # ═══════════════════════════════════════════════════════════════════════════
+    familias = []
+    total_matrimonios = 0
+
+    for grupo_ids in grupos:
+        miembros_grupo = [miembros_map[mid] for mid in grupo_ids if mid in miembros_map]
+
+        if len(miembros_grupo) < 2:
+            continue
+
+        # Apellido principal
+        apellidos_count = defaultdict(int)
+        for m in miembros_grupo:
+            apellidos_count[m.apellidos] += 1
+        apellido_principal = max(apellidos_count, key=apellidos_count.get)
+
+        # Construir info de cada miembro
+        miembros_lista = []
+        telefono_familia = None
+        hay_matrimonio = False
+
+        for miembro in miembros_grupo:
+            # Determinar rol
+            rol = _obtener_rol(miembro.id, grupo_ids, relaciones_info, miembro.genero)
+
+            # ¿Es cabeza de familia?
+            es_cabeza = _es_cabeza_familia(miembro.id, grupo_ids, relaciones_info)
+
+            # Detectar matrimonios
+            for otro_id in grupo_ids:
+                if otro_id == miembro.id:
+                    continue
+                key = (miembro.id, otro_id)
+                if key in relaciones_info and relaciones_info[key]["tipo"] == "conyuge":
+                    hay_matrimonio = True
+                    break
+
+            miembros_lista.append({
+                "id": miembro.id,
+                "nombre_completo": f"{miembro.nombres} {miembro.apellidos}",
+                "rol": rol,
+                "edad": miembro.calcular_edad(),
+                "genero": miembro.genero,
+                "es_cabeza": es_cabeza,
+            })
+
+            if miembro.telefono and not telefono_familia:
+                telefono_familia = miembro.telefono
+
+        if hay_matrimonio:
+            total_matrimonios += 1
+
+        # Asegurar que haya al menos una cabeza
+        if not any(m["es_cabeza"] for m in miembros_lista):
+            # Asignar al padre/madre o al mayor
+            for m in miembros_lista:
+                if m["rol"] in ["Padre", "Madre"]:
+                    m["es_cabeza"] = True
+                    break
+            else:
+                # El de mayor edad
+                mayor = max(miembros_lista, key=lambda x: x["edad"] or 0)
+                mayor["es_cabeza"] = True
+
+        # Ordenar miembros
+        orden_roles = {
+            "Padre": 1, "Madre": 2, "Esposo": 3, "Esposa": 4,
+            "Hijo": 5, "Hija": 6, "Hermano": 7, "Hermana": 8,
+            "Abuelo": 9, "Abuela": 10, "Nieto": 11, "Nieta": 12,
+            "Familiar": 20
+        }
+
+        miembros_lista.sort(key=lambda x: (
+            0 if x["es_cabeza"] else 1,
+            orden_roles.get(x["rol"], 15),
+            -(x["edad"] or 0)
+        ))
+
+        familias.append({
+            "apellido": apellido_principal,
+            "miembros": miembros_lista,
+            "telefono": telefono_familia,
+        })
+
+    # Ordenar familias por apellido
+    familias.sort(key=lambda f: f["apellido"].lower())
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ESTADÍSTICAS
+    # ═══════════════════════════════════════════════════════════════════════════
+    total_personas = sum(len(f["miembros"]) for f in familias)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CONTEXTO
+    # ═══════════════════════════════════════════════════════════════════════════
     context = {
-        "relaciones": relaciones,
+        "familias": familias,
+        "total_familias": len(familias),
+        "total_personas": total_personas,
+        "total_matrimonios": total_matrimonios,
         "query": query,
-        "solo_miembros": solo_miembros,
-        "solo_conviven": solo_conviven,
-        "solo_responsables": solo_responsables,
-        "tipo_relacion": tipo_relacion,
-        "tipo_relacion_choices": MiembroRelacion.TIPO_RELACION_CHOICES,
+        "hoy": hoy,
+        "CFG": CFG,
     }
+
     return render(
         request,
         "miembros_app/reportes/reporte_relaciones_familiares.html",
-        context,
+        context
     )
+
+
+def _obtener_rol(miembro_id, grupo_ids, relaciones_info, genero):
+    """
+    Determina el rol de un miembro basándose en las relaciones.
+    """
+    es_femenino = (genero or "").lower() in ("femenino", "f", "mujer")
+
+    # Qué dicen los otros de este miembro
+    for otro_id in grupo_ids:
+        if otro_id == miembro_id:
+            continue
+
+        key = (otro_id, miembro_id)
+        if key in relaciones_info:
+            tipo = relaciones_info[key]["tipo"]
+
+            if tipo == "padre":
+                return "Padre"
+            elif tipo == "madre":
+                return "Madre"
+            elif tipo == "hijo":
+                return "Hija" if es_femenino else "Hijo"
+            elif tipo == "conyuge":
+                return "Esposa" if es_femenino else "Esposo"
+            elif tipo == "hermano":
+                return "Hermana" if es_femenino else "Hermano"
+            elif tipo == "abuelo":
+                return "Abuela" if es_femenino else "Abuelo"
+            elif tipo == "nieto":
+                return "Nieta" if es_femenino else "Nieto"
+
+    # Qué dice este miembro de los otros (inferir rol inverso)
+    for otro_id in grupo_ids:
+        if otro_id == miembro_id:
+            continue
+
+        key = (miembro_id, otro_id)
+        if key in relaciones_info:
+            tipo = relaciones_info[key]["tipo"]
+
+            if tipo == "hijo":
+                # Si dice que otro es su hijo, entonces es padre/madre
+                return "Madre" if es_femenino else "Padre"
+            elif tipo in ("padre", "madre"):
+                # Si dice que otro es su padre/madre, entonces es hijo
+                return "Hija" if es_femenino else "Hijo"
+            elif tipo == "conyuge":
+                return "Esposa" if es_femenino else "Esposo"
+            elif tipo == "hermano":
+                return "Hermana" if es_femenino else "Hermano"
+            elif tipo == "nieto":
+                return "Abuela" if es_femenino else "Abuelo"
+            elif tipo == "abuelo":
+                return "Nieta" if es_femenino else "Nieto"
+
+    return "Familiar"
+
+
+def _es_cabeza_familia(miembro_id, grupo_ids, relaciones_info):
+    """
+    Determina si un miembro es cabeza de familia (marcado como responsable).
+    """
+    for otro_id in grupo_ids:
+        if otro_id == miembro_id:
+            continue
+
+        # Si alguien dice que este miembro es su responsable
+        key = (otro_id, miembro_id)
+        if key in relaciones_info and relaciones_info[key].get("es_responsable"):
+            return True
+
+    return False
+
 
 # -------------------------------------
 # REPORTE: CUMPLEAÑOS DEL MES
