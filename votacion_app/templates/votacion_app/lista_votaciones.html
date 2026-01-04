@@ -1,8 +1,16 @@
-{% extends "core/base.html" %}
+{% extends "votacion_app/base_votacion.html" %}
 
-{% block title %}Elecciones · Soid_Tf_2{% endblock %}
+{% load static %}
 
-{% block content %}
+{% block title %}Elecciones · Torre Fuerte{% endblock %}
+
+{% block extra_css %}
+<!-- Material Symbols (por si no está en base.html) -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'votacion/css/votacion.css' %}">
+{% endblock %}
+
+{% block votacion_content %}
 
 <!-- ===========================
      ENCABEZADO
@@ -16,25 +24,22 @@
     </div>
 
     <div class="page-header-actions">
-
-        <!-- Botón para ir a listas de candidatos -->
-        <a href="{% url 'votacion:lista_candidatos_listado' %}"
-           class="btn-secondary"
-           style="margin-right: 8px;">
-            <span class="material-icons" style="font-size: 18px;">how_to_reg</span>
-            Listado de los Candidatos
+        <a href="{% url 'votacion:lista_candidatos_listado' %}" class="btn-secondary">
+            <span class="material-symbols-rounded">how_to_reg</span>
+            Listado de Candidatos
         </a>
-
-        <!-- Botón para crear nueva elección -->
         <a href="{% url 'votacion:crear_votacion' %}" class="btn-primary">
-            <span class="material-icons" style="font-size: 18px;">add</span>
+            <span class="material-symbols-rounded">add</span>
             Nueva elección
         </a>
-
     </div>
 </div>
 
+<!-- ===========================
+     CONTENIDO PRINCIPAL
+=========================== -->
 <div class="page-section">
+
     {% if messages %}
         <div class="mb-2">
             {% for message in messages %}
@@ -45,28 +50,28 @@
 
     {% if votaciones %}
 
-        <!-- ===========================
-             VISTA LISTA (ÚNICA VISTA)
-        ============================ -->
         <div class="table-wrapper">
-            <table class="table table-compact">
-            <thead>
-            <tr>
-                <th class="col-id">ID</th>
-                <th class="col-nombre">Nombre</th>
-                <th class="col-tipo">Tipo</th>
-                <th class="col-estado">Estado</th>
-                <th class="col-fecha">Creación</th>
-                <th class="col-fecha">Actualización</th>
-                <th class="col-acciones">Acciones</th>
-            </tr>
-            </thead>
-
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="col-nombre">Nombre</th>
+                        <th class="col-tipo">Tipo</th>
+                        <th class="col-estado">Estado</th>
+                        <th class="col-quorum">Quórum</th>
+                        <th class="col-regla">Regla Ganador</th>
+                        <th class="col-votos">Votos</th>
+                        <th class="col-acciones"></th>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for v in votaciones %}
-                        <!-- Fila principal de la elección -->
-                        <tr class="{% if v.estado == 'ABIERTA' %}row-election-open{% endif %}">
-                            <td>{{ v.nombre }}</td>
+                        <!-- Fila principal -->
+                        <tr class="{% if v.estado == 'ABIERTA' %}row-highlight-success{% endif %}">
+                            <td>
+                                <a href="{% url 'votacion:editar_votacion' v.pk %}" class="link-primary">
+                                    {{ v.nombre }}
+                                </a>
+                            </td>
                             <td>{{ v.get_tipo_display }}</td>
                             <td>
                                 {% if v.estado == "ABIERTA" %}
@@ -79,7 +84,7 @@
                             </td>
                             <td>
                                 {% if v.votos_minimos_requeridos %}
-                                    <div>
+                                    <div class="cell-main">
                                         {{ v.votos_minimos_requeridos }}
                                         {% if v.base_quorum == "HABILITADOS" and v.total_habilitados %}
                                             / {{ v.total_habilitados }}
@@ -87,126 +92,118 @@
                                             / {{ v.miembros_presentes }}
                                         {% endif %}
                                     </div>
-                                    <div class="table-subtext">
+                                    <div class="cell-sub">
                                         {% if v.tipo_quorum == "PORCENTAJE" and v.valor_quorum %}
-                                            {{ v.valor_quorum }}% · Base: {{ v.get_base_quorum_display }}
+                                            {{ v.valor_quorum }}% · {{ v.get_base_quorum_display }}
                                         {% else %}
-                                            {{ v.get_tipo_quorum_display }} · Base: {{ v.get_base_quorum_display }}
+                                            {{ v.get_tipo_quorum_display }} · {{ v.get_base_quorum_display }}
                                         {% endif %}
                                     </div>
                                 {% else %}
-                                    <span class="badge-soft badge-soft-warning">Sin definir</span>
+                                    <span class="text-muted">Sin definir</span>
                                 {% endif %}
                             </td>
                             <td>{{ v.get_regla_ganador_display }}</td>
-                            <td class="col-center">{{ v.total_votos_emitidos }}</td>
+                            <td class="text-center">
+                                <span class="cell-number">{{ v.total_votos_emitidos }}</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="action-menu-wrapper">
+                                    <button type="button" class="action-menu-toggle" onclick="toggleActionMenu(this)">
+                                        <span class="material-symbols-rounded">more_vert</span>
+                                    </button>
+                                    <div class="action-menu-dropdown">
+                                        <a href="{% url 'votacion:editar_votacion' v.pk %}" class="action-menu-item">
+                                            <span class="material-symbols-rounded">edit</span>
+                                            Editar
+                                        </a>
+                                        <a href="{% url 'votacion:duplicar_votacion' v.pk %}" class="action-menu-item">
+                                            <span class="material-symbols-rounded">content_copy</span>
+                                            Duplicar
+                                        </a>
 
-                            <!-- ACCIONES -->
-<td class="col-center">
-    <div class="action-menu-wrapper">
+                                        <div class="action-menu-divider"></div>
 
-        <!-- Botón que abre el menú -->
-        <button type="button" class="action-menu-toggle" onclick="toggleActionMenu(this)">
-            <span class="material-symbols-rounded">more_vert</span>
-        </button>
+                                        {% if v.estado == "BORRADOR" %}
+                                            <form method="post" action="{% url 'votacion:cambiar_estado' v.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="nuevo_estado" value="ABIERTA">
+                                                <button type="submit" class="action-menu-item action-approve">
+                                                    <span class="material-symbols-rounded">play_arrow</span>
+                                                    Abrir votación
+                                                </button>
+                                            </form>
+                                        {% elif v.estado == "ABIERTA" %}
+                                            <form method="post" action="{% url 'votacion:cambiar_estado' v.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="nuevo_estado" value="CERRADA">
+                                                <button type="submit" class="action-menu-item action-print">
+                                                    <span class="material-symbols-rounded">stop</span>
+                                                    Cerrar votación
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <form method="post" action="{% url 'votacion:cambiar_estado' v.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="nuevo_estado" value="BORRADOR">
+                                                <button type="submit" class="action-menu-item action-duplicate">
+                                                    <span class="material-symbols-rounded">restart_alt</span>
+                                                    Volver a borrador
+                                                </button>
+                                            </form>
+                                        {% endif %}
 
-        <!-- MENÚ OCULTO -->
-        <div class="action-menu-dropdown">
+                                        <div class="action-menu-divider"></div>
 
-            <!-- EDITAR -->
-            <a href="{% url 'votacion:editar_votacion' v.pk %}" class="action-menu-item action-edit">
-                <span class="material-symbols-rounded">edit</span>
-                Editar
-            </a>
+                                        <a href="{% url 'votacion:kiosko_ingreso_codigo' %}" class="action-menu-item">
+                                            <span class="material-symbols-rounded">how_to_vote</span>
+                                            Kiosko
+                                        </a>
+                                        <a href="{% url 'votacion:pantalla_votacion' v.pk %}" class="action-menu-item">
+                                            <span class="material-symbols-rounded">monitor</span>
+                                            Pantalla pública
+                                        </a>
 
-            <!-- DUPLICAR -->
-            <a href="{% url 'votacion:duplicar_votacion' v.pk %}" class="action-menu-item action-duplicate">
-                <span class="material-symbols-rounded">content_copy</span>
-                Duplicar
-            </a>
+                                        <div class="action-menu-divider"></div>
 
-            <!-- ESTADO (cambiar según estado actual) -->
-            {% if v.estado == "BORRADOR" %}
-            <form method="post" action="{% url 'votacion:cambiar_estado' v.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="nuevo_estado" value="ABIERTA">
-                <button class="action-menu-item action-approve">
-                    <span class="material-symbols-rounded">play_arrow</span>
-                    Abrir votación
-                </button>
-            </form>
-
-            {% elif v.estado == "ABIERTA" %}
-            <form method="post" action="{% url 'votacion:cambiar_estado' v.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="nuevo_estado" value="CERRADA">
-                <button class="action-menu-item action-approve">
-                    <span class="material-symbols-rounded">stop</span>
-                    Cerrar votación
-                </button>
-            </form>
-
-            {% else %}
-            <form method="post" action="{% url 'votacion:cambiar_estado' v.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="nuevo_estado" value="BORRADOR">
-                <button class="action-menu-item action-approve">
-                    <span class="material-symbols-rounded">restart_alt</span>
-                    Volver a borrador
-                </button>
-            </form>
-            {% endif %}
-
-            <!-- KIOSKO -->
-           <a href="{% url 'votacion:kiosko_ingreso_codigo' %}" class="action-menu-item action-edit">
-
-                <span class="material-symbols-rounded">how_to_vote</span>
-                Kiosko
-            </a>
-
-            <!-- PANTALLA PÚBLICA -->
-            <a href="{% url 'votacion:pantalla_votacion' v.pk %}" class="action-menu-item action-print">
-                <span class="material-symbols-rounded">monitor</span>
-                Pantalla pública
-            </a>
-
-            <!-- ELIMINAR -->
-            <a href="{% url 'votacion:eliminar_votacion' v.pk %}" class="action-menu-item action-delete">
-                <span class="material-symbols-rounded">delete</span>
-                Eliminar
-            </a>
-
-        </div>
-    </div>
-</td>
-
+                                        <a href="{% url 'votacion:eliminar_votacion' v.pk %}" class="action-menu-item action-delete">
+                                            <span class="material-symbols-rounded">delete</span>
+                                            Eliminar
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
 
-                        <!-- Fila secundaria: vueltas (rondas) de esta elección -->
-                        <tr class="row-rounds">
+                        <!-- Fila de vueltas/rondas -->
+                        <tr class="row-subinfo">
                             <td colspan="7">
-                                <div class="rounds-inline">
+                                <div class="rounds-container">
                                     {% with v.rondas.all as rondas %}
                                         {% if rondas %}
-                                            <span class="rounds-label">Vueltas:</span>
+                                            <span class="rounds-label">
+                                                <span class="material-symbols-rounded">sync</span>
+                                                Vueltas:
+                                            </span>
                                             {% for ronda in rondas %}
-                                                <span class="round-pill">
-                                                    {{ ronda.numero }}ª ·
+                                                <span class="round-chip {% if ronda.estado == 'ABIERTA' %}round-chip-active{% elif ronda.estado == 'CERRADA' %}round-chip-closed{% endif %}">
+                                                    {{ ronda.numero }}ª
                                                     {% if ronda.estado == "ABIERTA" %}
-                                                        <span class="badge-soft badge-soft-success">Abierta</span>
+                                                        <span class="round-status-dot dot-success"></span>
                                                     {% elif ronda.estado == "CERRADA" %}
-                                                        <span class="badge-soft badge-soft-muted">Cerrada</span>
+                                                        <span class="round-status-dot dot-muted"></span>
                                                     {% else %}
-                                                        <span class="badge-soft badge-soft-warning">Borrador</span>
+                                                        <span class="round-status-dot dot-warning"></span>
                                                     {% endif %}
                                                     {% if ronda.fecha_inicio %}
-                                                        · {{ ronda.fecha_inicio|date:"d/m H:i" }}
+                                                        <span class="round-date">{{ ronda.fecha_inicio|date:"d/m H:i" }}</span>
                                                     {% endif %}
                                                 </span>
                                             {% endfor %}
                                         {% else %}
                                             <span class="rounds-empty">
-                                                Esta elección aún no tiene vueltas configuradas.
+                                                <span class="material-symbols-rounded">info</span>
+                                                Sin vueltas configuradas
                                             </span>
                                         {% endif %}
                                     {% endwith %}
@@ -219,133 +216,171 @@
         </div>
 
     {% else %}
-        <div class="alert alert-info">
-            Todavía no hay elecciones creadas.
-            Usa el botón <strong>“Nueva elección”</strong> para crear la primera.
+        <!-- Estado vacío -->
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <span class="material-symbols-rounded">how_to_vote</span>
+            </div>
+            <h3 class="empty-state-title">No hay elecciones</h3>
+            <p class="empty-state-text">
+                Todavía no has creado ninguna elección.<br>
+                Comienza creando tu primera votación.
+            </p>
+            <a href="{% url 'votacion:crear_votacion' %}" class="btn-primary">
+                <span class="material-symbols-rounded">add</span>
+                Nueva elección
+            </a>
         </div>
     {% endif %}
+
 </div>
 
-<!-- CSS ESPECÍFICO PARA ESTA PANTALLA -->
+{% endblock %}
+
+{% block extra_js %}
 <style>
-    /* Tabla más limpia y ligera */
-    .table-wrapper {
-        border-radius: 8px;
-        overflow: hidden;
-    }
+/* === ESTILOS CRÍTICOS (respaldo si votacion.css no carga) === */
 
-    .table {
-        background: #ffffff;
-        border-collapse: collapse;
-        width: 100%;
-    }
+/* Badges */
+.badge-soft {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 999px;
+}
+.badge-soft-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+.badge-soft-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+.badge-soft-muted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
 
-    .table thead {
-        background: #f3f4f6;
-    }
+/* Fila destacada */
+.row-highlight-success td {
+    background: rgba(16, 185, 129, 0.06);
+}
 
-    .table th {
-        font-size: 0.85rem;
-        font-weight: 600;
-        padding: 10px 8px;
-        color: #374151;
-    }
+/* Celdas */
+.cell-main { font-weight: 500; }
+.cell-sub { font-size: 0.75rem; color: #6b7280; margin-top: 2px; }
+.cell-number { font-weight: 600; }
 
-    .table td {
-        padding: 10px 8px;
-        font-size: 0.84rem;
-        vertical-align: middle;
-    }
+/* Link */
+.link-primary {
+    color: var(--color-primary, #0097a7);
+    text-decoration: none;
+    font-weight: 500;
+}
+.link-primary:hover { text-decoration: underline; }
 
-    /* Fila de elección abierta destacada */
-    .row-election-open td {
-        background: #ecfdf3;
-        transition: background 0.15s ease-in-out;
-    }
+/* Vueltas/Rondas */
+.row-subinfo td {
+    background: #f9fafb;
+    padding: 8px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.rounds-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.rounds-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+}
+.rounds-label .material-symbols-rounded { font-size: 16px; }
+.round-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.round-chip-active {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+.round-chip-closed {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+.round-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+.dot-success { background: #10b981; }
+.dot-warning { background: #f59e0b; }
+.dot-muted { background: #6b7280; }
+.round-date { font-size: 0.75rem; color: #6b7280; }
+.rounds-empty {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
 
-    .row-election-open:hover td {
-        background: #dcfce7;
-    }
+/* Divisor menú */
+.action-menu-divider {
+    height: 1px;
+    background: #f3f4f6;
+    margin: 6px 0;
+}
 
-    /* Hover general sobre filas */
-    .table tbody tr:hover td {
-        background: #f9fafb;
-    }
+/* Estado vacío */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+.empty-state-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    background: #f3f4f6;
+    border-radius: 50%;
+    margin-bottom: 16px;
+}
+.empty-state-icon .material-symbols-rounded {
+    font-size: 32px;
+    color: #6b7280;
+}
+.empty-state-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+}
+.empty-state-text {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0 0 20px;
+}
 
-    /* Texto auxiliar pequeño en celdas (como detalle del quórum) */
-    .table-subtext {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-    }
-
-    /* Centrado de columnas numéricas */
-    .col-center {
-        text-align: center;
-    }
-
-    /* ---- FILA DE VUELTAS (RONDAS) ---- */
-    .row-rounds td {
-        background: #fafafa;
-        padding-top: 4px;
-        padding-bottom: 8px;
-    }
-
-    .rounds-inline {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        align-items: center;
-        font-size: 0.8rem;
-    }
-
-    .rounds-label {
-        font-weight: 600;
-        color: var(--text-muted);
-        margin-right: 4px;
-    }
-
-    .round-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 3px 10px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: #ffffff;
-    }
-
-    .rounds-empty {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-    }
-
-    /* Acciones comunes */
-    .elections-actions {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-    }
-
-    .elections-actions form {
-        margin: 0;
-    }
-
-    .btn-icon-only {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 4px;
-        min-width: 30px;
-        min-height: 30px;
-        border-radius: 999px;
-    }
-
-    .btn-icon-only .material-icons {
-        font-size: 17px;
-    }
-
-    
+/* Utilidades */
+.text-center { text-align: center; }
+.text-muted { color: #6b7280; }
 </style>
 
 <script>
@@ -354,52 +389,36 @@ function toggleActionMenu(btn) {
     const dropdown = wrapper.querySelector(".action-menu-dropdown");
     const isOpen = wrapper.classList.contains("open");
 
-    // Cerrar todos los demÃ¡s menÃºs
+    // Cerrar todos los demás menús
     document.querySelectorAll(".action-menu-wrapper.open").forEach(w => {
-        if (w !== wrapper) {
-            w.classList.remove("open");
-        }
+        if (w !== wrapper) w.classList.remove("open");
     });
 
     if (isOpen) {
-        // Si ya estÃ¡ abierto, cerramos
         wrapper.classList.remove("open");
         return;
     }
 
-    // Abrimos este menÃº
     wrapper.classList.add("open");
     
     if (!dropdown) return;
 
-    // Esperamos un tick para que el navegador renderice
     requestAnimationFrame(() => {
-        // Obtenemos la posiciÃ³n del botÃ³n
         const rect = btn.getBoundingClientRect();
+        const dropdownWidth = dropdown.offsetWidth || 180;
         
-        // CalculÃ¡mos el ancho del dropdown
-        const dropdownWidth = dropdown.offsetWidth || 165; // 165 es el min-width por defecto
-        
-        // Posicionamos el dropdown
-        // Top: justo debajo del botÃ³n (rect.bottom) + un pequeno espaciado (4px)
         dropdown.style.top = (rect.bottom + 4) + 'px';
-        
-        // Left: alineamos el borde derecho del dropdown con el borde derecho del botÃ³n
-        // rect.right - dropdownWidth hace que se alinee a la derecha
         dropdown.style.left = (rect.right - dropdownWidth) + 'px';
         
-        // Verificar si sale de la pantalla por abajo
+        // Verificar espacio abajo
         const dropdownRect = dropdown.getBoundingClientRect();
-        const espacioAbajo = window.innerHeight - dropdownRect.bottom;
-        
-        // Si hay menos de 16px de espacio, lo movemos hacia arriba
-        if (espacioAbajo < 16) {
+        if (window.innerHeight - dropdownRect.bottom < 16) {
             dropdown.style.top = (rect.top - dropdown.offsetHeight - 4) + 'px';
         }
     });
 }
 
-// Cerrar si se hace clic fuera
+// Cerrar al hacer clic fuera
 document.addEventListener("click", function(e) {
     if (!e.target.closest(".action-menu-wrapper")) {
         document.querySelectorAll(".action-menu-wrapper.open").forEach(w => {
@@ -408,7 +427,4 @@ document.addEventListener("click", function(e) {
     }
 });
 </script>
-
-
-
 {% endblock %}
