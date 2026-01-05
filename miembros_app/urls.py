@@ -120,6 +120,8 @@ path(
     path("miembros/<int:pk>/privado/desbloquear/", views.miembro_privado_desbloquear, name="miembro_privado_desbloquear"),
     path("miembros/<int:pk>/privado/bloquear/", views.miembro_privado_bloquear, name="miembro_privado_bloquear"),
 
+path("miembros/<int:pk>/finanzas/desbloquear/", views.miembro_finanzas_desbloquear, name="miembro_finanzas_desbloquear"),
+path("miembros/<int:pk>/finanzas/bloquear/", views.miembro_finanzas_bloquear, name="miembro_finanzas_bloquear"),
 
 
 ]

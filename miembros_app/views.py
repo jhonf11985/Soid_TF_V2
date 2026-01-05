@@ -53,6 +53,29 @@ from django.views.decorators.http import require_POST
 
 
 
+@login_required
+@require_POST
+def miembro_finanzas_desbloquear(request, pk):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "No autorizado"}, status=403)
+
+    password = request.POST.get("password", "").strip()
+
+    if request.user.check_password(password):
+        request.session[f"miembro_finanzas_{pk}"] = True
+        return JsonResponse({"ok": True})
+
+    return JsonResponse({"ok": False, "error": "Contraseña incorrecta"})
+
+
+@login_required
+@require_POST
+def miembro_finanzas_bloquear(request, pk):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "No autorizado"}, status=403)
+
+    request.session.pop(f"miembro_finanzas_{pk}", None)
+    return JsonResponse({"ok": True})
 
 
 @login_required
@@ -1108,12 +1131,21 @@ class MiembroDetailView(View):
             "unidades_total": 0,
         }
 
-        # =========================
-        # 🔐 BLOQUEO PESTAÑA PRIVADA (AQUÍ ES DONDE VA)
+
+                # =========================
+        # 🔐 BLOQUEO PESTAÑA PRIVADA
         # =========================
         context["privado_desbloqueado"] = request.session.get(
             f"miembro_privado_{pk}", False
         )
+
+        # =========================
+        # 🔐 BLOQUEO HISTORIAL FINANCIERO
+        # =========================
+        context["finanzas_desbloqueado"] = request.session.get(
+            f"miembro_finanzas_{pk}", False
+        )
+
 
         # =========================
         # UNIDADES (TABLA: Unidad / Rol / Tipo)

@@ -604,76 +604,114 @@
 <!-- TAB: Finanzas -->
 <div class="odoo-tab-content" id="tab-finanzas">
 
-    <div class="odoo-fields-grid">
-        <div class="odoo-field">
-            <label>Total aportado</label>
-            <span>RD$ {{ total_aportes|floatformat:2 }}</span>
-        </div>
-        <div class="odoo-field">
-            <label>Movimientos</label>
-            <span>{{ movimientos_financieros|length }}</span>
-        </div>
-    </div>
+    {% if not finanzas_desbloqueado %}
+        <!-- 🔒 BLOQUEO HISTORIAL FINANCIERO -->
+        <div class="odoo-lock-box">
+            <span class="material-icons odoo-lock-icon">lock</span>
+            <h3>Historial financiero</h3>
+            <p>Esta información está protegida.</p>
 
-    {% if movimientos_financieros %}
-        <div class="odoo-table-container" style="margin-top:12px;">
-            <table class="odoo-table">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Tipo</th>
-                        <th>Categoría</th>
-                        <th>Monto</th>
-                        <th>Referencia</th>
-                    </tr>
-                </thead>
-<tbody>
-  {% for mov in movimientos_financieros %}
-  <tr>
-    <td>{{ mov.fecha|date:"d/m/Y" }}</td>
-    <td>{{ mov.get_tipo_display }}</td>
-    <td>{{ mov.categoria }}</td>
-    <td>RD$ {{ mov.monto|floatformat:2 }}</td>
-    <td>{{ mov.referencia|default:"—" }}</td>
+            <input type="password"
+                   id="finanzas-password"
+                   class="odoo-input"
+                   placeholder="Contraseña">
 
-    <td style="text-align:right;">
-      {% if mov.es_transferencia %}
-        <a class="odoo-icon-link"
-           href="{% url 'finanzas_app:transferencia_detalle' mov.pk %}"
-           title="Ver transferencia">
-          <span class="material-icons" style="font-size:18px;">visibility</span>
-        </a>
-      {% else %}
-        {% if mov.tipo == 'ingreso' %}
-          <a class="odoo-icon-link"
-             href="{% url 'finanzas_app:ingreso_detalle' mov.pk %}"
-             title="Ver ingreso">
-            <span class="material-icons" style="font-size:18px;">visibility</span>
-          </a>
-        {% else %}
-          <a class="odoo-icon-link"
-             href="{% url 'finanzas_app:movimiento_editar' mov.pk %}"
-             title="Ver egreso">
-            <span class="material-icons" style="font-size:18px;">visibility</span>
-          </a>
-        {% endif %}
-      {% endif %}
-    </td>
-  </tr>
-  {% endfor %}
-</tbody>
+            <button type="button"
+                    class="odoo-btn odoo-btn-primary"
+                    onclick="desbloquearFinanzas({{ miembro.pk }})">
+                Desbloquear
+            </button>
 
-            </table>
+            <p id="finanzas-error" class="odoo-error" style="display:none;">
+                Contraseña incorrecta
+            </p>
         </div>
+
     {% else %}
-        <p class="odoo-empty" style="margin-top:12px;">
-            Aún no hay movimientos vinculados a este miembro.
-        </p>
-    {% endif %}
+        <!-- 🔓 CONTENIDO FINANCIERO -->
+        <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+            <button type="button"
+                    class="odoo-btn odoo-btn-secondary"
+                    onclick="bloquearFinanzas({{ miembro.pk }})">
+                <span class="material-icons">lock</span>
+                Bloquear
+            </button>
+        </div>
 
+        <div class="odoo-fields-grid">
+            <div class="odoo-field">
+                <label>Total aportado</label>
+                <span>RD$ {{ total_aportes|floatformat:2 }}</span>
+            </div>
+            <div class="odoo-field">
+                <label>Movimientos</label>
+                <span>{{ movimientos_financieros|length }}</span>
+            </div>
+        </div>
+
+        {% if movimientos_financieros %}
+            <div class="odoo-table-container" style="margin-top:12px;">
+                <table class="odoo-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Categoría</th>
+                            <th>Monto</th>
+                            <th>Referencia</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mov in movimientos_financieros %}
+                        <tr>
+                            <td>{{ mov.fecha|date:"d/m/Y" }}</td>
+                            <td>{{ mov.get_tipo_display }}</td>
+                            <td>{{ mov.categoria }}</td>
+                            <td>RD$ {{ mov.monto|floatformat:2 }}</td>
+                            <td>{{ mov.referencia|default:"—" }}</td>
+
+                            <td style="text-align:right;">
+                                {% if mov.es_transferencia %}
+                                    <a class="odoo-icon-link"
+                                       href="{% url 'finanzas_app:transferencia_detalle' mov.pk %}"
+                                       title="Ver transferencia">
+                                        <span class="material-icons" style="font-size:18px;">visibility</span>
+                                    </a>
+                                {% else %}
+                                    {% if mov.tipo == 'ingreso' %}
+                                        <a class="odoo-icon-link"
+                                           href="{% url 'finanzas_app:ingreso_detalle' mov.pk %}"
+                                           title="Ver ingreso">
+                                            <span class="material-icons" style="font-size:18px;">visibility</span>
+                                        </a>
+                                    {% else %}
+                                        <a class="odoo-icon-link"
+                                           href="{% url 'finanzas_app:movimiento_editar' mov.pk %}"
+                                           title="Ver egreso">
+                                            <span class="material-icons" style="font-size:18px;">visibility</span>
+                                        </a>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="odoo-muted" style="margin-top:10px;">
+                No hay movimientos financieros registrados.
+            </p>
+        {% endif %}
+
+    {% endif %}
 </div>
 {% endif %}
+
+
 {% if MODULOS_ACTIVOS.Estructura or MODULOS_ACTIVOS.Unidad or MODULOS_ACTIVOS.Unidades %}
+<!-- TAB: Unidades -->
 <div class="odoo-tab-content" id="tab-unidades">
 
     <div class="odoo-fields-grid">
@@ -696,12 +734,8 @@
                 <tbody>
                     {% for it in unidades_resumen %}
                         <tr>
-                            <td>
-                                <strong>{{ it.unidad }}</strong>
-                            </td>
-                            <td>
-                                {{ it.rol|default:"Miembro" }}
-                            </td>
+                            <td><strong>{{ it.unidad }}</strong></td>
+                            <td>{{ it.rol|default:"Miembro" }}</td>
                             <td>
                                 <span class="odoo-badge odoo-badge-neutral">
                                     {{ it.tipo|default:"—" }}
@@ -720,6 +754,7 @@
 
 </div>
 {% endif %}
+
 
 
 
@@ -1531,10 +1566,13 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <script>
-function goPrivadoTab() {
-  window.location.href = window.location.pathname + "?tab=privado";
+function goTab(tab) {
+  window.location.href = window.location.pathname + "?tab=" + tab;
 }
 
+/* ======================
+   PRIVADO (como ya lo tienes)
+====================== */
 function desbloquearPrivado(pk) {
   const password = document.getElementById("privado-password").value;
 
@@ -1556,7 +1594,7 @@ function desbloquearPrivado(pk) {
   })
   .then(data => {
     if (data.ok) {
-      goPrivadoTab();
+      goTab("privado");
     } else {
       const err = document.getElementById("privado-error");
       if (err) err.style.display = "block";
@@ -1588,11 +1626,74 @@ function bloquearPrivado(pk) {
     return r.json();
   })
   .then(data => {
-    if (data.ok) goPrivadoTab();
+    if (data.ok) goTab("privado");
+  })
+  .catch((e) => console.error(e));
+}
+
+/* ======================
+   FINANZAS (igual patrón que Privado)
+====================== */
+function desbloquearFinanzas(pk) {
+  const password = document.getElementById("finanzas-password").value;
+
+  fetch(`/miembros/miembros/${pk}/finanzas/desbloquear/`, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": "{{ csrf_token }}",
+      "X-Requested-With": "XMLHttpRequest",
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({ password })
+  })
+  .then(async (r) => {
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error("HTTP " + r.status + " -> " + t.slice(0, 120));
+    }
+    return r.json();
+  })
+  .then(data => {
+    if (data.ok) {
+      goTab("finanzas");
+    } else {
+      const err = document.getElementById("finanzas-error");
+      if (err) err.style.display = "block";
+    }
+  })
+  .catch((e) => {
+    console.error(e);
+    const err = document.getElementById("finanzas-error");
+    if (err) {
+      err.style.display = "block";
+      err.textContent = "Error al desbloquear (revisa URL/permisos).";
+    }
+  });
+}
+
+function bloquearFinanzas(pk) {
+  fetch(`/miembros/miembros/${pk}/finanzas/bloquear/`, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": "{{ csrf_token }}",
+      "X-Requested-With": "XMLHttpRequest"
+    }
+  })
+  .then(async (r) => {
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error("HTTP " + r.status + " -> " + t.slice(0, 120));
+    }
+    return r.json();
+  })
+  .then(data => {
+    if (data.ok) goTab("finanzas");
   })
   .catch((e) => console.error(e));
 }
 </script>
+
+
 
 
 
