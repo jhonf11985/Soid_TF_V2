@@ -118,7 +118,11 @@ class SolicitudAltaMiembro(models.Model):
     fecha_nacimiento = models.DateField()
 
     estado_miembro = models.CharField(max_length=30, choices=ESTADO_MIEMBRO_CHOICES)
+    
     telefono = models.CharField(max_length=20)
+    whatsapp = models.CharField(max_length=20, blank=True)
+    direccion = models.TextField(blank=True)
+    sector = models.CharField(max_length=100, blank=True)
 
     # Auditoría
     creado_en = models.DateTimeField(default=timezone.now)

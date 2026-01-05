@@ -11,7 +11,7 @@ from .models import (
     SolicitudActualizacionMiembro,
     SolicitudAltaMiembro,
 )
-from .forms import SolicitudActualizacionForm, PublicRegistroAltaForm
+from .forms import SolicitudActualizacionForm, SolicitudAltaPublicaForm
 from .services import aplicar_solicitud_a_miembro
 
 
@@ -31,10 +31,12 @@ def alta_publica(request):
     Crea SolicitudAltaMiembro (NO crea Miembro directo).
     """
     if request.method == "POST":
-        form = PublicRegistroAltaForm(request.POST)
+        form = SolicitudAltaPublicaForm(request.POST)
         if form.is_valid():
-            # Anti-duplicado simple: si hay una pendiente con ese teléfono, no crear otra.
+
             tel = (form.cleaned_data.get("telefono") or "").strip()
+
+            # Anti-duplicado simple
             if SolicitudAltaMiembro.objects.filter(
                 telefono=tel,
                 estado=SolicitudAltaMiembro.Estados.PENDIENTE
@@ -45,22 +47,19 @@ def alta_publica(request):
                 )
                 return redirect("actualizacion_datos_miembros:alta_ok")
 
-            SolicitudAltaMiembro.objects.create(
-                estado=SolicitudAltaMiembro.Estados.PENDIENTE,
-                nombres=form.cleaned_data["nombres"],
-                apellidos=form.cleaned_data["apellidos"],
-                genero=form.cleaned_data["genero"],
-                fecha_nacimiento=form.cleaned_data["fecha_nacimiento"],
-                estado_miembro=form.cleaned_data["estado_miembro"],
-                telefono=tel,
-                ip_origen=_get_client_ip(request),
-                user_agent=(request.META.get("HTTP_USER_AGENT") or "")[:255],
-            )
+            solicitud = form.save(commit=False)
+            solicitud.telefono = tel
+            solicitud.estado = SolicitudAltaMiembro.Estados.PENDIENTE
+            solicitud.ip_origen = _get_client_ip(request)
+            solicitud.user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
+            solicitud.save()
+
             return redirect("actualizacion_datos_miembros:alta_ok")
+
         else:
             messages.error(request, "Revisa los campos marcados. Hay errores en el formulario.")
     else:
-        form = PublicRegistroAltaForm()
+        form = SolicitudAltaPublicaForm()
 
     return render(request, "actualizacion_datos_miembros/alta_publico.html", {"form": form})
 

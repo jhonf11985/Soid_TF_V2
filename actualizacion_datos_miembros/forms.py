@@ -1,7 +1,7 @@
 from django import forms
-from .models import SolicitudActualizacionMiembro
-from django import forms
-from miembros_app.models import Miembro, GENERO_CHOICES, ESTADO_MIEMBRO_CHOICES
+from .models import SolicitudActualizacionMiembro, SolicitudAltaMiembro
+from miembros_app.models import GENERO_CHOICES, ESTADO_MIEMBRO_CHOICES
+
 
 class SolicitudActualizacionForm(forms.ModelForm):
     class Meta:
@@ -21,49 +21,90 @@ class SolicitudActualizacionForm(forms.ModelForm):
             "medicamentos": forms.Textarea(attrs={"rows": 2}),
         }
 
+class SolicitudAltaPublicaForm(forms.ModelForm):
 
+    def _normalizar_rd_a_e164(self, raw: str, requerido: bool, campo: str) -> str:
+        raw = (raw or "").strip()
 
-class PublicRegistroAltaForm(forms.Form):
-    nombres = forms.CharField(
-        max_length=100,
-        required=True,
-        widget=forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Nombres"})
-    )
-    apellidos = forms.CharField(
-        max_length=100,
-        required=True,
-        widget=forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Apellidos"})
-    )
+        if not raw:
+            if requerido:
+                raise forms.ValidationError(f"El campo {campo} es obligatorio.")
+            return ""
 
-    genero = forms.ChoiceField(
-        choices=[("", "Seleccione...")] + list(GENERO_CHOICES),
-        required=True,
-        widget=forms.Select(attrs={"class": "odoo-input odoo-select"})
-    )
+        digits = "".join(c for c in raw if c.isdigit())
 
-    fecha_nacimiento = forms.DateField(
-        required=True,
-        input_formats=["%Y-%m-%d"],
-        widget=forms.DateInput(attrs={"class": "odoo-input", "type": "date"})
-    )
+        # Aceptar RD local: 10 dígitos empezando 809/829/849
+        if len(digits) == 10 and digits.startswith(("809", "829", "849")):
+            return "+1" + digits
 
-    estado_miembro = forms.ChoiceField(
-        choices=[("", "Seleccione...")] + list(ESTADO_MIEMBRO_CHOICES),
-        required=True,
-        widget=forms.Select(attrs={"class": "odoo-input odoo-select"})
-    )
+        # Aceptar RD con código país sin "+"
+        if len(digits) == 11 and digits.startswith("1"):
+            if digits[1:4] in ("809", "829", "849"):
+                return "+" + digits
 
-    telefono = forms.CharField(
-        max_length=20,
-        required=True,
-        widget=forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Teléfono"})
-    )
+        # Aceptar E.164 con +
+        if raw.startswith("+") and len(digits) == 11 and digits.startswith("1"):
+            if digits[1:4] in ("809", "829", "849"):
+                return "+" + digits
+
+        raise forms.ValidationError(
+            f"{campo} inválido para RD. Ejemplo: 8091234567 (809/829/849)."
+        )
 
     def clean_nombres(self):
-        return (self.cleaned_data["nombres"] or "").strip()
+        return (self.cleaned_data.get("nombres") or "").strip()
 
     def clean_apellidos(self):
-        return (self.cleaned_data["apellidos"] or "").strip()
+        return (self.cleaned_data.get("apellidos") or "").strip()
 
     def clean_telefono(self):
-        return (self.cleaned_data["telefono"] or "").strip()
+        # Obligatorio + normalizado
+        return self._normalizar_rd_a_e164(
+            self.cleaned_data.get("telefono"),
+            requerido=True,
+            campo="Teléfono",
+        )
+
+    def clean_whatsapp(self):
+        # Opcional + normalizado
+        return self._normalizar_rd_a_e164(
+            self.cleaned_data.get("whatsapp"),
+            requerido=False,
+            campo="WhatsApp",
+        )
+
+    class Meta:
+        model = SolicitudAltaMiembro
+        fields = [
+            "nombres",
+            "apellidos",
+            "genero",
+            "fecha_nacimiento",
+            "estado_miembro",
+            "telefono",
+            "whatsapp",
+            "direccion",
+            "sector",
+        ]
+        widgets = {
+            "nombres": forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Nombres"}),
+            "apellidos": forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Apellidos"}),
+            "genero": forms.Select(attrs={"class": "odoo-input odoo-select"}),
+            "fecha_nacimiento": forms.DateInput(attrs={"class": "odoo-input", "type": "date"}),
+            "estado_miembro": forms.Select(attrs={"class": "odoo-input odoo-select"}),
+
+            "telefono": forms.TextInput(attrs={
+                "class": "odoo-input",
+                "placeholder": "809-123-4567",
+                "inputmode": "numeric",
+                "autocomplete": "tel",
+            }),
+            "whatsapp": forms.TextInput(attrs={
+                "class": "odoo-input",
+                "placeholder": "809-123-4567 (opcional)",
+                "inputmode": "numeric",
+                "autocomplete": "tel",
+            }),
+            "direccion": forms.Textarea(attrs={"rows": 2, "placeholder": "Dirección (opcional)"}),
+            "sector": forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Sector (opcional)"}),
+        }

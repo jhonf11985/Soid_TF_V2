@@ -11,6 +11,7 @@
         <a href="{% url 'actualizacion_datos_miembros:solicitudes_lista' %}" class="odoo-btn odoo-btn-icon">
             <span class="material-icons">arrow_back</span>
         </a>
+
         <div class="odoo-breadcrumb">
             <a href="{% url 'actualizacion_datos_miembros:solicitudes_lista' %}" class="odoo-breadcrumb-link">Solicitudes</a>
             <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
@@ -19,46 +20,56 @@
     </div>
 </div>
 
-<div class="page-container">
+<div class="odoo-page">
 
     <!-- ═══════════════════════════════════════════════
          HEADER
          ═══════════════════════════════════════════════ -->
-    <div class="page-header">
-        <div class="page-avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <i class="fas fa-file-alt" style="font-size: 28px; color: #fff;"></i>
-        </div>
-        <div class="page-info">
-            <div class="header-top">
-                <h1 class="page-title">Solicitud de Actualización</h1>
-                {% if s.estado == Estados.PENDIENTE %}
-                <span class="status-badge status-warning">
-                    <i class="fas fa-clock"></i> Pendiente
-                </span>
-                {% elif s.estado == Estados.APLICADA %}
-                <span class="status-badge status-success">
-                    <i class="fas fa-check-circle"></i> Aplicada
-                </span>
-                {% elif s.estado == Estados.RECHAZADA %}
-                <span class="status-badge status-danger">
-                    <i class="fas fa-times-circle"></i> Rechazada
-                </span>
-                {% endif %}
+    <div class="odoo-card odoo-card-header">
+        <div class="odoo-card-header-left">
+            <div class="odoo-avatar-icon">
+                <span class="material-icons">description</span>
             </div>
-            <div class="page-meta">
-                <div class="meta-item">
-                    <i class="fas fa-user"></i>
-                    <span>{{ s.miembro.nombres }} {{ s.miembro.apellidos }}</span>
+
+            <div class="odoo-header-text">
+                <div class="odoo-header-top">
+                    <h1 class="odoo-title">Solicitud de Actualización</h1>
+
+                    {% if s.estado == Estados.PENDIENTE %}
+                        <span class="odoo-badge odoo-badge-warning">
+                            <span class="material-icons">schedule</span>
+                            Pendiente
+                        </span>
+                    {% elif s.estado == Estados.APLICADA %}
+                        <span class="odoo-badge odoo-badge-success">
+                            <span class="material-icons">check_circle</span>
+                            Aplicada
+                        </span>
+                    {% elif s.estado == Estados.RECHAZADA %}
+                        <span class="odoo-badge odoo-badge-danger">
+                            <span class="material-icons">cancel</span>
+                            Rechazada
+                        </span>
+                    {% endif %}
                 </div>
-                {% if s.miembro.codigo %}
-                <div class="meta-item">
-                    <i class="fas fa-id-badge"></i>
-                    <span>{{ s.miembro.codigo }}</span>
-                </div>
-                {% endif %}
-                <div class="meta-item">
-                    <i class="fas fa-calendar"></i>
-                    <span>{{ s.creado_en|date:"d/m/Y H:i" }}</span>
+
+                <div class="odoo-meta">
+                    <div class="odoo-meta-item">
+                        <span class="material-icons">person</span>
+                        <span>{{ s.miembro.nombres }} {{ s.miembro.apellidos }}</span>
+                    </div>
+
+                    {% if s.miembro.codigo %}
+                    <div class="odoo-meta-item">
+                        <span class="material-icons">badge</span>
+                        <span>{{ s.miembro.codigo }}</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="odoo-meta-item">
+                        <span class="material-icons">event</span>
+                        <span>{{ s.creado_en|date:"d/m/Y H:i" }}</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -68,24 +79,34 @@
          ACCIONES (Solo si pendiente)
          ═══════════════════════════════════════════════ -->
     {% if s.estado == Estados.PENDIENTE %}
-    <div class="actions-card">
-        <div class="actions-content">
-            <form method="post" action="{% url 'actualizacion_datos_miembros:solicitud_aplicar' s.pk %}" class="action-form">
+    <div class="odoo-card odoo-actions">
+        <div class="odoo-actions-row">
+
+            <form method="post" action="{% url 'actualizacion_datos_miembros:solicitud_aplicar' s.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="action-btn-large btn-approve">
-                    <i class="fas fa-check"></i>
-                    <span>Aplicar Cambios</span>
+                <button type="submit" class="odoo-btn odoo-btn-primary">
+                    <span class="material-icons">check</span>
+                    Aplicar cambios
                 </button>
             </form>
 
-            <form method="post" action="{% url 'actualizacion_datos_miembros:solicitud_rechazar' s.pk %}" class="action-form reject-form">
+            <form method="post" action="{% url 'actualizacion_datos_miembros:solicitud_rechazar' s.pk %}" class="odoo-reject-form">
                 {% csrf_token %}
-                <input type="text" name="nota_admin" class="reject-input" placeholder="Motivo del rechazo (opcional)">
-                <button type="submit" class="action-btn-large btn-reject">
-                    <i class="fas fa-times"></i>
-                    <span>Rechazar</span>
+                <div class="odoo-input-wrap">
+                    <span class="material-icons">edit_note</span>
+                    <input type="text" name="nota_admin" class="odoo-input" placeholder="Motivo del rechazo (opcional)">
+                </div>
+                <button type="submit" class="odoo-btn odoo-btn-danger">
+                    <span class="material-icons">close</span>
+                    Rechazar
                 </button>
             </form>
+
+        </div>
+
+        <div class="odoo-hint">
+            <span class="material-icons">info</span>
+            Solo puedes aplicar o rechazar mientras esté en estado <strong>Pendiente</strong>.
         </div>
     </div>
     {% endif %}
@@ -93,153 +114,156 @@
     <!-- ═══════════════════════════════════════════════
          DATOS SOLICITADOS
          ═══════════════════════════════════════════════ -->
-    <div class="content-card">
-        <div class="card-header">
-            <i class="fas fa-clipboard-list"></i>
-            <h2>Datos Solicitados</h2>
+    <div class="odoo-card">
+        <div class="odoo-section-head">
+            <span class="material-icons">list_alt</span>
+            <h2>Datos solicitados</h2>
         </div>
-        <div class="card-body">
-            
-            <!-- Contacto -->
-            <div class="data-section">
-                <h3 class="section-title">
-                    <i class="fas fa-phone-alt"></i>
-                    Información de Contacto
-                </h3>
-                <div class="data-grid">
-                    <div class="data-field">
-                        <label>Teléfono</label>
-                        <span>{{ s.telefono|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>WhatsApp</label>
-                        <span>{{ s.whatsapp|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>Email</label>
-                        <span>{{ s.email|default:"—" }}</span>
-                    </div>
-                </div>
+
+        <!-- Contacto -->
+        <div class="odoo-section">
+            <div class="odoo-section-title">
+                <span class="material-icons">call</span>
+                <h3>Información de contacto</h3>
             </div>
 
-            <!-- Dirección -->
-            <div class="data-section">
-                <h3 class="section-title">
-                    <i class="fas fa-map-marker-alt"></i>
-                    Dirección
-                </h3>
-                <div class="data-grid">
-                    <div class="data-field full-width">
-                        <label>Dirección</label>
-                        <span>{{ s.direccion|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>Sector</label>
-                        <span>{{ s.sector|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>Ciudad</label>
-                        <span>{{ s.ciudad|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>Provincia</label>
-                        <span>{{ s.provincia|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>Código Postal</label>
-                        <span>{{ s.codigo_postal|default:"—" }}</span>
-                    </div>
+            <div class="odoo-grid">
+                <div class="odoo-field">
+                    <label>Teléfono</label>
+                    <div class="odoo-value">{{ s.telefono|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>WhatsApp</label>
+                    <div class="odoo-value">{{ s.whatsapp|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>Email</label>
+                    <div class="odoo-value">{{ s.email|default:"—" }}</div>
                 </div>
             </div>
-
-            <!-- Trabajo -->
-            <div class="data-section">
-                <h3 class="section-title">
-                    <i class="fas fa-briefcase"></i>
-                    Información Laboral
-                </h3>
-                <div class="data-grid">
-                    <div class="data-field">
-                        <label>Empleador</label>
-                        <span>{{ s.empleador|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>Puesto</label>
-                        <span>{{ s.puesto|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>Teléfono Trabajo</label>
-                        <span>{{ s.telefono_trabajo|default:"—" }}</span>
-                    </div>
-                    <div class="data-field full-width">
-                        <label>Dirección Trabajo</label>
-                        <span>{{ s.direccion_trabajo|default:"—" }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Emergencia -->
-            <div class="data-section">
-                <h3 class="section-title">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Contacto de Emergencia
-                </h3>
-                <div class="data-grid">
-                    <div class="data-field">
-                        <label>Nombre</label>
-                        <span>{{ s.contacto_emergencia_nombre|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>Teléfono</label>
-                        <span>{{ s.contacto_emergencia_telefono|default:"—" }}</span>
-                    </div>
-                    <div class="data-field">
-                        <label>Relación</label>
-                        <span>{{ s.contacto_emergencia_relacion|default:"—" }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Salud -->
-            <div class="data-section">
-                <h3 class="section-title">
-                    <i class="fas fa-heartbeat"></i>
-                    Información Médica
-                </h3>
-                <div class="data-grid">
-                    <div class="data-field">
-                        <label>Tipo de Sangre</label>
-                        <span>{{ s.tipo_sangre|default:"—" }}</span>
-                    </div>
-                    <div class="data-field full-width">
-                        <label>Alergias</label>
-                        <span>{{ s.alergias|default:"—" }}</span>
-                    </div>
-                    <div class="data-field full-width">
-                        <label>Condiciones Médicas</label>
-                        <span>{{ s.condiciones_medicas|default:"—" }}</span>
-                    </div>
-                    <div class="data-field full-width">
-                        <label>Medicamentos</label>
-                        <span>{{ s.medicamentos|default:"—" }}</span>
-                    </div>
-                </div>
-            </div>
-
         </div>
+
+        <!-- Dirección -->
+        <div class="odoo-section">
+            <div class="odoo-section-title">
+                <span class="material-icons">location_on</span>
+                <h3>Dirección</h3>
+            </div>
+
+            <div class="odoo-grid">
+                <div class="odoo-field odoo-col-span-2">
+                    <label>Dirección</label>
+                    <div class="odoo-value">{{ s.direccion|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>Sector</label>
+                    <div class="odoo-value">{{ s.sector|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>Ciudad</label>
+                    <div class="odoo-value">{{ s.ciudad|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>Provincia</label>
+                    <div class="odoo-value">{{ s.provincia|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>Código postal</label>
+                    <div class="odoo-value">{{ s.codigo_postal|default:"—" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trabajo -->
+        <div class="odoo-section">
+            <div class="odoo-section-title">
+                <span class="material-icons">work</span>
+                <h3>Información laboral</h3>
+            </div>
+
+            <div class="odoo-grid">
+                <div class="odoo-field">
+                    <label>Empleador</label>
+                    <div class="odoo-value">{{ s.empleador|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>Puesto</label>
+                    <div class="odoo-value">{{ s.puesto|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>Teléfono trabajo</label>
+                    <div class="odoo-value">{{ s.telefono_trabajo|default:"—" }}</div>
+                </div>
+                <div class="odoo-field odoo-col-span-2">
+                    <label>Dirección trabajo</label>
+                    <div class="odoo-value">{{ s.direccion_trabajo|default:"—" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergencia -->
+        <div class="odoo-section">
+            <div class="odoo-section-title">
+                <span class="material-icons">warning_amber</span>
+                <h3>Contacto de emergencia</h3>
+            </div>
+
+            <div class="odoo-grid">
+                <div class="odoo-field">
+                    <label>Nombre</label>
+                    <div class="odoo-value">{{ s.contacto_emergencia_nombre|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>Teléfono</label>
+                    <div class="odoo-value">{{ s.contacto_emergencia_telefono|default:"—" }}</div>
+                </div>
+                <div class="odoo-field">
+                    <label>Relación</label>
+                    <div class="odoo-value">{{ s.contacto_emergencia_relacion|default:"—" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Salud -->
+        <div class="odoo-section odoo-section-last">
+            <div class="odoo-section-title">
+                <span class="material-icons">health_and_safety</span>
+                <h3>Información médica</h3>
+            </div>
+
+            <div class="odoo-grid">
+                <div class="odoo-field">
+                    <label>Tipo de sangre</label>
+                    <div class="odoo-value">{{ s.tipo_sangre|default:"—" }}</div>
+                </div>
+                <div class="odoo-field odoo-col-span-2">
+                    <label>Alergias</label>
+                    <div class="odoo-value">{{ s.alergias|default:"—" }}</div>
+                </div>
+                <div class="odoo-field odoo-col-span-2">
+                    <label>Condiciones médicas</label>
+                    <div class="odoo-value">{{ s.condiciones_medicas|default:"—" }}</div>
+                </div>
+                <div class="odoo-field odoo-col-span-2">
+                    <label>Medicamentos</label>
+                    <div class="odoo-value">{{ s.medicamentos|default:"—" }}</div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- ═══════════════════════════════════════════════
          METADATA
          ═══════════════════════════════════════════════ -->
-    <div class="metadata-footer">
-        <div class="metadata-item">
-            <i class="fas fa-clock"></i>
+    <div class="odoo-footer-meta">
+        <div class="odoo-footer-meta-item">
+            <span class="material-icons">schedule</span>
             <span>Enviada: {{ s.creado_en|date:"d/m/Y H:i" }}</span>
         </div>
         {% if s.ip_origen %}
-        <div class="metadata-item">
-            <i class="fas fa-globe"></i>
+        <div class="odoo-footer-meta-item">
+            <span class="material-icons">public</span>
             <span>IP: {{ s.ip_origen }}</span>
         </div>
         {% endif %}
@@ -248,287 +272,323 @@
 </div>
 
 <style>
-/* ═══════════════════════════════════════════════
-   ESTILOS GENERALES
-   ═══════════════════════════════════════════════ */
-.page-container {
-    padding: 24px;
-    background: #f0f0f0;
+/* =====================================
+   VARIABLES (derivadas de --color-primary)
+   ===================================== */
+:root{
+    --odoo-primary: var(--color-primary);
+    --odoo-primary-dark: var(--color-primary);
+    --odoo-primary-soft: rgba(0,0,0,0.04);
+
+    --odoo-text: #212529;
+    --odoo-text-muted: #6c757d;
+    --odoo-border: #e5e7eb;
+    --odoo-bg: #ffffff;
+    --odoo-bg-gray: #f6f7fb;
+
+    --odoo-success: #22c55e;
+    --odoo-success-bg: #dcfce7;
+
+    --odoo-warning: #f59e0b;
+    --odoo-warning-bg: #fef3c7;
+
+    --odoo-danger: #ef4444;
+    --odoo-danger-bg: #fee2e2;
+}
+
+/* Layout */
+.odoo-page{
+    padding: 18px;
+    background: var(--odoo-bg-gray);
     min-height: calc(100vh - 60px);
 }
-
-/* Header */
-.page-header {
-    display: flex;
-    gap: 20px;
-    background: #fff;
-    padding: 24px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    margin-bottom: 16px;
-}
-.page-avatar {
-    width: 70px;
-    height: 70px;
+.odoo-card{
+    background: var(--odoo-bg);
+    border: 1px solid var(--odoo-border);
     border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    overflow: hidden;
+    margin-bottom: 14px;
 }
-.page-info {
-    flex: 1;
+.odoo-card-header{
+    padding: 18px 18px;
 }
-.header-top {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
+.odoo-card-header-left{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
 }
-.page-title {
-    margin: 0;
-    font-size: 22px;
+.odoo-avatar-icon{
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: color-mix(in srgb, var(--odoo-primary) 20%, white);
+    border: 1px solid color-mix(in srgb, var(--odoo-primary) 25%, white);
+}
+.odoo-avatar-icon .material-icons{
+    color: var(--odoo-primary);
+    font-size: 26px;
+}
+.odoo-header-text{ flex:1; min-width:0; }
+.odoo-header-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+}
+.odoo-title{
+    margin:0;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--odoo-text);
+}
+.odoo-meta{
+    margin-top: 10px;
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+}
+.odoo-meta-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+}
+.odoo-meta-item .material-icons{
+    font-size: 18px;
+    color: var(--odoo-primary);
+}
+
+/* Badges */
+.odoo-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border-radius: 999px;
+    padding: 7px 12px;
     font-weight: 700;
-    color: #2d3748;
+    font-size: 12px;
+    border: 1px solid transparent;
+    white-space: nowrap;
 }
-.page-meta {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
+.odoo-badge .material-icons{ font-size: 16px; }
+.odoo-badge-success{
+    background: var(--odoo-success-bg);
+    color: #166534;
+    border-color: color-mix(in srgb, var(--odoo-success) 35%, white);
 }
-.meta-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: #718096;
+.odoo-badge-warning{
+    background: var(--odoo-warning-bg);
+    color: #92400e;
+    border-color: color-mix(in srgb, var(--odoo-warning) 35%, white);
 }
-.meta-item i {
-    font-size: 14px;
-    color: #667eea;
-}
-
-/* Status Badges */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-}
-.status-warning {
-    background: #fff3cd;
-    color: #856404;
-}
-.status-success {
-    background: #d4edda;
-    color: #155724;
-}
-.status-danger {
-    background: #f8d7da;
-    color: #721c24;
+.odoo-badge-danger{
+    background: var(--odoo-danger-bg);
+    color: #991b1b;
+    border-color: color-mix(in srgb, var(--odoo-danger) 35%, white);
 }
 
-/* Actions Card */
-.actions-card {
-    background: #fff;
+/* Actions */
+.odoo-actions{
+    padding: 16px 18px;
+}
+.odoo-actions-row{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    flex-wrap:wrap;
+}
+.odoo-reject-form{
+    display:flex;
+    gap:10px;
+    flex:1;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+}
+.odoo-input-wrap{
+    position:relative;
+    flex:1;
+    min-width: 260px;
+}
+.odoo-input-wrap .material-icons{
+    position:absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: var(--odoo-text-muted);
+}
+.odoo-input{
+    width:100%;
+    padding: 10px 12px 10px 40px;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    padding: 20px;
-    margin-bottom: 16px;
-}
-.actions-content {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-.action-form {
-    display: flex;
-    align-items: center;
-}
-.reject-form {
-    flex: 1;
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-.reject-input {
-    flex: 1;
-    min-width: 250px;
-    padding: 12px 16px;
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
+    border: 1px solid var(--odoo-border);
+    background: #fff;
     font-size: 14px;
-    transition: all 0.2s ease;
 }
-.reject-input:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+.odoo-input:focus{
+    outline:none;
+    border-color: color-mix(in srgb, var(--odoo-primary) 55%, white);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--odoo-primary) 18%, white);
 }
-.action-btn-large {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
+
+/* Buttons */
+.odoo-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor:pointer;
+    border: 1px solid transparent;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+    user-select:none;
 }
-.btn-approve {
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+.odoo-btn .material-icons{ font-size: 18px; }
+
+.odoo-btn-primary{
+    background: var(--odoo-primary);
     color: #fff;
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--odoo-primary) 35%, transparent);
 }
-.btn-approve:hover {
-    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+.odoo-btn-primary:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--odoo-primary) 45%, transparent);
+}
+
+.odoo-btn-danger{
+    background: #fff;
+    color: var(--odoo-danger);
+    border-color: color-mix(in srgb, var(--odoo-danger) 40%, white);
+}
+.odoo-btn-danger:hover{
+    background: color-mix(in srgb, var(--odoo-danger) 6%, white);
     transform: translateY(-1px);
 }
-.btn-reject {
-    background: #fff;
-    color: #e53e3e;
-    border: 2px solid #feb2b2;
-}
-.btn-reject:hover {
-    background: #fff5f5;
-    border-color: #fc8181;
-}
 
-/* Content Card */
-.content-card {
-    background: #fff;
+.odoo-hint{
+    margin-top: 12px;
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    padding: 12px 12px;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    overflow: hidden;
-}
-.card-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 20px 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
-}
-.card-header i {
-    font-size: 20px;
-}
-.card-header h2 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-}
-.card-body {
-    padding: 24px;
-}
-
-/* Data Sections */
-.data-section {
-    margin-bottom: 28px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid #e2e8f0;
-}
-.data-section:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-}
-.section-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0 0 16px 0;
-    font-size: 15px;
-    font-weight: 600;
-    color: #2d3748;
-}
-.section-title i {
-    color: #667eea;
-    font-size: 16px;
-}
-.data-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-}
-.data-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-.data-field.full-width {
-    grid-column: 1 / -1;
-}
-.data-field label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #718096;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-.data-field span {
-    font-size: 14px;
-    color: #2d3748;
-    padding: 10px 14px;
-    background: #f7fafc;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-}
-
-/* Metadata Footer */
-.metadata-footer {
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-    padding: 16px 24px;
-    background: #f7fafc;
-    border-radius: 10px;
-    margin-top: 16px;
-}
-.metadata-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    background: #f8fafc;
+    border: 1px solid var(--odoo-border);
+    color: var(--odoo-text-muted);
     font-size: 13px;
-    color: #718096;
 }
-.metadata-item i {
+.odoo-hint .material-icons{
+    color: var(--odoo-primary);
+    font-size: 18px;
+    margin-top: 1px;
+}
+
+/* Sections */
+.odoo-section-head{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--odoo-border);
+    background: #fff;
+}
+.odoo-section-head .material-icons{
+    color: var(--odoo-primary);
+}
+.odoo-section-head h2{
+    margin:0;
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--odoo-text);
+}
+.odoo-section{
+    padding: 16px 18px;
+    border-top: 1px solid var(--odoo-border);
+}
+.odoo-section-title{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-bottom: 12px;
+}
+.odoo-section-title .material-icons{
+    color: var(--odoo-primary);
+}
+.odoo-section-title h3{
+    margin:0;
     font-size: 14px;
-    color: #a0aec0;
+    font-weight: 900;
+    color: var(--odoo-text);
+}
+
+.odoo-grid{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.odoo-col-span-2{ grid-column: 1 / -1; }
+
+.odoo-field label{
+    display:block;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--odoo-text-muted);
+    letter-spacing: .2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.odoo-value{
+    padding: 11px 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid var(--odoo-border);
+    color: var(--odoo-text);
+    font-size: 14px;
+    word-break: break-word;
+}
+
+/* Footer meta */
+.odoo-footer-meta{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--odoo-border);
+}
+.odoo-footer-meta-item{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+}
+.odoo-footer-meta-item .material-icons{
+    font-size: 18px;
+    color: #94a3b8;
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-    .page-container {
-        padding: 16px;
-    }
-    .page-header {
-        flex-direction: column;
-    }
-    .header-top {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .actions-content {
-        flex-direction: column;
-        width: 100%;
-    }
-    .action-form, .reject-form {
-        width: 100%;
-    }
-    .action-btn-large {
-        width: 100%;
-        justify-content: center;
-    }
-    .reject-input {
-        min-width: 100%;
-    }
+@media (max-width: 768px){
+    .odoo-page{ padding: 14px; }
+    .odoo-grid{ grid-template-columns: 1fr; }
+    .odoo-col-span-2{ grid-column: auto; }
+    .odoo-reject-form{ justify-content: stretch; }
+    .odoo-btn{ width: 100%; }
+    .odoo-input-wrap{ min-width: 100%; }
+    .odoo-header-top{ justify-content: flex-start; }
 }
+
 </style>
 
 {% endblock %}
