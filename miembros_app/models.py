@@ -31,6 +31,27 @@ CATEGORIA_EDAD_CHOICES = [
     ("adulto", "Adulto"),
     ("adulto_mayor", "Adulto mayor"),
 ]
+VIVIENDA_CHOICES = [
+    ("propia", "Casa propia"),
+    ("alquilada", "Alquilada"),
+    ("familiar", "En casa de familiares"),
+    ("prestada", "Prestada / Cedida"),
+]
+
+VEHICULO_TIPO_CHOICES = [
+    ("carro", "Carro"),
+    ("jeepeta", "Jeepeta"),
+    ("camioneta", "Camioneta"),
+    ("motor", "Motor"),
+    ("camion", "Camión"),
+    ("otro", "Otro"),
+]
+
+SITUACION_ECONOMICA_CHOICES = [
+    ("estable", "Estable"),
+    ("vulnerable", "Vulnerable"),
+    ("critica", "Crítica"),
+]
 
 
 class RazonSalidaMiembro(models.Model):
@@ -137,6 +158,44 @@ class Miembro(models.Model):
     puesto = models.CharField(max_length=100, blank=True)
     telefono_trabajo = models.CharField(max_length=20, blank=True)
     direccion_trabajo = models.TextField(blank=True)
+    # --- Información socioeconómica (privada) ---
+    tipo_vivienda = models.CharField(
+        max_length=20,
+        choices=VIVIENDA_CHOICES,
+        blank=True,
+        help_text="Tipo de vivienda donde reside el miembro.",
+    )
+
+    situacion_economica = models.CharField(
+        max_length=20,
+        choices=SITUACION_ECONOMICA_CHOICES,
+        blank=True,
+        help_text="Evaluación general (uso interno/pastoral).",
+    )
+
+    tiene_vehiculo = models.BooleanField(
+        default=False,
+        help_text="Marcar si el miembro posee vehículo.",
+    )
+
+    vehiculo_tipo = models.CharField(
+        max_length=20,
+        choices=VEHICULO_TIPO_CHOICES,
+        blank=True,
+        help_text="Tipo de vehículo (si aplica).",
+    )
+
+    vehiculo_marca = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Marca del vehículo (si aplica).",
+    )
+
+    vehiculo_placa = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Placa (si aplica).",
+    )
 
     # --- Información de membresía ---
     estado_miembro = models.CharField(
