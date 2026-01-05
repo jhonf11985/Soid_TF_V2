@@ -1,0 +1,114 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<!-- ═══════════════════════════════════════════════
+     BARRA SUPERIOR (CONTROL BAR)
+     ═══════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+    <div class="odoo-control-left">
+        <a href="{% url 'miembros_app:detalle' miembro.pk %}" class="odoo-btn odoo-btn-icon">
+            <span class="material-icons">arrow_back</span>
+        </a>
+
+        <div class="odoo-breadcrumb">
+            <a href="{% url 'miembros_app:listado' %}" class="odoo-breadcrumb-link">Miembros</a>
+            <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
+            <a href="{% url 'miembros_app:detalle' miembro.pk %}" class="odoo-breadcrumb-link">
+                {{ miembro }}
+            </a>
+            <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
+            <span class="odoo-breadcrumb-current">Actualización de datos</span>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     CONTENIDO
+     ═══════════════════════════════════════════════ -->
+<div class="page-container">
+
+    <div class="page-header">
+        <div class="page-avatar"
+             style="background: linear-gradient(135deg, #017e84 0%, #015f63 100%);">
+            <span class="material-icons">link</span>
+        </div>
+
+        <div class="page-info">
+            <h1 class="page-title">Link de actualización de datos</h1>
+            <p class="odoo-muted">
+                Comparte este enlace con el miembro para que actualice sus datos sin iniciar sesión.
+            </p>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <div class="card-body" style="padding:24px;">
+
+            <div class="odoo-fields-grid" style="grid-template-columns: 1fr;">
+                
+                <div class="odoo-field">
+                    <label>Miembro</label>
+                    <strong>{{ miembro }}</strong>
+                </div>
+
+                <div class="odoo-field">
+                    <label>Enlace público</label>
+
+                    <div class="link-actions">
+                        <input
+                            id="public-link"
+                            class="odoo-input"
+                            type="text"
+                            value="{{ public_url }}"
+                            readonly
+                        />
+
+                        <button type="button"
+                                class="odoo-btn odoo-btn-primary"
+                                onclick="copyLink()">
+                            <span class="material-icons">content_copy</span>
+                            Copiar
+                        </button>
+
+                        <a href="{{ public_url }}"
+                           target="_blank"
+                           rel="noopener"
+                           class="odoo-btn odoo-btn-secondary">
+                            <span class="material-icons">open_in_new</span>
+                            Abrir
+                        </a>
+                    </div>
+
+                    <p class="odoo-muted" style="margin-top:8px;">
+                        Recomendación: envíalo por WhatsApp y dile que lo abra desde su móvil.
+                    </p>
+
+                    <div id="copy-ok" class="odoo-alert odoo-alert-success" style="display:none;">
+                        Link copiado correctamente ✅
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+function copyLink() {
+    const input = document.getElementById("public-link");
+    input.select();
+    input.setSelectionRange(0, 99999);
+
+    navigator.clipboard.writeText(input.value).then(() => {
+        const ok = document.getElementById("copy-ok");
+        ok.style.display = "block";
+        setTimeout(() => ok.style.display = "none", 2000);
+    });
+}
+</script>
+
+{% endblock %}

@@ -38,7 +38,10 @@ urlpatterns = [
     ),
     path("nuevo-creyente/", include("nuevo_creyente_app.urls")),
 
-
+    path(
+        "actualizacion-datos/",
+        include("actualizacion_datos_miembros.urls")
+    ),
 
 ]
 

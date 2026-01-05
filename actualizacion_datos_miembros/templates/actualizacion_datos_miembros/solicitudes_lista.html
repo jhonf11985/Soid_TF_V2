@@ -1,0 +1,196 @@
+    {% extends "actualizacion_datos_miembros/base_actualizacion.html" %}
+
+    {% load static %}
+
+    {% block actualizacion_content %}
+
+<!-- ═══════════════════════════════════════════════
+     CONTROL BAR + BREADCRUMB
+     ═══════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+  <div class="odoo-control-left">
+    <div class="odoo-breadcrumb">
+      <span class="odoo-breadcrumb-current">Solicitudes de actualización</span>
+    </div>
+  </div>
+
+  <div class="odoo-control-right">
+    {# si luego quieres botón "Nueva solicitud" admin, va aquí #}
+  </div>
+</div>
+
+<div class="page-container">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div class="page-avatar" style="background: linear-gradient(135deg, #017e84 0%, #015f63 100%);">
+      <span class="material-icons" style="font-size:40px;color:#fff;">rule</span>
+    </div>
+
+    <div class="page-info">
+      <h1 class="page-title">Solicitudes de actualización</h1>
+      <div class="page-meta">
+        <div class="meta-item">
+          <span class="material-icons">inbox</span>
+          <span>{{ solicitudes|length }} solicitud{{ solicitudes|length|pluralize:"es" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="content-card" style="margin-bottom:14px;">
+    <div class="card-body" style="padding:16px;">
+      <form method="get" class="filters-bar">
+        <div class="filters-left">
+          <input
+            name="q"
+            value="{{ q }}"
+            class="odoo-input"
+            placeholder="Buscar por nombre / apellido / código"
+          />
+
+          <select name="estado" class="odoo-input odoo-select">
+            <option value="">Todos</option>
+            <option value="{{ Estados.PENDIENTE }}" {% if estado == Estados.PENDIENTE %}selected{% endif %}>Pendientes</option>
+            <option value="{{ Estados.APLICADA }}" {% if estado == Estados.APLICADA %}selected{% endif %}>Aplicadas</option>
+            <option value="{{ Estados.RECHAZADA }}" {% if estado == Estados.RECHAZADA %}selected{% endif %}>Rechazadas</option>
+          </select>
+
+          <button class="odoo-btn odoo-btn-primary" type="submit">
+            <span class="material-icons">filter_alt</span>
+            Filtrar
+          </button>
+
+          {% if q or estado %}
+          <a class="odoo-btn odoo-btn-secondary" href="?" title="Limpiar filtros">
+            <span class="material-icons">close</span>
+            Limpiar
+          </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TABLA -->
+  <div class="content-card">
+    {% if solicitudes %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Miembro</th>
+              <th>Estado</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for s in solicitudes %}
+            <tr>
+              <td>
+                <span class="date-badge">{{ s.creado_en|date:"d/m/Y H:i" }}</span>
+              </td>
+
+              <td>
+                <div class="member-cell">
+                  <div class="member-name">{{ s.miembro.nombres }} {{ s.miembro.apellidos }}</div>
+                  {% if s.miembro.codigo %}
+                    <div class="member-code">{{ s.miembro.codigo }}</div>
+                  {% endif %}
+                </div>
+              </td>
+
+              <td>
+                {% if s.estado == Estados.PENDIENTE %}
+                  <span class="badge badge-warning">Pendiente</span>
+                {% elif s.estado == Estados.APLICADA %}
+                  <span class="badge badge-success">Aplicada</span>
+                {% elif s.estado == Estados.RECHAZADA %}
+                  <span class="badge badge-danger">Rechazada</span>
+                {% else %}
+                  <span class="badge badge-neutral">{{ s.get_estado_display }}</span>
+                {% endif %}
+              </td>
+
+              <td class="text-center">
+                <div class="row-actions">
+                  <a href="{% url 'actualizacion_datos_miembros:solicitud_detalle' s.pk %}" class="action-btn" title="Ver">
+                    <span class="material-icons">visibility</span>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="material-icons">inbox</span>
+        <h3>No hay solicitudes</h3>
+        <p>No se encontraron solicitudes con los filtros actuales.</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<style>
+/* Si ya tienes estas clases globales, puedes borrar este bloque.
+   Lo dejo para que se vea bien aunque el CSS global aún no lo cubra. */
+
+.page-container{padding:24px;background:#f0f0f0;min-height:calc(100vh - 60px);}
+.page-header{display:flex;gap:20px;background:#fff;padding:24px;border-radius:8px;border:1px solid #dee2e6;margin-bottom:14px;}
+.page-avatar{width:80px;height:80px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.page-info{flex:1;}
+.page-title{margin:0 0 8px 0;font-size:24px;font-weight:600;color:#212529;}
+.page-meta{display:flex;gap:20px;flex-wrap:wrap;}
+.meta-item{display:flex;align-items:center;gap:6px;font-size:13px;color:#6c757d;}
+.meta-item .material-icons{font-size:18px;}
+
+.content-card{background:#fff;border-radius:8px;border:1px solid #dee2e6;overflow:hidden;}
+.table-container{overflow-x:auto;}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table thead{background:#f8f9fa;border-bottom:2px solid #dee2e6;}
+.data-table th{padding:14px 16px;text-align:left;font-weight:600;color:#495057;font-size:12px;text-transform:uppercase;letter-spacing:.3px;}
+.data-table td{padding:14px 16px;border-bottom:1px solid #f0f0f0;vertical-align:middle;}
+.data-table tbody tr:hover{background:#f8f9fa;}
+.text-center{text-align:center;}
+
+.date-badge{display:inline-flex;align-items:center;padding:6px 12px;background:#e3f2fd;color:#1565c0;border-radius:4px;font-size:12px;font-weight:500;}
+
+.member-cell{display:flex;flex-direction:column;gap:2px;}
+.member-name{font-weight:600;color:#212529;}
+.member-code{font-size:12px;color:#6c757d;}
+
+.badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:4px;font-size:12px;font-weight:600;}
+.badge-neutral{background:#e9ecef;color:#495057;}
+.badge-warning{background:#fff3cd;color:#856404;}
+.badge-success{background:#e8f5e9;color:#2e7d32;}
+.badge-danger{background:#fdecea;color:#b42318;}
+
+.row-actions{display:flex;justify-content:center;gap:6px;}
+.action-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:4px;color:#6c757d;text-decoration:none;}
+.action-btn:hover{background:#e9ecef;color:#212529;}
+.action-btn .material-icons{font-size:18px;}
+
+.empty-state{text-align:center;padding:60px 20px;}
+.empty-state .material-icons{font-size:64px;color:#dee2e6;margin-bottom:16px;}
+.empty-state h3{margin:0 0 8px 0;font-size:18px;font-weight:700;color:#495057;}
+.empty-state p{margin:0;color:#6c757d;}
+
+.filters-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.filters-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center;width:100%;}
+.filters-left .odoo-input{flex:1;min-width:240px;}
+
+@media (max-width:768px){
+  .page-container{padding:16px;}
+  .page-header{flex-direction:column;align-items:center;text-align:center;}
+  .page-meta{justify-content:center;}
+}
+</style>
+
+{% endblock %}

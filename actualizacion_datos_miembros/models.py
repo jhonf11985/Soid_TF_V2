@@ -1,0 +1,98 @@
+from django.db import models
+from django.utils import timezone
+import uuid
+
+from miembros_app.models import Miembro
+
+
+class AccesoActualizacionDatos(models.Model):
+    """
+    Link único (sin login) por Miembro.
+    - Se genera 1 vez y se reutiliza siempre.
+    """
+    miembro = models.OneToOneField(
+        Miembro,
+        on_delete=models.CASCADE,
+        related_name="acceso_actualizacion_datos",
+    )
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    activo = models.BooleanField(default=True)
+
+    creado_en = models.DateTimeField(default=timezone.now)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    ultimo_envio_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Acceso: actualización de datos"
+        verbose_name_plural = "Accesos: actualización de datos"
+
+    def __str__(self):
+        return f"Acceso({self.miembro_id}) activo={self.activo}"
+
+
+class SolicitudActualizacionMiembro(models.Model):
+    class Estados(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente"
+        APLICADA = "aplicada", "Aplicada"
+        RECHAZADA = "rechazada", "Rechazada"
+
+    miembro = models.ForeignKey(
+        Miembro,
+        on_delete=models.CASCADE,
+        related_name="solicitudes_actualizacion",
+    )
+
+    estado = models.CharField(
+        max_length=20,
+        choices=Estados.choices,
+        default=Estados.PENDIENTE,
+    )
+
+    # --- Datos editables (seguros) ---
+    telefono = models.CharField(max_length=20, blank=True)
+    whatsapp = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True)
+
+    direccion = models.TextField(blank=True)
+    sector = models.CharField(max_length=100, blank=True)
+    ciudad = models.CharField(max_length=100, blank=True)
+    provincia = models.CharField(max_length=100, blank=True)
+    codigo_postal = models.CharField(max_length=20, blank=True)
+
+    empleador = models.CharField(max_length=150, blank=True)
+    puesto = models.CharField(max_length=100, blank=True)
+    telefono_trabajo = models.CharField(max_length=20, blank=True)
+    direccion_trabajo = models.TextField(blank=True)
+
+    contacto_emergencia_nombre = models.CharField(max_length=150, blank=True)
+    contacto_emergencia_telefono = models.CharField(max_length=20, blank=True)
+    contacto_emergencia_relacion = models.CharField(max_length=50, blank=True)
+
+    # Salud (opcional)
+    tipo_sangre = models.CharField(max_length=10, blank=True)
+    alergias = models.TextField(blank=True)
+    condiciones_medicas = models.TextField(blank=True)
+    medicamentos = models.TextField(blank=True)
+
+    # Auditoría
+    creado_en = models.DateTimeField(default=timezone.now)
+    ip_origen = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+
+    revisado_en = models.DateTimeField(null=True, blank=True)
+    revisado_por = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="solicitudes_actualizacion_revisadas",
+    )
+    nota_admin = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Solicitud: actualización de datos"
+        verbose_name_plural = "Solicitudes: actualización de datos"
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return f"Solicitud({self.pk}) {self.miembro_id} {self.estado}"

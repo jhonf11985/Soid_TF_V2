@@ -45,7 +45,8 @@ INSTALLED_APPS = [
     'votacion_app',
     'finanzas_app',
     'estructura_app',
-    'nuevo_creyente_app',
+     "nuevo_creyente_app",        
+    "actualizacion_datos_miembros",
 
 
 ]
