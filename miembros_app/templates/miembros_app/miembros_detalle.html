@@ -211,6 +211,11 @@
             <span class="material-icons">family_restroom</span>
             Familia
         </button>
+
+        <button type="button" class="odoo-tab" data-tab="privado">
+        <span class="material-icons">lock</span>
+        Privado
+    </button>
         {% if MODULOS_ACTIVOS.Finanzas %}
         <button type="button" class="odoo-tab" data-tab="finanzas">
             <span class="material-icons">account_balance_wallet</span>
@@ -223,6 +228,7 @@
         Unidades
         </button>
         {% endif %}
+
 
 
         <button type="button" class="odoo-tab" data-tab="otros">
@@ -495,6 +501,103 @@
     <p class="odoo-empty">No hay familiares registrados para este miembro.</p>
     {% endif %}
 </div>
+<!-- TAB: Privado -->
+<div class="odoo-tab-content" id="tab-privado">
+
+    {% if not privado_desbloqueado %}
+
+        <div class="odoo-lock-box">
+            <span class="material-icons odoo-lock-icon">lock</span>
+            <h3>Información privada</h3>
+            <p>Esta sección está protegida.</p>
+
+            <input type="password"
+                   id="privado-password"
+                   class="odoo-input"
+                   placeholder="Contraseña">
+
+            <button type="button"
+                    class="odoo-btn odoo-btn-primary"
+                    onclick="desbloquearPrivado({{ miembro.pk }})">
+                Desbloquear
+            </button>
+
+            <p id="privado-error" class="odoo-error" style="display:none;">
+                Contraseña incorrecta
+            </p>
+        </div>
+
+    {% else %}
+    <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+    <button type="button" class="odoo-btn odoo-btn-secondary" onclick="bloquearPrivado({{ miembro.pk }})">
+        <span class="material-icons" style="font-size:18px;">lock</span>
+        Bloquear
+    </button>
+    </div>
+
+        <!-- ✅ CONTENIDO SOLO CUANDO ESTÁ DESBLOQUEADO -->
+        <div class="odoo-fields-grid">
+
+            <div class="odoo-field">
+                <label>Vivienda</label>
+                <span>
+                    {% if miembro.tipo_vivienda %}
+                        {{ miembro.get_tipo_vivienda_display }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="odoo-field">
+                <label>Tiene vehículo</label>
+                <span>
+                    {% if miembro.tiene_vehiculo %}
+                        <span class="odoo-badge odoo-badge-success">Sí</span>
+                    {% else %}
+                        <span class="odoo-badge odoo-badge-neutral">No</span>
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="odoo-field">
+                <label>Tipo de vehículo</label>
+                <span>
+                    {% if miembro.vehiculo_tipo %}
+                        {{ miembro.get_vehiculo_tipo_display }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="odoo-field">
+                <label>Marca</label>
+                <span>{{ miembro.vehiculo_marca|default:"—" }}</span>
+            </div>
+
+            <div class="odoo-field">
+                <label>Placa</label>
+                <span>{{ miembro.vehiculo_placa|default:"—" }}</span>
+            </div>
+
+            <div class="odoo-field">
+                <label>Situación económica</label>
+                <span>
+                    {% if miembro.situacion_economica %}
+                        {{ miembro.get_situacion_economica_display }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </span>
+            </div>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
 
 
 {% if MODULOS_ACTIVOS.Finanzas %}
@@ -1426,5 +1529,71 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<script>
+function goPrivadoTab() {
+  window.location.href = window.location.pathname + "?tab=privado";
+}
+
+function desbloquearPrivado(pk) {
+  const password = document.getElementById("privado-password").value;
+
+  fetch(`/miembros/miembros/${pk}/privado/desbloquear/`, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": "{{ csrf_token }}",
+      "X-Requested-With": "XMLHttpRequest",
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({ password })
+  })
+  .then(async (r) => {
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error("HTTP " + r.status + " -> " + t.slice(0, 120));
+    }
+    return r.json();
+  })
+  .then(data => {
+    if (data.ok) {
+      goPrivadoTab();
+    } else {
+      const err = document.getElementById("privado-error");
+      if (err) err.style.display = "block";
+    }
+  })
+  .catch((e) => {
+    console.error(e);
+    const err = document.getElementById("privado-error");
+    if (err) {
+      err.style.display = "block";
+      err.textContent = "Error al desbloquear (revisa URL/permisos).";
+    }
+  });
+}
+
+function bloquearPrivado(pk) {
+  fetch(`/miembros/miembros/${pk}/privado/bloquear/`, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": "{{ csrf_token }}",
+      "X-Requested-With": "XMLHttpRequest"
+    }
+  })
+  .then(async (r) => {
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error("HTTP " + r.status + " -> " + t.slice(0, 120));
+    }
+    return r.json();
+  })
+  .then(data => {
+    if (data.ok) goPrivadoTab();
+  })
+  .catch((e) => console.error(e));
+}
+</script>
+
+
 
 {% endblock %}

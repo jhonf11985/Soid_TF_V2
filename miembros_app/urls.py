@@ -116,7 +116,11 @@ path(
 ),
 
     path("salida/<int:pk>/", views.miembro_dar_salida, name="miembro_dar_salida"),
-    
+
+    path("miembros/<int:pk>/privado/desbloquear/", views.miembro_privado_desbloquear, name="miembro_privado_desbloquear"),
+    path("miembros/<int:pk>/privado/bloquear/", views.miembro_privado_bloquear, name="miembro_privado_bloquear"),
+
+
 
 ]
 

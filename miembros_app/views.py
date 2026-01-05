@@ -40,19 +40,47 @@ from django.apps import apps
 from core.models import Module
 from nuevo_creyente_app.models import NuevoCreyenteExpediente
 from django.db.models import Exists, OuterRef
-
-
-
-
-
+from django.http import JsonResponse
 CHROME_PATH = getattr(settings, "CHROME_PATH", None) or os.environ.get("CHROME_PATH")
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-
 from .models import Miembro
 from nuevo_creyente_app.models import NuevoCreyenteExpediente
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+
+
+
+
+
+@login_required
+@require_POST
+def miembro_privado_desbloquear(request, pk):
+    # ✅ Solo admins (ajusta si quieres: is_staff en vez de is_superuser)
+    if not (request.user.is_staff or request.user.is_superuser):
+
+        return JsonResponse({"ok": False, "error": "No autorizado"}, status=403)
+
+    password = request.POST.get("password", "").strip()
+
+    # ✅ Validar la contraseña del admin logueado
+    if request.user.check_password(password):
+        request.session[f"miembro_privado_{pk}"] = True
+        return JsonResponse({"ok": True})
+
+    return JsonResponse({"ok": False, "error": "Contraseña incorrecta"})
+
+@login_required
+@require_POST
+def miembro_privado_bloquear(request, pk):
+    # admin iglesia o superadmin
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({"ok": False, "error": "No autorizado"}, status=403)
+
+    request.session.pop(f"miembro_privado_{pk}", None)
+    return JsonResponse({"ok": True})
 
 
 @login_required
@@ -1049,7 +1077,6 @@ class MiembroDetailView(View):
                     genero_persona_invertida=otro.genero
                 )
 
-            # ✅ clave única por par (miembro - otro), independientemente de la dirección
             par = frozenset({miembro.id, otro.id})
             if par in pares_vistos:
                 continue
@@ -1064,9 +1091,6 @@ class MiembroDetailView(View):
                 "es_responsable": rel.es_responsable,
                 "notas": rel.notas,
             })
-
-
-
 
         edad_minima = get_edad_minima_miembro_oficial()
 
@@ -1085,6 +1109,13 @@ class MiembroDetailView(View):
         }
 
         # =========================
+        # 🔐 BLOQUEO PESTAÑA PRIVADA (AQUÍ ES DONDE VA)
+        # =========================
+        context["privado_desbloqueado"] = request.session.get(
+            f"miembro_privado_{pk}", False
+        )
+
+        # =========================
         # UNIDADES (TABLA: Unidad / Rol / Tipo)
         # =========================
         estructura_activa = _modulo_estructura_activo()
@@ -1094,14 +1125,12 @@ class MiembroDetailView(View):
             UnidadMembresia = _safe_get_model("estructura_app", "UnidadMembresia")
 
             if UnidadCargo and UnidadMembresia:
-                # ── cargos vigentes + unidad activa
                 cargos_qs = (
                     UnidadCargo.objects
                     .filter(miembo_fk=miembro, vigente=True, unidad__activa=True)
                     .select_related("unidad", "rol")
                 )
 
-                # ── membresías activas + unidad activa
                 membresias_qs = (
                     UnidadMembresia.objects
                     .filter(miembo_fk=miembro, activo=True, unidad__activa=True)
@@ -1111,7 +1140,6 @@ class MiembroDetailView(View):
                 resumen = []
                 vistos = set()
 
-                # Cargos => Tipo: Liderazgo
                 for c in cargos_qs:
                     key = ("CARGO", c.unidad_id, c.rol_id)
                     if key in vistos:
@@ -1124,7 +1152,6 @@ class MiembroDetailView(View):
                         "tipo": "Liderazgo",
                     })
 
-                # Membresías => Tipo según rol.tipo
                 for m in membresias_qs:
                     key = ("MEMB", m.unidad_id, m.rol_id)
                     if key in vistos:
@@ -1140,7 +1167,6 @@ class MiembroDetailView(View):
                         "tipo": tipo,
                     })
 
-                # Orden bonito: Tipo -> Unidad -> Rol
                 orden_tipo = {"Liderazgo": 0, "Participación": 1, "Trabajo": 2}
                 resumen.sort(key=lambda x: (orden_tipo.get(x.get("tipo"), 99), x["unidad"], x["rol"]))
 
