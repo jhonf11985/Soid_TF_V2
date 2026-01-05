@@ -6,10 +6,13 @@ from django.http import HttpResponseForbidden
 from django.urls import reverse
 
 from miembros_app.models import Miembro
-from .models import AccesoActualizacionDatos, SolicitudActualizacionMiembro
-from .forms import SolicitudActualizacionForm
+from .models import (
+    AccesoActualizacionDatos,
+    SolicitudActualizacionMiembro,
+    SolicitudAltaMiembro,
+)
+from .forms import SolicitudActualizacionForm, PublicRegistroAltaForm
 from .services import aplicar_solicitud_a_miembro
-from .forms import SolicitudActualizacionForm
 
 
 def _get_client_ip(request):
@@ -19,7 +22,57 @@ def _get_client_ip(request):
     return request.META.get("REMOTE_ADDR")
 
 
-def formulario_publico(request, token):
+# ==========================================================
+# PÚBLICO - ALTA MASIVA
+# ==========================================================
+def alta_publica(request):
+    """
+    Formulario público para registro (alta masiva).
+    Crea SolicitudAltaMiembro (NO crea Miembro directo).
+    """
+    if request.method == "POST":
+        form = PublicRegistroAltaForm(request.POST)
+        if form.is_valid():
+            # Anti-duplicado simple: si hay una pendiente con ese teléfono, no crear otra.
+            tel = (form.cleaned_data.get("telefono") or "").strip()
+            if SolicitudAltaMiembro.objects.filter(
+                telefono=tel,
+                estado=SolicitudAltaMiembro.Estados.PENDIENTE
+            ).exists():
+                messages.info(
+                    request,
+                    "Ya existe una solicitud pendiente con este teléfono. El equipo la revisará pronto."
+                )
+                return redirect("actualizacion_datos_miembros:alta_ok")
+
+            SolicitudAltaMiembro.objects.create(
+                estado=SolicitudAltaMiembro.Estados.PENDIENTE,
+                nombres=form.cleaned_data["nombres"],
+                apellidos=form.cleaned_data["apellidos"],
+                genero=form.cleaned_data["genero"],
+                fecha_nacimiento=form.cleaned_data["fecha_nacimiento"],
+                estado_miembro=form.cleaned_data["estado_miembro"],
+                telefono=tel,
+                ip_origen=_get_client_ip(request),
+                user_agent=(request.META.get("HTTP_USER_AGENT") or "")[:255],
+            )
+            return redirect("actualizacion_datos_miembros:alta_ok")
+        else:
+            messages.error(request, "Revisa los campos marcados. Hay errores en el formulario.")
+    else:
+        form = PublicRegistroAltaForm()
+
+    return render(request, "actualizacion_datos_miembros/alta_publico.html", {"form": form})
+
+
+def alta_ok(request):
+    return render(request, "actualizacion_datos_miembros/alta_ok.html")
+
+
+# ==========================================================
+# PÚBLICO - ACTUALIZACIÓN (ya existente, renombrado limpio)
+# ==========================================================
+def formulario_actualizacion_publico(request, token):
     acceso = get_object_or_404(AccesoActualizacionDatos, token=token)
 
     if not acceso.activo:
@@ -32,6 +85,17 @@ def formulario_publico(request, token):
     if request.method == "POST":
         form = SolicitudActualizacionForm(request.POST)
         if form.is_valid():
+            # Evitar spam: si ya hay una solicitud pendiente, no crear otra
+            if SolicitudActualizacionMiembro.objects.filter(
+                miembro=miembro,
+                estado=SolicitudActualizacionMiembro.Estados.PENDIENTE
+            ).exists():
+                messages.info(
+                    request,
+                    "Ya tienes una solicitud pendiente. El equipo la revisará pronto."
+                )
+                return redirect("actualizacion_datos_miembros:formulario_ok", token=acceso.token)
+
             solicitud = form.save(commit=False)
             solicitud.miembro = miembro
             solicitud.estado = SolicitudActualizacionMiembro.Estados.PENDIENTE
@@ -84,6 +148,9 @@ def formulario_ok(request, token):
     })
 
 
+# ==========================================================
+# ADMIN - ACTUALIZACIÓN
+# ==========================================================
 @login_required
 def solicitudes_lista(request):
     qs = (
@@ -186,31 +253,89 @@ def generar_link_miembro(request, miembro_id):
         reverse("actualizacion_datos_miembros:formulario_publico", kwargs={"token": acceso.token})
     )
 
+    # OJO: tu template actual usa public_url; aquí mandamos ambas por compatibilidad.
     return render(request, "actualizacion_datos_miembros/link_miembro.html", {
         "miembro": miembro,
         "acceso": acceso,
         "link": link,
+        "public_url": link,
         "created": created,
     })
 
 
+# ==========================================================
+# ADMIN - ALTAS (Registro masivo)
+# ==========================================================
+@login_required
+def altas_lista(request):
+    qs = SolicitudAltaMiembro.objects.all()
 
+    estado = (request.GET.get("estado") or "").strip()
+    if estado:
+        qs = qs.filter(estado=estado)
 
-def public_registro(request):
-    if request.method == "POST":
-        form = formulario_publico(request.POST)
-        if form.is_valid():
-            SolicitudActualizacion.objects.create(
-                tipo=SolicitudActualizacion.Tipos.ALTA,
-                estado=SolicitudActualizacion.Estados.PENDIENTE,
-                payload=form.cleaned_data,
-                enviado_en=timezone.now(),
-            )
-            return render(request, "actualizacion_datos_miembros/public_ok.html")
-    else:
-        form = formulario_publico()
+    q = (request.GET.get("q") or "").strip()
+    if q:
+        qs = qs.filter(
+            nombres__icontains=q
+        ) | qs.filter(
+            apellidos__icontains=q
+        ) | qs.filter(
+            telefono__icontains=q
+        )
 
-    return render(request, "actualizacion_datos_miembros/formulario_publico.html", {
-        "form": form,
-        "modo": "ALTA",
+    return render(request, "actualizacion_datos_miembros/altas_lista.html", {
+        "altas": qs[:300],
+        "estado": estado,
+        "q": q,
+        "Estados": SolicitudAltaMiembro.Estados,
     })
+
+
+@login_required
+def alta_detalle(request, pk):
+    s = get_object_or_404(SolicitudAltaMiembro, pk=pk)
+    return render(request, "actualizacion_datos_miembros/alta_detalle.html", {
+        "s": s,
+        "Estados": SolicitudAltaMiembro.Estados,
+    })
+
+
+@login_required
+def alta_aprobar(request, pk):
+    if request.method != "POST":
+        return HttpResponseForbidden("Método no permitido")
+
+    s = get_object_or_404(SolicitudAltaMiembro, pk=pk)
+    if s.estado != SolicitudAltaMiembro.Estados.PENDIENTE:
+        messages.info(request, "Esta solicitud ya fue procesada.")
+        return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
+
+    s.estado = SolicitudAltaMiembro.Estados.APROBADA
+    s.revisado_en = timezone.now()
+    s.revisado_por = request.user
+    s.save(update_fields=["estado", "revisado_en", "revisado_por"])
+
+    messages.success(request, "Solicitud aprobada. (Más adelante la convertiremos en Miembro automáticamente).")
+    return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
+
+
+@login_required
+def alta_rechazar(request, pk):
+    if request.method != "POST":
+        return HttpResponseForbidden("Método no permitido")
+
+    s = get_object_or_404(SolicitudAltaMiembro, pk=pk)
+    if s.estado != SolicitudAltaMiembro.Estados.PENDIENTE:
+        messages.info(request, "Esta solicitud ya fue procesada.")
+        return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
+
+    nota = (request.POST.get("nota_admin") or "").strip()
+    s.estado = SolicitudAltaMiembro.Estados.RECHAZADA
+    s.nota_admin = nota
+    s.revisado_en = timezone.now()
+    s.revisado_por = request.user
+    s.save(update_fields=["estado", "nota_admin", "revisado_en", "revisado_por"])
+
+    messages.success(request, "Solicitud rechazada.")
+    return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)

@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 import uuid
 
-from miembros_app.models import Miembro
+from miembros_app.models import Miembro, GENERO_CHOICES, ESTADO_MIEMBRO_CHOICES
 
 
 class AccesoActualizacionDatos(models.Model):
@@ -96,3 +96,49 @@ class SolicitudActualizacionMiembro(models.Model):
 
     def __str__(self):
         return f"Solicitud({self.pk}) {self.miembro_id} {self.estado}"
+
+
+class SolicitudAltaMiembro(models.Model):
+    class Estados(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente"
+        APROBADA = "aprobada", "Aprobada"
+        RECHAZADA = "rechazada", "Rechazada"
+
+    estado = models.CharField(
+        max_length=20,
+        choices=Estados.choices,
+        default=Estados.PENDIENTE,
+    )
+
+    # Datos mínimos de alta masiva
+    nombres = models.CharField(max_length=100)
+    apellidos = models.CharField(max_length=100)
+
+    genero = models.CharField(max_length=20, choices=GENERO_CHOICES)
+    fecha_nacimiento = models.DateField()
+
+    estado_miembro = models.CharField(max_length=30, choices=ESTADO_MIEMBRO_CHOICES)
+    telefono = models.CharField(max_length=20)
+
+    # Auditoría
+    creado_en = models.DateTimeField(default=timezone.now)
+    ip_origen = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+
+    revisado_en = models.DateTimeField(null=True, blank=True)
+    revisado_por = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="solicitudes_alta_revisadas",
+    )
+    nota_admin = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Solicitud: alta (registro masivo)"
+        verbose_name_plural = "Solicitudes: altas (registro masivo)"
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return f"Alta({self.pk}) {self.nombres} {self.apellidos} - {self.estado}"

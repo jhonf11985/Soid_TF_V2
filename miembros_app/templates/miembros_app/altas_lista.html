@@ -1,0 +1,50 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="page-container">
+  <h1>Solicitudes de Alta</h1>
+
+  <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;">
+    <input class="odoo-input" type="text" name="q" value="{{ q }}" placeholder="Buscar por nombre o teléfono" style="max-width:320px;">
+    <select class="odoo-input" name="estado" style="max-width:220px;">
+      <option value="">Todos los estados</option>
+      {% for v, lbl in Estados.choices %}
+        <option value="{{ v }}" {% if estado == v %}selected{% endif %}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
+    <button class="odoo-btn odoo-btn-primary" type="submit">Filtrar</button>
+  </form>
+
+  <div class="content-card">
+    <div class="card-body" style="padding:14px;">
+      <table class="odoo-table" style="width:100%;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Teléfono</th>
+            <th>Estado</th>
+            <th>Creado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in altas %}
+          <tr>
+            <td>{{ s.pk }}</td>
+            <td>{{ s.nombres }} {{ s.apellidos }}</td>
+            <td>{{ s.telefono }}</td>
+            <td>{{ s.get_estado_display }}</td>
+            <td>{{ s.creado_en|date:"Y-m-d H:i" }}</td>
+            <td>
+              <a class="odoo-btn odoo-btn-secondary" href="{% url 'actualizacion_datos_miembros:alta_detalle' s.pk %}">Ver</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="odoo-muted">No hay solicitudes.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

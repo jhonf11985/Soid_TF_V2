@@ -1,0 +1,39 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="page-container">
+  <h1>Solicitud de Alta #{{ s.pk }}</h1>
+
+  <div class="content-card">
+    <div class="card-body" style="padding:18px;">
+      <p><strong>Nombre:</strong> {{ s.nombres }} {{ s.apellidos }}</p>
+      <p><strong>Teléfono:</strong> {{ s.telefono }}</p>
+      <p><strong>Género:</strong> {{ s.get_genero_display }}</p>
+      <p><strong>Fecha nacimiento:</strong> {{ s.fecha_nacimiento }}</p>
+      <p><strong>Estado miembro:</strong> {{ s.get_estado_miembro_display }}</p>
+      <p><strong>Estado solicitud:</strong> {{ s.get_estado_display }}</p>
+
+      {% if s.nota_admin %}
+        <hr>
+        <p><strong>Nota admin:</strong><br>{{ s.nota_admin|linebreaksbr }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+    {% if s.estado == Estados.PENDIENTE %}
+      <form method="post" action="{% url 'actualizacion_datos_miembros:alta_aprobar' s.pk %}">
+        {% csrf_token %}
+        <button class="odoo-btn odoo-btn-primary" type="submit">Aprobar</button>
+      </form>
+
+      <form method="post" action="{% url 'actualizacion_datos_miembros:alta_rechazar' s.pk %}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        {% csrf_token %}
+        <input class="odoo-input" type="text" name="nota_admin" placeholder="Motivo (opcional)" style="max-width:360px;">
+        <button class="odoo-btn odoo-btn-danger" type="submit">Rechazar</button>
+      </form>
+    {% else %}
+      <div class="odoo-muted">Esta solicitud ya fue procesada.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
