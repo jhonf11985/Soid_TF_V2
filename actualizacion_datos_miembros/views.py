@@ -9,6 +9,7 @@ from miembros_app.models import Miembro
 from .models import AccesoActualizacionDatos, SolicitudActualizacionMiembro
 from .forms import SolicitudActualizacionForm
 from .services import aplicar_solicitud_a_miembro
+from .forms import SolicitudActualizacionForm
 
 
 def _get_client_ip(request):
@@ -190,4 +191,26 @@ def generar_link_miembro(request, miembro_id):
         "acceso": acceso,
         "link": link,
         "created": created,
+    })
+
+
+
+
+def public_registro(request):
+    if request.method == "POST":
+        form = formulario_publico(request.POST)
+        if form.is_valid():
+            SolicitudActualizacion.objects.create(
+                tipo=SolicitudActualizacion.Tipos.ALTA,
+                estado=SolicitudActualizacion.Estados.PENDIENTE,
+                payload=form.cleaned_data,
+                enviado_en=timezone.now(),
+            )
+            return render(request, "actualizacion_datos_miembros/public_ok.html")
+    else:
+        form = formulario_publico()
+
+    return render(request, "actualizacion_datos_miembros/formulario_publico.html", {
+        "form": form,
+        "modo": "ALTA",
     })
