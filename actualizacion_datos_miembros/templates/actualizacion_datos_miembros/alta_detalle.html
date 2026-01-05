@@ -1,39 +1,479 @@
-{% extends "core/base.html" %}
-{% block content %}
-<div class="page-container">
-  <h1>Solicitud de Alta #{{ s.pk }}</h1>
+{% extends "actualizacion_datos_miembros/base_actualizacion.html" %}
+{% load static %}
 
-  <div class="content-card">
-    <div class="card-body" style="padding:18px;">
-      <p><strong>Nombre:</strong> {{ s.nombres }} {{ s.apellidos }}</p>
-      <p><strong>Teléfono:</strong> {{ s.telefono }}</p>
-      <p><strong>Género:</strong> {{ s.get_genero_display }}</p>
-      <p><strong>Fecha nacimiento:</strong> {{ s.fecha_nacimiento }}</p>
-      <p><strong>Estado miembro:</strong> {{ s.get_estado_miembro_display }}</p>
-      <p><strong>Estado solicitud:</strong> {{ s.get_estado_display }}</p>
+{% block actualizacion_content %}
 
-      {% if s.nota_admin %}
-        <hr>
-        <p><strong>Nota admin:</strong><br>{{ s.nota_admin|linebreaksbr }}</p>
-      {% endif %}
+<!-- ═══════════════════════════════════════════════
+     CONTROL BAR
+     ═══════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+    <div class="odoo-control-left">
+        <a href="{% url 'actualizacion_datos_miembros:altas_lista' %}" class="odoo-btn odoo-btn-icon">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        <div class="odoo-breadcrumb">
+            <a href="{% url 'actualizacion_datos_miembros:altas_lista' %}" class="odoo-breadcrumb-link">Solicitudes de Alta</a>
+            <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
+            <span class="odoo-breadcrumb-current">Alta #{{ s.pk }}</span>
+        </div>
     </div>
-  </div>
-
-  <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
-    {% if s.estado == Estados.PENDIENTE %}
-      <form method="post" action="{% url 'actualizacion_datos_miembros:alta_aprobar' s.pk %}">
-        {% csrf_token %}
-        <button class="odoo-btn odoo-btn-primary" type="submit">Aprobar</button>
-      </form>
-
-      <form method="post" action="{% url 'actualizacion_datos_miembros:alta_rechazar' s.pk %}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        {% csrf_token %}
-        <input class="odoo-input" type="text" name="nota_admin" placeholder="Motivo (opcional)" style="max-width:360px;">
-        <button class="odoo-btn odoo-btn-danger" type="submit">Rechazar</button>
-      </form>
-    {% else %}
-      <div class="odoo-muted">Esta solicitud ya fue procesada.</div>
-    {% endif %}
-  </div>
 </div>
+
+<div class="page-container">
+
+    <!-- ═══════════════════════════════════════════════
+         HEADER
+         ═══════════════════════════════════════════════ -->
+    <div class="page-header">
+        <div class="page-avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <i class="fas fa-user-plus" style="font-size: 28px; color: #fff;"></i>
+        </div>
+        <div class="page-info">
+            <div class="header-top">
+                <h1 class="page-title">Solicitud de Alta #{{ s.pk }}</h1>
+                {% if s.estado == 'pendiente' %}
+                <span class="status-badge status-warning">
+                    <i class="fas fa-clock"></i> Pendiente
+                </span>
+                {% elif s.estado == 'aprobada' %}
+                <span class="status-badge status-success">
+                    <i class="fas fa-check-circle"></i> Aprobada
+                </span>
+                {% elif s.estado == 'rechazada' %}
+                <span class="status-badge status-danger">
+                    <i class="fas fa-times-circle"></i> Rechazada
+                </span>
+                {% endif %}
+            </div>
+            <div class="page-meta">
+                <div class="meta-item">
+                    <i class="fas fa-user"></i>
+                    <span>{{ s.nombres }} {{ s.apellidos }}</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-phone"></i>
+                    <span>{{ s.telefono }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         ACCIONES (Solo si pendiente)
+         ═══════════════════════════════════════════════ -->
+    {% if s.estado == Estados.PENDIENTE %}
+    <div class="actions-card">
+        <div class="actions-content">
+            <form method="post" action="{% url 'actualizacion_datos_miembros:alta_aprobar' s.pk %}" class="action-form">
+                {% csrf_token %}
+                <button type="submit" class="action-btn-large btn-approve">
+                    <i class="fas fa-check"></i>
+                    <span>Aprobar Alta</span>
+                </button>
+            </form>
+
+            <form method="post" action="{% url 'actualizacion_datos_miembros:alta_rechazar' s.pk %}" class="action-form reject-form">
+                {% csrf_token %}
+                <input type="text" name="nota_admin" class="reject-input" placeholder="Motivo del rechazo (opcional)">
+                <button type="submit" class="action-btn-large btn-reject">
+                    <i class="fas fa-times"></i>
+                    <span>Rechazar</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="processed-notice">
+        <i class="fas fa-info-circle"></i>
+        <span>Esta solicitud ya fue procesada.</span>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════
+         DATOS DE LA SOLICITUD
+         ═══════════════════════════════════════════════ -->
+    <div class="content-card">
+        <div class="card-header">
+            <i class="fas fa-id-card"></i>
+            <h2>Datos del Solicitante</h2>
+        </div>
+        <div class="card-body">
+            <div class="data-grid">
+                <div class="data-field">
+                    <label>Nombres</label>
+                    <span class="data-value">{{ s.nombres }}</span>
+                </div>
+                <div class="data-field">
+                    <label>Apellidos</label>
+                    <span class="data-value">{{ s.apellidos }}</span>
+                </div>
+                <div class="data-field">
+                    <label>Teléfono</label>
+                    <span class="data-value">
+                        <i class="fas fa-phone icon-inline"></i>
+                        {{ s.telefono }}
+                    </span>
+                </div>
+                <div class="data-field">
+                    <label>Género</label>
+                    <span class="data-value">{{ s.get_genero_display }}</span>
+                </div>
+                <div class="data-field">
+                    <label>Fecha de Nacimiento</label>
+                    <span class="data-value">
+                        <i class="fas fa-calendar icon-inline"></i>
+                        {{ s.fecha_nacimiento|date:"d/m/Y" }}
+                    </span>
+                </div>
+                <div class="data-field">
+                    <label>Estado Miembro</label>
+                    <span class="data-value member-status">{{ s.get_estado_miembro_display }}</span>
+                </div>
+            </div>
+
+            {% if s.nota_admin %}
+            <div class="admin-note-section">
+                <h3 class="section-title">
+                    <i class="fas fa-sticky-note"></i>
+                    Nota del Administrador
+                </h3>
+                <div class="admin-note">
+                    {{ s.nota_admin|linebreaksbr }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         METADATA
+         ═══════════════════════════════════════════════ -->
+    <div class="metadata-footer">
+        <div class="metadata-item">
+            <i class="fas fa-clock"></i>
+            <span>Creada: {{ s.creado_en|date:"d/m/Y H:i" }}</span>
+        </div>
+    </div>
+
+</div>
+
+<style>
+/* ═══════════════════════════════════════════════
+   ESTILOS GENERALES
+   ═══════════════════════════════════════════════ */
+.page-container {
+    padding: 24px;
+    background: #f0f0f0;
+    min-height: calc(100vh - 60px);
+}
+
+/* Header */
+.page-header {
+    display: flex;
+    gap: 20px;
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 16px;
+}
+.page-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.page-info {
+    flex: 1;
+}
+.header-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.page-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #2d3748;
+}
+.page-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #718096;
+}
+.meta-item i {
+    font-size: 14px;
+    color: #667eea;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.status-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+.status-success {
+    background: #d4edda;
+    color: #155724;
+}
+.status-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Processed Notice */
+.processed-notice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 10px;
+    color: #1565c0;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+.processed-notice i {
+    font-size: 18px;
+}
+
+/* Actions Card */
+.actions-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.actions-content {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.action-form {
+    display: flex;
+    align-items: center;
+}
+.reject-form {
+    flex: 1;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.reject-input {
+    flex: 1;
+    min-width: 250px;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+.reject-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+.action-btn-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.btn-approve {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: #fff;
+}
+.btn-approve:hover {
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+    transform: translateY(-1px);
+}
+.btn-reject {
+    background: #fff;
+    color: #e53e3e;
+    border: 2px solid #feb2b2;
+}
+.btn-reject:hover {
+    background: #fff5f5;
+    border-color: #fc8181;
+}
+
+/* Content Card */
+.content-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+}
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+}
+.card-header i {
+    font-size: 20px;
+}
+.card-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+.card-body {
+    padding: 24px;
+}
+
+/* Data Grid */
+.data-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+.data-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.data-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.data-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    color: #2d3748;
+    padding: 12px 16px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+.icon-inline {
+    font-size: 14px;
+    color: #667eea;
+}
+.member-status {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-color: #a5d6a7;
+    color: #2e7d32;
+    font-weight: 600;
+}
+
+/* Admin Note */
+.admin-note-section {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e2e8f0;
+}
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #2d3748;
+}
+.section-title i {
+    color: #f59e0b;
+}
+.admin-note {
+    padding: 16px;
+    background: #fffbeb;
+    border: 1px solid #fef08a;
+    border-radius: 10px;
+    color: #92400e;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Metadata Footer */
+.metadata-footer {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 16px 24px;
+    background: #f7fafc;
+    border-radius: 10px;
+    margin-top: 16px;
+}
+.metadata-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #718096;
+}
+.metadata-item i {
+    font-size: 14px;
+    color: #a0aec0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-container {
+        padding: 16px;
+    }
+    .page-header {
+        flex-direction: column;
+    }
+    .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .actions-content {
+        flex-direction: column;
+        width: 100%;
+    }
+    .action-form, .reject-form {
+        width: 100%;
+    }
+    .action-btn-large {
+        width: 100%;
+        justify-content: center;
+    }
+    .reject-input {
+        min-width: 100%;
+    }
+    .data-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
 {% endblock %}

@@ -1,88 +1,283 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Registro de miembro</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Registro de Miembro</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+          
+            --color-primary: {{ CFG.color_primario|default:"#0097a7" }};
+            --color-primary-dark: #00838f;
+            --color-primary-soft: #e0f7fa;
+
+            --color-bg: #f5f5f7;
+            --color-surface: #ffffff;
+            --color-text-main: #111827;
+            --color-text-muted: #6b7280;
+            --color-border: #e5e7eb;
+            --color-error: #ef4444;
+
+            --radius-soft: 12px;
+        }
+
+        body {
+            font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(
+                135deg,
+                var(--color-primary) 0%,
+                #5c9ead 50%,
+                #5c9ead 100%
+            );
+            min-height: 100vh;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .form-container {
+            max-width: 520px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+/* ═══════════════════════════════════════
+   LOGO INSTITUCIONAL (LIBRE, SIN CONTENEDOR)
+   ═══════════════════════════════════════ */
+.brand-top {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 22px;
+}
+
+.church-logo {
+    max-height: 72px;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.15));
+}
+
+
+        /* ═══════════════════════════════════════
+           HEADER
+           ═══════════════════════════════════════ */
+        .form-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .form-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 6px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .form-header p {
+            font-size: 14px;
+            color: rgba(255,255,255,0.9);
+        }
+
+        /* ═══════════════════════════════════════
+           CARD
+           ═══════════════════════════════════════ */
+        .form-card {
+            background: var(--color-surface);
+            border-radius: 20px;
+            padding: 36px 32px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+        }
+
+        /* ═══════════════════════════════════════
+           MENSAJE INSTITUCIONAL
+           ═══════════════════════════════════════ */
+        .message {
+            display: flex;
+            gap: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border-radius: var(--radius-soft);
+            background: var(--color-primary-soft);
+            border: 1px solid var(--color-primary);
+            color: var(--color-primary-dark);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .message .material-icons {
+            font-size: 22px;
+            margin-top: 2px;
+        }
+
+        .message strong {
+            font-weight: 700;
+        }
+
+        /* ═══════════════════════════════════════
+           FORMULARIO
+           ═══════════════════════════════════════ */
+        .form-group { margin-bottom: 22px; }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--color-text-main);
+        }
+
+        .form-label .material-icons {
+            font-size: 18px;
+            color: var(--color-primary);
+        }
+
+        .input-wrapper { position: relative; }
+
+        .input-wrapper .material-icons {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: var(--color-text-muted);
+        }
+
+        .input-wrapper input,
+        .input-wrapper select {
+            padding-left: 46px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: var(--radius-soft);
+            border: 2px solid var(--color-border);
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 4px rgba(0,151,167,0.12);
+        }
+
+        /* ═══════════════════════════════════════
+           BOTÓN
+           ═══════════════════════════════════════ */
+        .submit-btn {
+            width: 100%;
+            margin-top: 26px;
+            padding: 16px;
+            border-radius: var(--radius-soft);
+            border: none;
+            background: linear-gradient(135deg, var(--color-primary), #5c9ead);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* ═══════════════════════════════════════
+           FOOTER
+           ═══════════════════════════════════════ */
+        .form-footer {
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px solid var(--color-border);
+            text-align: center;
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+
+        .powered-by {
+            margin-top: 22px;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255,255,255,0.75);
+        }
+    </style>
 </head>
-<body style="font-family:system-ui;padding:18px;background:#f6f7fb">
-  <div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #e6e8ef;border-radius:14px;padding:18px">
 
-    <h2 style="margin:0 0 6px">Registro de miembro</h2>
-    <p style="margin:0 0 14px;color:#667085;font-size:14px">
-      Completa estos datos. Tu solicitud será revisada por el equipo antes de ser aplicada.
-    </p>
+<body>
+<div class="form-container">
 
-    {% if messages %}
-      <div style="display:grid;gap:8px;margin-bottom:12px;">
-        {% for message in messages %}
-          <div style="padding:10px 12px;border-radius:12px;border:1px solid #d0d5dd;background:#fafafa;">
-            {{ message }}
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
+    <!-- LOGO INSTITUCIONAL -->
+    <div class="brand-top">
+        {% if CFG.logo %}
+            <img src="{{ CFG.logo.url }}"
+                 alt="{{ CFG.nombre_iglesia|default:'Iglesia' }}"
+                 class="church-logo">
+        {% endif %}
+    </div>
 
-    <form method="post" style="display:grid;gap:12px">
-      {% csrf_token %}
+    <div class="form-header">
+        <h1>Registro de Miembro</h1>
+        <p>Actualización y validación de información</p>
+    </div>
 
-      <div>
-        <label style="display:block;font-size:13px;color:#344054;margin-bottom:6px">Nombres *</label>
-        {{ form.nombres }}
-        {% if form.nombres.errors %}<div style="color:#b42318;font-size:13px">{{ form.nombres.errors|striptags }}</div>{% endif %}
-      </div>
+    <div class="form-card">
 
-      <div>
-        <label style="display:block;font-size:13px;color:#344054;margin-bottom:6px">Apellidos *</label>
-        {{ form.apellidos }}
-        {% if form.apellidos.errors %}<div style="color:#b42318;font-size:13px">{{ form.apellidos.errors|striptags }}</div>{% endif %}
-      </div>
+        <!-- MENSAJE DE PROCESO -->
+        <div class="message">
+            <span class="material-icons">autorenew</span>
+            <div>
+                <strong>Proceso de registro automatizado</strong><br>
+                Este formulario forma parte de un nuevo sistema digital que nos permite
+                organizar mejor la información y dar seguimiento de forma responsable.
+                <br><br>
+                • Envío de solicitud<br>
+                • Revisión del equipo<br>
+                • Integración al sistema
+                <br><br>
+                Gracias por caminar con nosotros en este nuevo paso.
+            </div>
+        </div>
 
-      <div>
-        <label style="display:block;font-size:13px;color:#344054;margin-bottom:6px">Género *</label>
-        {{ form.genero }}
-        {% if form.genero.errors %}<div style="color:#b42318;font-size:13px">{{ form.genero.errors|striptags }}</div>{% endif %}
-      </div>
+        <form method="post">
+            {% csrf_token %}
 
-      <div>
-        <label style="display:block;font-size:13px;color:#344054;margin-bottom:6px">Fecha de nacimiento *</label>
-        {{ form.fecha_nacimiento }}
-        {% if form.fecha_nacimiento.errors %}<div style="color:#b42318;font-size:13px">{{ form.fecha_nacimiento.errors|striptags }}</div>{% endif %}
-      </div>
+            {{ form.as_p }}
 
-      <div>
-        <label style="display:block;font-size:13px;color:#344054;margin-bottom:6px">Estado del miembro *</label>
-        {{ form.estado_miembro }}
-        {% if form.estado_miembro.errors %}<div style="color:#b42318;font-size:13px">{{ form.estado_miembro.errors|striptags }}</div>{% endif %}
-      </div>
+            <button type="submit" class="submit-btn">
+                <span class="material-icons">send</span>
+                Enviar solicitud
+            </button>
 
-      <div>
-        <label style="display:block;font-size:13px;color:#344054;margin-bottom:6px">Teléfono *</label>
-        {{ form.telefono }}
-        {% if form.telefono.errors %}<div style="color:#b42318;font-size:13px">{{ form.telefono.errors|striptags }}</div>{% endif %}
-      </div>
+            <div class="form-footer">
+                Tu información será revisada antes de ser aplicada.
+            </div>
+        </form>
+    </div>
 
-      <button type="submit" style="padding:12px;border:0;border-radius:12px;background:#111;color:#fff;font-weight:700">
-        Enviar
-      </button>
-
-      <p style="margin:0;color:#98a2b3;font-size:12px;line-height:1.4">
-        * Campos obligatorios.
-      </p>
-
-    </form>
-  </div>
-
-  <style>
-    .odoo-input{
-      width:100%;
-      padding:12px 12px;
-      border:1px solid #d0d5dd;
-      border-radius:12px;
-      font-size:15px;
-      outline:none;
-    }
-    .odoo-input:focus{border-color:#111;}
-  </style>
+    <div class="powered-by">
+        {{ CFG.nombre_iglesia|default:"Iglesia Torre Fuerte" }}
+    </div>
+</div>
 </body>
 </html>

@@ -1,70 +1,534 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Detalle solicitud</title>
-</head>
-<body style="font-family:system-ui;padding:18px;background:#f6f7fb">
-  <div style="max-width:1100px;margin:0 auto;background:#fff;border:1px solid #e6e8ef;border-radius:14px;padding:18px">
-    <h2 style="margin:0 0 6px">Detalle de solicitud</h2>
-    <p style="margin:0;color:#667085">
-      {{ s.miembro.nombres }} {{ s.miembro.apellidos }}
-      {% if s.miembro.codigo %} · {{ s.miembro.codigo }}{% endif %}
-      · <b>{{ s.get_estado_display }}</b>
-    </p>
+{% extends "actualizacion_datos_miembros/base_actualizacion.html" %}
+{% load static %}
 
-    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-      {% if s.estado == Estados.PENDIENTE %}
-      <form method="post" action="{% url 'actualizacion_datos_miembros:solicitud_aplicar' s.pk %}">
-        {% csrf_token %}
-        <button style="padding:10px 12px;border:0;border-radius:10px;background:#111;color:#fff;font-weight:800;cursor:pointer">Aplicar</button>
-      </form>
+{% block actualizacion_content %}
 
-      <form method="post" action="{% url 'actualizacion_datos_miembros:solicitud_rechazar' s.pk %}" style="display:flex;gap:8px;flex-wrap:wrap">
-        {% csrf_token %}
-        <input name="nota_admin" placeholder="Motivo (opcional)" style="padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;min-width:260px">
-        <button style="padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff;font-weight:800;cursor:pointer">Rechazar</button>
-      </form>
-      {% endif %}
+<!-- ═══════════════════════════════════════════════
+     CONTROL BAR
+     ═══════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+    <div class="odoo-control-left">
+        <a href="{% url 'actualizacion_datos_miembros:solicitudes_lista' %}" class="odoo-btn odoo-btn-icon">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        <div class="odoo-breadcrumb">
+            <a href="{% url 'actualizacion_datos_miembros:solicitudes_lista' %}" class="odoo-breadcrumb-link">Solicitudes</a>
+            <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
+            <span class="odoo-breadcrumb-current">Detalle #{{ s.pk }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="page-container">
+
+    <!-- ═══════════════════════════════════════════════
+         HEADER
+         ═══════════════════════════════════════════════ -->
+    <div class="page-header">
+        <div class="page-avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <i class="fas fa-file-alt" style="font-size: 28px; color: #fff;"></i>
+        </div>
+        <div class="page-info">
+            <div class="header-top">
+                <h1 class="page-title">Solicitud de Actualización</h1>
+                {% if s.estado == Estados.PENDIENTE %}
+                <span class="status-badge status-warning">
+                    <i class="fas fa-clock"></i> Pendiente
+                </span>
+                {% elif s.estado == Estados.APLICADA %}
+                <span class="status-badge status-success">
+                    <i class="fas fa-check-circle"></i> Aplicada
+                </span>
+                {% elif s.estado == Estados.RECHAZADA %}
+                <span class="status-badge status-danger">
+                    <i class="fas fa-times-circle"></i> Rechazada
+                </span>
+                {% endif %}
+            </div>
+            <div class="page-meta">
+                <div class="meta-item">
+                    <i class="fas fa-user"></i>
+                    <span>{{ s.miembro.nombres }} {{ s.miembro.apellidos }}</span>
+                </div>
+                {% if s.miembro.codigo %}
+                <div class="meta-item">
+                    <i class="fas fa-id-badge"></i>
+                    <span>{{ s.miembro.codigo }}</span>
+                </div>
+                {% endif %}
+                <div class="meta-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ s.creado_en|date:"d/m/Y H:i" }}</span>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <hr style="margin:16px 0;border:none;border-top:1px solid #e6e8ef">
+    <!-- ═══════════════════════════════════════════════
+         ACCIONES (Solo si pendiente)
+         ═══════════════════════════════════════════════ -->
+    {% if s.estado == Estados.PENDIENTE %}
+    <div class="actions-card">
+        <div class="actions-content">
+            <form method="post" action="{% url 'actualizacion_datos_miembros:solicitud_aplicar' s.pk %}" class="action-form">
+                {% csrf_token %}
+                <button type="submit" class="action-btn-large btn-approve">
+                    <i class="fas fa-check"></i>
+                    <span>Aplicar Cambios</span>
+                </button>
+            </form>
 
-    <h3 style="margin:0 0 10px">Datos solicitados</h3>
-    <table style="width:100%;border-collapse:collapse">
-      <tbody>
-        <tr><td style="padding:8px;color:#667085;width:220px">Teléfono</td><td style="padding:8px">{{ s.telefono|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">WhatsApp</td><td style="padding:8px">{{ s.whatsapp|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Email</td><td style="padding:8px">{{ s.email|default:"—" }}</td></tr>
+            <form method="post" action="{% url 'actualizacion_datos_miembros:solicitud_rechazar' s.pk %}" class="action-form reject-form">
+                {% csrf_token %}
+                <input type="text" name="nota_admin" class="reject-input" placeholder="Motivo del rechazo (opcional)">
+                <button type="submit" class="action-btn-large btn-reject">
+                    <i class="fas fa-times"></i>
+                    <span>Rechazar</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
 
-        <tr><td style="padding:8px;color:#667085">Dirección</td><td style="padding:8px">{{ s.direccion|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Sector</td><td style="padding:8px">{{ s.sector|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Ciudad</td><td style="padding:8px">{{ s.ciudad|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Provincia</td><td style="padding:8px">{{ s.provincia|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Código postal</td><td style="padding:8px">{{ s.codigo_postal|default:"—" }}</td></tr>
+    <!-- ═══════════════════════════════════════════════
+         DATOS SOLICITADOS
+         ═══════════════════════════════════════════════ -->
+    <div class="content-card">
+        <div class="card-header">
+            <i class="fas fa-clipboard-list"></i>
+            <h2>Datos Solicitados</h2>
+        </div>
+        <div class="card-body">
+            
+            <!-- Contacto -->
+            <div class="data-section">
+                <h3 class="section-title">
+                    <i class="fas fa-phone-alt"></i>
+                    Información de Contacto
+                </h3>
+                <div class="data-grid">
+                    <div class="data-field">
+                        <label>Teléfono</label>
+                        <span>{{ s.telefono|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>WhatsApp</label>
+                        <span>{{ s.whatsapp|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Email</label>
+                        <span>{{ s.email|default:"—" }}</span>
+                    </div>
+                </div>
+            </div>
 
-        <tr><td style="padding:8px;color:#667085">Empleador</td><td style="padding:8px">{{ s.empleador|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Puesto</td><td style="padding:8px">{{ s.puesto|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Teléfono trabajo</td><td style="padding:8px">{{ s.telefono_trabajo|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Dirección trabajo</td><td style="padding:8px">{{ s.direccion_trabajo|default:"—" }}</td></tr>
+            <!-- Dirección -->
+            <div class="data-section">
+                <h3 class="section-title">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Dirección
+                </h3>
+                <div class="data-grid">
+                    <div class="data-field full-width">
+                        <label>Dirección</label>
+                        <span>{{ s.direccion|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Sector</label>
+                        <span>{{ s.sector|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Ciudad</label>
+                        <span>{{ s.ciudad|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Provincia</label>
+                        <span>{{ s.provincia|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Código Postal</label>
+                        <span>{{ s.codigo_postal|default:"—" }}</span>
+                    </div>
+                </div>
+            </div>
 
-        <tr><td style="padding:8px;color:#667085">Contacto emergencia</td><td style="padding:8px">{{ s.contacto_emergencia_nombre|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Tel. emergencia</td><td style="padding:8px">{{ s.contacto_emergencia_telefono|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Relación</td><td style="padding:8px">{{ s.contacto_emergencia_relacion|default:"—" }}</td></tr>
+            <!-- Trabajo -->
+            <div class="data-section">
+                <h3 class="section-title">
+                    <i class="fas fa-briefcase"></i>
+                    Información Laboral
+                </h3>
+                <div class="data-grid">
+                    <div class="data-field">
+                        <label>Empleador</label>
+                        <span>{{ s.empleador|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Puesto</label>
+                        <span>{{ s.puesto|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Teléfono Trabajo</label>
+                        <span>{{ s.telefono_trabajo|default:"—" }}</span>
+                    </div>
+                    <div class="data-field full-width">
+                        <label>Dirección Trabajo</label>
+                        <span>{{ s.direccion_trabajo|default:"—" }}</span>
+                    </div>
+                </div>
+            </div>
 
-        <tr><td style="padding:8px;color:#667085">Tipo de sangre</td><td style="padding:8px">{{ s.tipo_sangre|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Alergias</td><td style="padding:8px">{{ s.alergias|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Condiciones médicas</td><td style="padding:8px">{{ s.condiciones_medicas|default:"—" }}</td></tr>
-        <tr><td style="padding:8px;color:#667085">Medicamentos</td><td style="padding:8px">{{ s.medicamentos|default:"—" }}</td></tr>
-      </tbody>
-    </table>
+            <!-- Emergencia -->
+            <div class="data-section">
+                <h3 class="section-title">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Contacto de Emergencia
+                </h3>
+                <div class="data-grid">
+                    <div class="data-field">
+                        <label>Nombre</label>
+                        <span>{{ s.contacto_emergencia_nombre|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Teléfono</label>
+                        <span>{{ s.contacto_emergencia_telefono|default:"—" }}</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Relación</label>
+                        <span>{{ s.contacto_emergencia_relacion|default:"—" }}</span>
+                    </div>
+                </div>
+            </div>
 
-    <hr style="margin:16px 0;border:none;border-top:1px solid #e6e8ef">
-    <p style="margin:0;color:#667085;font-size:13px">
-      Enviada: {{ s.creado_en|date:"d/m/Y H:i" }}
-      {% if s.ip_origen %} · IP: {{ s.ip_origen }}{% endif %}
-    </p>
-  </div>
-</body>
-</html>
+            <!-- Salud -->
+            <div class="data-section">
+                <h3 class="section-title">
+                    <i class="fas fa-heartbeat"></i>
+                    Información Médica
+                </h3>
+                <div class="data-grid">
+                    <div class="data-field">
+                        <label>Tipo de Sangre</label>
+                        <span>{{ s.tipo_sangre|default:"—" }}</span>
+                    </div>
+                    <div class="data-field full-width">
+                        <label>Alergias</label>
+                        <span>{{ s.alergias|default:"—" }}</span>
+                    </div>
+                    <div class="data-field full-width">
+                        <label>Condiciones Médicas</label>
+                        <span>{{ s.condiciones_medicas|default:"—" }}</span>
+                    </div>
+                    <div class="data-field full-width">
+                        <label>Medicamentos</label>
+                        <span>{{ s.medicamentos|default:"—" }}</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         METADATA
+         ═══════════════════════════════════════════════ -->
+    <div class="metadata-footer">
+        <div class="metadata-item">
+            <i class="fas fa-clock"></i>
+            <span>Enviada: {{ s.creado_en|date:"d/m/Y H:i" }}</span>
+        </div>
+        {% if s.ip_origen %}
+        <div class="metadata-item">
+            <i class="fas fa-globe"></i>
+            <span>IP: {{ s.ip_origen }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<style>
+/* ═══════════════════════════════════════════════
+   ESTILOS GENERALES
+   ═══════════════════════════════════════════════ */
+.page-container {
+    padding: 24px;
+    background: #f0f0f0;
+    min-height: calc(100vh - 60px);
+}
+
+/* Header */
+.page-header {
+    display: flex;
+    gap: 20px;
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 16px;
+}
+.page-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.page-info {
+    flex: 1;
+}
+.header-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.page-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #2d3748;
+}
+.page-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #718096;
+}
+.meta-item i {
+    font-size: 14px;
+    color: #667eea;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.status-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+.status-success {
+    background: #d4edda;
+    color: #155724;
+}
+.status-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Actions Card */
+.actions-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.actions-content {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.action-form {
+    display: flex;
+    align-items: center;
+}
+.reject-form {
+    flex: 1;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.reject-input {
+    flex: 1;
+    min-width: 250px;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+.reject-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+.action-btn-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.btn-approve {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: #fff;
+}
+.btn-approve:hover {
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+    transform: translateY(-1px);
+}
+.btn-reject {
+    background: #fff;
+    color: #e53e3e;
+    border: 2px solid #feb2b2;
+}
+.btn-reject:hover {
+    background: #fff5f5;
+    border-color: #fc8181;
+}
+
+/* Content Card */
+.content-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+}
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+}
+.card-header i {
+    font-size: 20px;
+}
+.card-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+.card-body {
+    padding: 24px;
+}
+
+/* Data Sections */
+.data-section {
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.data-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 16px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #2d3748;
+}
+.section-title i {
+    color: #667eea;
+    font-size: 16px;
+}
+.data-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+.data-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.data-field.full-width {
+    grid-column: 1 / -1;
+}
+.data-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.data-field span {
+    font-size: 14px;
+    color: #2d3748;
+    padding: 10px 14px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Metadata Footer */
+.metadata-footer {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 16px 24px;
+    background: #f7fafc;
+    border-radius: 10px;
+    margin-top: 16px;
+}
+.metadata-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #718096;
+}
+.metadata-item i {
+    font-size: 14px;
+    color: #a0aec0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-container {
+        padding: 16px;
+    }
+    .page-header {
+        flex-direction: column;
+    }
+    .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .actions-content {
+        flex-direction: column;
+        width: 100%;
+    }
+    .action-form, .reject-form {
+        width: 100%;
+    }
+    .action-btn-large {
+        width: 100%;
+        justify-content: center;
+    }
+    .reject-input {
+        min-width: 100%;
+    }
+}
+</style>
+
+{% endblock %}
