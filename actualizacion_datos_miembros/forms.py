@@ -98,12 +98,14 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
                 "placeholder": "809-123-4567",
                 "inputmode": "numeric",
                 "autocomplete": "tel",
-            }),
+
             "whatsapp": forms.TextInput(attrs={
-                "class": "odoo-input",
-                "placeholder": "809-123-4567 (opcional)",
-                "inputmode": "numeric",
-                "autocomplete": "tel",
+            "class": "odoo-input",
+            "placeholder": "+18091234567",
+            "readonly": "readonly",
+            "tabindex": "-1",   # evita foco al tabular
+        }),
+
             }),
             "direccion": forms.Textarea(attrs={"rows": 2, "placeholder": "Dirección (opcional)"}),
             "sector": forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Sector (opcional)"}),

@@ -669,6 +669,77 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const tel = document.getElementById("id_telefono");
+  const wa  = document.getElementById("id_whatsapp");
+  if (!tel || !wa) return;
+
+  function digitsOnly(v) {
+    return (v || "").replace(/\D/g, "");
+  }
+
+  function formatRD(d) {
+    // Si escriben 1 + 10 dígitos, tomamos solo los 10 de RD
+    if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+    d = d.slice(0, 10);
+
+    const a = d.slice(0, 3);
+    const b = d.slice(3, 6);
+    const c = d.slice(6, 10);
+
+    if (d.length <= 3) return a;
+    if (d.length <= 6) return a + "-" + b;
+    return a + "-" + b + "-" + c;
+  }
+
+  function toWhatsAppE164(d) {
+    // Devuelve +1XXXXXXXXXX si es RD válido; si no, devuelve ""
+    if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+    d = d.slice(0, 10);
+
+    if (d.length === 10 && /^(809|829|849)/.test(d)) {
+      return "+1" + d;
+    }
+    return "";
+  }
+
+  function isValidRD(d) {
+    if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+    return d.length === 10 && /^(809|829|849)/.test(d);
+  }
+
+  function paintValidity(input, valid) {
+    input.style.borderColor = valid ? "" : "var(--color-error)";
+  }
+
+  function syncFromTelefono() {
+    const d = digitsOnly(tel.value);
+
+    // 1) Teléfono visual RD
+    tel.value = formatRD(d);
+
+    // 2) Pintar si está incompleto o prefijo inválido (solo si hay algo escrito)
+    const dd = digitsOnly(tel.value);
+    if (dd.length > 0) paintValidity(tel, isValidRD(dd));
+    else paintValidity(tel, true);
+
+    // 3) WhatsApp automático E.164
+    wa.value = toWhatsAppE164(dd);
+  }
+
+  // WhatsApp siempre readonly desde JS (por si acaso)
+  wa.setAttribute("readonly", "readonly");
+  wa.setAttribute("tabindex", "-1");
+
+  tel.addEventListener("input", syncFromTelefono);
+  tel.addEventListener("blur", syncFromTelefono);
+
+  // Si el form recarga con valores (por errores), sincroniza al cargar
+  syncFromTelefono();
+});
+</script>
+
 
 </body>
 </html>
