@@ -1,0 +1,98 @@
+{% extends "actualizacion_datos_miembros/base_actualizacion.html" %}
+{% load static %}
+
+{% block actualizacion_content %}
+
+<div class="odoo-control-bar no-print">
+  <div class="odoo-control-left">
+    <div class="odoo-breadcrumb">
+      <span class="odoo-breadcrumb-title">Links de actualización</span>
+    </div>
+  </div>
+
+  <div class="odoo-control-center">
+    <form method="get" class="odoo-search-form" id="search-form">
+      <div class="odoo-search-box">
+        <span class="material-icons">search</span>
+        <input type="text" name="q" placeholder="Buscar por nombre, código o teléfono..." value="{{ q }}">
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="odoo-table-container">
+  <table class="odoo-table">
+    <thead>
+      <tr>
+        <th class="col-num">#</th>
+        <th>Miembro</th>
+        <th>Código</th>
+        <th>Estado link</th>
+        <th>Último envío</th>
+        <th class="no-print">Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for m in miembros %}
+      <tr>
+        <td class="col-num">{{ forloop.counter }}</td>
+        <td>{{ m.nombres }} {{ m.apellidos }}</td>
+        <td>{{ m.codigo|default:"—" }}</td>
+
+        <td>
+          {% if m.acceso_actualizacion_datos %}
+            {% if m.acceso_actualizacion_datos.activo %}
+              <span class="odoo-badge odoo-badge-success">
+                <span class="material-icons">lock_open</span>
+                Activo
+              </span>
+            {% else %}
+              <span class="odoo-badge odoo-badge-danger">
+                <span class="material-icons">lock</span>
+                Inactivo
+              </span>
+            {% endif %}
+          {% else %}
+            <span class="odoo-badge odoo-badge-muted">
+              <span class="material-icons">link_off</span>
+              Sin link
+            </span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if m.acceso_actualizacion_datos and m.acceso_actualizacion_datos.ultimo_envio_en %}
+            {{ m.acceso_actualizacion_datos.ultimo_envio_en|date:"d/m/Y H:i" }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+
+        <td class="no-print">
+          <a class="odoo-btn odoo-btn-primary"
+             href="{% url 'actualizacion_datos_miembros:generar_link_miembro' m.pk %}">
+            <span class="material-icons">link</span>
+            {% if m.acceso_actualizacion_datos %}Ver link{% else %}Generar{% endif %}
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="odoo-empty-table">
+          <span class="material-icons">search_off</span>
+          <p>No hay miembros con esos filtros.</p>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if miembros %}
+  <div class="odoo-table-footer">
+    Total: {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }}
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -42,4 +42,10 @@ urlpatterns = [
 # Acciones masivas de altas
 path("admin/altas/aprobar-masivo/", views.altas_aprobar_masivo, name="altas_aprobar_masivo"),
 path("admin/altas/rechazar-masivo/", views.altas_rechazar_masivo, name="altas_rechazar_masivo"),
+path("admin/links/", views.links_lista, name="links_lista"),
+path("admin/alta-masiva/link/", views.alta_masiva_link, name="alta_masiva_link"),
+path("admin/alta-masiva/config/", views.alta_masiva_config, name="alta_masiva_config"),
+path("admin/alta-masiva/link/", views.alta_masiva_link, name="alta_masiva_link"),
+
+
 ]

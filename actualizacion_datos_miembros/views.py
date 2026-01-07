@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.http import HttpResponseForbidden
 from django.urls import reverse
 from miembros_app.models import ESTADO_MIEMBRO_CHOICES
+from .models import AltaMasivaConfig
 
 from miembros_app.models import Miembro
 from .models import (
@@ -14,6 +15,94 @@ from .models import (
 )
 from .forms import SolicitudActualizacionForm, SolicitudAltaPublicaForm
 from .services import aplicar_solicitud_a_miembro
+from django.db.models import Q
+from .models import AltaMasivaConfig
+
+
+
+
+@login_required
+def alta_masiva_config(request):
+    config = AltaMasivaConfig.get_solo()
+
+    if request.method == "POST":
+        accion = (request.POST.get("accion") or "").strip()
+
+        if accion == "abrir":
+            config.activo = True
+            config.save(update_fields=["activo", "actualizado_en"])
+            messages.success(request, "Alta masiva ACTIVADA.")
+        elif accion == "cerrar":
+            config.activo = False
+            config.save(update_fields=["activo", "actualizado_en"])
+            messages.warning(request, "Alta masiva CERRADA.")
+        else:
+            messages.error(request, "Acción inválida.")
+
+        return redirect("actualizacion_datos_miembros:alta_masiva_config")
+
+    return render(request, "actualizacion_datos_miembros/alta_masiva_config.html", {
+        "config": config,
+        # para que tu sidebar no se rompa si usa Estados/EstadosAlta
+        "Estados": SolicitudActualizacionMiembro.Estados,
+        "EstadosAlta": SolicitudAltaMiembro.Estados,
+    })
+
+@login_required
+def alta_masiva_link(request):
+    config = AltaMasivaConfig.get_solo()
+
+    if request.method == "POST":
+        accion = (request.POST.get("accion") or "").strip()
+        if accion == "abrir":
+            config.activo = True
+        elif accion == "cerrar":
+            config.activo = False
+        config.save(update_fields=["activo", "actualizado_en"])
+
+        messages.success(
+            request,
+            "Alta masiva ACTIVADA." if config.activo else "Alta masiva CERRADA."
+        )
+        return redirect("actualizacion_datos_miembros:alta_masiva_link")
+
+    link = request.build_absolute_uri(reverse("actualizacion_datos_miembros:alta_publica"))
+
+    return render(request, "actualizacion_datos_miembros/alta_masiva_link.html", {
+        "link": link,
+        "public_url": link,
+        "config": config,
+        "Estados": SolicitudActualizacionMiembro.Estados,
+        "EstadosAlta": SolicitudAltaMiembro.Estados,
+    })
+
+
+@login_required
+def links_lista(request):
+    q = (request.GET.get("q") or "").strip()
+
+    qs = (
+        Miembro.objects
+        .all()
+        .select_related("acceso_actualizacion_datos")  # related_name del OneToOne
+        .order_by("apellidos", "nombres")
+    )
+
+    if q:
+        qs = qs.filter(
+            Q(nombres__icontains=q)
+            | Q(apellidos__icontains=q)
+            | Q(codigo__icontains=q)
+            | Q(telefono__icontains=q)
+        )
+
+    return render(request, "actualizacion_datos_miembros/links_lista.html", {
+        "miembros": qs[:300],
+        "q": q,
+        # Para que el sidebar (y otras pantallas) sigan usando Estados sin romperse
+        "Estados": SolicitudActualizacionMiembro.Estados,
+        "EstadosAlta": SolicitudAltaMiembro.Estados,
+    })
 
 @login_required
 def altas_aprobar_masivo(request):
@@ -123,10 +212,17 @@ def alta_publica(request):
     Formulario público para registro (alta masiva).
     Crea SolicitudAltaMiembro (NO crea Miembro directo).
     """
-    if request.method == "POST":
-        form = SolicitudAltaPublicaForm(request.POST)
-        if form.is_valid():
+    config = AltaMasivaConfig.get_solo()
+    if not config.activo:
+        return render(request, "actualizacion_datos_miembros/alta_cerrada.html", {})
 
+    if request.method == "POST":
+        form = SolicitudAltaPublicaForm(
+            request.POST,
+            request.FILES   # 👈 IMPRESCINDIBLE para fotos
+        )
+
+        if form.is_valid():
             tel = (form.cleaned_data.get("telefono") or "").strip()
 
             # Anti-duplicado simple
@@ -148,13 +244,14 @@ def alta_publica(request):
             solicitud.save()
 
             return redirect("actualizacion_datos_miembros:alta_ok")
-
         else:
             messages.error(request, "Revisa los campos marcados. Hay errores en el formulario.")
     else:
         form = SolicitudAltaPublicaForm()
 
-    return render(request, "actualizacion_datos_miembros/alta_publico.html", {"form": form})
+    return render(request, "actualizacion_datos_miembros/alta_publico.html", {
+        "form": form
+    })
 
 
 def alta_ok(request):

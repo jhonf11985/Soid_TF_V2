@@ -110,6 +110,11 @@ class SolicitudAltaMiembro(models.Model):
         default=Estados.PENDIENTE,
     )
 
+        # Documentos opcionales
+    foto = models.ImageField(upload_to="solicitudes_alta/fotos/", blank=True, null=True)
+    cedula = models.CharField(max_length=20, blank=True)
+
+
     # Datos mínimos de alta masiva
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
@@ -146,3 +151,17 @@ class SolicitudAltaMiembro(models.Model):
 
     def __str__(self):
         return f"Alta({self.pk}) {self.nombres} {self.apellidos} - {self.estado}"
+
+from django.db import models
+
+class AltaMasivaConfig(models.Model):
+    activo = models.BooleanField(default=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={"activo": True})
+        return obj
+
+    def __str__(self):
+        return "Alta masiva: " + ("Activa" if self.activo else "Cerrada")

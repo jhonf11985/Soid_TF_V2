@@ -85,8 +85,23 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
             "whatsapp",
             "direccion",
             "sector",
+            "cedula",
+            "foto",
+        
+
         ]
         widgets = {
+
+                        "cedula": forms.TextInput(attrs={
+                "class": "odoo-input",
+                "placeholder": "Cédula (opcional)",
+                "inputmode": "numeric",
+            }),
+            "foto": forms.ClearableFileInput(attrs={
+                "class": "odoo-input",
+                "accept": "image/*",
+            }),
+
             "nombres": forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Nombres"}),
             "apellidos": forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Apellidos"}),
             "genero": forms.Select(attrs={"class": "odoo-input odoo-select"}),
