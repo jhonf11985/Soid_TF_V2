@@ -13,11 +13,23 @@
         <div class="odoo-breadcrumb">
             <span class="odoo-breadcrumb-title">Solicitudes de Alta</span>
         </div>
+        
+        <!-- Botones de acción masiva (ocultos hasta seleccionar) -->
+        <div class="bulk-actions" id="bulk-actions" style="display: none;">
+            <span class="bulk-count"><span id="selected-count">0</span> seleccionados</span>
+            <button type="button" class="bulk-btn bulk-btn-approve" onclick="aprobarSeleccionados()">
+                <span class="material-icons">check_circle</span>
+                Aprobar
+            </button>
+            <button type="button" class="bulk-btn bulk-btn-reject" onclick="rechazarSeleccionados()">
+                <span class="material-icons">cancel</span>
+                Rechazar
+            </button>
+        </div>
     </div>
 
     <div class="odoo-control-center">
         <form method="get" class="odoo-search-form" id="search-form">
-            <!-- Mantener filtros existentes -->
             <input type="hidden" name="estado" value="{{ estado }}">
             
             <div class="odoo-search-box">
@@ -105,29 +117,65 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
+     FORMULARIOS OCULTOS PARA ACCIONES MASIVAS
+     ══════════════════════════════════════════════════════════════════════════ -->
+<form id="form-aprobar-masivo" method="post" action="{% url 'actualizacion_datos_miembros:altas_aprobar_masivo' %}" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="ids" id="ids-aprobar">
+</form>
+
+<form id="form-rechazar-masivo" method="post" action="{% url 'actualizacion_datos_miembros:altas_rechazar_masivo' %}" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="ids" id="ids-rechazar">
+    <input type="hidden" name="nota_admin" id="nota-rechazar">
+</form>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
      TABLA DE DATOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <div class="odoo-table-container">
     <table class="odoo-table">
         <thead>
             <tr>
+                <th class="col-check no-print">
+                    <label class="custom-checkbox">
+                        <input type="checkbox" id="check-all" onchange="toggleAll(this)">
+                        <span class="checkmark"></span>
+                    </label>
+                </th>
                 <th class="col-num">#</th>
-                <th>Nombre Completo</th>
+                <th>Fecha</th>
+                <th>Solicitante</th>
                 <th>Teléfono</th>
+                <th class="col-estado-miembro">Tipo Miembro</th>
                 <th class="col-estado">Estado</th>
-                <th>Fecha Creación</th>
                 <th class="col-actions no-print">Acciones</th>
             </tr>
         </thead>
         <tbody>
             {% if altas %}
                 {% for s in altas %}
-                <tr onclick="window.location='{% url 'actualizacion_datos_miembros:alta_detalle' s.pk %}'" class="odoo-row-clickable">
+                <tr onclick="window.location='{% url 'actualizacion_datos_miembros:alta_detalle' s.pk %}'" class="odoo-row-clickable {% if s.estado == Estados.PENDIENTE %}row-selectable{% endif %}">
+                    <td class="col-check no-print" onclick="event.stopPropagation();">
+                        {% if s.estado == Estados.PENDIENTE %}
+                        <label class="custom-checkbox">
+                            <input type="checkbox" class="row-checkbox" value="{{ s.pk }}" onchange="updateSelection()">
+                            <span class="checkmark"></span>
+                        </label>
+                        {% endif %}
+                    </td>
                     <td class="col-num">{{ forloop.counter }}</td>
                     
                     <td>
+                        <div class="odoo-date-cell">
+                            <span class="material-icons">event</span>
+                            <span>{{ s.creado_en|date:"d/m/Y H:i" }}</span>
+                        </div>
+                    </td>
+                    
+                    <td>
                         <div class="odoo-member-cell">
-                            <div class="odoo-member-avatar">
+                            <div class="odoo-member-avatar odoo-member-avatar--new">
                                 <span class="material-icons">person_add</span>
                             </div>
                             <div class="odoo-member-info">
@@ -142,8 +190,30 @@
                             <span>{{ s.telefono }}</span>
                         </div>
                     </td>
+
+                    <td class="col-estado-miembro" onclick="event.stopPropagation();">
+                        {% if s.estado == Estados.PENDIENTE %}
+                            <form method="post"
+                                  action="{% url 'actualizacion_datos_miembros:alta_cambiar_estado_miembro' s.pk %}"
+                                  class="inline-form"
+                                  onsubmit="event.stopPropagation();">
+                                {% csrf_token %}
+                                <select name="estado_miembro"
+                                        class="estado-miembro-select"
+                                        onchange="event.stopPropagation(); this.form.submit();">
+                                    {% for value, label in estado_miembro_choices %}
+                                        <option value="{{ value }}" {% if value == s.estado_miembro %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        {% else %}
+                            <span class="odoo-badge odoo-badge-info">{{ s.get_estado_miembro_display }}</span>
+                        {% endif %}
+                    </td>
                     
-                    <td>
+                    <td class="col-estado">
                         {% if s.estado == 'pendiente' %}
                         <span class="badge-estado badge-pendiente">
                             <span class="material-icons">schedule</span>
@@ -166,15 +236,8 @@
                         {% endif %}
                     </td>
                     
-                    <td>
-                        <div class="odoo-date-cell">
-                            <span class="material-icons">event</span>
-                            <span>{{ s.creado_en|date:"d/m/Y H:i" }}</span>
-                        </div>
-                    </td>
-                    
                     <td class="col-actions no-print" onclick="event.stopPropagation();">
-                        <a href="{% url 'actualizacion_datos_miembros:alta_detalle' s.pk %}" 
+                        <a href="{% url 'actualizacion_datos_miembros:alta_detalle' s.pk %}"
                            class="odoo-action-btn odoo-action-view" title="Ver detalle">
                             <span class="material-icons">visibility</span>
                         </a>
@@ -183,7 +246,7 @@
                 {% endfor %}
             {% else %}
                 <tr>
-                    <td colspan="6" class="odoo-empty-table">
+                    <td colspan="8" class="odoo-empty-table">
                         <span class="material-icons">person_add_disabled</span>
                         <p>No hay solicitudes de alta con los filtros actuales</p>
                     </td>
@@ -216,7 +279,7 @@
 .odoo-control-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
 }
 
 .odoo-breadcrumb {
@@ -229,6 +292,66 @@
     font-size: 16px;
     font-weight: 600;
     color: var(--color-text-main, #111827);
+}
+
+/* Acciones masivas */
+.bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 16px;
+    border-left: 1px solid #e5e7eb;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.bulk-count {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.bulk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--radius-pill, 999px);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.bulk-btn .material-icons {
+    font-size: 18px;
+}
+
+.bulk-btn-approve {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.bulk-btn-approve:hover {
+    background: #bbf7d0;
+    box-shadow: 0 4px 12px rgba(22, 101, 52, 0.2);
+    transform: translateY(-1px);
+}
+
+.bulk-btn-reject {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.bulk-btn-reject:hover {
+    background: #fecaca;
+    box-shadow: 0 4px 12px rgba(153, 27, 27, 0.2);
+    transform: translateY(-1px);
 }
 
 .odoo-control-center {
@@ -450,10 +573,6 @@
     box-shadow: 0 6px 14px rgba(0, 151, 167, 0.4);
 }
 
-.odoo-btn-primary .material-icons {
-    font-size: 18px;
-}
-
 .odoo-btn-secondary {
     background: #f9fafb;
     color: #374151;
@@ -513,6 +632,20 @@
     background: #f9fafb;
 }
 
+/* Fila seleccionada */
+.odoo-row-clickable.selected {
+    background: #e0f7fa;
+}
+
+.odoo-row-clickable.selected:hover {
+    background: #b2ebf2;
+}
+
+.col-check {
+    width: 50px;
+    text-align: center;
+}
+
 .col-num {
     width: 50px;
     text-align: center;
@@ -521,12 +654,70 @@
 }
 
 .col-estado {
-    width: 140px;
+    width: 130px;
+}
+
+.col-estado-miembro {
+    width: 160px;
 }
 
 .col-actions {
-    width: 80px;
+    width: 60px;
     text-align: center;
+}
+
+/* Custom Checkbox */
+.custom-checkbox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.custom-checkbox input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.custom-checkbox .checkmark {
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-checkbox:hover .checkmark {
+    border-color: var(--color-primary, #0097a7);
+}
+
+.custom-checkbox input:checked ~ .checkmark {
+    background: var(--color-primary, #0097a7);
+    border-color: var(--color-primary, #0097a7);
+}
+
+.custom-checkbox .checkmark::after {
+    content: '';
+    display: none;
+    width: 5px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-bottom: 2px;
+}
+
+.custom-checkbox input:checked ~ .checkmark::after {
+    display: block;
 }
 
 /* Celda de fecha */
@@ -575,6 +766,10 @@
     flex-shrink: 0;
 }
 
+.odoo-member-avatar--new {
+    background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+}
+
 .odoo-member-avatar .material-icons {
     font-size: 18px;
     color: #fff;
@@ -590,6 +785,51 @@
     font-weight: 600;
     color: var(--color-text-main, #111827);
     font-size: 14px;
+}
+
+/* Select de estado miembro */
+.inline-form {
+    display: inline-block;
+    margin: 0;
+}
+
+.estado-miembro-select {
+    width: 100%;
+    min-width: 130px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    font-weight: 500;
+    font-size: 12px;
+    color: #4b5563;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.estado-miembro-select:hover {
+    border-color: #d1d5db;
+}
+
+.estado-miembro-select:focus {
+    outline: none;
+    border-color: var(--color-primary, #0097a7);
+    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.15);
+}
+
+/* Badge de estado miembro */
+.odoo-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.odoo-badge-info {
+    background: #e0f2fe;
+    color: #0369a1;
 }
 
 /* Badges de estado */
@@ -632,15 +872,17 @@
     border-color: #e5e7eb;
 }
 
-/* Botones de acción */
+/* Botón de acción */
 .odoo-action-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 32px;
     height: 32px;
+    border: none;
     border-radius: 8px;
     text-decoration: none;
+    cursor: pointer;
     transition: all 0.15s ease;
 }
 
@@ -655,7 +897,7 @@
 
 .odoo-action-view:hover {
     background: #b2ebf2;
-    transform: scale(1.1);
+    transform: scale(1.08);
 }
 
 /* Empty state */
@@ -740,6 +982,20 @@
         padding: 12px 16px;
     }
 
+    .odoo-control-left {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    
+    .bulk-actions {
+        width: 100%;
+        margin-top: 12px;
+        padding-left: 0;
+        border-left: none;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+    }
+
     .odoo-control-center {
         order: 3;
         width: 100%;
@@ -771,7 +1027,7 @@
     }
 
     .odoo-table {
-        min-width: 700px;
+        min-width: 800px;
     }
 }
 </style>
@@ -795,12 +1051,10 @@ function removeFilter(filterName) {
             input.value = '';
         }
     }
-    // Remove hidden input if exists
     const hiddenInput = form.querySelector(`input[type="hidden"][name="${filterName}"]`);
     if (hiddenInput) {
         hiddenInput.remove();
     }
-    // Agregar filtros_abiertos antes de submit
     let hidden = form.querySelector('input[name="filtros_abiertos"]');
     if (!hidden) {
         hidden = document.createElement('input');
@@ -812,13 +1066,86 @@ function removeFilter(filterName) {
     form.submit();
 }
 
-// Mantener panel abierto si hay filtros activos en la URL
 document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('filtros_abiertos') === '1') {
         document.getElementById('filter-panel').style.display = 'block';
     }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SELECCIÓN MÚLTIPLE
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleAll(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = masterCheckbox.checked;
+        const row = cb.closest('tr');
+        if (masterCheckbox.checked) {
+            row.classList.add('selected');
+        } else {
+            row.classList.remove('selected');
+        }
+    });
+    updateSelection();
+}
+
+function updateSelection() {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    const bulkActions = document.getElementById('bulk-actions');
+    const selectedCount = document.getElementById('selected-count');
+    const masterCheckbox = document.getElementById('check-all');
+    
+    // Actualizar contador
+    selectedCount.textContent = checked.length;
+    
+    // Mostrar/ocultar botones de acción masiva
+    bulkActions.style.display = checked.length > 0 ? 'flex' : 'none';
+    
+    // Actualizar estado del checkbox maestro
+    if (checkboxes.length > 0) {
+        masterCheckbox.checked = checked.length === checkboxes.length;
+        masterCheckbox.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+    }
+    
+    // Actualizar clase de fila seleccionada
+    checkboxes.forEach(cb => {
+        const row = cb.closest('tr');
+        if (cb.checked) {
+            row.classList.add('selected');
+        } else {
+            row.classList.remove('selected');
+        }
+    });
+}
+
+function getSelectedIds() {
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    return Array.from(checked).map(cb => cb.value);
+}
+
+function aprobarSeleccionados() {
+    const ids = getSelectedIds();
+    if (ids.length === 0) return;
+    
+    if (confirm(`¿Aprobar ${ids.length} solicitud(es) seleccionada(s)?`)) {
+        document.getElementById('ids-aprobar').value = ids.join(',');
+        document.getElementById('form-aprobar-masivo').submit();
+    }
+}
+
+function rechazarSeleccionados() {
+    const ids = getSelectedIds();
+    if (ids.length === 0) return;
+    
+    const nota = prompt(`Motivo del rechazo para ${ids.length} solicitud(es) (opcional):`, "");
+    if (nota !== null) {
+        document.getElementById('ids-rechazar').value = ids.join(',');
+        document.getElementById('nota-rechazar').value = (nota || "").trim();
+        document.getElementById('form-rechazar-masivo').submit();
+    }
+}
 </script>
 
 {% endblock %}

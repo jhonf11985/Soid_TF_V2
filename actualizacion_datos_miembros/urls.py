@@ -34,4 +34,12 @@ urlpatterns = [
     path("admin/altas/<int:pk>/", views.alta_detalle, name="alta_detalle"),
     path("admin/altas/<int:pk>/aprobar/", views.alta_aprobar, name="alta_aprobar"),
     path("admin/altas/<int:pk>/rechazar/", views.alta_rechazar, name="alta_rechazar"),
+    path(
+    "admin/altas/<int:pk>/estado-miembro/",
+    views.alta_cambiar_estado_miembro,
+    name="alta_cambiar_estado_miembro",
+),
+# Acciones masivas de altas
+path("admin/altas/aprobar-masivo/", views.altas_aprobar_masivo, name="altas_aprobar_masivo"),
+path("admin/altas/rechazar-masivo/", views.altas_rechazar_masivo, name="altas_rechazar_masivo"),
 ]

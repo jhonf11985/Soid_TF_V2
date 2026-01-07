@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.http import HttpResponseForbidden
 from django.urls import reverse
+from miembros_app.models import ESTADO_MIEMBRO_CHOICES
 
 from miembros_app.models import Miembro
 from .models import (
@@ -13,6 +14,98 @@ from .models import (
 )
 from .forms import SolicitudActualizacionForm, SolicitudAltaPublicaForm
 from .services import aplicar_solicitud_a_miembro
+
+@login_required
+def altas_aprobar_masivo(request):
+    if request.method != "POST":
+        return HttpResponseForbidden("Método no permitido")
+
+    ids_str = request.POST.get("ids", "")
+    if not ids_str:
+        messages.warning(request, "No se seleccionaron solicitudes.")
+        return redirect("actualizacion_datos_miembros:altas_lista")
+
+    ids = [int(i) for i in ids_str.split(",") if i.strip().isdigit()]
+    
+    solicitudes = SolicitudAltaMiembro.objects.filter(
+        pk__in=ids,
+        estado=SolicitudAltaMiembro.Estados.PENDIENTE
+    )
+    
+    count = 0
+    for s in solicitudes:
+        s.estado = SolicitudAltaMiembro.Estados.APROBADA
+        s.revisado_en = timezone.now()
+        s.revisado_por = request.user
+        s.save(update_fields=["estado", "revisado_en", "revisado_por"])
+        count += 1
+
+    if count:
+        messages.success(request, f"{count} solicitud(es) aprobada(s) correctamente.")
+    else:
+        messages.info(request, "No se encontraron solicitudes pendientes para aprobar.")
+    
+    return redirect("actualizacion_datos_miembros:altas_lista")
+
+
+@login_required
+def altas_rechazar_masivo(request):
+    if request.method != "POST":
+        return HttpResponseForbidden("Método no permitido")
+
+    ids_str = request.POST.get("ids", "")
+    if not ids_str:
+        messages.warning(request, "No se seleccionaron solicitudes.")
+        return redirect("actualizacion_datos_miembros:altas_lista")
+
+    ids = [int(i) for i in ids_str.split(",") if i.strip().isdigit()]
+    nota = (request.POST.get("nota_admin") or "").strip()
+
+    solicitudes = SolicitudAltaMiembro.objects.filter(
+        pk__in=ids,
+        estado=SolicitudAltaMiembro.Estados.PENDIENTE
+    )
+    
+    count = 0
+    for s in solicitudes:
+        s.estado = SolicitudAltaMiembro.Estados.RECHAZADA
+        s.nota_admin = nota
+        s.revisado_en = timezone.now()
+        s.revisado_por = request.user
+        s.save(update_fields=["estado", "nota_admin", "revisado_en", "revisado_por"])
+        count += 1
+
+    if count:
+        messages.success(request, f"{count} solicitud(es) rechazada(s).")
+    else:
+        messages.info(request, "No se encontraron solicitudes pendientes para rechazar.")
+    
+    return redirect("actualizacion_datos_miembros:altas_lista")
+
+@login_required
+def alta_cambiar_estado_miembro(request, pk):
+    if request.method != "POST":
+        return HttpResponseForbidden("Método no permitido")
+
+    s = get_object_or_404(SolicitudAltaMiembro, pk=pk)
+
+    if s.estado != SolicitudAltaMiembro.Estados.PENDIENTE:
+        messages.info(request, "No se puede modificar una solicitud ya procesada.")
+        return redirect("actualizacion_datos_miembros:altas_lista")
+
+    nuevo_estado = (request.POST.get("estado_miembro") or "").strip()
+
+    # Validar contra choices
+    estados_validos = [c[0] for c in ESTADO_MIEMBRO_CHOICES]
+    if nuevo_estado not in estados_validos:
+        messages.error(request, "Estado de miembro inválido.")
+        return redirect("actualizacion_datos_miembros:altas_lista")
+
+    s.estado_miembro = nuevo_estado
+    s.save(update_fields=["estado_miembro"])
+
+    messages.success(request, "Estado del miembro actualizado.")
+    return redirect("actualizacion_datos_miembros:altas_lista")
 
 
 def _get_client_ip(request):
@@ -101,9 +194,13 @@ def formulario_actualizacion_publico(request, token):
             solicitud.ip_origen = _get_client_ip(request)
             solicitud.user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
             solicitud.save()
+            solicitud.save()
 
+            # 🔒 Desactivar el link después de enviar
             acceso.ultimo_envio_en = timezone.now()
-            acceso.save(update_fields=["ultimo_envio_en", "actualizado_en"])
+            acceso.activo = False
+            acceso.save(update_fields=["ultimo_envio_en", "activo", "actualizado_en"])
+
 
             return redirect("actualizacion_datos_miembros:formulario_ok", token=acceso.token)
         else:
@@ -288,6 +385,7 @@ def altas_lista(request):
         "estado": estado,
         "q": q,
         "Estados": SolicitudAltaMiembro.Estados,
+        "estado_miembro_choices": ESTADO_MIEMBRO_CHOICES,
     })
 
 
