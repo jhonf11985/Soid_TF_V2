@@ -18,6 +18,37 @@ from .services import aplicar_solicitud_a_miembro, crear_miembro_desde_solicitud
 
 from django.db.models import Q
 from .models import AltaMasivaConfig
+from .models import ActualizacionDatosConfig
+from .forms import ActualizacionDatosConfigForm
+
+@login_required
+def actualizacion_config(request):
+    config = ActualizacionDatosConfig.get_solo()
+
+    if request.method == "POST":
+        form = ActualizacionDatosConfigForm(request.POST)
+        if form.is_valid():
+            config.activo = bool(form.cleaned_data.get("activo"))
+            config.campos_permitidos = form.cleaned_data.get("campos_permitidos") or []
+            config.actualizado_en = timezone.now()
+            config.save(update_fields=["activo", "campos_permitidos", "actualizado_en"])
+
+            messages.success(request, "Configuración guardada correctamente.")
+            return redirect("actualizacion_datos_miembros:actualizacion_config")
+        else:
+            messages.error(request, "Revisa el formulario. Hay errores.")
+    else:
+        form = ActualizacionDatosConfigForm(initial={
+            "activo": config.activo,
+            "campos_permitidos": config.campos_permitidos,
+        })
+
+    return render(request, "actualizacion_datos_miembros/actualizacion_config.html", {
+        "form": form,
+        "config": config,
+        "Estados": SolicitudActualizacionMiembro.Estados,
+        "EstadosAlta": SolicitudAltaMiembro.Estados,
+    })
 
 
 
@@ -332,8 +363,19 @@ def formulario_actualizacion_publico(request, token):
 
     miembro = acceso.miembro
 
+    config = ActualizacionDatosConfig.get_solo()
+    if not config.activo:
+        # Si quieres, puedes reutilizar publico_inactivo o hacer una pantalla nueva.
+        return render(request, "actualizacion_datos_miembros/publico_inactivo.html", {
+            "miembro": acceso.miembro,
+        })
+
+    allowed_fields = config.campos_permitidos or None
+
+
     if request.method == "POST":
-        form = SolicitudActualizacionForm(request.POST)
+        form = SolicitudActualizacionForm(request.POST, allowed_fields=allowed_fields)
+
         if form.is_valid():
             # Evitar spam: si ya hay una solicitud pendiente, no crear otra
             if SolicitudActualizacionMiembro.objects.filter(
@@ -352,7 +394,7 @@ def formulario_actualizacion_publico(request, token):
             solicitud.ip_origen = _get_client_ip(request)
             solicitud.user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
             solicitud.save()
-            solicitud.save()
+            
 
             # 🔒 Desactivar el link después de enviar
             acceso.ultimo_envio_en = timezone.now()
@@ -386,7 +428,8 @@ def formulario_actualizacion_publico(request, token):
             "condiciones_medicas": miembro.condiciones_medicas,
             "medicamentos": miembro.medicamentos,
         }
-        form = SolicitudActualizacionForm(initial=initial)
+        form = SolicitudActualizacionForm(initial=initial, allowed_fields=allowed_fields)
+
 
     return render(request, "actualizacion_datos_miembros/formulario_publico.html", {
         "miembro": miembro,

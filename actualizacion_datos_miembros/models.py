@@ -59,6 +59,15 @@ class SolicitudActualizacionMiembro(models.Model):
     provincia = models.CharField(max_length=100, blank=True)
     codigo_postal = models.CharField(max_length=20, blank=True)
 
+        # --- Membresía (para actualizar por etapas) ---
+    iglesia_anterior = models.CharField(max_length=150, blank=True)
+
+    fecha_conversion = models.DateField(blank=True, null=True)
+    fecha_bautismo = models.DateField(blank=True, null=True)
+    fecha_ingreso_iglesia = models.DateField(blank=True, null=True)
+
+
+
     empleador = models.CharField(max_length=150, blank=True)
     puesto = models.CharField(max_length=100, blank=True)
     telefono_trabajo = models.CharField(max_length=20, blank=True)
@@ -165,3 +174,29 @@ class AltaMasivaConfig(models.Model):
 
     def __str__(self):
         return "Alta masiva: " + ("Activa" if self.activo else "Cerrada")
+
+
+class ActualizacionDatosConfig(models.Model):
+    """
+    Configuración GLOBAL: define qué campos se muestran en el formulario público
+    de actualización para TODOS los miembros.
+    """
+    activo = models.BooleanField(default=True)
+
+    # Lista de nombres de campos permitidos (strings), ej:
+    # ["telefono", "whatsapp", "email", "direccion"]
+    campos_permitidos = models.JSONField(default=list, blank=True)
+
+    actualizado_en = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "Configuración de Actualización de Datos"
+        verbose_name_plural = "Configuración de Actualización de Datos"
+
+    def __str__(self):
+        return "Configuración global de actualización"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={"activo": True, "campos_permitidos": []})
+        return obj

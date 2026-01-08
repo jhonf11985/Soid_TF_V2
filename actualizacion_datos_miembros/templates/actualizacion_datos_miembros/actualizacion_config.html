@@ -1,0 +1,522 @@
+{% extends "core/base_sidebar.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  .config-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  .config-header {
+    margin-bottom: 24px;
+  }
+
+  .config-header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .config-header h1 svg {
+    color: #0097a7;
+  }
+
+  .config-header .subtitle {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .config-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  .config-section {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e8ecef;
+  }
+
+  .config-section:last-child {
+    border-bottom: none;
+  }
+
+  /* Toggle Activo */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: #f0fdfa;
+    border-radius: 10px;
+    border: 1px solid #cceef0;
+  }
+
+  .toggle-row input[type="checkbox"] {
+    width: 44px;
+    height: 24px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: #cbd5e1;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .toggle-row input[type="checkbox"]::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+  }
+
+  .toggle-row input[type="checkbox"]:checked {
+    background: #0097a7;
+  }
+
+  .toggle-row input[type="checkbox"]:checked::after {
+    left: 23px;
+  }
+
+  .toggle-text strong {
+    display: block;
+    color: #1a1a2e;
+    font-size: 0.95rem;
+  }
+
+  .toggle-text small {
+    color: #64748b;
+    font-size: 0.8rem;
+  }
+
+  /* Toolbar de acciones */
+  .fields-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e8ecef;
+  }
+
+  .fields-toolbar-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .fields-toolbar-title svg {
+    color: #0097a7;
+  }
+
+  .fields-toolbar-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-toolbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: #fff;
+    color: #475569;
+  }
+
+  .btn-toolbar:hover {
+    background: #f8fafc;
+    border-color: #0097a7;
+    color: #0097a7;
+  }
+
+  .btn-toolbar svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Categorías */
+  .category {
+    margin-bottom: 20px;
+  }
+
+  .category:last-child {
+    margin-bottom: 0;
+  }
+
+  .category-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #0097a7;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .category-title svg {
+    opacity: 0.8;
+  }
+
+  /* Grid de campos - 2 columnas */
+  .fields-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .field-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 0.875rem;
+    color: #475569;
+  }
+
+  .field-item:hover {
+    background: #f0fdfa;
+    border-color: #0097a7;
+  }
+
+  .field-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #0097a7;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .field-item.checked {
+    background: #e6f7f8;
+    border-color: #0097a7;
+    color: #017e84;
+    font-weight: 500;
+  }
+
+  /* Footer */
+  .config-footer {
+    padding: 16px 24px;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+
+  .btn-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #0097a7 0%, #017e84 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 151, 167, 0.3);
+  }
+
+  .btn-save:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 151, 167, 0.4);
+  }
+
+  /* Contador */
+  .fields-counter {
+    font-size: 0.8rem;
+    color: #64748b;
+    padding: 6px 12px;
+    background: #f1f5f9;
+    border-radius: 20px;
+  }
+
+  .fields-counter strong {
+    color: #0097a7;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .config-page {
+      padding: 16px;
+    }
+
+    .fields-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .config-section {
+      padding: 16px;
+    }
+
+    .fields-toolbar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+  }
+</style>
+
+<div class="config-page">
+
+  <div class="config-header">
+    <h1>
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      Configuración de Actualización
+    </h1>
+    <p class="subtitle">Define qué campos verá el miembro en el formulario público</p>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="config-card">
+
+      <!-- Estado del formulario -->
+      <div class="config-section">
+        <div class="toggle-row">
+          {{ form.activo }}
+          <div class="toggle-text">
+            <strong>Formulario público activo</strong>
+            <small>Si lo desactivas, nadie podrá enviar solicitudes</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Campos organizados por categoría -->
+      <div class="config-section">
+
+        <!-- Toolbar -->
+        <div class="fields-toolbar">
+          <div class="fields-toolbar-title">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Campos del formulario
+          </div>
+          <div class="fields-toolbar-actions">
+            <button type="button" class="btn-toolbar" id="btn-select-all">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+              Seleccionar todo
+            </button>
+            <button type="button" class="btn-toolbar" id="btn-deselect-all">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              </svg>
+              Quitar todo
+            </button>
+            <span class="fields-counter">
+              <strong id="count-selected">0</strong> seleccionados
+            </span>
+          </div>
+        </div>
+
+        <!-- Contacto -->
+        <div class="category">
+          <div class="category-title">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            Contacto
+          </div>
+          <div class="fields-grid">
+            {% for checkbox in form.campos_permitidos %}
+              {% if checkbox.data.value == 'telefono' or checkbox.data.value == 'whatsapp' or checkbox.data.value == 'email' %}
+                <label class="field-item {% if checkbox.data.selected %}checked{% endif %}">
+                  {{ checkbox.tag }}
+                  <span>{{ checkbox.choice_label }}</span>
+                </label>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Ubicación -->
+        <div class="category">
+          <div class="category-title">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Ubicación
+          </div>
+          <div class="fields-grid">
+            {% for checkbox in form.campos_permitidos %}
+              {% if checkbox.data.value == 'direccion' or checkbox.data.value == 'sector' or checkbox.data.value == 'ciudad' or checkbox.data.value == 'provincia' or checkbox.data.value == 'codigo_postal' %}
+                <label class="field-item {% if checkbox.data.selected %}checked{% endif %}">
+                  {{ checkbox.tag }}
+                  <span>{{ checkbox.choice_label }}</span>
+                </label>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Laboral -->
+        <div class="category">
+          <div class="category-title">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+            Laboral
+          </div>
+          <div class="fields-grid">
+            {% for checkbox in form.campos_permitidos %}
+              {% if checkbox.data.value == 'empleador' or checkbox.data.value == 'puesto' or checkbox.data.value == 'telefono_trabajo' or checkbox.data.value == 'direccion_trabajo' %}
+                <label class="field-item {% if checkbox.data.selected %}checked{% endif %}">
+                  {{ checkbox.tag }}
+                  <span>{{ checkbox.choice_label }}</span>
+                </label>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Emergencia -->
+        <div class="category">
+          <div class="category-title">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            Emergencia
+          </div>
+          <div class="fields-grid">
+            {% for checkbox in form.campos_permitidos %}
+              {% if checkbox.data.value == 'contacto_emergencia_nombre' or checkbox.data.value == 'contacto_emergencia_telefono' or checkbox.data.value == 'contacto_emergencia_relacion' %}
+                <label class="field-item {% if checkbox.data.selected %}checked{% endif %}">
+                  {{ checkbox.tag }}
+                  <span>{{ checkbox.choice_label }}</span>
+                </label>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Salud -->
+        <div class="category">
+          <div class="category-title">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            Salud
+          </div>
+          <div class="fields-grid">
+            {% for checkbox in form.campos_permitidos %}
+              {% if checkbox.data.value == 'tipo_sangre' or checkbox.data.value == 'alergias' or checkbox.data.value == 'condiciones_medicas' or checkbox.data.value == 'medicamentos' %}
+                <label class="field-item {% if checkbox.data.selected %}checked{% endif %}">
+                  {{ checkbox.tag }}
+                  <span>{{ checkbox.choice_label }}</span>
+                </label>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="config-footer">
+        <button type="submit" class="btn-save">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Guardar
+        </button>
+      </div>
+
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const checkboxes = document.querySelectorAll('.field-item input[type="checkbox"]');
+  const btnSelectAll = document.getElementById('btn-select-all');
+  const btnDeselectAll = document.getElementById('btn-deselect-all');
+  const countSelected = document.getElementById('count-selected');
+
+  // Actualizar contador y estilos
+  function updateState() {
+    let count = 0;
+    checkboxes.forEach(cb => {
+      const label = cb.closest('.field-item');
+      if (cb.checked) {
+        count++;
+        label.classList.add('checked');
+      } else {
+        label.classList.remove('checked');
+      }
+    });
+    countSelected.textContent = count;
+  }
+
+  // Seleccionar todo
+  btnSelectAll.addEventListener('click', function() {
+    checkboxes.forEach(cb => cb.checked = true);
+    updateState();
+  });
+
+  // Quitar todo
+  btnDeselectAll.addEventListener('click', function() {
+    checkboxes.forEach(cb => cb.checked = false);
+    updateState();
+  });
+
+  // Actualizar al cambiar cualquier checkbox
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', updateState);
+  });
+
+  // Estado inicial
+  updateState();
+});
+</script>
+{% endblock %}

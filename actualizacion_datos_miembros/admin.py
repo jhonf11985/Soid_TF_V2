@@ -5,6 +5,7 @@ from .models import (
     SolicitudAltaMiembro,
     AltaMasivaConfig,
 )
+from django import forms
 
 
 @admin.register(AccesoActualizacionDatos)
@@ -53,3 +54,45 @@ class SolicitudAltaMiembroAdmin(admin.ModelAdmin):
 @admin.register(AltaMasivaConfig)
 class AltaMasivaConfigAdmin(admin.ModelAdmin):
     list_display = ("id", "activo", "actualizado_en")
+
+
+class ActualizacionDatosConfigForm(forms.Form):
+    activo = forms.BooleanField(required=False, initial=True, label="Formulario público activo")
+
+    campos_permitidos = forms.MultipleChoiceField(
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        choices=[],
+        label="Campos a solicitar (público)"
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Lista de campos permitidos (debe coincidir con SolicitudActualizacionForm.Meta.fields)
+        choices = [
+            ("telefono", "Teléfono"),
+            ("whatsapp", "WhatsApp"),
+            ("email", "Email"),
+
+            ("direccion", "Dirección"),
+            ("sector", "Sector"),
+            ("ciudad", "Ciudad"),
+            ("provincia", "Provincia"),
+            ("codigo_postal", "Código postal"),
+
+            ("empleador", "Empleador"),
+            ("puesto", "Puesto"),
+            ("telefono_trabajo", "Teléfono trabajo"),
+            ("direccion_trabajo", "Dirección trabajo"),
+
+            ("contacto_emergencia_nombre", "Contacto emergencia (Nombre)"),
+            ("contacto_emergencia_telefono", "Contacto emergencia (Teléfono)"),
+            ("contacto_emergencia_relacion", "Contacto emergencia (Relación)"),
+
+            ("tipo_sangre", "Tipo de sangre"),
+            ("alergias", "Alergias"),
+            ("condiciones_medicas", "Condiciones médicas"),
+            ("medicamentos", "Medicamentos"),
+        ]
+        self.fields["campos_permitidos"].choices = choices
