@@ -20,20 +20,24 @@ class SolicitudActualizacionForm(forms.ModelForm):
             "condiciones_medicas": forms.Textarea(attrs={"rows": 2}),
             "medicamentos": forms.Textarea(attrs={"rows": 2}),
         }
-
 class SolicitudAltaPublicaForm(forms.ModelForm):
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Quitar "descarriado" del select de estado_miembro
-        self.fields["estado_miembro"].choices = [
-            (value, label)
-            for value, label in ESTADO_MIEMBRO_CHOICES
-            if value != "descarriado"
-        ]
+        # ⛔ TEMPORALMENTE DESACTIVADO
+        # Antes se permitía seleccionar el estado del miembro desde el formulario.
+        # Ahora el estado se asigna automáticamente como "activo" al guardar.
+        #
+        # self.fields["estado_miembro"].choices = [
+        #     (value, label)
+        #     for value, label in ESTADO_MIEMBRO_CHOICES
+        #     if value != "descarriado"
+        # ]
 
-
+    # ===============================
+    # Normalización de teléfonos RD
+    # ===============================
     def _normalizar_rd_a_e164(self, raw: str, requerido: bool, campo: str) -> str:
         raw = (raw or "").strip()
 
@@ -44,22 +48,19 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
 
         digits = "".join(c for c in raw if c.isdigit())
 
-        # Aceptar RD local: 10 dígitos empezando 809/829/849
         if len(digits) == 10 and digits.startswith(("809", "829", "849")):
             return "+1" + digits
 
-        # Aceptar RD con código país sin "+"
         if len(digits) == 11 and digits.startswith("1"):
             if digits[1:4] in ("809", "829", "849"):
                 return "+" + digits
 
-        # Aceptar E.164 con +
         if raw.startswith("+") and len(digits) == 11 and digits.startswith("1"):
             if digits[1:4] in ("809", "829", "849"):
                 return "+" + digits
 
         raise forms.ValidationError(
-            f"{campo} inválido para RD. Ejemplo: 8091234567 (809/829/849)."
+            f"{campo} inválido para RD. Ejemplo: 8091234567."
         )
 
     def clean_nombres(self):
@@ -69,7 +70,6 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
         return (self.cleaned_data.get("apellidos") or "").strip()
 
     def clean_telefono(self):
-        # Obligatorio + normalizado
         return self._normalizar_rd_a_e164(
             self.cleaned_data.get("telefono"),
             requerido=True,
@@ -77,33 +77,83 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
         )
 
     def clean_whatsapp(self):
-        # Opcional + normalizado
         return self._normalizar_rd_a_e164(
             self.cleaned_data.get("whatsapp"),
             requerido=False,
             campo="WhatsApp",
         )
 
+    # ===============================
+    # Guardado con estado por defecto
+    # ===============================
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+
+        # ⛔ CAMPO NO USADO EN FORMULARIO
+        # El estado del miembro se asigna automáticamente.
+        # Si en el futuro se quiere validar o cambiar la lógica,
+        # este es el punto correcto.
+        instance.estado_miembro = "activo"
+
+        if commit:
+            instance.save()
+
+        return instance
+
     class Meta:
         model = SolicitudAltaMiembro
+
+        # ⛔ estado_miembro COMENTADO
+        # No se expone en el formulario público
         fields = [
             "nombres",
             "apellidos",
             "genero",
             "fecha_nacimiento",
-            "estado_miembro",
+            # "estado_miembro",
             "telefono",
             "whatsapp",
             "direccion",
             "sector",
             "cedula",
             "foto",
-        
-
         ]
-        widgets = {
 
-                        "cedula": forms.TextInput(attrs={
+        widgets = {
+            "nombres": forms.TextInput(attrs={
+                "class": "odoo-input",
+                "placeholder": "Nombres"
+            }),
+            "apellidos": forms.TextInput(attrs={
+                "class": "odoo-input",
+                "placeholder": "Apellidos"
+            }),
+            "genero": forms.Select(attrs={
+                "class": "odoo-input odoo-select"
+            }),
+            "fecha_nacimiento": forms.DateInput(attrs={
+                "class": "odoo-input",
+                "type": "date"
+            }),
+
+            # ⛔ Widget comentado (no se usa por ahora)
+            # "estado_miembro": forms.Select(attrs={
+            #     "class": "odoo-input odoo-select"
+            # }),
+
+            "telefono": forms.TextInput(attrs={
+                "class": "odoo-input",
+                "placeholder": "809-123-4567",
+                "inputmode": "numeric",
+                "autocomplete": "tel",
+            }),
+            "whatsapp": forms.TextInput(attrs={
+                "class": "odoo-input",
+                "placeholder": "+18091234567",
+                "readonly": "readonly",
+                "tabindex": "-1",
+            }),
+            "cedula": forms.TextInput(attrs={
                 "class": "odoo-input",
                 "placeholder": "Cédula (opcional)",
                 "inputmode": "numeric",
@@ -112,27 +162,12 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
                 "class": "odoo-input",
                 "accept": "image/*",
             }),
-
-            "nombres": forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Nombres"}),
-            "apellidos": forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Apellidos"}),
-            "genero": forms.Select(attrs={"class": "odoo-input odoo-select"}),
-            "fecha_nacimiento": forms.DateInput(attrs={"class": "odoo-input", "type": "date"}),
-            "estado_miembro": forms.Select(attrs={"class": "odoo-input odoo-select"}),
-
-            "telefono": forms.TextInput(attrs={
-                "class": "odoo-input",
-                "placeholder": "809-123-4567",
-                "inputmode": "numeric",
-                "autocomplete": "tel",
-
-            "whatsapp": forms.TextInput(attrs={
-            "class": "odoo-input",
-            "placeholder": "+18091234567",
-            "readonly": "readonly",
-            "tabindex": "-1",   # evita foco al tabular
-        }),
-
+            "direccion": forms.Textarea(attrs={
+                "rows": 2,
+                "placeholder": "Dirección (opcional)"
             }),
-            "direccion": forms.Textarea(attrs={"rows": 2, "placeholder": "Dirección (opcional)"}),
-            "sector": forms.TextInput(attrs={"class": "odoo-input", "placeholder": "Sector (opcional)"}),
+            "sector": forms.TextInput(attrs={
+                "class": "odoo-input",
+                "placeholder": "Sector (opcional)"
+            }),
         }
