@@ -335,6 +335,26 @@ class MiembroForm(forms.ModelForm):
         self.fields["fecha_nacimiento"].required = True
         self.fields["estado_miembro"].required = False
 
+    def clean_cedula(self):
+        cedula = self.cleaned_data.get("cedula")
+
+        # Si viene vacía, no validamos duplicados
+        if not cedula:
+            return cedula
+
+        qs = Miembro.objects.filter(cedula=cedula)
+
+        # Si estamos editando, excluir el propio registro
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError(
+                "Ya existe un miembro registrado con esta cédula."
+            )
+
+        return cedula
+
     def _calcular_edad_desde_fecha(self, fecha):
         """Devuelve la edad en años a partir de una fecha de nacimiento."""
         if not fecha:

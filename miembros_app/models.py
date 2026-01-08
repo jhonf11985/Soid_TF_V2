@@ -339,6 +339,15 @@ class Miembro(models.Model):
     # ==========================
     # LÓGICA DE EDAD Y CATEGORÍA
     # ==========================
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cedula"],
+                name="unique_cedula_miembro",
+                condition=models.Q(cedula__isnull=False),
+            )
+        ]
     def calcular_edad(self):
         """
         Calcula la edad en años a partir de la fecha de nacimiento.
@@ -447,6 +456,7 @@ class Miembro(models.Model):
         if (hoy.month, hoy.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day):
             edad -= 1
         return edad
+
 
 
 class MiembroRelacion(models.Model):

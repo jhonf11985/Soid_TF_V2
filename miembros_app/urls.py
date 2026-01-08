@@ -123,6 +123,6 @@ path(
 path("miembros/<int:pk>/finanzas/desbloquear/", views.miembro_finanzas_desbloquear, name="miembro_finanzas_desbloquear"),
 path("miembros/<int:pk>/finanzas/bloquear/", views.miembro_finanzas_bloquear, name="miembro_finanzas_bloquear"),
 
-
+  path("ajax/validar-cedula/", views.ajax_validar_cedula, name="ajax_validar_cedula"),
 ]
 

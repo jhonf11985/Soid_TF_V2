@@ -50,7 +50,7 @@ from .models import Miembro
 from nuevo_creyente_app.models import NuevoCreyenteExpediente
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-
+import re
 
 
 @login_required
@@ -3091,3 +3091,41 @@ def _miembro_tiene_asignacion_en_unidades(miembro_obj):
             return True
 
     return False
+
+
+CEDULA_RE = re.compile(r"^\d{3}-\d{7}-\d$")
+
+def ajax_validar_cedula(request):
+    """
+    GET /miembros/ajax/validar-cedula/?cedula=000-0000000-0&pk=123
+    Devuelve si la cédula ya existe (excluyendo el pk si viene).
+    """
+    cedula = (request.GET.get("cedula") or "").strip()
+    pk = (request.GET.get("pk") or "").strip()
+
+    if not cedula:
+        return JsonResponse({"ok": True, "empty": True, "valid_format": False, "exists": False})
+
+    valid_format = bool(CEDULA_RE.match(cedula))
+    if not valid_format:
+        return JsonResponse({
+            "ok": True,
+            "empty": False,
+            "valid_format": False,
+            "exists": False,
+            "message": "Formato inválido. Usa 000-0000000-0",
+        })
+
+    qs = Miembro.objects.filter(cedula=cedula)
+    if pk.isdigit():
+        qs = qs.exclude(pk=int(pk))
+
+    exists = qs.exists()
+
+    return JsonResponse({
+        "ok": True,
+        "empty": False,
+        "valid_format": True,
+        "exists": exists,
+        "message": "Ya existe un miembro con esta cédula." if exists else "Cédula disponible.",
+    })

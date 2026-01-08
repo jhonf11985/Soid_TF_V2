@@ -248,6 +248,8 @@
                                value="{{ form.cedula.value|default:'' }}"
                                placeholder="000-0000000-0" class="odoo-input">
                     </div>
+                    <div id="cedula_feedback" class="hint" style="margin-top:6px; display:none;"></div>
+
 
 <input type="date"
        name="fecha_nacimiento"
@@ -3092,6 +3094,107 @@ document.addEventListener("DOMContentLoaded", function () {
     // si ya venía cargado, normalizarlo
     wa.value = normalizeWhatsAppInput(wa.value);
   }
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const inputCedula = document.getElementById("id_cedula");
+  const feedback = document.getElementById("cedula_feedback");
+  const form = inputCedula ? inputCedula.closest("form") : null;
+  const submitBtn = form ? form.querySelector('button[type="submit"], input[type="submit"]') : null;
+
+  // pk (si estás editando) para excluir el propio miembro
+  const miembroPk = "{{ miembro.pk|default:'' }}";
+
+  function setFeedback(text, type) {
+    // type: "ok" | "warn" | "error"
+    feedback.style.display = "block";
+    feedback.textContent = text;
+
+    // Reutilizamos tu clase hint, pero cambiamos color de forma simple
+    feedback.style.fontSize = "12px";
+    feedback.style.lineHeight = "1.2";
+
+    if (type === "error") {
+      feedback.style.color = "#dc3545";
+    } else if (type === "warn") {
+      feedback.style.color = "#e6a117";
+    } else {
+      feedback.style.color = "#28a745";
+    }
+  }
+
+  function clearFeedback() {
+    feedback.style.display = "none";
+    feedback.textContent = "";
+  }
+
+  function setSubmitEnabled(enabled) {
+    if (!submitBtn) return;
+    submitBtn.disabled = !enabled;
+  }
+
+  let t = null;
+  async function validateCedula() {
+    const cedula = (inputCedula.value || "").trim();
+
+    if (!cedula) {
+      clearFeedback();
+      setSubmitEnabled(true);
+      return;
+    }
+
+    // Si quieres, aquí también puedes autoformatear, pero por ahora solo validamos.
+    const url = "{% url 'miembros_app:ajax_validar_cedula' %}" + 
+                "?cedula=" + encodeURIComponent(cedula) +
+                "&pk=" + encodeURIComponent(miembroPk || "");
+
+    try {
+      const res = await fetch(url, { method: "GET" });
+      const data = await res.json();
+
+      if (!data.ok) {
+        setFeedback("No se pudo validar ahora mismo.", "warn");
+        setSubmitEnabled(true);
+        return;
+      }
+
+      if (data.empty) {
+        clearFeedback();
+        setSubmitEnabled(true);
+        return;
+      }
+
+      if (!data.valid_format) {
+        setFeedback(data.message || "Formato inválido. Usa 000-0000000-0", "warn");
+        setSubmitEnabled(true); // formato inválido, pero tú decides: si quieres bloquear, pon false
+        return;
+      }
+
+      if (data.exists) {
+        setFeedback(data.message || "Ya existe un miembro con esta cédula.", "error");
+        setSubmitEnabled(false);
+        return;
+      }
+
+      setFeedback(data.message || "Cédula disponible.", "ok");
+      setSubmitEnabled(true);
+
+    } catch (e) {
+      setFeedback("No se pudo validar ahora mismo.", "warn");
+      setSubmitEnabled(true);
+    }
+  }
+
+  if (!inputCedula) return;
+
+  inputCedula.addEventListener("input", function () {
+    clearTimeout(t);
+    t = setTimeout(validateCedula, 350); // debounce
+  });
+
+  inputCedula.addEventListener("blur", validateCedula);
 });
 </script>
 
