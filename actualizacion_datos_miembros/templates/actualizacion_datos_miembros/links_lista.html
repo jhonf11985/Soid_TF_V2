@@ -2,97 +2,458 @@
 {% load static %}
 
 {% block actualizacion_content %}
+<style>
+  .links-page {
+    padding: 24px;
+  }
 
-<div class="odoo-control-bar no-print">
-  <div class="odoo-control-left">
-    <div class="odoo-breadcrumb">
-      <span class="odoo-breadcrumb-title">Links de actualización</span>
+  /* Header */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .page-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-title-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-title-icon .material-icons {
+    font-size: 22px;
+    color: #fff;
+  }
+
+  .page-title h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
+
+  .page-title p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 2px 0 0 0;
+  }
+
+  /* Search */
+  .search-box {
+    position: relative;
+    width: 320px;
+  }
+
+  .search-box .material-icons {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 20px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 10px 14px 10px 44px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: #fff;
+    transition: all 0.2s ease;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: #0097a7;
+    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.1);
+  }
+
+  .search-box input::placeholder {
+    color: #94a3b8;
+  }
+
+  /* Table Card */
+  .table-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead {
+    background: #f8fafc;
+    border-bottom: 2px solid #e8ecef;
+  }
+
+  th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  th.col-num {
+    width: 50px;
+    text-align: center;
+  }
+
+  th.col-actions {
+    width: 140px;
+    text-align: center;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+  }
+
+  tbody tr:hover {
+    background: #f8fafc;
+  }
+
+  tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  td {
+    padding: 14px 16px;
+    font-size: 0.9rem;
+    color: #334155;
+    vertical-align: middle;
+  }
+
+  td.col-num {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+  }
+
+  /* Member cell */
+  .member-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .member-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .member-avatar .material-icons {
+    font-size: 18px;
+    color: #0097a7;
+  }
+
+  .member-name {
+    font-weight: 500;
+    color: #1e293b;
+  }
+
+  .member-code {
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge .material-icons {
+    font-size: 14px;
+  }
+
+  .badge-success {
+    background: #d1fae5;
+    color: #059669;
+  }
+
+  .badge-danger {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .badge-muted {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  /* Date cell */
+  .date-cell {
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+
+  .date-cell .material-icons {
+    font-size: 14px;
+    vertical-align: middle;
+    margin-right: 4px;
+    opacity: 0.6;
+  }
+
+  /* Action button */
+  .btn-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 151, 167, 0.25);
+  }
+
+  .btn-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 151, 167, 0.35);
+  }
+
+  .btn-link .material-icons {
+    font-size: 16px;
+  }
+
+  .btn-link.btn-secondary {
+    background: #fff;
+    color: #0097a7;
+    border: 1px solid #0097a7;
+    box-shadow: none;
+  }
+
+  .btn-link.btn-secondary:hover {
+    background: #e0f7fa;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+  }
+
+  .empty-state .material-icons {
+    font-size: 48px;
+    color: #cbd5e1;
+    margin-bottom: 12px;
+  }
+
+  .empty-state p {
+    font-size: 0.95rem;
+    color: #64748b;
+  }
+
+  /* Footer */
+  .table-footer {
+    padding: 14px 20px;
+    background: #f8fafc;
+    border-top: 1px solid #e8ecef;
+    font-size: 0.85rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .table-footer .material-icons {
+    font-size: 16px;
+    color: #0097a7;
+  }
+
+  .table-footer strong {
+    color: #0097a7;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .links-page {
+      padding: 16px;
+    }
+
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .search-box {
+      width: 100%;
+    }
+
+    th, td {
+      padding: 12px 10px;
+    }
+
+    .member-cell {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+
+    .member-avatar {
+      display: none;
+    }
+  }
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+  }
+</style>
+
+<div class="links-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-title">
+      <div class="page-title-icon">
+        <span class="material-icons">link</span>
+      </div>
+      <div>
+        <h1>Links de actualización</h1>
+        <p>Genera y gestiona enlaces para que los miembros actualicen sus datos</p>
+      </div>
     </div>
-  </div>
 
-  <div class="odoo-control-center">
-    <form method="get" class="odoo-search-form" id="search-form">
-      <div class="odoo-search-box">
+    <form method="get" class="no-print">
+      <div class="search-box">
         <span class="material-icons">search</span>
         <input type="text" name="q" placeholder="Buscar por nombre, código o teléfono..." value="{{ q }}">
       </div>
     </form>
   </div>
-</div>
 
-<div class="odoo-table-container">
-  <table class="odoo-table">
-    <thead>
-      <tr>
-        <th class="col-num">#</th>
-        <th>Miembro</th>
-        <th>Código</th>
-        <th>Estado link</th>
-        <th>Último envío</th>
-        <th class="no-print">Acciones</th>
-      </tr>
-    </thead>
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-num">#</th>
+            <th>Miembro</th>
+            <th>Estado del link</th>
+            <th>Último envío</th>
+            <th class="col-actions no-print">Acciones</th>
+          </tr>
+        </thead>
 
-    <tbody>
-      {% for m in miembros %}
-      <tr>
-        <td class="col-num">{{ forloop.counter }}</td>
-        <td>{{ m.nombres }} {{ m.apellidos }}</td>
-        <td>{{ m.codigo|default:"—" }}</td>
+        <tbody>
+          {% for m in miembros %}
+          <tr>
+            <td class="col-num">{{ forloop.counter }}</td>
+            
+            <td>
+              <div class="member-cell">
+                <div class="member-avatar">
+                  <span class="material-icons">person</span>
+                </div>
+                <div>
+                  <div class="member-name">{{ m.nombres }} {{ m.apellidos }}</div>
+                  <div class="member-code">{{ m.codigo|default:"Sin código" }}</div>
+                </div>
+              </div>
+            </td>
 
-        <td>
-          {% if m.acceso_actualizacion_datos %}
-            {% if m.acceso_actualizacion_datos.activo %}
-              <span class="odoo-badge odoo-badge-success">
-                <span class="material-icons">lock_open</span>
-                Activo
-              </span>
-            {% else %}
-              <span class="odoo-badge odoo-badge-danger">
-                <span class="material-icons">lock</span>
-                Inactivo
-              </span>
-            {% endif %}
-          {% else %}
-            <span class="odoo-badge odoo-badge-muted">
-              <span class="material-icons">link_off</span>
-              Sin link
-            </span>
-          {% endif %}
-        </td>
+            <td>
+              {% if m.acceso_actualizacion_datos %}
+                {% if m.acceso_actualizacion_datos.activo %}
+                  <span class="badge badge-success">
+                    <span class="material-icons">lock_open</span>
+                    Activo
+                  </span>
+                {% else %}
+                  <span class="badge badge-danger">
+                    <span class="material-icons">lock</span>
+                    Inactivo
+                  </span>
+                {% endif %}
+              {% else %}
+                <span class="badge badge-muted">
+                  <span class="material-icons">link_off</span>
+                  Sin link
+                </span>
+              {% endif %}
+            </td>
 
-        <td>
-          {% if m.acceso_actualizacion_datos and m.acceso_actualizacion_datos.ultimo_envio_en %}
-            {{ m.acceso_actualizacion_datos.ultimo_envio_en|date:"d/m/Y H:i" }}
-          {% else %}
-            —
-          {% endif %}
-        </td>
+            <td class="date-cell">
+              {% if m.acceso_actualizacion_datos and m.acceso_actualizacion_datos.ultimo_envio_en %}
+                <span class="material-icons">schedule</span>
+                {{ m.acceso_actualizacion_datos.ultimo_envio_en|date:"d/m/Y H:i" }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
 
-        <td class="no-print">
-          <a class="odoo-btn odoo-btn-primary"
-             href="{% url 'actualizacion_datos_miembros:generar_link_miembro' m.pk %}">
-            <span class="material-icons">link</span>
-            {% if m.acceso_actualizacion_datos %}Ver link{% else %}Generar{% endif %}
-          </a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="6" class="odoo-empty-table">
-          <span class="material-icons">search_off</span>
-          <p>No hay miembros con esos filtros.</p>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+            <td class="no-print" style="text-align: center;">
+              <a class="btn-link {% if m.acceso_actualizacion_datos %}btn-secondary{% endif %}"
+                 href="{% url 'actualizacion_datos_miembros:generar_link_miembro' m.pk %}">
+                <span class="material-icons">link</span>
+                {% if m.acceso_actualizacion_datos %}Ver link{% else %}Generar{% endif %}
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5">
+              <div class="empty-state">
+                <span class="material-icons">search_off</span>
+                <p>No hay miembros con esos filtros</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
-  {% if miembros %}
-  <div class="odoo-table-footer">
-    Total: {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }}
+    {% if miembros %}
+    <div class="table-footer">
+      <span class="material-icons">people</span>
+      Total: <strong>{{ miembros|length }}</strong> miembro{{ miembros|length|pluralize:"s" }}
+    </div>
+    {% endif %}
   </div>
-  {% endif %}
-</div>
 
+</div>
 {% endblock %}

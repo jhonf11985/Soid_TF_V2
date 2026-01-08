@@ -3,7 +3,34 @@ from .models import SolicitudActualizacionMiembro, SolicitudAltaMiembro
 from miembros_app.models import GENERO_CHOICES, ESTADO_MIEMBRO_CHOICES
 
 
+
+
+from django import forms
+from .models import SolicitudActualizacionMiembro, SolicitudAltaMiembro
+
+
 class SolicitudActualizacionForm(forms.ModelForm):
+    """
+    Formulario público para actualización de datos.
+    Permite recortar campos dinámicamente con allowed_fields.
+    """
+
+    def __init__(self, *args, **kwargs):
+        # Lista de campos permitidos decidida por admin/config.
+        # Si viene None o vacía, se muestran todos los del Meta.fields.
+        allowed_fields = kwargs.pop("allowed_fields", None)
+        super().__init__(*args, **kwargs)
+
+        # Si el admin decide campos, eliminamos los demás del formulario
+        if allowed_fields:
+            allowed = set(allowed_fields)
+            for name in list(self.fields.keys()):
+                if name not in allowed:
+                    self.fields.pop(name)
+
+        # Guardamos para la plantilla si lo quieres mostrar/debug
+        self.allowed_fields = list(self.fields.keys())
+
     class Meta:
         model = SolicitudActualizacionMiembro
         fields = [
@@ -20,6 +47,8 @@ class SolicitudActualizacionForm(forms.ModelForm):
             "condiciones_medicas": forms.Textarea(attrs={"rows": 2}),
             "medicamentos": forms.Textarea(attrs={"rows": 2}),
         }
+
+
 class SolicitudAltaPublicaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
@@ -171,3 +200,46 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
                 "placeholder": "Sector (opcional)"
             }),
         }
+
+
+
+
+class ActualizacionDatosConfigForm(forms.Form):
+    activo = forms.BooleanField(required=False, initial=True, label="Formulario público activo")
+
+    campos_permitidos = forms.MultipleChoiceField(
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        choices=[],
+        label="Campos a solicitar (público)"
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Lista de campos permitidos (debe coincidir con SolicitudActualizacionForm.Meta.fields)
+        self.fields["campos_permitidos"].choices = [
+            ("telefono", "Teléfono"),
+            ("whatsapp", "WhatsApp"),
+            ("email", "Email"),
+
+            ("direccion", "Dirección"),
+            ("sector", "Sector"),
+            ("ciudad", "Ciudad"),
+            ("provincia", "Provincia"),
+            ("codigo_postal", "Código postal"),
+
+            ("empleador", "Empleador"),
+            ("puesto", "Puesto"),
+            ("telefono_trabajo", "Teléfono trabajo"),
+            ("direccion_trabajo", "Dirección trabajo"),
+
+            ("contacto_emergencia_nombre", "Contacto emergencia (Nombre)"),
+            ("contacto_emergencia_telefono", "Contacto emergencia (Teléfono)"),
+            ("contacto_emergencia_relacion", "Contacto emergencia (Relación)"),
+
+            ("tipo_sangre", "Tipo de sangre"),
+            ("alergias", "Alergias"),
+            ("condiciones_medicas", "Condiciones médicas"),
+            ("medicamentos", "Medicamentos"),
+        ]

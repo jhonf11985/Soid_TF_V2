@@ -47,5 +47,7 @@ path("admin/alta-masiva/link/", views.alta_masiva_link, name="alta_masiva_link")
 path("admin/alta-masiva/config/", views.alta_masiva_config, name="alta_masiva_config"),
 path("admin/alta-masiva/link/", views.alta_masiva_link, name="alta_masiva_link"),
 
+path("config/actualizacion/", views.actualizacion_config, name="actualizacion_config"),
+
 
 ]

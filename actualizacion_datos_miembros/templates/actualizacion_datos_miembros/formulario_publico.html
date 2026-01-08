@@ -3,293 +3,1031 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Registro de Miembro</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>Actualización de Datos</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --color-primary: {{ CFG.color_primario|default:"#0097a7" }};
+            --color-primary-dark: #00838f;
+            --color-primary-soft: #e0f7fa;
+            --color-bg: #f5f5f7;
+            --color-surface: #ffffff;
+            --color-text-main: #111827;
+            --color-text-muted: #6b7280;
+            --color-border: #e5e7eb;
+            --color-error: #ef4444;
+            --radius-soft: 12px;
         }
+
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, var(--color-primary) 0%, #5c9ead 50%, #5c9ead 100%);
             min-height: 100vh;
             padding: 40px 20px;
+            position: relative;
         }
+
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
         .form-container {
-            max-width: 560px;
+            max-width: 600px;
             margin: 0 auto;
+            position: relative;
+            z-index: 1;
         }
+
+        /* ═══════════════════════════════════════
+           LOGO INSTITUCIONAL
+           ═══════════════════════════════════════ */
+        .brand-top {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 22px;
+        }
+
+        .church-logo {
+            max-height: 72px;
+            object-fit: contain;
+            filter: drop-shadow(0 6px 14px rgba(0,0,0,0.15));
+        }
+
+        /* ═══════════════════════════════════════
+           HEADER
+           ═══════════════════════════════════════ */
         .form-header {
             text-align: center;
-            margin-bottom: 24px;
+            margin-bottom: 28px;
         }
-        .form-logo {
-            width: 70px;
-            height: 70px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 16px;
-            backdrop-filter: blur(10px);
-        }
-        .form-logo i {
-            font-size: 32px;
-            color: #fff;
-        }
+
         .form-header h1 {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 700;
             color: #fff;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+
         .form-header p {
-            font-size: 15px;
-            color: rgba(255,255,255,0.85);
+            font-size: 14px;
+            color: rgba(255,255,255,0.9);
         }
+
+        /* ═══════════════════════════════════════
+           CARD
+           ═══════════════════════════════════════ */
         .form-card {
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            background: var(--color-surface);
+            border-radius: 20px;
             padding: 32px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.15);
         }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-label {
-            display: block;
+
+        /* ═══════════════════════════════════════
+           MENSAJE INSTITUCIONAL
+           ═══════════════════════════════════════ */
+        .message {
+            display: flex;
+            gap: 12px;
+            padding: 16px;
+            margin-bottom: 28px;
+            border-radius: var(--radius-soft);
+            background: var(--color-primary-soft);
+            border: 1px solid var(--color-primary);
+            color: var(--color-primary-dark);
             font-size: 13px;
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 8px;
+            line-height: 1.6;
         }
-        .form-label .required {
-            color: #e53e3e;
+
+        .message .material-icons {
+            font-size: 22px;
+            flex-shrink: 0;
         }
-        .field-error {
-            color: #e53e3e;
-            font-size: 12px;
-            margin-top: 6px;
+
+        .message strong {
+            font-weight: 700;
+        }
+
+        .message-steps {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .message-step {
             display: flex;
             align-items: center;
             gap: 6px;
-        }
-        .field-error i {
             font-size: 12px;
+            font-weight: 500;
         }
+
+        .message-step .step-num {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* ═══════════════════════════════════════
+           INFO DEL MIEMBRO
+           ═══════════════════════════════════════ */
+        .member-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px;
+            margin-bottom: 24px;
+            background: #f8fafc;
+            border-radius: var(--radius-soft);
+            border: 1px solid var(--color-border);
+        }
+
+        .member-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--color-primary-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .member-avatar .material-icons {
+            font-size: 28px;
+            color: var(--color-primary);
+        }
+
+        .member-details h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--color-text-main);
+            margin-bottom: 2px;
+        }
+
+        .member-details span {
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+
+        /* ═══════════════════════════════════════
+           SECCIONES
+           ═══════════════════════════════════════ */
+        .form-section {
+            margin-bottom: 28px;
+        }
+
+        .form-section:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .section-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--color-primary-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .section-icon .material-icons {
+            font-size: 20px;
+            color: var(--color-primary);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--color-text-main);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* ═══════════════════════════════════════
+           GRID DE CAMPOS
+           ═══════════════════════════════════════ */
+        .fields-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 20px;
+        }
+
+        .fields-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 520px) {
+            .fields-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ═══════════════════════════════════════
+           CAMPOS DE FORMULARIO
+           ═══════════════════════════════════════ */
+        .form-group {
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--color-text-muted);
+        }
+
+        .form-label .required {
+            color: var(--color-error);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper .material-icons {
+            position: absolute;
+            left: 0;
+            bottom: 10px;
+            font-size: 18px;
+            color: var(--color-text-muted);
+            pointer-events: none;
+            transition: color 0.2s;
+        }
+
+        .input-wrapper:focus-within .material-icons {
+            color: var(--color-primary);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 0 10px 32px;
+            border: none;
+            border-bottom: 2px solid var(--color-border);
+            border-radius: 0;
+            background: transparent;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--color-text-main);
+            transition: all 0.2s;
+        }
+
+        textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+
+        .input-wrapper:has(textarea) .material-icons {
+            top: 12px;
+            transform: none;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-bottom-color: var(--color-primary);
+            box-shadow: none;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: var(--color-text-muted);
+            opacity: 0.7;
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%236b7280' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0 center;
+            background-color: transparent;
+            padding-right: 28px;
+        }
+
+        .hint {
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--color-text-muted);
+        }
+
+        .field-error {
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--color-error);
+            font-weight: 600;
+        }
+
+        /* ═══════════════════════════════════════
+           ALERTAS
+           ═══════════════════════════════════════ */
+        .alert-error {
+            display: flex;
+            gap: 12px;
+            padding: 14px;
+            border-radius: var(--radius-soft);
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+
+        .alert-error .material-icons {
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        /* ═══════════════════════════════════════
+           BOTÓN
+           ═══════════════════════════════════════ */
         .submit-btn {
             width: 100%;
+            margin-top: 28px;
             padding: 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-soft);
             border: none;
-            border-radius: 10px;
+            background: linear-gradient(135deg, var(--color-primary), #5c9ead);
             color: #fff;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
-            font-family: inherit;
             cursor: pointer;
-            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+
         .submit-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 20px rgba(0,151,167,0.3);
         }
+
         .submit-btn:active {
             transform: translateY(0);
         }
+
+        /* ═══════════════════════════════════════
+           FOOTER
+           ═══════════════════════════════════════ */
         .form-footer {
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px solid var(--color-border);
             text-align: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-        }
-        .form-footer p {
             font-size: 12px;
-            color: #718096;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            color: var(--color-text-muted);
         }
-        .security-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            background: #f0fff4;
-            border: 1px solid #9ae6b4;
-            border-radius: 20px;
-            font-size: 12px;
-            color: #276749;
+
+        .powered-by {
+            margin-top: 22px;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255,255,255,0.75);
         }
-        .security-badge i {
-            font-size: 14px;
-        }
-        
-        /* Estilos para inputs del formulario Django */
-        input[type="text"],
-        input[type="email"],
-        input[type="tel"],
-        input[type="date"],
-        input[type="number"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 15px;
-            font-family: inherit;
-            transition: all 0.2s ease;
-            background: #fff;
-        }
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
-        }
-        input:hover,
-        select:hover,
-        textarea:hover {
-            border-color: #cbd5e0;
-        }
-        select {
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23718096' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 16px center;
-            padding-right: 40px;
-        }
-        
-        @media (max-width: 480px) {
+
+        /* ═══════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════ */
+        @media (max-width: 520px) {
             body {
                 padding: 20px 16px;
             }
+
             .form-card {
                 padding: 24px 20px;
             }
+
             .form-header h1 {
-                font-size: 24px;
+                font-size: 22px;
+            }
+
+            .message {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .message-steps {
+                flex-direction: column;
+                gap: 8px;
             }
         }
     </style>
 </head>
+
 <body>
-    <div class="form-container">
-        <div class="form-header">
-            <div class="form-logo">
-                <i class="fas fa-church"></i>
-            </div>
-            <h1>Registro de Miembro</h1>
-            <p>Completa tus datos para registrarte en la iglesia</p>
-        </div>
+<div class="form-container">
 
-        <div class="form-card">
-            <form method="post">
-                {% csrf_token %}
-
-                <div class="form-group">
-                    <label class="form-label">
-                        Nombres <span class="required">*</span>
-                    </label>
-                    {{ form.nombres }}
-                    {% if form.nombres.errors %}
-                    <div class="field-error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ form.nombres.errors|striptags }}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        Apellidos <span class="required">*</span>
-                    </label>
-                    {{ form.apellidos }}
-                    {% if form.apellidos.errors %}
-                    <div class="field-error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ form.apellidos.errors|striptags }}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        Género <span class="required">*</span>
-                    </label>
-                    {{ form.genero }}
-                    {% if form.genero.errors %}
-                    <div class="field-error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ form.genero.errors|striptags }}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        Fecha de nacimiento <span class="required">*</span>
-                    </label>
-                    {{ form.fecha_nacimiento }}
-                    {% if form.fecha_nacimiento.errors %}
-                    <div class="field-error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ form.fecha_nacimiento.errors|striptags }}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        Estado del miembro <span class="required">*</span>
-                    </label>
-                    {{ form.estado_miembro }}
-                    {% if form.estado_miembro.errors %}
-                    <div class="field-error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ form.estado_miembro.errors|striptags }}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        Teléfono <span class="required">*</span>
-                    </label>
-                    {{ form.telefono }}
-                    {% if form.telefono.errors %}
-                    <div class="field-error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ form.telefono.errors|striptags }}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <button type="submit" class="submit-btn">
-                    <i class="fas fa-paper-plane"></i>
-                    Enviar Registro
-                </button>
-
-                <div class="form-footer">
-                    <div class="security-badge">
-                        <i class="fas fa-shield-alt"></i>
-                        Tu información será revisada antes de ser aplicada
-                    </div>
-                </div>
-            </form>
-        </div>
+    <!-- LOGO INSTITUCIONAL -->
+    <div class="brand-top">
+        {% if CFG.logo %}
+            <img src="{{ CFG.logo.url }}"
+                 alt="{{ CFG.nombre_iglesia|default:'Iglesia' }}"
+                 class="church-logo">
+        {% endif %}
     </div>
+
+    <div class="form-header">
+        <h1>Actualización de Datos</h1>
+        <p>Actualiza tu información personal en la iglesia</p>
+    </div>
+
+    <div class="form-card">
+
+        <!-- INFO DEL MIEMBRO -->
+        <div class="member-info">
+            <div class="member-avatar">
+                <span class="material-icons">person</span>
+            </div>
+            <div class="member-details">
+                <h3>{{ miembro.nombres }} {{ miembro.apellidos }}</h3>
+                <span>{{ miembro.codigo|default:"Sin código" }}</span>
+            </div>
+        </div>
+
+        <!-- MENSAJE DE PROCESO -->
+        <div class="message">
+            <span class="material-icons">edit_note</span>
+            <div>
+                <strong>Formulario de actualización</strong><br>
+Este 2026 comenzamos una nueva etapa de organización y digitalización
+para cuidar mejor a nuestra congregación y servir con mayor responsabilidad.
+Gracias por tomarte este momento y por ser parte de lo que Dios
+está construyendo entre nosotros.
+ 
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert-error">
+                <span class="material-icons">error</span>
+                <div>
+                    {% for err in form.non_field_errors %}
+                        <div>{{ err }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ═══════════════════════════════════════
+                 SECCIÓN: CONTACTO
+                 ═══════════════════════════════════════ -->
+            {% if form.telefono or form.whatsapp or form.email %}
+            <div class="form-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <span class="material-icons">phone</span>
+                    </div>
+                    <span class="section-title">Contacto</span>
+                </div>
+
+                <div class="fields-grid">
+                    {% if form.telefono %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.telefono.id_for_label }}">
+                            Teléfono
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">phone_iphone</span>
+                            {{ form.telefono }}
+                        </div>
+                        <div class="hint">Ejemplo: 809-123-4567</div>
+                        {% if form.telefono.errors %}
+                            <div class="field-error">{{ form.telefono.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.whatsapp %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.whatsapp.id_for_label }}">
+                            WhatsApp
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">chat</span>
+                            {{ form.whatsapp }}
+                        </div>
+                        <div class="hint">Se genera automáticamente</div>
+                        {% if form.whatsapp.errors %}
+                            <div class="field-error">{{ form.whatsapp.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.email %}
+                    <div class="form-group full-width">
+                        <label class="form-label" for="{{ form.email.id_for_label }}">
+                            Correo electrónico
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">email</span>
+                            {{ form.email }}
+                        </div>
+                        {% if form.email.errors %}
+                            <div class="field-error">{{ form.email.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ═══════════════════════════════════════
+                 SECCIÓN: UBICACIÓN
+                 ═══════════════════════════════════════ -->
+            {% if form.direccion or form.sector or form.ciudad or form.provincia or form.codigo_postal %}
+            <div class="form-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <span class="material-icons">location_on</span>
+                    </div>
+                    <span class="section-title">Ubicación</span>
+                </div>
+
+                <div class="fields-grid">
+{% if form.sector %}
+<div class="form-group">
+    <label class="form-label" for="id_sector">
+        Sector
+    </label>
+
+    <div class="input-wrapper">
+        <span class="material-icons">place</span>
+
+        {% with current=form.sector.value|default_if_none:'' %}
+        <select id="id_sector" name="sector">
+            <option value="">Selecciona tu sector</option>
+
+            <option value="21 de Enero" {% if current == "21 de Enero" %}selected{% endif %}>21 de Enero</option>
+            <option value="30 de Mayo" {% if current == "30 de Mayo" %}selected{% endif %}>30 de Mayo</option>
+            <option value="Ana Melia" {% if current == "Ana Melia" %}selected{% endif %}>Ana Melia</option>
+            <option value="Anamuya" {% if current == "Anamuya" %}selected{% endif %}>Anamuya</option>
+            <option value="Antonio Guzmán" {% if current == "Antonio Guzmán" %}selected{% endif %}>Antonio Guzmán</option>
+            <option value="Brisas del Duey" {% if current == "Brisas del Duey" %}selected{% endif %}>Brisas del Duey</option>
+            <option value="Cristo Rey" {% if current == "Cristo Rey" %}selected{% endif %}>Cristo Rey</option>
+            <option value="Don Celso" {% if current == "Don Celso" %}selected{% endif %}>Don Celso</option>
+            <option value="Duarte" {% if current == "Duarte" %}selected{% endif %}>Duarte</option>
+            <option value="Juan Pablo Duarte" {% if current == "Juan Pablo Duarte" %}selected{% endif %}>Juan Pablo Duarte</option>
+            <option value="El Bonao" {% if current == "El Bonao" %}selected{% endif %}>El Bonao</option>
+            <option value="El Centro" {% if current == "El Centro" %}selected{% endif %}>El Centro</option>
+            <option value="El Chorro" {% if current == "El Chorro" %}selected{% endif %}>El Chorro</option>
+            <option value="El Macao" {% if current == "El Macao" %}selected{% endif %}>El Macao</option>
+            <option value="El Obispado" {% if current == "El Obispado" %}selected{% endif %}>El Obispado</option>
+            <option value="El Tamarindo" {% if current == "El Tamarindo" %}selected{% endif %}>El Tamarindo</option>
+            <option value="La Altagracia" {% if current == "La Altagracia" %}selected{% endif %}>La Altagracia</option>
+            <option value="La Aviación" {% if current == "La Aviación" %}selected{% endif %}>La Aviación</option>
+            <option value="La Cabrera" {% if current == "La Cabrera" %}selected{% endif %}>La Cabrera</option>
+            <option value="La Candelaria" {% if current == "La Candelaria" %}selected{% endif %}>La Candelaria</option>
+            <option value="La Ceiba del Salado" {% if current == "La Ceiba del Salado" %}selected{% endif %}>La Ceiba del Salado</option>
+            <option value="La Colonia" {% if current == "La Colonia" %}selected{% endif %}>La Colonia</option>
+            <option value="La Cruz" {% if current == "La Cruz" %}selected{% endif %}>La Cruz</option>
+            <option value="La Fe" {% if current == "La Fe" %}selected{% endif %}>La Fe</option>
+            <option value="La Laguna" {% if current == "La Laguna" %}selected{% endif %}>La Laguna</option>
+            <option value="La Malena" {% if current == "La Malena" %}selected{% endif %}>La Malena</option>
+            <option value="La Mina" {% if current == "La Mina" %}selected{% endif %}>La Mina</option>
+            <option value="La Otra Banda" {% if current == "La Otra Banda" %}selected{% endif %}>La Otra Banda</option>
+            <option value="Las Caobas" {% if current == "Las Caobas" %}selected{% endif %}>Las Caobas</option>
+            <option value="Las Flores" {% if current == "Las Flores" %}selected{% endif %}>Las Flores</option>
+            <option value="Las Mercedes" {% if current == "Las Mercedes" %}selected{% endif %}>Las Mercedes</option>
+            <option value="Los Platanitos" {% if current == "Los Platanitos" %}selected{% endif %}>Los Platanitos</option>
+            <option value="Los Ríos" {% if current == "Los Ríos" %}selected{% endif %}>Los Ríos</option>
+            <option value="Los Sotos" {% if current == "Los Sotos" %}selected{% endif %}>Los Sotos</option>
+            <option value="Luisa Perla" {% if current == "Luisa Perla" %}selected{% endif %}>Luisa Perla</option>
+            <option value="Mamá Tingó" {% if current == "Mamá Tingó" %}selected{% endif %}>Mamá Tingó</option>
+            <option value="Nazaret" {% if current == "Nazaret" %}selected{% endif %}>Nazaret</option>
+            <option value="San Francisco" {% if current == "San Francisco" %}selected{% endif %}>San Francisco</option>
+            <option value="San José" {% if current == "San José" %}selected{% endif %}>San José</option>
+            <option value="San Martín" {% if current == "San Martín" %}selected{% endif %}>San Martín</option>
+            <option value="San Pedro" {% if current == "San Pedro" %}selected{% endif %}>San Pedro</option>
+            <option value="Santa Cruz" {% if current == "Santa Cruz" %}selected{% endif %}>Santa Cruz</option>
+            <option value="Santana" {% if current == "Santana" %}selected{% endif %}>Santana</option>
+            <option value="Savica" {% if current == "Savica" %}selected{% endif %}>Savica</option>
+            <option value="Villa Cerro" {% if current == "Villa Cerro" %}selected{% endif %}>Villa Cerro</option>
+            <option value="Villa Hortensia" {% if current == "Villa Hortensia" %}selected{% endif %}>Villa Hortensia</option>
+            <option value="Villa María" {% if current == "Villa María" %}selected{% endif %}>Villa María</option>
+            <option value="Villa Palmera" {% if current == "Villa Palmera" %}selected{% endif %}>Villa Palmera</option>
+            <option value="Villa Progreso" {% if current == "Villa Progreso" %}selected{% endif %}>Villa Progreso</option>
+            <option value="Yuma" {% if current == "Yuma" %}selected{% endif %}>Yuma</option>
+            <option value="Otro" {% if current == "Otro" %}selected{% endif %}>Otro / No aparece en la lista</option>
+        </select>
+        {% endwith %}
+    </div>
+
+    {% if form.sector.errors %}
+        <div class="field-error">{{ form.sector.errors|striptags }}</div>
+    {% endif %}
+</div>
+{% endif %}
+
+
+                    {% if form.ciudad %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.ciudad.id_for_label }}">
+                            Ciudad
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">location_city</span>
+                            {{ form.ciudad }}
+                        </div>
+                        {% if form.ciudad.errors %}
+                            <div class="field-error">{{ form.ciudad.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.provincia %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.provincia.id_for_label }}">
+                            Provincia
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">map</span>
+                            {{ form.provincia }}
+                        </div>
+                        {% if form.provincia.errors %}
+                            <div class="field-error">{{ form.provincia.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.codigo_postal %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.codigo_postal.id_for_label }}">
+                            Código Postal
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">markunread_mailbox</span>
+                            {{ form.codigo_postal }}
+                        </div>
+                        {% if form.codigo_postal.errors %}
+                            <div class="field-error">{{ form.codigo_postal.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.direccion %}
+                    <div class="form-group full-width">
+                        <label class="form-label" for="{{ form.direccion.id_for_label }}">
+                            Dirección
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">home</span>
+                            {{ form.direccion }}
+                        </div>
+                        {% if form.direccion.errors %}
+                            <div class="field-error">{{ form.direccion.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ═══════════════════════════════════════
+                 SECCIÓN: LABORAL
+                 ═══════════════════════════════════════ -->
+            {% if form.empleador or form.puesto or form.telefono_trabajo or form.direccion_trabajo %}
+            <div class="form-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <span class="material-icons">work</span>
+                    </div>
+                    <span class="section-title">Información laboral</span>
+                </div>
+
+                <div class="fields-grid">
+                    {% if form.empleador %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.empleador.id_for_label }}">
+                            Empleador / Empresa
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">business</span>
+                            {{ form.empleador }}
+                        </div>
+                        {% if form.empleador.errors %}
+                            <div class="field-error">{{ form.empleador.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.puesto %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.puesto.id_for_label }}">
+                            Puesto / Cargo
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">assignment_ind</span>
+                            {{ form.puesto }}
+                        </div>
+                        {% if form.puesto.errors %}
+                            <div class="field-error">{{ form.puesto.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.telefono_trabajo %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.telefono_trabajo.id_for_label }}">
+                            Teléfono del trabajo
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">phone</span>
+                            {{ form.telefono_trabajo }}
+                        </div>
+                        {% if form.telefono_trabajo.errors %}
+                            <div class="field-error">{{ form.telefono_trabajo.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.direccion_trabajo %}
+                    <div class="form-group full-width">
+                        <label class="form-label" for="{{ form.direccion_trabajo.id_for_label }}">
+                            Dirección del trabajo
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">location_on</span>
+                            {{ form.direccion_trabajo }}
+                        </div>
+                        {% if form.direccion_trabajo.errors %}
+                            <div class="field-error">{{ form.direccion_trabajo.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ═══════════════════════════════════════
+                 SECCIÓN: EMERGENCIA
+                 ═══════════════════════════════════════ -->
+            {% if form.contacto_emergencia_nombre or form.contacto_emergencia_telefono or form.contacto_emergencia_relacion %}
+            <div class="form-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <span class="material-icons">emergency</span>
+                    </div>
+                    <span class="section-title">Contacto de emergencia</span>
+                </div>
+
+                <div class="fields-grid">
+                    {% if form.contacto_emergencia_nombre %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.contacto_emergencia_nombre.id_for_label }}">
+                            Nombre del contacto
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">person</span>
+                            {{ form.contacto_emergencia_nombre }}
+                        </div>
+                        {% if form.contacto_emergencia_nombre.errors %}
+                            <div class="field-error">{{ form.contacto_emergencia_nombre.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.contacto_emergencia_telefono %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.contacto_emergencia_telefono.id_for_label }}">
+                            Teléfono de emergencia
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">phone_in_talk</span>
+                            {{ form.contacto_emergencia_telefono }}
+                        </div>
+                        {% if form.contacto_emergencia_telefono.errors %}
+                            <div class="field-error">{{ form.contacto_emergencia_telefono.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.contacto_emergencia_relacion %}
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.contacto_emergencia_relacion.id_for_label }}">
+                            Relación / Parentesco
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">family_restroom</span>
+                            {{ form.contacto_emergencia_relacion }}
+                        </div>
+                        {% if form.contacto_emergencia_relacion.errors %}
+                            <div class="field-error">{{ form.contacto_emergencia_relacion.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ═══════════════════════════════════════
+                 SECCIÓN: SALUD
+                 ═══════════════════════════════════════ -->
+            {% if form.tipo_sangre or form.alergias or form.condiciones_medicas or form.medicamentos %}
+            <div class="form-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <span class="material-icons">medical_services</span>
+                    </div>
+                    <span class="section-title">Información de salud</span>
+                </div>
+
+                <div class="fields-grid">
+                  {% if form.tipo_sangre %}
+<div class="form-group">
+    <label class="form-label" for="id_tipo_sangre">
+        Tipo de sangre
+    </label>
+
+    <div class="input-wrapper">
+        <span class="material-icons">bloodtype</span>
+
+        {% with current=form.tipo_sangre.value|default_if_none:'' %}
+        <select id="id_tipo_sangre" name="tipo_sangre">
+            <option value="">Selecciona tu tipo de sangre</option>
+
+            <option value="A+"  {% if current == "A+" %}selected{% endif %}>A+</option>
+            <option value="A-"  {% if current == "A-" %}selected{% endif %}>A-</option>
+            <option value="B+"  {% if current == "B+" %}selected{% endif %}>B+</option>
+            <option value="B-"  {% if current == "B-" %}selected{% endif %}>B-</option>
+            <option value="AB+" {% if current == "AB+" %}selected{% endif %}>AB+</option>
+            <option value="AB-" {% if current == "AB-" %}selected{% endif %}>AB-</option>
+            <option value="O+"  {% if current == "O+" %}selected{% endif %}>O+</option>
+            <option value="O-"  {% if current == "O-" %}selected{% endif %}>O-</option>
+
+            <option value="No sé" {% if current == "No sé" %}selected{% endif %}>No sé</option>
+        </select>
+        {% endwith %}
+    </div>
+
+    {% if form.tipo_sangre.errors %}
+        <div class="field-error">{{ form.tipo_sangre.errors|striptags }}</div>
+    {% endif %}
+</div>
+{% endif %}
+
+
+                    {% if form.alergias %}
+                    <div class="form-group full-width">
+                        <label class="form-label" for="{{ form.alergias.id_for_label }}">
+                            Alergias
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">warning</span>
+                            {{ form.alergias }}
+                        </div>
+                        <div class="hint">Alimentos, medicamentos, sustancias, etc.</div>
+                        {% if form.alergias.errors %}
+                            <div class="field-error">{{ form.alergias.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.condiciones_medicas %}
+                    <div class="form-group full-width">
+                        <label class="form-label" for="{{ form.condiciones_medicas.id_for_label }}">
+                            Condiciones médicas
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">healing</span>
+                            {{ form.condiciones_medicas }}
+                        </div>
+                        <div class="hint">Diabetes, hipertensión, asma, etc.</div>
+                        {% if form.condiciones_medicas.errors %}
+                            <div class="field-error">{{ form.condiciones_medicas.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if form.medicamentos %}
+                    <div class="form-group full-width">
+                        <label class="form-label" for="{{ form.medicamentos.id_for_label }}">
+                            Medicamentos actuales
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="material-icons">medication</span>
+                            {{ form.medicamentos }}
+                        </div>
+                        {% if form.medicamentos.errors %}
+                            <div class="field-error">{{ form.medicamentos.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <button type="submit" class="submit-btn">
+                <span class="material-icons">send</span>
+                Enviar actualización
+            </button>
+
+            <div class="form-footer">
+                Tu información será revisada antes de ser aplicada.
+            </div>
+        </form>
+    </div>
+
+    <div class="powered-by">
+        {{ CFG.nombre_iglesia|default:"Iglesia Torre Fuerte" }}
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const tel = document.getElementById("id_telefono");
+    const wa  = document.getElementById("id_whatsapp");
+    if (!tel || !wa) return;
+
+    function digitsOnly(v) {
+        return (v || "").replace(/\D/g, "");
+    }
+
+    function formatRD(d) {
+        if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+        d = d.slice(0, 10);
+
+        const a = d.slice(0, 3);
+        const b = d.slice(3, 6);
+        const c = d.slice(6, 10);
+
+        if (d.length <= 3) return a;
+        if (d.length <= 6) return a + "-" + b;
+        return a + "-" + b + "-" + c;
+    }
+
+    function toWhatsAppE164(d) {
+        if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+        d = d.slice(0, 10);
+
+        if (d.length === 10 && /^(809|829|849)/.test(d)) {
+            return "+1" + d;
+        }
+        return "";
+    }
+
+    function isValidRD(d) {
+        if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+        return d.length === 10 && /^(809|829|849)/.test(d);
+    }
+
+    function paintValidity(input, valid) {
+        input.style.borderColor = valid ? "" : "var(--color-error)";
+    }
+
+    function syncFromTelefono() {
+        const d = digitsOnly(tel.value);
+        tel.value = formatRD(d);
+
+        const dd = digitsOnly(tel.value);
+        if (dd.length > 0) paintValidity(tel, isValidRD(dd));
+        else paintValidity(tel, true);
+
+        wa.value = toWhatsAppE164(dd);
+    }
+
+    wa.setAttribute("readonly", "readonly");
+    wa.setAttribute("tabindex", "-1");
+
+    tel.addEventListener("input", syncFromTelefono);
+    tel.addEventListener("blur", syncFromTelefono);
+
+    syncFromTelefono();
+});
+</script>
+
 </body>
 </html>

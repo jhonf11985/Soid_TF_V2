@@ -1,423 +1,138 @@
-{% extends "core/base.html" %}
-{% load static %}
-
+{% extends "actualizacion_datos_miembros/base_actualizacion.html" %}
 {% block content %}
 
-<!-- ═══════════════════════════════════════════════
-     CONTROL BAR
-     ═══════════════════════════════════════════════ -->
-<div class="odoo-control-bar">
-    <div class="odoo-control-left">
-        <a href="{% url 'miembros_app:detalle' miembro.pk %}" class="odoo-btn odoo-btn-icon">
-            <span class="material-icons">arrow_back</span>
-        </a>
-
-        <div class="odoo-breadcrumb">
-            <a href="{% url 'miembros_app:listado' %}" class="odoo-breadcrumb-link">Miembros</a>
-            <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
-            <a href="{% url 'miembros_app:detalle' miembro.pk %}" class="odoo-breadcrumb-link">
-                {{ miembro }}
-            </a>
-            <span class="material-icons odoo-breadcrumb-sep">chevron_right</span>
-            <span class="odoo-breadcrumb-current">Actualización de datos</span>
-        </div>
-    </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════
-     CONTENIDO PRINCIPAL
-     ═══════════════════════════════════════════════ -->
-<div class="page-container">
-
-    <!-- Header -->
-    <div class="page-header">
-        <div class="page-avatar">
-            <i class="fas fa-link"></i>
-        </div>
-        <div class="page-info">
-            <h1 class="page-title">Link de Actualización de Datos</h1>
-            <p class="page-subtitle">
-                Comparte este enlace con el miembro para que actualice sus datos sin iniciar sesión.
-            </p>
-        </div>
-    </div>
-
-    <!-- Card Principal -->
-    <div class="content-card">
-        <div class="card-body">
-
-            <!-- Info del Miembro -->
-            <div class="member-info-section">
-                <div class="info-label">Miembro</div>
-                <div class="member-display">
-                    <div class="member-avatar-small">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="member-details">
-                        <span class="member-name-link">{{ miembro }}</span>
-                        {% if miembro.codigo %}
-                        <span class="member-code">{{ miembro.codigo }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Link Section -->
-            <div class="link-section">
-                <div class="info-label">Enlace público</div>
-                
-                <div class="link-input-group">
-                    <div class="link-input-wrapper">
-                        <i class="fas fa-link"></i>
-                        <input type="text" id="public-link" value="{{ public_url }}" readonly class="link-input">
-                    </div>
-                    
-                    <div class="link-actions">
-                        <button type="button" class="action-btn btn-copy" onclick="copyLink()">
-                            <i class="fas fa-copy"></i>
-                            <span>Copiar</span>
-                        </button>
-                        <a href="{{ public_url }}" target="_blank" rel="noopener" class="action-btn btn-open">
-                            <i class="fas fa-external-link-alt"></i>
-                            <span>Abrir</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Success Message -->
-                <div id="copy-success" class="copy-success" style="display: none;">
-                    <i class="fas fa-check-circle"></i>
-                    <span>¡Link copiado al portapapeles!</span>
-                </div>
-
-                <!-- Tip -->
-                <div class="tip-box">
-                    <i class="fas fa-lightbulb"></i>
-                    <span>Recomendación: Envíalo por WhatsApp y dile que lo abra desde su móvil.</span>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="quick-actions">
-        <a href="https://wa.me/?text={{ public_url|urlencode }}" target="_blank" class="quick-action-btn whatsapp">
-            <i class="fab fa-whatsapp"></i>
-            <span>Compartir por WhatsApp</span>
-        </a>
-        <a href="mailto:?subject=Actualiza tus datos&body={{ public_url }}" class="quick-action-btn email">
-            <i class="fas fa-envelope"></i>
-            <span>Enviar por Email</span>
-        </a>
-    </div>
-
-</div>
-
 <style>
-/* ═══════════════════════════════════════════════
-   ESTILOS GENERALES
-   ═══════════════════════════════════════════════ */
-.page-container {
-    padding: 24px;
-    background: #f0f0f0;
-    min-height: calc(100vh - 60px);
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-/* Header */
-.page-header {
-    display: flex;
-    gap: 20px;
+  .card-link {
     background: #fff;
-    padding: 24px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    margin-bottom: 20px;
-}
-.page-avatar {
-    width: 70px;
-    height: 70px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 1px solid #e5e7eb;
     border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.06);
+    max-width: 980px;
+  }
+  .row {
     display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-.page-avatar i {
-    font-size: 28px;
-    color: #fff;
-}
-.page-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-.page-title {
-    margin: 0 0 6px 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: #2d3748;
-}
-.page-subtitle {
-    margin: 0;
-    font-size: 14px;
-    color: #718096;
-    line-height: 1.5;
-}
-
-/* Card */
-.content-card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    overflow: hidden;
-}
-.card-body {
-    padding: 28px;
-}
-
-/* Member Info */
-.member-info-section {
-    margin-bottom: 24px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid #e2e8f0;
-}
-.info-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #718096;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 10px;
-}
-.member-display {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-.member-avatar-small {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.member-avatar-small i {
-    color: #fff;
-    font-size: 18px;
-}
-.member-details {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.member-name-link {
-    font-size: 16px;
-    font-weight: 600;
-    color: #2d3748;
-}
-.member-code {
-    font-size: 13px;
-    color: #718096;
-}
-
-/* Link Section */
-.link-section {
-    margin-bottom: 0;
-}
-.link-input-group {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-.link-input-wrapper {
-    flex: 1;
-    position: relative;
-}
-.link-input-wrapper i {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #718096;
-    font-size: 14px;
-}
-.link-input {
-    width: 100%;
-    padding: 14px 16px 14px 44px;
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
-    font-size: 14px;
-    font-family: 'Monaco', 'Menlo', monospace;
-    color: #4a5568;
-    background: #f7fafc;
-}
-.link-input:focus {
-    outline: none;
-    border-color: #667eea;
-    background: #fff;
-}
-.link-actions {
-    display: flex;
-    gap: 8px;
-}
-.action-btn {
+    margin-top: 10px;
+  }
+  .pill {
     display: inline-flex;
-    align-items: center;
     gap: 8px;
-    padding: 14px 20px;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+  .pill.ok { background:#ecfdf5; border-color:#a7f3d0; }
+  .pill.bad { background:#fff1f2; border-color:#fecdd3; }
+
+  .linkbox {
+    display:flex; gap:10px; align-items:center; margin-top: 12px;
+    background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;
+    padding: 10px;
+  }
+  .linkbox input {
+    width: 100%;
     border: none;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-}
-.btn-copy {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
-}
-.btn-copy:hover {
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    transform: translateY(-1px);
-}
-.btn-open {
-    background: #f7fafc;
-    color: #4a5568;
-    border: 2px solid #e2e8f0;
-}
-.btn-open:hover {
-    background: #edf2f7;
-    border-color: #cbd5e0;
-    color: #2d3748;
-}
-
-/* Success Message */
-.copy-success {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 18px;
-    background: #d4edda;
-    border: 1px solid #c3e6cb;
-    border-radius: 10px;
-    color: #155724;
-    font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 16px;
-    animation: fadeIn 0.3s ease;
-}
-.copy-success i {
-    font-size: 18px;
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Tip Box */
-.tip-box {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    background: #fffbeb;
-    border: 1px solid #fef08a;
-    border-radius: 10px;
-    color: #854d0e;
+    outline: none;
+    background: transparent;
     font-size: 13px;
-}
-.tip-box i {
-    font-size: 18px;
-    color: #eab308;
-}
-
-/* Quick Actions */
-.quick-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 20px;
-}
-.quick-action-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 16px 20px;
-    border-radius: 12px;
-    font-size: 14px;
+  }
+  .btn {
+    border: none;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
     font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s ease;
-}
-.quick-action-btn.whatsapp {
-    background: #25d366;
-    color: #fff;
-}
-.quick-action-btn.whatsapp:hover {
-    background: #22c55e;
-    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
-}
-.quick-action-btn.email {
-    background: #fff;
-    color: #4a5568;
-    border: 2px solid #e2e8f0;
-}
-.quick-action-btn.email:hover {
-    background: #f7fafc;
-    border-color: #cbd5e0;
-}
-.quick-action-btn i {
-    font-size: 18px;
-}
+    font-size: 13px;
+  }
+  .btn-primary { background: #4f46e5; color:#fff; }
+  .btn-secondary { background:#111827; color:#fff; }
+  .btn-light { background:#e5e7eb; color:#111827; }
 
-/* Responsive */
-@media (max-width: 640px) {
-    .page-container {
-        padding: 16px;
-    }
-    .page-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
-    .link-input-group {
-        flex-direction: column;
-    }
-    .link-actions {
-        flex-direction: column;
-    }
-    .action-btn {
-        justify-content: center;
-    }
-    .quick-actions {
-        flex-direction: column;
-    }
-}
+  details {
+    margin-top: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+  }
+  summary {
+    padding: 12px 14px;
+    cursor: pointer;
+    font-weight: 700;
+    background: #f9fafb;
+  }
+  .preview {
+    height: 720px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .preview iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
 </style>
 
-<script>
-function copyLink() {
-    const input = document.getElementById("public-link");
-    input.select();
-    input.setSelectionRange(0, 99999);
+<div class="card-link">
+  <h2 style="margin:0;">Link de actualización</h2>
+  <p style="margin:6px 0 0; color:#6b7280;">
+    Miembro: <strong>{{ miembro.nombres }} {{ miembro.apellidos }}</strong>
+    {% if miembro.codigo %} · Código: <strong>{{ miembro.codigo }}</strong>{% endif %}
+  </p>
 
-    navigator.clipboard.writeText(input.value).then(() => {
-        const success = document.getElementById("copy-success");
-        success.style.display = "flex";
-        setTimeout(() => {
-            success.style.display = "none";
-        }, 3000);
+  <div class="row">
+    {% if acceso.activo %}
+      <span class="pill ok">✅ Activo</span>
+    {% else %}
+      <span class="pill bad">🔒 Inactivo</span>
+    {% endif %}
+    {% if acceso.ultimo_envio_en %}
+      <span class="pill">Último envío: {{ acceso.ultimo_envio_en }}</span>
+    {% endif %}
+  </div>
+
+  <div class="linkbox">
+    <input id="publicLink" type="text" value="{{ public_url }}" readonly>
+    <button class="btn btn-light" type="button" onclick="copyLink()">Copiar</button>
+    <a class="btn btn-primary" href="{{ public_url }}" target="_blank" rel="noopener">
+      Ver formulario
+    </a>
+  </div>
+
+  <div class="row">
+    <a class="btn btn-secondary" href="{{ public_url }}ok/" target="_blank" rel="noopener">
+      Ver pantalla OK
+    </a>
+  </div>
+
+  <details>
+    <summary>Previsualizar aquí mismo (como lo verá el miembro)</summary>
+    <div class="preview">
+      <iframe src="{{ public_url }}" loading="lazy"></iframe>
+    </div>
+  </details>
+
+  <p id="copiedMsg" style="margin:10px 0 0; color:#16a34a; display:none; font-weight:600;">
+    ✅ Link copiado
+  </p>
+</div>
+
+<script>
+  function copyLink(){
+    const el = document.getElementById("publicLink");
+    el.select();
+    el.setSelectionRange(0, 999999);
+    navigator.clipboard.writeText(el.value).then(() => {
+      const msg = document.getElementById("copiedMsg");
+      msg.style.display = "block";
+      setTimeout(() => msg.style.display = "none", 1600);
     });
-}
+  }
 </script>
 
 {% endblock %}
