@@ -429,6 +429,8 @@ class Miembro(models.Model):
             self.numero_seguimiento = None
             self.codigo_seguimiento = None
 
+
+
         super().save(*args, **kwargs)
 
 

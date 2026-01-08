@@ -14,7 +14,8 @@ from .models import (
     SolicitudAltaMiembro,
 )
 from .forms import SolicitudActualizacionForm, SolicitudAltaPublicaForm
-from .services import aplicar_solicitud_a_miembro
+from .services import aplicar_solicitud_a_miembro, crear_miembro_desde_solicitud_alta
+
 from django.db.models import Q
 from .models import AltaMasivaConfig
 
@@ -107,7 +108,6 @@ def links_lista(request):
         "Estados": SolicitudActualizacionMiembro.Estados,
         "EstadosAlta": SolicitudAltaMiembro.Estados,
     })
-
 @login_required
 def altas_aprobar_masivo(request):
     if request.method != "POST":
@@ -119,26 +119,44 @@ def altas_aprobar_masivo(request):
         return redirect("actualizacion_datos_miembros:altas_lista")
 
     ids = [int(i) for i in ids_str.split(",") if i.strip().isdigit()]
-    
+
     solicitudes = SolicitudAltaMiembro.objects.filter(
         pk__in=ids,
         estado=SolicitudAltaMiembro.Estados.PENDIENTE
     )
-    
-    count = 0
+
+    ok = 0
+    fail = 0
+    errores = []
+
     for s in solicitudes:
+        try:
+            crear_miembro_desde_solicitud_alta(s)
+        except ValueError as e:
+            fail += 1
+            if len(errores) < 5:
+                errores.append(f"Solicitud #{s.pk}: {e}")
+            continue
+
         s.estado = SolicitudAltaMiembro.Estados.APROBADA
         s.revisado_en = timezone.now()
         s.revisado_por = request.user
         s.save(update_fields=["estado", "revisado_en", "revisado_por"])
-        count += 1
+        ok += 1
 
-    if count:
-        messages.success(request, f"{count} solicitud(es) aprobada(s) correctamente.")
-    else:
+    if ok:
+        messages.success(request, f"{ok} solicitud(es) aprobada(s) y convertida(s) en Miembro ✅")
+
+    if fail:
+        messages.warning(request, f"{fail} solicitud(es) no se aprobaron por duplicados/errores.")
+        for err in errores:
+            messages.error(request, err)
+
+    if not ok and not fail:
         messages.info(request, "No se encontraron solicitudes pendientes para aprobar.")
-    
+
     return redirect("actualizacion_datos_miembros:altas_lista")
+
 
 
 @login_required
@@ -537,7 +555,6 @@ def alta_detalle(request, pk):
         "Estados": SolicitudAltaMiembro.Estados,
     })
 
-
 @login_required
 def alta_aprobar(request, pk):
     if request.method != "POST":
@@ -548,14 +565,21 @@ def alta_aprobar(request, pk):
         messages.info(request, "Esta solicitud ya fue procesada.")
         return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
 
+    # 1) Crear el miembro primero (si falla por duplicado, no aprobamos)
+    try:
+        miembro = crear_miembro_desde_solicitud_alta(s)
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
+
+    # 2) Marcar la solicitud como aprobada
     s.estado = SolicitudAltaMiembro.Estados.APROBADA
     s.revisado_en = timezone.now()
     s.revisado_por = request.user
     s.save(update_fields=["estado", "revisado_en", "revisado_por"])
 
-    messages.success(request, "Solicitud aprobada. (Más adelante la convertiremos en Miembro automáticamente).")
-    return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
-
+    messages.success(request, f"Solicitud aprobada ✅ Miembro creado: {miembro.nombres} {miembro.apellidos}")
+    return redirect("miembros_app:detalle", pk=miembro.pk)
 
 @login_required
 def alta_rechazar(request, pk):

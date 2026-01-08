@@ -22,6 +22,17 @@ class SolicitudActualizacionForm(forms.ModelForm):
         }
 
 class SolicitudAltaPublicaForm(forms.ModelForm):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Quitar "descarriado" del select de estado_miembro
+        self.fields["estado_miembro"].choices = [
+            (value, label)
+            for value, label in ESTADO_MIEMBRO_CHOICES
+            if value != "descarriado"
+        ]
+
 
     def _normalizar_rd_a_e164(self, raw: str, requerido: bool, campo: str) -> str:
         raw = (raw or "").strip()
