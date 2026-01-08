@@ -21,6 +21,10 @@ from .models import AltaMasivaConfig
 
 
 
+def limpiar_cedula(value):
+    return (value or "").replace("-", "").replace(" ", "")
+
+
 @login_required
 def alta_masiva_config(request):
     config = AltaMasivaConfig.get_solo()
@@ -224,18 +228,57 @@ def alta_publica(request):
 
         if form.is_valid():
             tel = (form.cleaned_data.get("telefono") or "").strip()
+            cedula = limpiar_cedula(form.cleaned_data.get("cedula"))
 
-            # Anti-duplicado simple
+
+            
+                        # Anti-duplicado: si ya existe una solicitud pendiente con ese teléfono
             if SolicitudAltaMiembro.objects.filter(
                 telefono=tel,
                 estado=SolicitudAltaMiembro.Estados.PENDIENTE
             ).exists():
-                messages.info(
-                    request,
-                    "Ya existe una solicitud pendiente con este teléfono. El equipo la revisará pronto."
+                # Mostrar el error EN EL MISMO FORMULARIO (no redirigir)
+                form.add_error(
+                    "telefono",
+                    "Este teléfono ya tiene una solicitud pendiente. Si ya la enviaste, espera la revisión del equipo."
                 )
-                return redirect("actualizacion_datos_miembros:alta_ok")
+                # Opcional: también puedes ponerlo como error general (arriba)
+                # form.add_error(None, "Ya existe una solicitud pendiente con este teléfono.")
+                return render(request, "actualizacion_datos_miembros/alta_publico.html", {"form": form})
+         
+            if Miembro.objects.filter(telefono=tel).exists():
+                form.add_error(
+                    "telefono",
+                    "Este teléfono ya está registrado en el sistema. Si necesitas actualizar datos, solicita el enlace de actualización."
+                )
+                return render(request, "actualizacion_datos_miembros/alta_publico.html", {"form": form})
 
+            # Anti-duplicado por cédula (solo si fue enviada)
+            if cedula:
+                if SolicitudAltaMiembro.objects.filter(
+                    cedula=cedula,
+                    estado=SolicitudAltaMiembro.Estados.PENDIENTE
+                ).exists():
+                    form.add_error(
+                        "cedula",
+                        "Esta cédula ya tiene una solicitud pendiente. Si ya la enviaste, espera la revisión del equipo."
+                    )
+                    return render(
+                        request,
+                        "actualizacion_datos_miembros/alta_publico.html",
+                        {"form": form}
+                    )
+
+            if cedula and Miembro.objects.filter(cedula=cedula).exists():
+                form.add_error(
+                    "cedula",
+                    "Esta cédula ya está registrada en el sistema. Si necesitas actualizar datos, solicita el enlace de actualización."
+                )
+                return render(
+                    request,
+                    "actualizacion_datos_miembros/alta_publico.html",
+                    {"form": form}
+                )
             solicitud = form.save(commit=False)
             solicitud.telefono = tel
             solicitud.estado = SolicitudAltaMiembro.Estados.PENDIENTE
