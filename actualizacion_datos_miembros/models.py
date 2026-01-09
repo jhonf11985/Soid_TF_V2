@@ -47,6 +47,22 @@ class SolicitudActualizacionMiembro(models.Model):
         choices=Estados.choices,
         default=Estados.PENDIENTE,
     )
+    # Después de los campos de contacto existentes:
+    telefono_secundario = models.CharField(max_length=20, blank=True)
+
+    # Datos personales:
+    lugar_nacimiento = models.CharField(max_length=150, blank=True)
+    nacionalidad = models.CharField(max_length=100, blank=True)
+    estado_civil = models.CharField(max_length=20, blank=True)
+    nivel_educativo = models.CharField(max_length=50, blank=True)
+    profesion = models.CharField(max_length=100, blank=True)
+    pasaporte = models.CharField(max_length=30, blank=True)
+
+    # Membresía (estos ya los tienes, verifica):
+    iglesia_anterior = models.CharField(max_length=150, blank=True)
+    fecha_conversion = models.DateField(blank=True, null=True)
+    fecha_bautismo = models.DateField(blank=True, null=True)
+    fecha_ingreso_iglesia = models.DateField(blank=True, null=True)
 
     # --- Datos editables (seguros) ---
     telefono = models.CharField(max_length=20, blank=True)

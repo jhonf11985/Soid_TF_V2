@@ -30,6 +30,49 @@ class SolicitudActualizacionForm(forms.ModelForm):
 
         # Guardamos para la plantilla si lo quieres mostrar/debug
         self.allowed_fields = list(self.fields.keys())
+  # ===============================
+    # Normalización de pasaporte
+    # ===============================
+    def clean_pasaporte(self):
+        pasaporte = (self.cleaned_data.get("pasaporte") or "").strip()
+
+        if not pasaporte:
+            return ""
+
+        # Quitar espacios y guiones
+        pasaporte = re.sub(r"[\s-]+", "", pasaporte)
+
+        # Solo letras y números
+        pasaporte = re.sub(r"[^A-Za-z0-9]", "", pasaporte)
+
+        # Mayúsculas
+        pasaporte = pasaporte.upper()
+
+        # Validación suave (no agresiva)
+        if not (6 <= len(pasaporte) <= 15):
+            raise forms.ValidationError(
+                "Pasaporte inválido. Usa solo letras y números (6 a 15 caracteres)."
+            )
+
+        return pasaporte
+    def clean_telefono_secundario(self):
+        raw = (self.cleaned_data.get("telefono_secundario") or "").strip()
+
+        if not raw:
+            return ""
+
+        digits = "".join(c for c in raw if c.isdigit())
+
+        if len(digits) == 10 and digits.startswith(("809", "829", "849")):
+            return "+1" + digits
+
+        if len(digits) == 11 and digits.startswith("1"):
+            if digits[1:4] in ("809", "829", "849"):
+                return "+" + digits
+
+        raise forms.ValidationError(
+            "Teléfono secundario inválido. Ejemplo: 8091234567."
+        )
 
     class Meta:
         model = SolicitudActualizacionMiembro
@@ -39,6 +82,13 @@ class SolicitudActualizacionForm(forms.ModelForm):
             "empleador", "puesto", "telefono_trabajo", "direccion_trabajo",
             "contacto_emergencia_nombre", "contacto_emergencia_telefono", "contacto_emergencia_relacion",
             "tipo_sangre", "alergias", "condiciones_medicas", "medicamentos",
+            "telefono_secundario",
+                "lugar_nacimiento",
+                "nacionalidad",
+                "estado_civil",
+                "nivel_educativo",
+                "profesion",
+                "pasaporte",
         ]
         widgets = {
             "direccion": forms.Textarea(attrs={"rows": 2}),
@@ -242,4 +292,11 @@ class ActualizacionDatosConfigForm(forms.Form):
             ("alergias", "Alergias"),
             ("condiciones_medicas", "Condiciones médicas"),
             ("medicamentos", "Medicamentos"),
+            ("telefono_secundario", "Teléfono secundario"),
+            ("lugar_nacimiento", "Lugar de nacimiento"),
+            ("nacionalidad", "Nacionalidad"),
+            ("estado_civil", "Estado civil"),
+            ("nivel_educativo", "Nivel educativo"),
+            ("profesion", "Profesión"),
+            ("pasaporte", "Pasaporte"),
         ]

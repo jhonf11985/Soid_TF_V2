@@ -427,6 +427,19 @@ def formulario_actualizacion_publico(request, token):
             "alergias": miembro.alergias,
             "condiciones_medicas": miembro.condiciones_medicas,
             "medicamentos": miembro.medicamentos,
+
+                        # AGREGAR ESTOS NUEVOS:
+            "telefono_secundario": miembro.telefono_secundario,
+            "lugar_nacimiento": miembro.lugar_nacimiento,
+            "nacionalidad": miembro.nacionalidad,
+            "estado_civil": miembro.estado_civil,
+            "nivel_educativo": miembro.nivel_educativo,
+            "profesion": miembro.profesion,
+            "pasaporte": miembro.pasaporte,
+            "iglesia_anterior": miembro.iglesia_anterior,
+            "fecha_conversion": miembro.fecha_conversion,
+            "fecha_bautismo": miembro.fecha_bautismo,
+            "fecha_ingreso_iglesia": miembro.fecha_ingreso_iglesia,
         }
         form = SolicitudActualizacionForm(initial=initial, allowed_fields=allowed_fields)
 
