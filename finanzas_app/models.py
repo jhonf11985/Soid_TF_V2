@@ -117,6 +117,15 @@ class MovimientoFinanciero(models.Model):
         ("deposito", "Depósito bancario"),
         ("otro", "Otro"),
     ]
+    # --- ESTRUCTURA (opcional) ---
+    unidad = models.ForeignKey(
+        "estructura_app.Unidad",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="movimientos_financieros",
+        help_text="Unidad de Estructura asociada (si el módulo Estructura está activo)."
+    )
 
     ESTADO_MOVIMIENTO_CHOICES = [
         ("pendiente", "Pendiente"),

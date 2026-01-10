@@ -1,7 +1,45 @@
 from django import forms
 from .models import MovimientoFinanciero, CategoriaMovimiento, CuentaFinanciera
 from miembros_app.models import Miembro  # 👈 IMPORTAMOS MIEMBRO
+from django.apps import apps
+from django.db.models import Q  # Añadir este import
+def is_module_enabled(*codes: str) -> bool:
+    """
+    Verifica si existe un Module (normalmente core.Module) habilitado.
+    - Soporta varios codes.
+    - Compara sin importar mayúsculas/minúsculas (iexact).
+    - Falla seguro devolviendo False.
+    """
+    ModuleModel = None
 
+    # 1) Caso típico: core.Module
+    try:
+        ModuleModel = apps.get_model("core", "Module")
+    except Exception:
+        ModuleModel = None
+
+    # 2) Fallback: buscar cualquier modelo llamado Module con campos code/is_enabled
+    if ModuleModel is None:
+        try:
+            for m in apps.get_models():
+                if m.__name__ == "Module":
+                    field_names = {f.name for f in m._meta.fields}
+                    if "code" in field_names and "is_enabled" in field_names:
+                        ModuleModel = m
+                        break
+        except Exception:
+            ModuleModel = None
+
+    if ModuleModel is None:
+        return False
+
+    try:
+        q = Q()
+        for c in codes:
+            q |= Q(code__iexact=c)
+        return ModuleModel.objects.filter(is_enabled=True).filter(q).exists()
+    except Exception:
+        return False
 
 # ============================================
 # FORMULARIO DE CUENTA FINANCIERA
@@ -117,6 +155,7 @@ class MovimientoIngresoForm(forms.ModelForm):
             "fecha",
             "cuenta",
             "categoria",
+            "unidad",
             "monto",
             "forma_pago",
             "persona_asociada",
@@ -154,6 +193,32 @@ class MovimientoIngresoForm(forms.ModelForm):
                 activo=True
             ).order_by("nombres", "apellidos")
             self.fields["persona_asociada"].required = False
+
+        # --------------------------------------------
+        # UNIDAD (solo si Estructura está activa)
+        # --------------------------------------------
+        estructura_activa = is_module_enabled("Estructura", "Unidad", "Unidades")
+
+        if not estructura_activa:
+            # Si estructura no está activa, quitamos el campo
+            self.fields.pop("unidad", None)
+        else:
+            try:
+                Unidad = apps.get_model("estructura_app", "Unidad")
+
+                # ✅ Solo unidades activas y visibles (como se espera en UI)
+                self.fields["unidad"].queryset = (
+                    Unidad.objects
+                    .filter(activa=True, visible=True)
+                    .order_by("orden", "nombre")
+                )
+
+                self.fields["unidad"].required = False
+                self.fields["unidad"].label = "Unidad"
+                self.fields["unidad"].help_text = "Opcional."
+            except Exception:
+                # Si no existe el modelo o falla algo, lo ocultamos para evitar error
+                self.fields.pop("unidad", None)
 
         # --------------------------------------------
         # REGLA: si es EDICIÓN de un ingreso confirmado,
@@ -303,3 +368,4 @@ class TransferenciaForm(forms.Form):
                 )
         
         return cleaned_data
+    

@@ -45,7 +45,7 @@
             <!-- CONTENIDO EN DOS COLUMNAS -->
             <div class="odoo-form-content">
                 
-                <!-- COLUMNA IZQUIERDA -->
+                <!-- COLUMNA IZQUIERDA: Datos básicos -->
                 <div class="odoo-form-col">
                     <div class="odoo-field-row">
                         <label>Fecha</label>
@@ -72,9 +72,56 @@
                         </div>
                     </div>
 
-                    <!-- 👇 AUTOCOMPLETE DE MIEMBRO - ESTILO CHIP -->
                     <div class="odoo-field-row">
-                        <label>Persona (opcional)</label>
+                        <label>Forma de pago</label>
+                        <div class="odoo-field-value">
+                            {{ form.forma_pago }}
+                            {% if form.forma_pago.errors %}<span class="odoo-error">{{ form.forma_pago.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Campo condicional: solo si forma de pago es transferencia o cheque -->
+                    <div class="odoo-field-row odoo-field-conditional" id="field-referencia" style="display: none;">
+                        <label>Referencia</label>
+                        <div class="odoo-field-value">
+                            {{ form.referencia }}
+                            {% if form.referencia.errors %}<span class="odoo-error">{{ form.referencia.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: Clasificación y origen -->
+                <div class="odoo-form-col">
+                    <div class="odoo-field-row">
+                        <label>Cuenta</label>
+                        <div class="odoo-field-value">
+                            {{ form.cuenta }}
+                            {% if form.cuenta.errors %}<span class="odoo-error">{{ form.cuenta.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <!-- SEPARADOR: Origen del ingreso -->
+                    <div class="odoo-field-separator">
+                        <span>Origen del ingreso</span>
+                        <small>(selecciona uno)</small>
+                    </div>
+
+                    <!-- Unidad (si módulo Estructura activo) -->
+                    {% if MODULOS_ACTIVOS.Estructura %}
+                    <div class="odoo-field-row">
+                        <label>Unidad</label>
+                        <div class="odoo-field-value">
+                            {{ form.unidad }}
+                            {% if form.unidad.errors %}
+                                <span class="odoo-error">{{ form.unidad.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Persona (autocomplete) -->
+                    <div class="odoo-field-row">
+                        <label>Persona</label>
                         <div class="odoo-field-value autocomplete-wrapper" id="autocomplete-persona">
                             
                             <!-- Campo hidden para guardar el ID -->
@@ -118,34 +165,6 @@
                                 </div>
                             </div>
 
-                        </div>
-                    </div>
-                </div>
-
-                <!-- COLUMNA DERECHA -->
-                <div class="odoo-form-col">
-                    <div class="odoo-field-row">
-                        <label>Cuenta</label>
-                        <div class="odoo-field-value">
-                            {{ form.cuenta }}
-                            {% if form.cuenta.errors %}<span class="odoo-error">{{ form.cuenta.errors.0 }}</span>{% endif %}
-                        </div>
-                    </div>
-
-                    <div class="odoo-field-row">
-                        <label>Forma de pago</label>
-                        <div class="odoo-field-value">
-                            {{ form.forma_pago }}
-                            {% if form.forma_pago.errors %}<span class="odoo-error">{{ form.forma_pago.errors.0 }}</span>{% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Campo condicional: solo si forma de pago es transferencia o cheque -->
-                    <div class="odoo-field-row odoo-field-conditional" id="field-referencia" style="display: none;">
-                        <label>Referencia</label>
-                        <div class="odoo-field-value">
-                            {{ form.referencia }}
-                            {% if form.referencia.errors %}<span class="odoo-error">{{ form.referencia.errors.0 }}</span>{% endif %}
                         </div>
                     </div>
                 </div>
@@ -930,6 +949,76 @@
     background: #fffbeb;
     border-color: #fde68a;
 }
+
+/* =====================================
+   CAMPOS BLOQUEADOS (BLOQUEO MUTUO)
+   ===================================== */
+.field-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    position: relative;
+}
+
+.field-disabled::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(248, 249, 250, 0.5);
+    cursor: not-allowed;
+}
+
+.field-disabled select,
+.field-disabled input {
+    background-color: #f1f3f4 !important;
+    cursor: not-allowed;
+}
+
+/* Estilo especial para autocomplete bloqueado */
+.autocomplete-wrapper.field-disabled .autocomplete-search {
+    background-color: #f1f3f4 !important;
+    color: #9ca3af;
+}
+
+.autocomplete-wrapper.field-disabled .autocomplete-search::placeholder {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Icono de bloqueo visual */
+.odoo-field-row.field-disabled label::after {
+    content: ' 🔒';
+    font-size: 12px;
+}
+
+/* =====================================
+   SEPARADOR DE SECCIÓN EN FORMULARIO
+   ===================================== */
+.odoo-field-separator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--odoo-border);
+}
+
+.odoo-field-separator span {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--odoo-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.odoo-field-separator small {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 400;
+    font-style: italic;
+}
 </style>
 
 {% endblock finanzas_content %}
@@ -960,6 +1049,90 @@ document.addEventListener('DOMContentLoaded', function() {
         formaPagoSelect.addEventListener('change', toggleReferencia);
         toggleReferencia();
     }
+
+    // ====================================
+    // BLOQUEO MUTUO: UNIDAD <-> PERSONA
+    // Si se selecciona unidad, se bloquea persona y viceversa
+    // ====================================
+    const unidadSelect = document.getElementById('id_unidad');
+    const personaWrapper = document.getElementById('autocomplete-persona');
+    const personaHiddenInput = document.getElementById('id_persona_asociada');
+    const personaSearchInput = document.getElementById('search-persona');
+    const personaChip = document.getElementById('chip-persona');
+    const unidadFieldRow = unidadSelect?.closest('.odoo-field-row');
+    const personaFieldRow = personaWrapper?.closest('.odoo-field-row');
+
+    // Estado de bloqueo
+    let unidadBloqueada = false;
+    let personaBloqueada = false;
+
+    // Función para bloquear el campo Unidad
+    function bloquearUnidad(bloquear) {
+        if (!unidadSelect) return;
+        
+        unidadBloqueada = bloquear;
+        unidadSelect.disabled = bloquear;
+        
+        if (bloquear) {
+            unidadSelect.value = '';
+            unidadFieldRow?.classList.add('field-disabled');
+            unidadSelect.title = 'Debes quitar la persona para seleccionar una unidad';
+        } else {
+            unidadFieldRow?.classList.remove('field-disabled');
+            unidadSelect.title = '';
+        }
+    }
+
+    // Función para bloquear el campo Persona
+    function bloquearPersona(bloquear) {
+        if (!personaWrapper) return;
+        
+        personaBloqueada = bloquear;
+        
+        if (bloquear) {
+            // Limpiar selección de persona
+            if (personaHiddenInput) personaHiddenInput.value = '';
+            if (personaChip) personaChip.style.display = 'none';
+            if (personaSearchInput) {
+                personaSearchInput.style.display = '';
+                personaSearchInput.value = '';
+                personaSearchInput.disabled = true;
+                personaSearchInput.placeholder = 'Quita la unidad para seleccionar persona';
+            }
+            personaWrapper.classList.add('field-disabled');
+            personaFieldRow?.classList.add('field-disabled');
+        } else {
+            if (personaSearchInput) {
+                personaSearchInput.disabled = false;
+                personaSearchInput.placeholder = 'Escriba para buscar...';
+            }
+            personaWrapper.classList.remove('field-disabled');
+            personaFieldRow?.classList.remove('field-disabled');
+        }
+    }
+
+    // Escuchar cambios en Unidad
+    if (unidadSelect) {
+        unidadSelect.addEventListener('change', function() {
+            const tieneUnidad = this.value && this.value !== '';
+            bloquearPersona(tieneUnidad);
+        });
+        
+        // Verificar estado inicial
+        if (unidadSelect.value && unidadSelect.value !== '') {
+            bloquearPersona(true);
+        }
+    }
+
+    // Función global para verificar si persona está bloqueada (usada por selectMiembro)
+    window.isPersonaBloqueada = function() {
+        return personaBloqueada;
+    };
+
+    // Función global para bloquear unidad cuando se selecciona persona
+    window.onPersonaSeleccionada = function(tienePersona) {
+        bloquearUnidad(tienePersona);
+    };
 
     // ====================================
     // AUTOCOMPLETE DE MIEMBROS - ESTILO CHIP
@@ -1062,6 +1235,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Seleccionar miembro - mostrar chip
     function selectMiembro(id, nombre, codigo) {
+        // Verificar si persona está bloqueada
+        if (window.isPersonaBloqueada && window.isPersonaBloqueada()) {
+            return; // No permitir selección si está bloqueada
+        }
+        
         // Guardar valor
         hiddenInput.value = id;
         
@@ -1078,6 +1256,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Cerrar dropdown
         closeDropdown();
+        
+        // 🔒 Bloquear unidad cuando se selecciona persona
+        if (window.onPersonaSeleccionada) {
+            window.onPersonaSeleccionada(true);
+        }
     }
 
     // Limpiar selección
@@ -1089,6 +1272,11 @@ document.addEventListener('DOMContentLoaded', function() {
         fieldContainer.classList.remove('has-selection');
         listEl.innerHTML = '';
         closeDropdown();
+        
+        // 🔓 Desbloquear unidad cuando se quita persona
+        if (window.onPersonaSeleccionada) {
+            window.onPersonaSeleccionada(false);
+        }
         searchInput.focus();
     }
 
