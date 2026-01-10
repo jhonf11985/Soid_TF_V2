@@ -1,4 +1,4 @@
-from urllib import request
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.db.models import Q, Count
@@ -51,10 +51,15 @@ from nuevo_creyente_app.models import NuevoCreyenteExpediente
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 import re
+from django.contrib.auth.decorators import permission_required
+from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
+from django.views.decorators.http import require_POST, require_GET
+from django.views.generic import DetailView, UpdateView
 
 
 @login_required
 @require_POST
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def miembro_finanzas_desbloquear(request, pk):
     if not (request.user.is_staff or request.user.is_superuser):
         return JsonResponse({"ok": False, "error": "No autorizado"}, status=403)
@@ -70,6 +75,7 @@ def miembro_finanzas_desbloquear(request, pk):
 
 @login_required
 @require_POST
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def miembro_finanzas_bloquear(request, pk):
     if not (request.user.is_staff or request.user.is_superuser):
         return JsonResponse({"ok": False, "error": "No autorizado"}, status=403)
@@ -80,6 +86,7 @@ def miembro_finanzas_bloquear(request, pk):
 
 @login_required
 @require_POST
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def miembro_privado_desbloquear(request, pk):
     # ✅ Solo admins (ajusta si quieres: is_staff en vez de is_superuser)
     if not (request.user.is_staff or request.user.is_superuser):
@@ -97,6 +104,7 @@ def miembro_privado_desbloquear(request, pk):
 
 @login_required
 @require_POST
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def miembro_privado_bloquear(request, pk):
     # admin iglesia o superadmin
     if not (request.user.is_staff or request.user.is_superuser):
@@ -107,6 +115,8 @@ def miembro_privado_bloquear(request, pk):
 
 
 @login_required
+@require_POST
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def enviar_a_nuevo_creyente(request, pk):
     miembro = get_object_or_404(Miembro, pk=pk)
 
@@ -155,6 +165,8 @@ def _safe_get_model(app_label, model_name):
 # -------------------------------------
 # DASHBOARD
 # -------------------------------------
+@login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembros_dashboard(request):
     miembros = Miembro.objects.filter(activo=True)
 
@@ -405,7 +417,9 @@ def miembros_dashboard(request):
 # -------------------------------------
 # FUNCIÓN AUXILIAR DE FILTRO DE MIEMBROS
 # -------------------------------------
-
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def filtrar_miembros(request, miembros_base):
     """
     Aplica todos los filtros del listado general de miembros.
@@ -597,7 +611,9 @@ def filtrar_miembros(request, miembros_base):
 # -------------------------------------
 # LISTA DE MIEMBROS
 # -------------------------------------
-
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembro_lista(request):
     """
     Listado general de miembros (versión normal y versión imprimible).
@@ -692,7 +708,8 @@ def notificar_nuevo_miembro(miembro, request=None):
 # -------------------------------------
 # CREAR MIEMBRO
 # -------------------------------------
-
+@login_required
+@permission_required("miembros_app.add_miembro", raise_exception=True)
 def miembro_crear(request):
     """
     Vista normal para crear un miembro.
@@ -789,7 +806,10 @@ def miembro_crear(request):
 # -------------------------------------
 # EDITAR MIEMBRO
 # -------------------------------------
-class MiembroUpdateView(View):
+class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    permission_required = "miembros_app.change_miembro"
+    raise_exception = True
+
     
     def get(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
@@ -1049,7 +1069,11 @@ class MiembroUpdateView(View):
 # -------------------------------------
 # DETALLE DEL MIEMBRO
 # -------------------------------------
-class MiembroDetailView(View):
+
+class MiembroDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    permission_required = "miembros_app.view_miembro"
+    raise_exception = True
+
     def get(self, request, pk):
         miembro = get_object_or_404(Miembro, pk=pk)
 
@@ -1211,6 +1235,9 @@ class MiembroDetailView(View):
 # -------------------------------------
 # AGREGAR FAMILIAR (VERSIÓN ANTIGUA)
 # -------------------------------------
+@login_required
+@require_POST
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def agregar_familiar(request, pk):
     miembro = get_object_or_404(Miembro, pk=pk)
 
@@ -1228,7 +1255,10 @@ def agregar_familiar(request, pk):
 
     return redirect("miembros_app:editar", pk=miembro.pk)
 
+
+
 @login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def miembro_enviar_ficha_email(request, pk):
     miembro = get_object_or_404(Miembro, pk=pk)
     config = ConfiguracionSistema.load()
@@ -1322,24 +1352,23 @@ def miembro_enviar_ficha_email(request, pk):
 # -------------------------------------
 # ELIMINAR FAMILIAR
 # -------------------------------------
+@login_required
+@permission_required("miembros_app.delete_miembrorelacion", raise_exception=True)
+@require_POST
 def eliminar_familiar(request, relacion_id):
-    """
-    Elimina una relación familiar (NO borra al miembro, solo la relación)
-    y vuelve a la pantalla de edición en la pestaña 'Familiares'.
-    Se permite GET para simplificar el botón 'Quitar'.
-    """
     relacion = get_object_or_404(MiembroRelacion, pk=relacion_id)
-    miembro_pk = relacion.miembro.pk  # para volver al miembro que estamos editando
+    miembro_pk = relacion.miembro.pk
 
-    # Eliminamos siempre que se llame a la vista
     relacion.delete()
     messages.success(request, "Familiar quitado correctamente.")
 
-    # Volvemos a la pestaña 'familiares' del mismo miembro
     url = reverse("miembros_app:editar", kwargs={"pk": miembro_pk})
     return redirect(f"{url}?tab=familiares")
 
 
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembro_ficha(request, pk):
     """
     Ficha pastoral imprimible para un miembro concreto.
@@ -1380,6 +1409,9 @@ def miembro_ficha(request, pk):
 # -------------------------------------
 # REPORTES - PANTALLA PRINCIPAL
 # -------------------------------------
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def reportes_miembros(request):
     """
     Pantalla principal de reportes del módulo de miembros.
@@ -1392,6 +1424,9 @@ def reportes_miembros(request):
 # -------------------------------------
 # REPORTE: LISTADO GENERAL IMPRIMIBLE
 # -------------------------------------
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def reporte_listado_miembros(request):
     """
     Alias del listado principal para usarlo desde la sección de reportes.
@@ -1403,6 +1438,9 @@ def reporte_listado_miembros(request):
 # REPORTE: FICHA PASTORAL DEL MIEMBRO
 # (segunda definición simplificada)
 # -------------------------------------
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembro_ficha(request, pk):
     """
     Ficha pastoral imprimible para un miembro concreto.
@@ -1443,6 +1481,9 @@ def miembro_ficha(request, pk):
 # --------------------------------------------
 # REPORTE: MIEMBROS QUE SE FUERON / TRASLADOS
 # --------------------------------------------
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def reporte_miembros_salida(request):
     """
     Reporte de miembros inactivos con filtros por fecha y razón de salida.
@@ -1523,7 +1564,9 @@ from collections import defaultdict
 from .models import Miembro, MiembroRelacion
 from core.utils_config import get_config
 
-
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def reporte_relaciones_familiares(request):
     """
     Reporte: Familias de la Iglesia
@@ -1807,6 +1850,9 @@ def _es_cabeza_familia(miembro_id, grupo_ids, relaciones_info):
 # -------------------------------------
 # REPORTE: CUMPLEAÑOS DEL MES
 # -------------------------------------
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def reporte_cumple_mes(request):
     """
     Reporte imprimible de los cumpleaños de un mes.
@@ -1901,6 +1947,9 @@ def reporte_cumple_mes(request):
 # -------------------------------------
 # REPORTE: MIEMBROS NUEVOS DEL MES
 # -------------------------------------
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def reporte_miembros_nuevos_mes(request):
     """
     Reporte de miembros que ingresaron a la iglesia en un mes concreto.
@@ -2039,6 +2088,9 @@ def reporte_miembros_nuevos_mes(request):
 # -------------------------------
 # CARTA DE SALIDA / TRASLADO
 # -------------------------------
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def carta_salida_miembro(request, pk):
     """
     Genera una carta imprimible de salida / traslado para un miembro.
