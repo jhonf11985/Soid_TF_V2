@@ -178,3 +178,13 @@ class MovimientoUnidadForm(forms.ModelForm):
             "concepto": forms.TextInput(attrs={"placeholder": "Ej: Ofrenda, Actividad, Compra, Transporte..."}),
             "descripcion": forms.Textarea(attrs={"rows": 3, "placeholder": "Opcional"}),
         }
+
+
+class MovimientoUnidadEditarForm(forms.ModelForm):
+    class Meta:
+        model = MovimientoUnidad
+        fields = ["fecha", "concepto"]
+        widgets = {
+            "fecha": forms.DateInput(attrs={"type": "date"}),
+            "concepto": forms.TextInput(attrs={"placeholder": "Ej: Ofrenda, Actividad, Compra, Transporte."}),
+        }

@@ -15,7 +15,7 @@ from .models import ReporteUnidadCierre
 from .forms import ReporteCierreForm
 from itertools import chain
 from miembros_app.models import Miembro
-from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriodoForm,MovimientoUnidadForm
+from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriodoForm,MovimientoUnidadForm,MovimientoUnidadEditarForm
 from datetime import datetime
 import datetime
 
@@ -2842,6 +2842,7 @@ def unidad_movimiento_crear(request, pk):
     })
 
 
+
 @login_required
 def unidad_movimiento_editar(request, pk, mov_id):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -2855,17 +2856,17 @@ def unidad_movimiento_editar(request, pk, mov_id):
         return redirect(url_finanzas)
 
     if request.method == "POST":
-        form = MovimientoUnidadForm(request.POST, instance=mov)
+        form = MovimientoUnidadEditarForm(request.POST, instance=mov)
         if form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+            obj.save(update_fields=["fecha", "concepto", "actualizado_en"])
             messages.success(request, "Movimiento actualizado correctamente.")
             return redirect(url_finanzas)
         else:
             messages.error(request, "Revisa los campos marcados.")
     else:
-        form = MovimientoUnidadForm(instance=mov)
+        form = MovimientoUnidadEditarForm(instance=mov)
 
-    # ✅ Usa TU plantilla (la que ya creaste)
     return render(request, "estructura_app/unidad_finanza_form.html", {
         "unidad": unidad,
         "form": form,
