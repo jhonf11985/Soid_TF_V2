@@ -381,17 +381,75 @@ def unidad_detalle(request, pk):
     except Exception:
         f_mes = hoy.month
 
-    movimientos_qs = (
+
+    # -----------------------------
+    # A) Movimientos MANUALES (Estructura)
+    # -----------------------------
+    movimientos_manual_qs = (
         MovimientoUnidad.objects
         .filter(unidad=unidad, fecha__year=f_anio, fecha__month=f_mes)
         .order_by("-fecha", "-id")
     )
+    movimientos_manual = movimientos_manual_qs[:50]
 
-    movimientos = movimientos_qs[:50]
+    ingresos_manual = movimientos_manual_qs.filter(
+        tipo=MovimientoUnidad.TIPO_INGRESO, anulado=False
+    ).aggregate(s=Sum("monto"))["s"] or 0
 
-    ingresos_total = movimientos_qs.filter(tipo=MovimientoUnidad.TIPO_INGRESO, anulado=False).aggregate(s=Sum("monto"))["s"] or 0
-    egresos_total = movimientos_qs.filter(tipo=MovimientoUnidad.TIPO_EGRESO, anulado=False).aggregate(s=Sum("monto"))["s"] or 0
+    egresos_manual = movimientos_manual_qs.filter(
+        tipo=MovimientoUnidad.TIPO_EGRESO, anulado=False
+    ).aggregate(s=Sum("monto"))["s"] or 0
+
+
+    # -----------------------------
+    # B) Movimientos DESDE FINANZAS (Finanzas)
+    # -----------------------------
+    movimientos_finanzas = []
+    ingresos_finanzas = 0
+    egresos_finanzas = 0
+
+    from django.conf import settings
+
+    FINANZAS_APPS = ("finanzas_app",)  # ajusta si tu app se llama distinto
+    finanzas_activo = any(
+        (app == a or app.endswith(f".{a}")) for a in FINANZAS_APPS for app in settings.INSTALLED_APPS
+    )
+
+    if finanzas_activo:
+        try:
+            from finanzas_app.models import MovimientoFinanciero
+
+            movimientos_finanzas_qs = (
+                MovimientoFinanciero.objects
+                .filter(unidad=unidad, fecha__year=f_anio, fecha__month=f_mes)
+                .select_related("categoria")
+                .order_by("-fecha", "-id")
+            )
+
+            movimientos_finanzas = movimientos_finanzas_qs[:50]
+
+            # Totales (no contamos anulado)
+            base_ok = movimientos_finanzas_qs.exclude(estado="anulado")
+
+            ingresos_finanzas = base_ok.filter(tipo="ingreso").aggregate(s=Sum("monto"))["s"] or 0
+            egresos_finanzas = base_ok.filter(tipo="egreso").aggregate(s=Sum("monto"))["s"] or 0
+
+        except Exception:
+            # Si por cualquier razón no está disponible, no rompemos la vista.
+            movimientos_finanzas = []
+            ingresos_finanzas = 0
+            egresos_finanzas = 0
+
+
+    # -----------------------------
+    # Totales combinados (para las métricas)
+    # -----------------------------
+    ingresos_total = ingresos_manual + ingresos_finanzas
+    egresos_total = egresos_manual + egresos_finanzas
     balance = ingresos_total - egresos_total
+
+    # Alias para no romper plantillas viejas que usan "movimientos"
+    movimientos = movimientos_manual
 
 
     return render(request, "estructura_app/unidad_detalle.html", {
@@ -406,6 +464,10 @@ def unidad_detalle(request, pk):
         "ingresos_total": ingresos_total,
         "egresos_total": egresos_total,
         "balance": balance,
+        "movimientos": movimientos,   
+        "movimientos_finanzas": movimientos_finanzas,
+        "movimientos_manual": movimientos_manual,
+
 
 
         # ✅ ESTE ES EL TOTAL REAL (participación + trabajo + sin rol)

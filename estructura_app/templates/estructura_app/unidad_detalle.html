@@ -112,7 +112,6 @@
             <span class="material-icons">info</span>
             Información
         </button>
-                </button>
             <button type="button" class="odoo-tab" data-tab="resumen">
             <span class="material-icons">analytics</span>
             Resumen
@@ -598,7 +597,6 @@
   {% endif %}
 </div>
 
-
 <!-- TAB: Finanzas -->
 <div class="odoo-tab-content" id="tab-finanzas">
 
@@ -639,6 +637,66 @@
     </div>
   </div>
 
+  <!-- Movimientos desde Finanzas -->
+  <div style="margin: 14px 0 10px;">
+    <div class="odoo-section-title" style="display:flex; align-items:center; gap:8px;">
+      <span class="material-icons">account_balance_wallet</span>
+      <strong>Movimientos registrados en Finanzas</strong>
+    </div>
+  </div>
+
+  <div class="odoo-table-wrapper" style="margin-bottom: 14px;">
+    <table class="odoo-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Categoría</th>
+          <th>Descripción</th>
+          <th style="text-align:right;">Monto</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if movimientos_finanzas %}
+          {% for mf in movimientos_finanzas %}
+          <tr class="{% if mf.estado == 'anulado' %}row-muted{% endif %}">
+            <td>{{ mf.fecha }}</td>
+            <td>
+              {% if mf.tipo == "ingreso" %}
+                <span class="odoo-badge odoo-badge-success">Ingreso</span>
+              {% else %}
+                <span class="odoo-badge odoo-badge-danger">Egreso</span>
+              {% endif %}
+            </td>
+            <td><strong>{{ mf.categoria }}</strong></td>
+            <td>
+              {{ mf.descripcion|default:"—" }}
+              {% if mf.referencia %}<div class="text-muted" style="margin-top:2px;">Ref: {{ mf.referencia }}</div>{% endif %}
+            </td>
+            <td style="text-align:right;">{{ mf.monto }}</td>
+            <td>
+              <span class="odoo-badge odoo-badge-neutral">{{ mf.get_estado_display }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-muted">No hay movimientos de Finanzas para este período.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Movimientos manuales (Estructura) -->
+  <div style="margin: 14px 0 10px;">
+    <div class="odoo-section-title" style="display:flex; align-items:center; gap:8px;">
+      <span class="material-icons">edit_note</span>
+      <strong>Movimientos manuales (Estructura)</strong>
+    </div>
+  </div>
+
   <div class="odoo-table-wrapper">
     <table class="odoo-table">
       <thead>
@@ -651,7 +709,8 @@
         </tr>
       </thead>
       <tbody>
-        {% for m in movimientos %}
+        {% for m in movimientos_manual %}
+
         <tr class="{% if m.anulado %}row-muted{% endif %}">
           <td>{{ m.fecha }}</td>
           <td>

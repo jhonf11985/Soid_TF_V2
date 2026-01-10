@@ -45,7 +45,7 @@
             <!-- CONTENIDO EN DOS COLUMNAS -->
             <div class="odoo-form-content">
                 
-                <!-- COLUMNA IZQUIERDA -->
+                <!-- COLUMNA IZQUIERDA: Datos del egreso -->
                 <div class="odoo-form-col">
                     <div class="odoo-field-row">
                         <label>Fecha</label>
@@ -72,7 +72,54 @@
                         </div>
                     </div>
 
-                    <!-- AUTOCOMPLETE DE MIEMBRO - ESTILO CHIP -->
+                    <div class="odoo-field-row">
+                        <label>Forma de pago</label>
+                        <div class="odoo-field-value">
+                            {{ form.forma_pago }}
+                            {% if form.forma_pago.errors %}<span class="odoo-error">{{ form.forma_pago.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Campo condicional: solo si forma de pago es transferencia o cheque -->
+                    <div class="odoo-field-row odoo-field-conditional" id="field-referencia" style="display: none;">
+                        <label>Referencia</label>
+                        <div class="odoo-field-value">
+                            {{ form.referencia }}
+                            {% if form.referencia.errors %}<span class="odoo-error">{{ form.referencia.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: Clasificación y destino -->
+                <div class="odoo-form-col">
+                    <div class="odoo-field-row">
+                        <label>Cuenta</label>
+                        <div class="odoo-field-value">
+                            {{ form.cuenta }}
+                            {% if form.cuenta.errors %}<span class="odoo-error">{{ form.cuenta.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <!-- SEPARADOR: Destino del egreso -->
+                    <div class="odoo-field-separator">
+                        <span>Destino del egreso</span>
+                        <small>(selecciona uno)</small>
+                    </div>
+
+                    <!-- Unidad (si módulo Estructura activo) -->
+                    {% if MODULOS_ACTIVOS.Estructura %}
+                    <div class="odoo-field-row">
+                        <label>Unidad</label>
+                        <div class="odoo-field-value">
+                            {{ form.unidad }}
+                            {% if form.unidad.errors %}
+                                <span class="odoo-error">{{ form.unidad.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Beneficiario (autocomplete) -->
                     <div class="odoo-field-row">
                         <label>Beneficiario</label>
                         <div class="odoo-field-value autocomplete-wrapper" id="autocomplete-persona">
@@ -118,34 +165,6 @@
                                 </div>
                             </div>
 
-                        </div>
-                    </div>
-                </div>
-
-                <!-- COLUMNA DERECHA -->
-                <div class="odoo-form-col">
-                    <div class="odoo-field-row">
-                        <label>Cuenta</label>
-                        <div class="odoo-field-value">
-                            {{ form.cuenta }}
-                            {% if form.cuenta.errors %}<span class="odoo-error">{{ form.cuenta.errors.0 }}</span>{% endif %}
-                        </div>
-                    </div>
-
-                    <div class="odoo-field-row">
-                        <label>Forma de pago</label>
-                        <div class="odoo-field-value">
-                            {{ form.forma_pago }}
-                            {% if form.forma_pago.errors %}<span class="odoo-error">{{ form.forma_pago.errors.0 }}</span>{% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Campo condicional: solo si forma de pago es transferencia o cheque -->
-                    <div class="odoo-field-row odoo-field-conditional" id="field-referencia" style="display: none;">
-                        <label>Referencia</label>
-                        <div class="odoo-field-value">
-                            {{ form.referencia }}
-                            {% if form.referencia.errors %}<span class="odoo-error">{{ form.referencia.errors.0 }}</span>{% endif %}
                         </div>
                     </div>
                 </div>
@@ -868,6 +887,74 @@
         -webkit-appearance: none;
         margin: 0;
     }
+
+    /* =====================================
+       SEPARADOR DE SECCIÓN EN FORMULARIO
+       ===================================== */
+    .odoo-field-separator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0 12px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-field-separator span {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--odoo-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .odoo-field-separator small {
+        font-size: 11px;
+        color: #9ca3af;
+        font-weight: 400;
+        font-style: italic;
+    }
+
+    /* =====================================
+       CAMPOS BLOQUEADOS (BLOQUEO MUTUO)
+       ===================================== */
+    .field-disabled {
+        opacity: 0.5;
+        pointer-events: none;
+        position: relative;
+    }
+
+    .field-disabled::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(248, 249, 250, 0.5);
+        cursor: not-allowed;
+    }
+
+    .field-disabled select,
+    .field-disabled input {
+        background-color: #f1f3f4 !important;
+        cursor: not-allowed;
+    }
+
+    .autocomplete-wrapper.field-disabled .autocomplete-search {
+        background-color: #f1f3f4 !important;
+        color: #9ca3af;
+    }
+
+    .autocomplete-wrapper.field-disabled .autocomplete-search::placeholder {
+        color: #9ca3af;
+        font-style: italic;
+    }
+
+    .odoo-field-row.field-disabled label::after {
+        content: ' 🔒';
+        font-size: 12px;
+    }
 </style>
 
 {% endblock finanzas_content %}
@@ -895,6 +982,82 @@ document.addEventListener('DOMContentLoaded', function() {
         formaPagoSelect.addEventListener('change', toggleReferencia);
         toggleReferencia();
     }
+
+    // ====================================
+    // BLOQUEO MUTUO: UNIDAD <-> BENEFICIARIO
+    // Si se selecciona unidad, se bloquea beneficiario y viceversa
+    // ====================================
+    const unidadSelect = document.getElementById('id_unidad');
+    const personaWrapper = document.getElementById('autocomplete-persona');
+    const personaHiddenInput = document.getElementById('id_persona_asociada');
+    const personaSearchInput = document.getElementById('search-persona');
+    const personaChip = document.getElementById('chip-persona');
+    const unidadFieldRow = unidadSelect?.closest('.odoo-field-row');
+    const personaFieldRow = personaWrapper?.closest('.odoo-field-row');
+
+    let unidadBloqueada = false;
+    let personaBloqueada = false;
+
+    function bloquearUnidad(bloquear) {
+        if (!unidadSelect) return;
+        
+        unidadBloqueada = bloquear;
+        unidadSelect.disabled = bloquear;
+        
+        if (bloquear) {
+            unidadSelect.value = '';
+            unidadFieldRow?.classList.add('field-disabled');
+            unidadSelect.title = 'Debes quitar el beneficiario para seleccionar una unidad';
+        } else {
+            unidadFieldRow?.classList.remove('field-disabled');
+            unidadSelect.title = '';
+        }
+    }
+
+    function bloquearPersona(bloquear) {
+        if (!personaWrapper) return;
+        
+        personaBloqueada = bloquear;
+        
+        if (bloquear) {
+            if (personaHiddenInput) personaHiddenInput.value = '';
+            if (personaChip) personaChip.style.display = 'none';
+            if (personaSearchInput) {
+                personaSearchInput.style.display = '';
+                personaSearchInput.value = '';
+                personaSearchInput.disabled = true;
+                personaSearchInput.placeholder = 'Quita la unidad para seleccionar beneficiario';
+            }
+            personaWrapper.classList.add('field-disabled');
+            personaFieldRow?.classList.add('field-disabled');
+        } else {
+            if (personaSearchInput) {
+                personaSearchInput.disabled = false;
+                personaSearchInput.placeholder = 'Escriba para buscar...';
+            }
+            personaWrapper.classList.remove('field-disabled');
+            personaFieldRow?.classList.remove('field-disabled');
+        }
+    }
+
+    if (unidadSelect) {
+        unidadSelect.addEventListener('change', function() {
+            const tieneUnidad = this.value && this.value !== '';
+            bloquearPersona(tieneUnidad);
+        });
+        
+        if (unidadSelect.value && unidadSelect.value !== '') {
+            bloquearPersona(true);
+        }
+    }
+
+    window.isPersonaBloqueada = function() {
+        return personaBloqueada;
+    };
+
+    window.onPersonaSeleccionada = function(tienePersona) {
+        bloquearUnidad(tienePersona);
+    };
 
     // ====================================
     // AUTOCOMPLETE DE MIEMBROS - ESTILO CHIP
@@ -997,6 +1160,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Seleccionar miembro - mostrar chip
     function selectMiembro(id, nombre, codigo) {
+        // Verificar si persona está bloqueada
+        if (window.isPersonaBloqueada && window.isPersonaBloqueada()) {
+            return;
+        }
+        
         // Guardar valor
         hiddenInput.value = id;
         
@@ -1013,6 +1181,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Cerrar dropdown
         closeDropdown();
+        
+        // 🔒 Bloquear unidad cuando se selecciona beneficiario
+        if (window.onPersonaSeleccionada) {
+            window.onPersonaSeleccionada(true);
+        }
     }
 
     // Limpiar selección
@@ -1025,6 +1198,11 @@ document.addEventListener('DOMContentLoaded', function() {
         listEl.innerHTML = '';
         closeDropdown();
         searchInput.focus();
+        
+        // 🔓 Desbloquear unidad cuando se quita beneficiario
+        if (window.onPersonaSeleccionada) {
+            window.onPersonaSeleccionada(false);
+        }
     }
 
     // Buscar miembros

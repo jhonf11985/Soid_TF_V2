@@ -257,6 +257,7 @@ class MovimientoEgresoForm(forms.ModelForm):
             "persona_asociada",
             "descripcion",
             "referencia",
+              "unidad",
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}),
@@ -281,6 +282,26 @@ class MovimientoEgresoForm(forms.ModelForm):
         self.fields["cuenta"].queryset = CuentaFinanciera.objects.filter(
             esta_activa=True
         ).order_by("nombre")
+        # --------------------------------------------
+        # UNIDAD (solo si Estructura está activa)
+        # --------------------------------------------
+        estructura_activa = is_module_enabled("Estructura", "Unidad", "Unidades")
+
+        if not estructura_activa:
+            self.fields.pop("unidad", None)
+        else:
+            try:
+                Unidad = apps.get_model("estructura_app", "Unidad")
+                self.fields["unidad"].queryset = (
+                    Unidad.objects
+                    .filter(activa=True, visible=True)
+                    .order_by("orden", "nombre")
+                )
+                self.fields["unidad"].required = False
+                self.fields["unidad"].label = "Unidad"
+                self.fields["unidad"].help_text = "Opcional."
+            except Exception:
+                self.fields.pop("unidad", None)
 
         # IMPORTANTE: El campo persona_asociada ahora se maneja con autocomplete
         # Ocultamos el widget por defecto y lo manejamos con JS
