@@ -26,10 +26,16 @@ from .models import (
     UnidadMembresia,
     UnidadCargo,
     ActividadUnidad,
-    ReporteUnidadPeriodo,ReporteUnidadCierre, MovimientoUnidad
+    ReporteUnidadPeriodo,ReporteUnidadCierre, MovimientoUnidad,MovimientoUnidadLog
 )
 
 import re
+
+def _get_client_ip(request):
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
 
 
 
@@ -2824,7 +2830,21 @@ def unidad_movimiento_crear(request, pk):
             obj = form.save(commit=False)
             obj.unidad = unidad
             obj.creado_por = request.user
+            obj.actualizado_por = request.user
             obj.save()
+
+            MovimientoUnidadLog.objects.create(
+                movimiento=obj,
+                accion=MovimientoUnidadLog.ACCION_CREAR,
+                usuario=request.user,
+                fecha_antes=None,
+                fecha_despues=obj.fecha,
+                concepto_antes="",
+                concepto_despues=obj.concepto or "",
+                ip=_get_client_ip(request),
+                user_agent=(request.META.get("HTTP_USER_AGENT") or "")[:255],
+            )
+
             messages.success(request, "Movimiento registrado correctamente.")
             url = reverse("estructura_app:unidad_detalle", args=[unidad.pk])
             return redirect(f"{url}?tab=finanzas")
@@ -2856,16 +2876,36 @@ def unidad_movimiento_editar(request, pk, mov_id):
         return redirect(url_finanzas)
 
     if request.method == "POST":
+        old_fecha = mov.fecha
+        old_concepto = mov.concepto
+
         form = MovimientoUnidadEditarForm(request.POST, instance=mov)
         if form.is_valid():
             obj = form.save(commit=False)
-            obj.save(update_fields=["fecha", "concepto", "actualizado_en"])
+            obj.actualizado_por = request.user
+            obj.save(update_fields=["fecha", "concepto", "actualizado_por", "actualizado_en"])
+
+            # Solo crea log si hubo cambios reales
+            if old_fecha != obj.fecha or (old_concepto or "") != (obj.concepto or ""):
+                MovimientoUnidadLog.objects.create(
+                    movimiento=obj,
+                    accion=MovimientoUnidadLog.ACCION_EDITAR,
+                    usuario=request.user,
+                    fecha_antes=old_fecha,
+                    fecha_despues=obj.fecha,
+                    concepto_antes=old_concepto or "",
+                    concepto_despues=obj.concepto or "",
+                    ip=_get_client_ip(request),
+                    user_agent=(request.META.get("HTTP_USER_AGENT") or "")[:255],
+                )
+
             messages.success(request, "Movimiento actualizado correctamente.")
             return redirect(url_finanzas)
         else:
             messages.error(request, "Revisa los campos marcados.")
     else:
         form = MovimientoUnidadEditarForm(instance=mov)
+
 
     return render(request, "estructura_app/unidad_finanza_form.html", {
         "unidad": unidad,
@@ -2882,11 +2922,29 @@ def unidad_movimiento_anular(request, pk, mov_id):
     mov = get_object_or_404(MovimientoUnidad, pk=mov_id, unidad=unidad)
 
     motivo = (request.POST.get("motivo") or "").strip()
+
+    old_fecha = mov.fecha
+    old_concepto = mov.concepto
+
     mov.anulado = True
     mov.motivo_anulacion = motivo
-    mov.save(update_fields=["anulado", "motivo_anulacion", "actualizado_en"])
+    mov.actualizado_por = request.user
+    mov.save(update_fields=["anulado", "motivo_anulacion", "actualizado_por", "actualizado_en"])
+
+    MovimientoUnidadLog.objects.create(
+        movimiento=mov,
+        accion=MovimientoUnidadLog.ACCION_ANULAR,
+        usuario=request.user,
+        fecha_antes=old_fecha,
+        fecha_despues=mov.fecha,
+        concepto_antes=old_concepto or "",
+        concepto_despues=mov.concepto or "",
+        ip=_get_client_ip(request),
+        user_agent=(request.META.get("HTTP_USER_AGENT") or "")[:255],
+    )
 
     messages.success(request, "Movimiento anulado correctamente.")
+
 
     url_detalle = reverse("estructura_app:unidad_detalle", args=[unidad.pk])
     return redirect(f"{url_detalle}?tab=finanzas")

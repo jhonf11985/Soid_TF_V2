@@ -376,7 +376,6 @@ class UnidadCargo(models.Model):
         return f"{self.rol} - {self.miembo_fk} ({self.unidad})"
 
 
-
 class MovimientoUnidad(models.Model):
     TIPO_INGRESO = "INGRESO"
     TIPO_EGRESO = "EGRESO"
@@ -397,22 +396,29 @@ class MovimientoUnidad(models.Model):
 
     monto = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     concepto = models.CharField(max_length=180)
-
     descripcion = models.TextField(blank=True, default="")
 
-    # Control simple (sin complicarnos todavía)
+    # Control
     anulado = models.BooleanField(default=False)
     motivo_anulacion = models.CharField(max_length=180, blank=True, default="")
 
+    # 🔍 AUDITORÍA NIVEL 1
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
         related_name="movimientos_unidad_creados",
     )
-    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="movimientos_unidad_actualizados",
+    )
 
+    creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -425,3 +431,45 @@ class MovimientoUnidad(models.Model):
 
     def __str__(self):
         return f"{self.unidad} · {self.get_tipo_display()} · {self.fecha} · {self.monto}"
+
+    
+class MovimientoUnidadLog(models.Model):
+    ACCION_CREAR = "CREAR"
+    ACCION_EDITAR = "EDITAR"
+    ACCION_ANULAR = "ANULAR"
+    ACCIONES = (
+        (ACCION_CREAR, "Crear"),
+        (ACCION_EDITAR, "Editar"),
+        (ACCION_ANULAR, "Anular"),
+    )
+
+    movimiento = models.ForeignKey(
+        "MovimientoUnidad",
+        on_delete=models.CASCADE,
+        related_name="logs",
+    )
+    accion = models.CharField(max_length=10, choices=ACCIONES)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="movimientos_unidad_logs",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    # Solo guardamos lo relevante (porque solo editas fecha y concepto)
+    fecha_antes = models.DateField(null=True, blank=True)
+    fecha_despues = models.DateField(null=True, blank=True)
+
+    concepto_antes = models.CharField(max_length=255, blank=True, default="")
+    concepto_despues = models.CharField(max_length=255, blank=True, default="")
+
+    # Extra opcional útil
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return f"{self.movimiento_id} {self.accion} {self.creado_en:%Y-%m-%d %H:%M}"

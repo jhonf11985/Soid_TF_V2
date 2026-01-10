@@ -30,15 +30,24 @@
 
   <!-- BARRA DE ACCIONES -->
   <div class="odoo-actionbar">
-    <div class="odoo-actionbar-left">
-      <button type="submit" form="mov-form" class="odoo-btn odoo-btn-primary">
-        <span class="material-icons">save</span>
-        Guardar
-      </button>
-      <a href="{% url 'estructura_app:unidad_detalle' unidad.pk %}?tab=finanzas" class="odoo-btn odoo-btn-secondary">
-        Cancelar
-      </a>
-    </div>
+<div class="odoo-actionbar-left">
+  <button type="submit" form="mov-form" class="odoo-btn odoo-btn-primary">
+    <span class="material-icons">save</span>
+    Guardar
+  </button>
+
+  {% if modo == "editar" %}
+    <button type="button" class="odoo-btn odoo-btn-secondary" id="btn-historial">
+      <span class="material-icons">history</span>
+      Historial
+    </button>
+  {% endif %}
+
+  <a href="{% url 'estructura_app:unidad_detalle' unidad.pk %}?tab=finanzas" class="odoo-btn odoo-btn-secondary">
+    Cancelar
+  </a>
+</div>
+
   </div>
 
   <!-- FORMULARIO PRINCIPAL -->
@@ -124,7 +133,200 @@
 
 </div>
 
+{% if modo == "editar" %}
+  <div class="odoo-modal" id="modal-historial" aria-hidden="true">
+    <div class="odoo-modal-backdrop" data-close="1"></div>
+
+    <div class="odoo-modal-card" role="dialog" aria-modal="true" aria-labelledby="historial-title">
+      <div class="odoo-modal-header">
+        <div>
+          <div id="historial-title" class="odoo-modal-title">Historial del movimiento</div>
+          <div class="odoo-modal-subtitle">
+            {{ unidad.codigo|default:unidad.nombre }} · {{ mov.get_tipo_display|default:mov.tipo }} · RD$ {{ mov.monto }}
+          </div>
+        </div>
+        <button type="button" class="odoo-icon-btn" data-close="1" aria-label="Cerrar">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <div class="odoo-modal-body">
+        {% if mov.logs.all %}
+          <div class="odoo-table">
+            <div class="odoo-table-head">
+              <div>Fecha</div>
+              <div>Acción</div>
+              <div>Usuario</div>
+              <div>Antes</div>
+              <div>Después</div>
+              <div>IP</div>
+            </div>
+
+            {% for log in mov.logs.all %}
+              <div class="odoo-table-row">
+                <div class="muted">{{ log.creado_en|date:"d/m/Y H:i" }}</div>
+                <div>
+                  <span class="badge badge-{{ log.accion|lower }}">{{ log.get_accion_display }}</span>
+                </div>
+                <div>{{ log.usuario|default:"—" }}</div>
+                <div class="mono">
+                  {{ log.fecha_antes|default:"—" }} · {{ log.concepto_antes|default:"—" }}
+                </div>
+                <div class="mono">
+                  {{ log.fecha_despues|default:"—" }} · {{ log.concepto_despues|default:"—" }}
+                </div>
+                <div class="muted mono">{{ log.ip|default:"—" }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state">
+            No hay historial aún.
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="odoo-modal-footer">
+        <button type="button" class="odoo-btn odoo-btn-secondary" data-close="1">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
 <style>
+  /* =====================================
+   MODAL - HISTORIAL
+   ===================================== */
+.odoo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+}
+.odoo-modal.is-open { display: block; }
+
+.odoo-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+}
+
+.odoo-modal-card {
+  position: relative;
+  width: min(920px, calc(100% - 24px));
+  margin: 70px auto;
+  background: var(--odoo-bg);
+  border: 1px solid var(--odoo-border);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.18);
+  overflow: hidden;
+}
+
+.odoo-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--odoo-border);
+  background: var(--odoo-bg);
+}
+.odoo-modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--odoo-text);
+}
+.odoo-modal-subtitle {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--odoo-text-muted);
+}
+
+.odoo-modal-body {
+  padding: 14px 16px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.odoo-modal-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--odoo-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.odoo-icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--odoo-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+}
+.odoo-icon-btn:hover {
+  background: var(--odoo-bg-gray);
+  color: var(--odoo-text);
+}
+
+/* Tabla tipo “list” */
+.odoo-table {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--odoo-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.odoo-table-head,
+.odoo-table-row {
+  display: grid;
+  grid-template-columns: 140px 110px 1fr 1.2fr 1.2fr 140px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+}
+.odoo-table-head {
+  background: var(--odoo-bg-gray);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--odoo-text);
+  border-bottom: 1px solid var(--odoo-border);
+}
+.odoo-table-row {
+  font-size: 12px;
+  border-bottom: 1px solid var(--odoo-border);
+}
+.odoo-table-row:last-child { border-bottom: none; }
+
+.muted { color: var(--odoo-text-muted); }
+.mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--odoo-border);
+  background: var(--odoo-bg-gray);
+}
+.badge-crear { }
+.badge-editar { }
+.badge-anular { }
+
+.empty-state {
+  padding: 14px;
+  border: 1px dashed var(--odoo-border);
+  border-radius: 8px;
+  color: var(--odoo-text-muted);
+  font-size: 13px;
+}
+
     /* =====================================
        ODOO FORM - ESTILO BASE
        ===================================== */
@@ -435,5 +637,36 @@
         }
     }
 </style>
+{% if modo == "editar" %}
+<script>
+(function () {
+  const modal = document.getElementById("modal-historial");
+  const btn = document.getElementById("btn-historial");
+
+  if (!modal || !btn) return;
+
+  function openModal() {
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
+  function closeModal() {
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+
+  btn.addEventListener("click", openModal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target && e.target.dataset && e.target.dataset.close === "1") closeModal();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.classList.contains("is-open")) closeModal();
+  });
+})();
+</script>
+{% endif %}
 
 {% endblock %}
