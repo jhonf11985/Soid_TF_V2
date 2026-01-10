@@ -1,0 +1,851 @@
+{% extends "core/base_sidebar.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+  .perm-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  /* Header */
+  .perm-header {
+    margin-bottom: 24px;
+  }
+  .perm-header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #212121;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .perm-header h1 .material-icons {
+    color: #0097a7;
+    font-size: 28px;
+  }
+  .perm-header p {
+    margin: 8px 0 0;
+    color: #616161;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Grid principal */
+  .perm-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+  }
+
+  /* Cards */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, #fafafa, #fff);
+  }
+  .card-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #212121;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-header h3 .material-icons {
+    color: #0097a7;
+    font-size: 20px;
+  }
+  .card-body {
+    padding: 16px 20px;
+  }
+
+  /* Badge / Pill */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: #e0f7fa;
+    color: #00838f;
+  }
+  .badge-neutral {
+    background: #f5f5f5;
+    color: #616161;
+  }
+
+  /* Lista de roles */
+  .role-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .role-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    text-decoration: none;
+    color: #424242;
+    background: #fafafa;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 14px;
+  }
+  .role-item .material-icons {
+    color: #9e9e9e;
+    font-size: 20px;
+    transition: color 0.2s ease;
+  }
+  .role-item:hover {
+    background: #e0f7fa;
+    border-color: #b2ebf2;
+  }
+  .role-item:hover .material-icons {
+    color: #0097a7;
+  }
+  .role-item.active {
+    background: #fff;
+    border-color: #0097a7;
+    color: #00838f;
+    box-shadow: 0 2px 8px rgba(0,151,167,0.15);
+  }
+  .role-item.active .material-icons {
+    color: #0097a7;
+  }
+
+  .hint-text {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #757575;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .hint-text .material-icons {
+    font-size: 16px;
+    color: #9e9e9e;
+  }
+
+  /* Split layout */
+  .split-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+  }
+
+  /* Módulos de permisos */
+  .perm-module {
+    margin-bottom: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .perm-module:last-child {
+    margin-bottom: 0;
+  }
+  .perm-module-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+  }
+  .perm-module-header:hover {
+    background: linear-gradient(135deg, #00838f 0%, #006064 100%);
+  }
+  .perm-module-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .perm-module-icon {
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .perm-module-icon .material-icons {
+    font-size: 20px;
+  }
+  .perm-module-name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .perm-module-code {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  .perm-module-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .perm-module-count {
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .perm-module-selected {
+    background: rgba(255,255,255,0.3);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .perm-module-toggle {
+    width: 28px;
+    height: 28px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+  }
+  .perm-module-toggle .material-icons {
+    font-size: 20px;
+  }
+  .perm-module.collapsed .perm-module-toggle {
+    transform: rotate(-90deg);
+  }
+  .perm-module-content {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+  }
+  .perm-module.collapsed .perm-module-content {
+    max-height: 0;
+  }
+
+  /* Controles de módulos */
+  .module-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    background: #f5f5f5;
+    border-radius: 10px;
+  }
+  .module-controls-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #616161;
+  }
+  .module-controls-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: #fff;
+    color: #616161;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .btn-mini:hover {
+    background: #0097a7;
+    border-color: #0097a7;
+    color: #fff;
+  }
+  .btn-mini .material-icons {
+    font-size: 16px;
+  }
+
+  /* Tabla de permisos */
+  .perm-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .perm-table thead {
+    background: #f5f5f5;
+  }
+  .perm-table th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #757575;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .perm-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #424242;
+  }
+  .perm-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .perm-table tbody tr:hover {
+    background: #fafafa;
+  }
+  .perm-name {
+    font-weight: 500;
+    color: #212121;
+  }
+  .perm-codename {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 12px;
+    color: #9e9e9e;
+    background: #f5f5f5;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* Checkbox personalizado */
+  .checkbox-custom {
+    position: relative;
+    width: 20px;
+    height: 20px;
+  }
+  .checkbox-custom input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .checkbox-custom .checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    border: 2px solid #bdbdbd;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+  }
+  .checkbox-custom input:checked + .checkmark {
+    background: #0097a7;
+    border-color: #0097a7;
+  }
+  .checkbox-custom .checkmark:after {
+    content: '';
+    position: absolute;
+    display: none;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .checkbox-custom input:checked + .checkmark:after {
+    display: block;
+  }
+  .checkbox-custom input:hover + .checkmark {
+    border-color: #0097a7;
+  }
+
+  .empty-perms {
+    padding: 20px;
+    text-align: center;
+    color: #9e9e9e;
+    font-size: 13px;
+  }
+  .empty-perms .material-icons {
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+  }
+
+  /* Panel de usuarios */
+  .users-panel {
+    position: sticky;
+    top: 24px;
+  }
+  .users-panel .card-body {
+    padding: 0;
+  }
+  .users-search {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .users-search input {
+    width: 100%;
+    padding: 10px 14px 10px 40px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Poppins', sans-serif;
+    background: #fafafa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%239e9e9e' viewBox='0 0 24 24'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E") 12px center no-repeat;
+    background-size: 18px;
+    transition: all 0.2s ease;
+  }
+  .users-search input:focus {
+    outline: none;
+    border-color: #0097a7;
+    background-color: #fff;
+  }
+
+  .users-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .users-list::-webkit-scrollbar {
+    width: 6px;
+  }
+  .users-list::-webkit-scrollbar-track {
+    background: #f5f5f5;
+  }
+  .users-list::-webkit-scrollbar-thumb {
+    background: #bdbdbd;
+    border-radius: 3px;
+  }
+
+  .user-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .user-item:hover {
+    background: #f5f5f5;
+  }
+  .user-item input {
+    display: none;
+  }
+  .user-item .user-check {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #bdbdbd;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .user-item .user-check .material-icons {
+    font-size: 16px;
+    color: #fff;
+    display: none;
+  }
+  .user-item input:checked + .user-check {
+    background: #0097a7;
+    border-color: #0097a7;
+  }
+  .user-item input:checked + .user-check .material-icons {
+    display: block;
+  }
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #0097a7, #00838f);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .user-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .user-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: #212121;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .user-meta {
+    font-size: 12px;
+    color: #9e9e9e;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .user-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .user-badge.superuser {
+    background: #fff3e0;
+    color: #e65100;
+  }
+  .user-badge.staff {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+
+  /* Botones */
+  .btn-actions {
+    padding: 16px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    border: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #0097a7, #00838f);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,151,167,0.3);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #00838f, #006064);
+    box-shadow: 0 4px 12px rgba(0,151,167,0.4);
+    transform: translateY(-1px);
+  }
+  .btn-primary .material-icons {
+    font-size: 18px;
+  }
+  .btn-secondary {
+    background: #fff;
+    color: #616161;
+    border: 1px solid #e0e0e0;
+  }
+  .btn-secondary:hover {
+    background: #f5f5f5;
+    border-color: #bdbdbd;
+  }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .perm-grid {
+      grid-template-columns: 1fr;
+    }
+    .split-layout {
+      grid-template-columns: 1fr;
+    }
+    .users-panel {
+      position: static;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .perm-wrap {
+      padding: 16px;
+    }
+    .perm-header h1 {
+      font-size: 20px;
+    }
+    .perm-module-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .perm-table th:nth-child(3),
+    .perm-table td:nth-child(3) {
+      display: none;
+    }
+  }
+</style>
+
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<div class="perm-wrap">
+  <!-- Header -->
+  <div class="perm-header">
+    <h1>
+      <span class="material-icons">admin_panel_settings</span>
+      Permisos del sistema
+    </h1>
+    <p>
+      Define qué puede hacer cada rol y qué usuarios pertenecen a ese rol.
+      Esta pantalla usa los permisos nativos de Django con la interfaz de Torre Fuerte.
+    </p>
+  </div>
+
+  <div class="perm-grid">
+    <!-- Panel de Roles -->
+    <div class="card">
+      <div class="card-header">
+        <h3>
+          <span class="material-icons">groups</span>
+          Roles
+        </h3>
+        <span class="badge">{{ roles|length }}</span>
+      </div>
+      <div class="card-body">
+        <div class="role-list">
+          {% for r in roles %}
+            <a class="role-item {% if role.id == r.id %}active{% endif %}"
+               href="{% url 'core:configuracion_permisos' %}?role={{ r.id }}">
+              <span class="material-icons">{% if role.id == r.id %}radio_button_checked{% else %}radio_button_unchecked{% endif %}</span>
+              {{ r.name }}
+            </a>
+          {% endfor %}
+        </div>
+        <div class="hint-text">
+          <span class="material-icons">info</span>
+          <span>Los roles corresponden a <strong>Groups</strong> de Django.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de Configuración del Rol -->
+    <div class="card">
+      <div class="card-header">
+        <h3>
+          <span class="material-icons">edit</span>
+          Editar rol: {{ role.name }}
+        </h3>
+        <span class="badge badge-neutral">
+          <span class="material-icons" style="font-size:14px;">save</span>
+          Cambios pendientes
+        </span>
+      </div>
+
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="role_id" value="{{ role.id }}"/>
+
+          <div class="split-layout">
+            <!-- Permisos por Módulo -->
+            <div>
+              <div class="module-controls">
+                <span class="module-controls-label">{{ mod_perms|length }} módulos</span>
+                <div class="module-controls-btns">
+                  <button type="button" class="btn-mini" onclick="expandAll()">
+                    <span class="material-icons">unfold_more</span>
+                    Expandir
+                  </button>
+                  <button type="button" class="btn-mini" onclick="collapseAll()">
+                    <span class="material-icons">unfold_less</span>
+                    Colapsar
+                  </button>
+                </div>
+              </div>
+              {% for item in mod_perms %}
+                <div class="perm-module" id="module-{{ forloop.counter }}">
+                  <div class="perm-module-header" onclick="toggleModule({{ forloop.counter }})">
+                    <div class="perm-module-info">
+                      <div class="perm-module-icon">
+                        <span class="material-icons">folder</span>
+                      </div>
+                      <div>
+                        <div class="perm-module-name">{{ item.module.name }}</div>
+                        <div class="perm-module-code">{{ item.module.code }}{% if item.module.description %} · {{ item.module.description }}{% endif %}</div>
+                      </div>
+                    </div>
+                    <div class="perm-module-right">
+                      <div class="perm-module-count">
+                        {{ item.perms|length }} permisos
+                      </div>
+                      <div class="perm-module-toggle">
+                        <span class="material-icons">expand_more</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="perm-module-content">
+                  {% if item.perms %}
+                    <table class="perm-table">
+                      <thead>
+                        <tr>
+                          <th style="width:50px;">Permitir</th>
+                          <th>Permiso</th>
+                          <th>Codename</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for p in item.perms %}
+                          <tr>
+                            <td>
+                              <label class="checkbox-custom">
+                                <input type="checkbox"
+                                       name="perm_ids"
+                                       value="{{ p.id }}"
+                                       {% if p.id in role_perm_ids %}checked{% endif %}>
+                                <span class="checkmark"></span>
+                              </label>
+                            </td>
+                            <td><span class="perm-name">{{ p.name }}</span></td>
+                            <td><code class="perm-codename">{{ p.codename }}</code></td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  {% else %}
+                    <div class="empty-perms">
+                      <span class="material-icons">search_off</span>
+                      <div>No se encontraron permisos para <strong>{{ item.module.code }}</strong></div>
+                      <small>Verifica que Module.code coincida con el app_label</small>
+                    </div>
+                  {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <!-- Panel de Usuarios -->
+            <div class="users-panel">
+              <div class="card" style="box-shadow: none; border: 1px solid #e0e0e0;">
+                <div class="card-header">
+                  <h3>
+                    <span class="material-icons">people</span>
+                    Usuarios en este rol
+                  </h3>
+                  <span class="badge">{{ users|length }}</span>
+                </div>
+                <div class="card-body">
+                  <div class="users-search">
+                    <input type="text" 
+                           placeholder="Buscar usuario..." 
+                           id="searchUsers"
+                           onkeyup="filterUsers()">
+                  </div>
+                  <div class="users-list" id="usersList">
+                    {% for u in users %}
+                      <label class="user-item">
+                        <input type="checkbox" 
+                               name="user_ids" 
+                               value="{{ u.id }}"
+                               {% if u.id in role_user_ids %}checked{% endif %}>
+                        <span class="user-check">
+                          <span class="material-icons">check</span>
+                        </span>
+                        <div class="user-avatar">
+                          {{ u.get_full_name|default:u.username|slice:":1"|upper }}
+                        </div>
+                        <div class="user-info">
+                          <div class="user-name">{{ u.get_full_name|default:u.username }}</div>
+                          <div class="user-meta">
+                            {{ u.username }}
+                            {% if u.is_superuser %}
+                              <span class="user-badge superuser">Superuser</span>
+                            {% endif %}
+                            {% if u.is_staff %}
+                              <span class="user-badge staff">Staff</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </label>
+                    {% endfor %}
+                  </div>
+                </div>
+                <div class="btn-actions">
+                  <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">save</span>
+                    Guardar cambios
+                  </button>
+                  <a class="btn btn-secondary" href="{% url 'core:configuracion' %}">
+                    <span class="material-icons">arrow_back</span>
+                    Volver a Configuración
+                  </a>
+                </div>
+              </div>
+              <div class="hint-text" style="margin-top:12px;">
+                <span class="material-icons">sync</span>
+                <span>Los cambios sincronizan usuarios y permisos del rol seleccionado.</span>
+              </div>
+            </div>
+
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleModule(id) {
+  const module = document.getElementById('module-' + id);
+  module.classList.toggle('collapsed');
+}
+
+function expandAll() {
+  document.querySelectorAll('.perm-module').forEach(m => {
+    m.classList.remove('collapsed');
+  });
+}
+
+function collapseAll() {
+  document.querySelectorAll('.perm-module').forEach(m => {
+    m.classList.add('collapsed');
+  });
+}
+
+function filterUsers() {
+  const input = document.getElementById('searchUsers');
+  const filter = input.value.toLowerCase();
+  const items = document.querySelectorAll('.user-item');
+  
+  items.forEach(item => {
+    const name = item.querySelector('.user-name').textContent.toLowerCase();
+    const meta = item.querySelector('.user-meta').textContent.toLowerCase();
+    if (name.includes(filter) || meta.includes(filter)) {
+      item.style.display = 'flex';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+</script>
+{% endblock %}
