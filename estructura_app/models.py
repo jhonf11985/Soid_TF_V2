@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
-
+from decimal import Decimal
 
 class ReporteUnidadCierre(models.Model):
     TIPO_CHOICES = (
@@ -374,3 +374,54 @@ class UnidadCargo(models.Model):
 
     def __str__(self):
         return f"{self.rol} - {self.miembo_fk} ({self.unidad})"
+
+
+
+class MovimientoUnidad(models.Model):
+    TIPO_INGRESO = "INGRESO"
+    TIPO_EGRESO = "EGRESO"
+
+    TIPOS = (
+        (TIPO_INGRESO, "Ingreso"),
+        (TIPO_EGRESO, "Egreso"),
+    )
+
+    unidad = models.ForeignKey(
+        "estructura_app.Unidad",
+        on_delete=models.CASCADE,
+        related_name="movimientos",
+    )
+
+    tipo = models.CharField(max_length=10, choices=TIPOS, default=TIPO_INGRESO)
+    fecha = models.DateField(default=timezone.localdate)
+
+    monto = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    concepto = models.CharField(max_length=180)
+
+    descripcion = models.TextField(blank=True, default="")
+
+    # Control simple (sin complicarnos todavía)
+    anulado = models.BooleanField(default=False)
+    motivo_anulacion = models.CharField(max_length=180, blank=True, default="")
+
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="movimientos_unidad_creados",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+        indexes = [
+            models.Index(fields=["unidad", "fecha"]),
+            models.Index(fields=["unidad", "tipo"]),
+            models.Index(fields=["unidad", "anulado"]),
+        ]
+
+    def __str__(self):
+        return f"{self.unidad} · {self.get_tipo_display()} · {self.fecha} · {self.monto}"

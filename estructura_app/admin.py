@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import CategoriaUnidad, TipoUnidad, RolUnidad, Unidad, UnidadMembresia, UnidadCargo
+from .models import CategoriaUnidad, TipoUnidad, RolUnidad, Unidad, UnidadMembresia, UnidadCargo, MovimientoUnidad
+
 
 @admin.register(TipoUnidad)
 class TipoUnidadAdmin(admin.ModelAdmin):
@@ -34,6 +35,12 @@ class UnidadCargoInline(admin.TabularInline):
     fields = ("rol", "miembo_fk", "vigente", "fecha_inicio", "fecha_fin", "notas")
     show_change_link = True
 
+class MovimientoUnidadInline(admin.TabularInline):
+    model = MovimientoUnidad
+    extra = 0
+    fields = ("fecha", "tipo", "concepto", "monto", "anulado")
+    readonly_fields = ()
+    show_change_link = True
 
 @admin.register(Unidad)
 class UnidadAdmin(admin.ModelAdmin):
@@ -41,7 +48,7 @@ class UnidadAdmin(admin.ModelAdmin):
     list_filter = ("tipo", "activa")
     search_fields = ("nombre", "descripcion")
     ordering = ("tipo__orden", "nombre")
-    inlines = (UnidadCargoInline, UnidadMembresiaInline)
+    inlines = (UnidadCargoInline, UnidadMembresiaInline, MovimientoUnidadInline)
     autocomplete_fields = ("padre",)
     
     def ruta_admin(self, obj):
@@ -56,3 +63,9 @@ class CategoriaUnidadAdmin(admin.ModelAdmin):
     search_fields = ("nombre", "codigo")
     ordering = ("orden", "nombre")
 
+@admin.register(MovimientoUnidad)
+class MovimientoUnidadAdmin(admin.ModelAdmin):
+    list_display = ("unidad", "fecha", "tipo", "concepto", "monto", "anulado")
+    list_filter = ("tipo", "anulado", "fecha", "unidad")
+    search_fields = ("concepto", "descripcion", "unidad__nombre")
+    ordering = ("-fecha", "-id")

@@ -62,5 +62,9 @@ path(
     name="reporte_unidad_historico_imprimir",
 ),
 
+path("unidades/<int:pk>/finanzas/nuevo/", views.unidad_movimiento_crear, name="unidad_movimiento_crear"),
+path("unidades/<int:pk>/finanzas/<int:mov_id>/editar/", views.unidad_movimiento_editar, name="unidad_movimiento_editar"),
+path("unidades/<int:pk>/finanzas/<int:mov_id>/anular/", views.unidad_movimiento_anular, name="unidad_movimiento_anular"),
+
 
 ]

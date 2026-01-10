@@ -135,6 +135,12 @@
         Actividades
         </button>
 
+        <button type="button" class="odoo-tab" data-tab="finanzas">
+        <span class="material-icons">payments</span>
+        Finanzas
+        </button>
+
+
         <button type="button" class="odoo-tab" data-tab="reportes">
         <span class="material-icons">description</span>
         Reportes
@@ -591,6 +597,109 @@
   </p>
   {% endif %}
 </div>
+
+
+<!-- TAB: Finanzas -->
+<div class="odoo-tab-content" id="tab-finanzas">
+
+  <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:12px;">
+    <form method="get" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <input type="hidden" name="tab" value="finanzas">
+      <div class="odoo-quick-field">
+        <span class="material-icons">event</span>
+        <input type="number" name="anio" value="{{ fin_anio }}" min="2000" max="2100" style="width:110px;" placeholder="Año">
+      </div>
+      <div class="odoo-quick-field">
+        <span class="material-icons">calendar_month</span>
+        <input type="number" name="mes" value="{{ fin_mes }}" min="1" max="12" style="width:90px;" placeholder="Mes">
+      </div>
+      <button class="odoo-btn odoo-btn-secondary" type="submit">
+        Filtrar
+      </button>
+    </form>
+
+    <a href="{% url 'estructura_app:unidad_movimiento_crear' unidad.pk %}" class="odoo-btn odoo-btn-primary">
+      <span class="material-icons">add</span>
+      Registrar movimiento
+    </a>
+  </div>
+
+  <div class="resumen-metrics-row" style="margin-bottom: 14px;">
+    <div class="metric-box metric-success">
+      <span class="metric-num">{{ ingresos_total|default:0 }}</span>
+      <span class="metric-label">Ingresos</span>
+    </div>
+    <div class="metric-box metric-danger">
+      <span class="metric-num">{{ egresos_total|default:0 }}</span>
+      <span class="metric-label">Egresos</span>
+    </div>
+    <div class="metric-box metric-info">
+      <span class="metric-num">{{ balance|default:0 }}</span>
+      <span class="metric-label">Balance</span>
+    </div>
+  </div>
+
+  <div class="odoo-table-wrapper">
+    <table class="odoo-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Concepto</th>
+          <th style="text-align:right;">Monto</th>
+          <th style="width:180px;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movimientos %}
+        <tr class="{% if m.anulado %}row-muted{% endif %}">
+          <td>{{ m.fecha }}</td>
+          <td>
+            {% if m.tipo == "INGRESO" %}
+              <span class="odoo-badge odoo-badge-success">Ingreso</span>
+            {% else %}
+              <span class="odoo-badge odoo-badge-danger">Egreso</span>
+            {% endif %}
+            {% if m.anulado %}
+              <span class="odoo-badge odoo-badge-neutral">Anulado</span>
+            {% endif %}
+          </td>
+          <td>
+            <strong>{{ m.concepto }}</strong>
+            {% if m.descripcion %}<div class="text-muted" style="margin-top:2px;">{{ m.descripcion }}</div>{% endif %}
+          </td>
+          <td style="text-align:right;">
+            {{ m.monto }}
+          </td>
+          <td>
+            {% if not m.anulado %}
+              <a class="odoo-btn odoo-btn-secondary" href="{% url 'estructura_app:unidad_movimiento_editar' unidad.pk m.pk %}">
+                Editar
+              </a>
+
+              <form method="post" action="{% url 'estructura_app:unidad_movimiento_anular' unidad.pk m.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="motivo" value="">
+                <button type="submit" class="odoo-btn odoo-btn-danger" onclick="return confirm('¿Seguro que deseas anular este movimiento?');">
+                  Anular
+                </button>
+              </form>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-muted">No hay movimientos en este periodo.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
 
 
 <div class="odoo-tab-content" id="tab-reportes">

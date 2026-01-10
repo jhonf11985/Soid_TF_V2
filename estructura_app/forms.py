@@ -6,10 +6,8 @@ from django.http import HttpResponse
 from .models import Unidad, RolUnidad
 
 from django import forms
-from .models import ActividadUnidad, Unidad, UnidadMembresia
+from .models import ActividadUnidad, Unidad, UnidadMembresia,MovimientoUnidad
 from .models import ReporteUnidadPeriodo
-
-
 from .models import ReporteUnidadCierre
 
 class ReporteCierreForm(forms.ModelForm):
@@ -164,4 +162,19 @@ class ReportePeriodoForm(forms.ModelForm):
             "reflexion": forms.Textarea(attrs={"rows": 6}),
             "necesidades": forms.Textarea(attrs={"rows": 4}),
             "plan_proximo": forms.Textarea(attrs={"rows": 4}),
+        }
+
+from django import forms
+
+
+class MovimientoUnidadForm(forms.ModelForm):
+    class Meta:
+        model = MovimientoUnidad
+        fields = ["tipo", "fecha", "monto", "concepto", "descripcion"]
+        widgets = {
+            "tipo": forms.Select(),
+            "fecha": forms.DateInput(attrs={"type": "date"}),
+            "monto": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "concepto": forms.TextInput(attrs={"placeholder": "Ej: Ofrenda, Actividad, Compra, Transporte..."}),
+            "descripcion": forms.Textarea(attrs={"rows": 3, "placeholder": "Opcional"}),
         }

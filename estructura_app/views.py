@@ -2,10 +2,10 @@ import json
 from django import forms
 from datetime import date
 from collections import defaultdict
-
+from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -15,7 +15,7 @@ from .models import ReporteUnidadCierre
 from .forms import ReporteCierreForm
 from itertools import chain
 from miembros_app.models import Miembro
-from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriodoForm
+from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriodoForm,MovimientoUnidadForm
 from datetime import datetime
 import datetime
 
@@ -26,7 +26,7 @@ from .models import (
     UnidadMembresia,
     UnidadCargo,
     ActividadUnidad,
-    ReporteUnidadPeriodo,ReporteUnidadCierre,
+    ReporteUnidadPeriodo,ReporteUnidadCierre, MovimientoUnidad
 )
 
 import re
@@ -220,6 +220,7 @@ def unidad_listado(request):
         "unidades": unidades,
         "query": query,
     })
+
 @login_required
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -358,12 +359,48 @@ def unidad_detalle(request, pk):
         capacidad_maxima = None
         capacidad_excedida = False
 
+
+    # =====================================================
+    # 4) FINANZAS BÁSICAS (TAB)
+    # =====================================================
+    hoy = timezone.localdate()
+
+    try:
+        f_anio = int(request.GET.get("anio") or hoy.year)
+    except Exception:
+        f_anio = hoy.year
+
+    try:
+        f_mes = int(request.GET.get("mes") or hoy.month)
+    except Exception:
+        f_mes = hoy.month
+
+    movimientos_qs = (
+        MovimientoUnidad.objects
+        .filter(unidad=unidad, fecha__year=f_anio, fecha__month=f_mes)
+        .order_by("-fecha", "-id")
+    )
+
+    movimientos = movimientos_qs[:50]
+
+    ingresos_total = movimientos_qs.filter(tipo=MovimientoUnidad.TIPO_INGRESO, anulado=False).aggregate(s=Sum("monto"))["s"] or 0
+    egresos_total = movimientos_qs.filter(tipo=MovimientoUnidad.TIPO_EGRESO, anulado=False).aggregate(s=Sum("monto"))["s"] or 0
+    balance = ingresos_total - egresos_total
+
+
     return render(request, "estructura_app/unidad_detalle.html", {
         "unidad": unidad,
         "miembros_asignados": miembros_asignados,
         "equipo_trabajo_asignados": equipo_trabajo_asignados,
         "lideres_asignados": lideres_asignados,
         "resumen": resumen,
+         "movimientos": movimientos,
+        "fin_anio": f_anio,
+        "fin_mes": f_mes,
+        "ingresos_total": ingresos_total,
+        "egresos_total": egresos_total,
+        "balance": balance,
+
 
         # ✅ ESTE ES EL TOTAL REAL (participación + trabajo + sin rol)
         "miembros_count": total,
@@ -2775,3 +2812,80 @@ def reporte_unidad_historico_imprimir(request, pk):
     }
 
     return render(request, "estructura_app/reportes/reporte_unidad_historico.html", context)
+
+
+@login_required
+def unidad_movimiento_crear(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+
+    if request.method == "POST":
+        form = MovimientoUnidadForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.unidad = unidad
+            obj.creado_por = request.user
+            obj.save()
+            messages.success(request, "Movimiento registrado correctamente.")
+            url = reverse("estructura_app:unidad_detalle", args=[unidad.pk])
+            return redirect(f"{url}?tab=finanzas")
+
+        else:
+            messages.error(request, "Revisa los campos marcados.")
+    else:
+        form = MovimientoUnidadForm()
+
+    return render(request, "estructura_app/unidad_finanza_form.html", {
+
+        "unidad": unidad,
+        "form": form,
+        "modo": "crear",
+    })
+
+
+@login_required
+def unidad_movimiento_editar(request, pk, mov_id):
+    unidad = get_object_or_404(Unidad, pk=pk)
+    mov = get_object_or_404(MovimientoUnidad, pk=mov_id, unidad=unidad)
+
+    url_detalle = reverse("estructura_app:unidad_detalle", args=[unidad.pk])
+    url_finanzas = f"{url_detalle}?tab=finanzas"
+
+    if mov.anulado:
+        messages.warning(request, "Este movimiento está anulado y no se puede editar.")
+        return redirect(url_finanzas)
+
+    if request.method == "POST":
+        form = MovimientoUnidadForm(request.POST, instance=mov)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Movimiento actualizado correctamente.")
+            return redirect(url_finanzas)
+        else:
+            messages.error(request, "Revisa los campos marcados.")
+    else:
+        form = MovimientoUnidadForm(instance=mov)
+
+    # ✅ Usa TU plantilla (la que ya creaste)
+    return render(request, "estructura_app/unidad_finanza_form.html", {
+        "unidad": unidad,
+        "form": form,
+        "modo": "editar",
+        "mov": mov,
+    })
+
+
+@login_required
+@require_POST
+def unidad_movimiento_anular(request, pk, mov_id):
+    unidad = get_object_or_404(Unidad, pk=pk)
+    mov = get_object_or_404(MovimientoUnidad, pk=mov_id, unidad=unidad)
+
+    motivo = (request.POST.get("motivo") or "").strip()
+    mov.anulado = True
+    mov.motivo_anulacion = motivo
+    mov.save(update_fields=["anulado", "motivo_anulacion", "actualizado_en"])
+
+    messages.success(request, "Movimiento anulado correctamente.")
+
+    url_detalle = reverse("estructura_app:unidad_detalle", args=[unidad.pk])
+    return redirect(f"{url_detalle}?tab=finanzas")
