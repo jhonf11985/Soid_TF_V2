@@ -704,7 +704,8 @@ def crear_usuario(request):
 
             nombre_mostrar = user.get_full_name() or user.username
             messages.success(request, f"Usuario «{nombre_mostrar}» creado correctamente.")
-            return redirect("usuarios:listado")
+            return redirect("core:listado")
+
 
     else:
         form = UsuarioIglesiaForm()

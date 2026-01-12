@@ -875,23 +875,6 @@
 </style>
 
 
-<script>
-(function(){
-  const form = document.querySelector("form.odoo-form");
-  if(!form) return;
-
-  // Deshabilitar el botón primario al enviar (evita doble submit)
-  const btn = form.querySelector(".odoo-btn-primary");
-  if(btn){
-    form.addEventListener("submit", function(){
-      btn.disabled = true;
-      btn.setAttribute("aria-disabled", "true");
-      btn.style.opacity = "0.75";
-      btn.style.cursor = "not-allowed";
-    });
-  }
-})();
-</script>
 
 <script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
 
@@ -1076,60 +1059,35 @@
   .odoo-name-field input.is-locked{ opacity: .85; cursor: not-allowed; }
 </style>
 
-<script>
-(function(){
-  const form = document.querySelector("form.odoo-form");
-  if(!form) return;
 
-  const btnDescartar = document.getElementById("btn-descartar");
-  const btnDescartarMobile = document.getElementById("btn-descartar-mobile");
-
-  let isDirty = false;
-  const markDirty = () => { isDirty = true; };
-
-  form.addEventListener("input", markDirty, { capture: true });
-  form.addEventListener("change", markDirty, { capture: true });
-
-  form.addEventListener("submit", function(){
-    isDirty = false;
-  });
-
-  window.addEventListener("beforeunload", function(e){
-    if(!isDirty) return;
-    e.preventDefault();
-    e.returnValue = "";
-  });
-
-  function confirmExit(e){
-    if(!isDirty) return;
-    const ok = confirm("Tienes cambios sin guardar. ¿Seguro que quieres salir?");
-    if(!ok) e.preventDefault();
-  }
-
-  if(btnDescartar) btnDescartar.addEventListener("click", confirmExit);
-  if(btnDescartarMobile) btnDescartarMobile.addEventListener("click", confirmExit);
-})();
-</script>
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { animation: spin 1s linear infinite; }
+</style>
 
 <script>
 (function(){
   const form = document.querySelector("form.odoo-form");
   if (!form) return;
 
-  // Botones posibles (desktop + móvil)
+  // =========================
+  // Elementos UI
+  // =========================
   const btnSubmitDesktop = form.querySelector(".odoo-form-aside .odoo-btn-primary");
   const btnSubmitMobile  = document.querySelector(".odoo-mobile-actions .odoo-btn-primary");
   const btnCancelDesktop = document.getElementById("btn-descartar");
   const btnCancelMobile  = document.getElementById("btn-descartar-mobile");
 
-  // Inputs clave
-  const miembroHidden = document.getElementById("id_miembro_id"); // hidden
-  const firstName = document.getElementById("id_first_name");
-  const lastName  = document.getElementById("id_last_name");
-  const email     = document.getElementById("id_email");
-  const override  = document.getElementById("id_override_nombre");
+  const emailInput = document.getElementById("id_email");
+  const statusEl   = document.getElementById("email-status");
 
-  // ------- Dirty tracking (inteligente) -------
+  // Inputs clave (para dirty/autofill)
+  const miembroHidden = document.getElementById("id_miembro_id"); // hidden
+  const override      = document.getElementById("id_override_nombre");
+
+  // =========================
+  // Dirty tracking + salir
+  // =========================
   let isDirty = false;
   let suppressDirty = false; // cuando el sistema rellena datos automáticamente
 
@@ -1138,49 +1096,34 @@
     isDirty = true;
   }
 
-  // Marcar dirty SOLO cuando el usuario interactúa de verdad
-  // input/change en fase capture ayuda a detectar rápido
+  // Marcar dirty SOLO cuando el usuario interactúa
   form.addEventListener("input", setDirty, { capture: true });
   form.addEventListener("change", setDirty, { capture: true });
 
-  // Helper: ejecutar sin marcar dirty
   function runWithoutDirty(fn){
     suppressDirty = true;
     try { fn(); } finally {
-      // pequeño delay por si hay 2-3 asignaciones seguidas
       setTimeout(() => { suppressDirty = false; }, 0);
     }
   }
 
-  // ------- Evitar falsos dirty por Autocomplete -------
-  // 1) Cuando cambia el hidden miembro_id (lo cambia el autocomplete), NO es edición del usuario.
-  // 2) Cuando el sistema rellena nombre/email por miembro, tampoco.
-  // OJO: si el usuario pulsa "Editar manualmente" (override), entonces sí cuenta.
-
+  // Si cambia miembro_id por autocomplete, no ensuciar
   let lastMiembroId = miembroHidden ? (miembroHidden.value || "") : "";
   if (miembroHidden){
-    const obs = new MutationObserver(() => {});
-    // Watch indirect? mejor polling ligero como ya usas en tu script,
-    // pero sin meternos: hacemos polling aquí también.
     setInterval(() => {
       const v = miembroHidden.value || "";
       if (v === lastMiembroId) return;
       lastMiembroId = v;
-
-      // Cambio por autocomplete => NO marcar dirty
       runWithoutDirty(() => {});
     }, 250);
   }
 
-  // Si override se activa, desde ahí ya es manual => cambios cuentan
-  if (override){
-    override.addEventListener("change", () => {
-      // si el usuario decide editar manualmente, lo que haga luego sí cuenta.
-      // No marcamos dirty SOLO por activar el toggle; se marcará al editar.
-    });
-  }
+  // Eventos custom si quieres dispararlos desde tu autocomplete (opcional)
+  document.addEventListener("soid_autofill_start", () => { suppressDirty = true; });
+  document.addEventListener("soid_autofill_end", () => {
+    setTimeout(() => { suppressDirty = false; }, 0);
+  });
 
-  // ------- Confirmación al salir -------
   function confirmExit(e){
     if (!isDirty) return;
     const ok = confirm("Tienes cambios sin guardar. ¿Seguro que quieres salir?");
@@ -1190,14 +1133,15 @@
   if (btnCancelDesktop) btnCancelDesktop.addEventListener("click", confirmExit);
   if (btnCancelMobile)  btnCancelMobile.addEventListener("click", confirmExit);
 
-  // Cerrar pestaña / recargar
   window.addEventListener("beforeunload", function(e){
     if (!isDirty) return;
     e.preventDefault();
     e.returnValue = "";
   });
 
-  // ------- UX Submit: bloquear y mostrar estado -------
+  // =========================
+  // UX botón guardar (spinner)
+  // =========================
   function lockButton(btn, text){
     if (!btn) return;
     btn.disabled = true;
@@ -1205,13 +1149,13 @@
     btn.style.opacity = "0.78";
     btn.style.cursor = "not-allowed";
 
-    // Guardar texto original una sola vez
     if (!btn.dataset.originalHtml){
       btn.dataset.originalHtml = btn.innerHTML;
     }
+
     btn.innerHTML = `
       <span class="material-icons spinner" style="font-size:18px;">sync</span>
-      ${text || "Guardando..."}
+      ${text || "Guardando."}
     `;
   }
 
@@ -1221,118 +1165,73 @@
     btn.style.opacity = "0.6";
   }
 
-  form.addEventListener("submit", function(){
-    // al enviar, ya no se debe avisar al salir
-    isDirty = false;
-
-    lockButton(btnSubmitDesktop, "Guardando...");
-    lockButton(btnSubmitMobile,  "Guardando...");
-    lockCancel(btnCancelDesktop);
-    lockCancel(btnCancelMobile);
-  });
-
-  // ------- EXTRA: cuando el sistema rellena campos (por miembro), no marcar dirty -------
-  // Esto se usa si tu script asigna valores por JS.
-  // Para que funcione, interceptamos cambios por API (cuando el autocomplete selecciona).
-  // Solo funciona si se llama a "runWithoutDirty" desde el script del miembro,
-  // pero como no queremos tocarlo, hacemos un truco: escuchar eventos custom.
-  document.addEventListener("soid_autofill_start", () => { suppressDirty = true; });
-  document.addEventListener("soid_autofill_end", () => {
-    setTimeout(() => { suppressDirty = false; }, 0);
-  });
-
-})();
-</script>
-
-<style>
-/* Spinner del botón */
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinner { animation: spin 1s linear infinite; }
-</style>
-<script>
-(function(){
-  const emailInput = document.getElementById("id_email");
-  if(!emailInput) return;
-
-  const form = document.querySelector("form.odoo-form");
-  const statusEl = document.getElementById("email-status");
-
-  // Botones submit (desktop + móvil)
-  const btnSubmitDesktop = form ? form.querySelector(".odoo-form-aside .odoo-btn-primary") : null;
-  const btnSubmitMobile  = document.querySelector(".odoo-mobile-actions .odoo-btn-primary");
-
+  // =========================
+  // Validación de email realtime
+  // =========================
   function setStatus(type, text){
-    if(!statusEl) return;
+    if (!statusEl) return;
+
+    if (!text){
+      statusEl.style.display = "none";
+      statusEl.className = "email-status";
+      statusEl.textContent = "";
+      return;
+    }
+
     statusEl.style.display = "block";
     statusEl.className = "email-status " + type;
 
     let icon = "info";
-    if(type === "ok") icon = "check_circle";
-    if(type === "bad") icon = "error";
-    if(type === "wait") icon = "hourglass_top";
+    if (type === "ok") icon = "check_circle";
+    if (type === "bad") icon = "error";
+    if (type === "wait") icon = "hourglass_top";
 
     statusEl.innerHTML = `<span class="material-icons">${icon}</span>${text}`;
   }
 
-  function clearStatus(){
-    if(!statusEl) return;
-    statusEl.style.display = "none";
-    statusEl.className = "email-status";
-    statusEl.textContent = "";
-  }
-
-  function setSubmitEnabled(enabled){
-    [btnSubmitDesktop, btnSubmitMobile].forEach(btn => {
-      if(!btn) return;
-      btn.disabled = !enabled;
-      btn.setAttribute("aria-disabled", (!enabled).toString());
-      btn.style.opacity = enabled ? "" : "0.65";
-      btn.style.cursor = enabled ? "" : "not-allowed";
-    });
-  }
-
-  // Reglas rápidas (cliente) antes de preguntar al servidor
   function isValidEmailFormat(value){
-    // Simple y suficiente para UX. El backend sigue siendo la verdad.
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
 
-  let timer = null;
+  let emailTimer = null;
   let lastChecked = "";
   let pending = false;
   let ctrl = null;
+  let lastAvailable = true;
 
   async function checkEmailNow(){
+    if (!emailInput) return true;
+
     const raw = (emailInput.value || "").trim();
     const email = raw.toLowerCase();
 
-    // vacío => sin mensaje y permitir enviar (si tu form no lo requiere, si lo requiere, Django lo bloqueará)
-    if(!email){
+    if (!email){
       pending = false;
       lastChecked = "";
-      clearStatus();
-      setSubmitEnabled(true);
-      return;
+      lastAvailable = true;
+      setStatus("", "");
+      return true;
     }
 
-    // formato inválido
-    if(!isValidEmailFormat(email)){
+    if (!isValidEmailFormat(email)){
       pending = false;
+      lastChecked = "";
+      lastAvailable = false;
       setStatus("bad", "Formato de correo no válido.");
-      setSubmitEnabled(false);
-      return;
+      return false;
     }
 
-    // si no cambió, no repitas
-    if(email === lastChecked && !pending) return;
+    if (email === lastChecked && !pending){
+      if (lastAvailable) setStatus("ok", "Correo disponible.");
+      else setStatus("bad", "Ya existe un usuario con este correo.");
+      return lastAvailable;
+    }
 
-    // cancelar request anterior
-    if(ctrl) ctrl.abort();
+    if (ctrl) ctrl.abort();
     ctrl = new AbortController();
 
     pending = true;
     setStatus("wait", "Comprobando correo…");
-    setSubmitEnabled(false);
 
     try{
       const url = `/api/email-disponible/?email=${encodeURIComponent(email)}`;
@@ -1343,74 +1242,119 @@
         signal: ctrl.signal
       });
 
-      if(!res.ok){
+      if (!res.ok){
         pending = false;
-        setStatus("bad", "No se pudo validar el correo (error del servidor).");
-        setSubmitEnabled(false);
-        return;
+        lastChecked = email;
+        lastAvailable = false;
+        setStatus("bad", "No se pudo validar el correo (servidor).");
+        return false;
       }
 
       const data = await res.json();
       pending = false;
       lastChecked = email;
 
-      if(data && data.success && data.available){
+      if (data && data.success && data.available){
+        lastAvailable = true;
         setStatus("ok", data.message || "Correo disponible.");
-        setSubmitEnabled(true);
+        return true;
       } else {
+        lastAvailable = false;
         setStatus("bad", (data && data.message) ? data.message : "Este correo ya está en uso.");
-        setSubmitEnabled(false);
+        return false;
       }
+
     } catch(e){
-      if(e && e.name === "AbortError") return;
+      if (e && e.name === "AbortError") return false;
       pending = false;
+      lastChecked = email;
+      lastAvailable = false;
       setStatus("bad", "No se pudo validar el correo (sin conexión).");
-      setSubmitEnabled(false);
+      return false;
     }
   }
 
-  // Debounce al escribir
-  emailInput.addEventListener("input", function(){
-    if(timer) clearTimeout(timer);
-    timer = setTimeout(checkEmailNow, 350);
-  });
+  if (emailInput){
+    emailInput.addEventListener("input", function(){
+      if (emailTimer) clearTimeout(emailTimer);
+      emailTimer = setTimeout(checkEmailNow, 350);
+    });
 
-  // Al salir del campo, valida ya
-  emailInput.addEventListener("blur", function(){
-    if(timer) clearTimeout(timer);
-    checkEmailNow();
-  });
-
-  // Seguridad extra: antes de enviar, si está pendiente o inválido => no envíes
-  if(form){
-    form.addEventListener("submit", function(e){
-      const raw = (emailInput.value || "").trim();
-      if(!raw) return; // si es requerido, Django lo parará con error
-
-      if(pending){
-        e.preventDefault();
-        setStatus("wait", "Espera a que termine la validación del correo…");
-        return;
-      }
-
-      // Si el último chequeo no corresponde al valor actual, fuerza chequeo y cancela submit
-      const current = raw.toLowerCase();
-      if(current !== lastChecked){
-        e.preventDefault();
-        checkEmailNow();
-        return;
-      }
-
-      // si el botón está deshabilitado, bloquear
-      if(btnSubmitDesktop && btnSubmitDesktop.disabled){
-        e.preventDefault();
-        return;
-      }
+    emailInput.addEventListener("blur", function(){
+      if (emailTimer) clearTimeout(emailTimer);
+      checkEmailNow();
     });
   }
 
+  // =========================
+  // Submit control (lo más importante)
+  // =========================
+  let allowNextSubmit = false;
+
+  form.addEventListener("submit", async function(e){
+    // Si reenviamos nosotros mismos, dejar pasar
+    if (allowNextSubmit){
+      allowNextSubmit = false;
+      return;
+    }
+
+    // Si HTML5 detecta inválidos, no ponemos spinner aquí
+    if (typeof form.checkValidity === "function" && !form.checkValidity()){
+      return;
+    }
+
+    // Validar email antes de enviar
+    if (emailInput){
+      const raw = (emailInput.value || "").trim();
+      const current = raw.toLowerCase();
+
+      if (raw){
+        if (pending){
+          e.preventDefault();
+          setStatus("wait", "Espera a que termine la validación del correo…");
+          return;
+        }
+
+        if (current !== lastChecked){
+          e.preventDefault();
+          const ok = await checkEmailNow();
+          if (!ok){
+            emailInput.focus();
+            return;
+          }
+
+          allowNextSubmit = true;
+          if (typeof form.requestSubmit === "function") form.requestSubmit();
+          else form.submit();
+          return;
+        }
+
+        if (!lastAvailable){
+          e.preventDefault();
+          emailInput.focus();
+          return;
+        }
+      }
+    }
+
+    // ✅ Si llegamos aquí, el submit SÍ VA A SALIR
+    isDirty = false;
+
+    lockButton(btnSubmitDesktop, "Guardando.");
+    lockButton(btnSubmitMobile,  "Guardando.");
+    lockCancel(btnCancelDesktop);
+    lockCancel(btnCancelMobile);
+
+  }, true); // capture=true => corre antes y evita “cargando infinito”
+
 })();
 </script>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { animation: spin 1s linear infinite; }
+</style>
+
 
 
 {% endblock %}
