@@ -42,6 +42,53 @@
                         {{ form.first_name }}
                         {{ form.last_name }}
                     </div>
+                    {{ form.override_nombre }}
+
+                    <!-- Vincular a miembro (Autocomplete) - debajo del nombre -->
+                    <div class="odoo-member-link">
+                        <span class="material-icons">person_search</span>
+                        <div class="autocomplete-wrapper"
+                             data-autocomplete-id="id_miembro_id"
+                             data-endpoint="/api/buscar-miembros/"
+                             data-filtro="sin_usuario"
+                             data-limit="15"
+                             data-min-chars="2"
+                             data-debounce="300">
+
+                            <input type="hidden" id="id_miembro_id" name="miembro_id" value="">
+
+                            <div class="autocomplete-field">
+                                <div class="autocomplete-chip" style="display:none;">
+                                    <span class="chip-avatar">M</span>
+                                    <span class="chip-text">
+                                        <span class="chip-name">—</span>
+                                        <span class="chip-code">—</span>
+                                    </span>
+                                    <button type="button" class="chip-remove" title="Quitar">
+                                        <span class="material-icons">close</span>
+                                    </button>
+                                </div>
+
+                                <input type="text"
+                                       class="autocomplete-search"
+                                       placeholder="Vincular a miembro existente..."
+                                       autocomplete="off">
+                            </div>
+
+                            <div class="autocomplete-dropdown">
+                                <ul class="autocomplete-list"></ul>
+                                <div class="autocomplete-empty" style="display:none;">
+                                    <span class="material-icons">person_search</span>
+                                    <p>No se encontraron miembros</p>
+                                </div>
+                                <div class="autocomplete-loading" style="display:none;">
+                                    <span class="material-icons spinner">sync</span>
+                                    <p>Buscando…</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="odoo-quick-fields">
                         <div class="odoo-quick-field">
                             <span class="material-icons">email</span>
@@ -104,6 +151,14 @@
 .odoo-avatar-icon {
     font-size: 50px;
     color: var(--color-text-muted);
+}
+
+/* Imagen del avatar cuando se carga desde miembro */
+.odoo-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0;
 }
 
 /* Inputs estilo línea · integrado con main.css */
@@ -265,6 +320,272 @@
         margin-top: 4px;
     }
 
+    /* Hint */
+    .odoo-field-hint {
+        font-size: 11px;
+        color: var(--color-text-muted);
+        font-style: italic;
+        margin-top: 6px;
+        display: block;
+    }
+
+/* =====================================
+   AUTOCOMPLETE - ESTILO CHIP/TAG
+   ===================================== */
+
+.autocomplete-wrapper {
+    position: relative;
+}
+
+.autocomplete-field {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Input de búsqueda */
+.autocomplete-search {
+    flex: 1;
+    min-width: 120px;
+    border: none !important;
+    border-bottom: 1px solid transparent !important;
+    background: transparent;
+    padding: 4px 0 !important;
+    font-size: 13px;
+    color: var(--color-text-main);
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+
+.autocomplete-search:hover {
+    border-bottom-color: var(--color-border-subtle) !important;
+}
+
+.autocomplete-search:focus {
+    outline: none;
+    border-bottom-color: var(--color-primary) !important;
+    border-bottom-width: 2px !important;
+    padding-bottom: 3px !important;
+    box-shadow: none !important;
+}
+
+.autocomplete-search::placeholder {
+    color: #adb5bd;
+}
+
+/* Ocultar input cuando hay chip */
+.autocomplete-field.has-selection .autocomplete-search {
+    display: none;
+}
+
+/* =====================================
+   CHIP / TAG - ESTILO SUTIL Y COMPACTO
+   ===================================== */
+
+.autocomplete-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px 2px 2px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    font-size: 13px;
+    color: var(--color-text-main);
+    animation: chipIn 0.15s ease;
+}
+
+@keyframes chipIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.chip-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: white;
+    font-size: 9px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+}
+
+.chip-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+}
+
+.chip-name {
+    font-weight: 500;
+    color: var(--color-text-main);
+    font-size: 13px;
+}
+
+.chip-code {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-weight: 400;
+}
+
+.chip-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 0;
+    margin-left: 2px;
+}
+
+.chip-remove:hover {
+    background: #e5e7eb;
+    color: var(--color-text-main);
+}
+
+.chip-remove .material-icons {
+    font-size: 14px;
+}
+
+/* =====================================
+   DROPDOWN
+   ===================================== */
+
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-height: 280px;
+    overflow-y: auto;
+    display: none;
+}
+
+.autocomplete-dropdown.open {
+    display: block;
+}
+
+.autocomplete-list {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+}
+
+.autocomplete-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.autocomplete-item:hover {
+    background: rgba(0, 151, 167, 0.08);
+}
+
+.autocomplete-item-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary) 0%, #017e84 100%);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.autocomplete-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.autocomplete-item-name {
+    font-weight: 500;
+    color: #111827;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.autocomplete-item-meta {
+    font-size: 11px;
+    color: #6b7280;
+    display: flex;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.autocomplete-item-code {
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.autocomplete-empty,
+.autocomplete-loading {
+    padding: 24px 14px;
+    text-align: center;
+    color: #9ca3af;
+    display: none;
+}
+
+.autocomplete-empty .material-icons,
+.autocomplete-loading .material-icons {
+    font-size: 32px;
+    opacity: 0.4;
+    display: block;
+    margin: 0 auto 8px;
+}
+
+.autocomplete-empty p,
+.autocomplete-loading p {
+    margin: 0;
+    font-size: 12px;
+}
+
+/* Spinner animation */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
 @media (max-width: 768px){
     .odoo-form-container{
         margin: 0 12px;
@@ -306,6 +627,48 @@
     font-size: 18px;
     color: var(--color-text-muted);
 }
+
+/* Vincular a miembro - estilo header */
+.odoo-member-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 10px;
+    background: #ffffff;
+    margin: 8px 0;
+    min-width: 280px;
+    max-width: 400px;
+}
+
+.odoo-member-link > .material-icons {
+    font-size: 18px;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.odoo-member-link .autocomplete-wrapper {
+    flex: 1;
+    min-width: 0;
+}
+
+.odoo-member-link .autocomplete-search {
+    width: 100%;
+    border: none !important;
+    background: transparent;
+    padding: 2px 0 !important;
+    font-size: 14px;
+}
+
+.odoo-member-link .autocomplete-search:focus {
+    box-shadow: none !important;
+}
+
+.odoo-member-link .autocomplete-chip {
+    margin: 0;
+}
+
 .odoo-form-errors{
     border: 1px solid #fca5a5;
     background: #fee2e2;
@@ -316,6 +679,16 @@
     margin: 12px 20px 0;
 }
 
+    .autocomplete-chip {
+        max-width: 100%;
+    }
+
+    .chip-name {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 
 </style>
@@ -336,5 +709,164 @@
     });
   })();
 </script>
+<script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
+<script>
+(function(){
+  const wrap = document.querySelector(".autocomplete-wrapper[data-autocomplete-id='id_miembro_id']");
+  if(!wrap) return;
+
+  const hiddenMiembro = document.getElementById("id_miembro_id");
+  const first = document.getElementById("id_first_name");
+  const last  = document.getElementById("id_last_name");
+  const emailInput = document.getElementById("id_email");
+  const override = document.getElementById("id_override_nombre");
+  const avatarContainer = document.querySelector(".odoo-avatar");
+
+  if(!hiddenMiembro || !first || !last || !override) return;
+
+  // Guardamos el avatar original para restaurarlo
+  const avatarOriginalHTML = avatarContainer ? avatarContainer.innerHTML : '';
+
+  const nameField = document.querySelector(".odoo-name-field");
+  if(!nameField) return;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "odoo-btn-inline-edit";
+  btn.textContent = "Editar manualmente";
+  btn.style.display = "none";
+  nameField.appendChild(btn);
+
+  function lockFields(){
+    first.readOnly = true;
+    last.readOnly = true;
+    first.classList.add("is-locked");
+    last.classList.add("is-locked");
+    btn.style.display = "inline-flex";
+  }
+
+  function unlockFields(){
+    first.readOnly = false;
+    last.readOnly = false;
+    first.classList.remove("is-locked");
+    last.classList.remove("is-locked");
+  }
+
+  function setFromChipBestEffort(){
+    const chipName = wrap.querySelector(".chip-name");
+    const full = (chipName ? chipName.textContent : "").trim();
+    if(!full) return;
+    const parts = full.split(/\s+/).filter(Boolean);
+    if(parts.length === 1){
+      first.value = parts[0];
+      last.value = "";
+      return;
+    }
+    first.value = parts[0];
+    last.value = parts.slice(1).join(" ");
+  }
+
+  // Cargar datos completos del miembro (foto, email)
+  async function cargarDatosMiembro(miembroId) {
+    if (!miembroId) return;
+    try {
+      const response = await fetch('/api/miembro-detalle/' + miembroId + '/', {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.success) {
+        if (data.foto_url && avatarContainer) {
+          avatarContainer.innerHTML = '<img src="' + data.foto_url + '" alt="Foto" class="odoo-avatar-img">';
+        }
+        if (data.email && emailInput && !emailInput.value.trim()) {
+          emailInput.value = data.email;
+        }
+        if (data.nombre) first.value = data.nombre;
+        if (data.apellido) last.value = data.apellido;
+      }
+    } catch (err) {
+      console.warn('No se pudieron cargar datos del miembro:', err);
+    }
+  }
+
+  function restaurarAvatar() {
+    if (avatarContainer) {
+      avatarContainer.innerHTML = avatarOriginalHTML;
+    }
+  }
+
+  function onMiembroSelected(){
+    override.value = "";
+    setFromChipBestEffort();
+    lockFields();
+    const miembroId = hiddenMiembro.value;
+    if (miembroId) {
+      cargarDatosMiembro(miembroId);
+    }
+  }
+
+  function onMiembroCleared(){
+    override.value = "";
+    unlockFields();
+    btn.style.display = "none";
+    restaurarAvatar();
+    first.value = "";
+    last.value = "";
+    if (emailInput) emailInput.value = "";
+  }
+
+  btn.addEventListener("click", function(){
+    override.value = "on";
+    unlockFields();
+    first.focus();
+  });
+
+  let lastValue = hiddenMiembro.value || "";
+  setInterval(function(){
+    const v = hiddenMiembro.value || "";
+    if(v === lastValue) return;
+    lastValue = v;
+    if(v){
+      onMiembroSelected();
+    }else{
+      onMiembroCleared();
+    }
+  }, 200);
+
+  if(hiddenMiembro.value){
+    onMiembroSelected();
+  }
+})();
+</script>
+
+<style>
+/* Botón inline (pequeño, estilo discreto) */
+.odoo-btn-inline-edit{
+  margin-left: 10px;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid var(--color-border-subtle);
+  background: #fff;
+  color: var(--color-text-main);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  line-height: 1;
+}
+.odoo-btn-inline-edit:hover{
+  background: #f9fafb;
+}
+
+/* Estado bloqueado (sutil) */
+.odoo-name-field input.is-locked{
+  opacity: .85;
+  cursor: not-allowed;
+}
+</style>
+
 
 {% endblock %}

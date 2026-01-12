@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.template.loader import render_to_string
@@ -22,6 +23,8 @@ from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.shortcuts import redirect
+from miembros_app.models import Miembro
+from django.db import transaction
 
 def root_redirect(request):
     # Si ya está autenticado, lo mandamos al home (dashboard)
@@ -627,7 +630,6 @@ def probar_envio_correo(request):
 # CREAR USUARIO DESDE EL SISTEMA (SOLO ADMIN)
 # =================================================
 from django.views.decorators.csrf import ensure_csrf_cookie
-
 @login_required
 @permission_required('auth.add_user', raise_exception=True)
 @ensure_csrf_cookie
@@ -635,7 +637,20 @@ def crear_usuario(request):
     if request.method == "POST":
         form = UsuarioIglesiaForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            with transaction.atomic():
+                user = form.save()
+
+                miembro_id = form.cleaned_data.get("miembro_id")
+                if miembro_id:
+                    miembro = Miembro.objects.select_for_update().filter(
+                        id=miembro_id,
+                        usuario__isnull=True
+                    ).first()
+
+                    if miembro:
+                        miembro.usuario = user
+                        miembro.save()
+
             nombre_mostrar = user.get_full_name() or user.username
             messages.success(request, f"Usuario «{nombre_mostrar}» creado correctamente.")
             return redirect("core:home")
@@ -689,3 +704,42 @@ def cerrar_sesion(request):
     logout(request)
     # Usamos la ruta definida en settings.LOGOUT_REDIRECT_URL
     return redirect(settings.LOGOUT_REDIRECT_URL)
+
+
+# =============================================================================
+# API: Detalle de miembro (para cargar foto y email en crear_usuario)
+# =============================================================================
+
+@login_required
+def miembro_detalle_api(request, miembro_id):
+    """
+    Endpoint para obtener detalles de un miembro (foto, email, nombre, apellido)
+    URL: /api/miembro-detalle/<int:miembro_id>/
+    """
+    try:
+        miembro = Miembro.objects.get(id=miembro_id)
+        
+        # Construir URL de foto
+        foto_url = None
+        if miembro.foto:
+            foto_url = miembro.foto.url
+        
+        return JsonResponse({
+            'success': True,
+            'id': miembro.id,
+            'nombre': miembro.nombres or '',
+            'apellido': miembro.apellidos or '',
+            'email': miembro.email or '',
+            'foto_url': foto_url,
+        })
+        
+    except Miembro.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Miembro no encontrado'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

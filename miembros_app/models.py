@@ -4,6 +4,7 @@ from core.utils_config import get_edad_minima_miembro_oficial
 from django.core.validators import RegexValidator
 from django.db.models import Max
 from core.models import ConfiguracionSistema
+from django.conf import settings
 
 
 
@@ -151,6 +152,15 @@ class Miembro(models.Model):
     nuevo_creyente = models.BooleanField(
         default=False,
         help_text="Marcar si es un nuevo creyente en proceso de seguimiento (aún no miembro oficial).",
+    )
+    # --- Usuario del sistema ---
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="miembro",
+        help_text="Usuario del sistema vinculado a este miembro (si aplica)."
     )
 
     # --- Información laboral ---

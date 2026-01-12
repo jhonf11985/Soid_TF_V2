@@ -134,6 +134,7 @@ class ConfiguracionReportesForm(forms.ModelForm):
             "email_from_name": forms.TextInput(attrs={"class": "form-input"}),
             "email_from_address": forms.EmailInput(attrs={"class": "form-input"}),
         }
+
 class UsuarioIglesiaForm(UserCreationForm):
     first_name = forms.CharField(
         label="Nombre",
@@ -144,6 +145,7 @@ class UsuarioIglesiaForm(UserCreationForm):
             "placeholder": "Ej.: María"
         })
     )
+
     last_name = forms.CharField(
         label="Apellidos",
         max_length=150,
@@ -153,6 +155,7 @@ class UsuarioIglesiaForm(UserCreationForm):
             "placeholder": "Ej.: Martínez Pérez"
         })
     )
+
     email = forms.EmailField(
         label="Correo electrónico",
         required=True,
@@ -161,6 +164,7 @@ class UsuarioIglesiaForm(UserCreationForm):
             "placeholder": "ejemplo@correo.com"
         })
     )
+
     grupo = forms.ModelChoiceField(
         label="Rol / Grupo",
         queryset=Group.objects.all(),
@@ -170,39 +174,76 @@ class UsuarioIglesiaForm(UserCreationForm):
         })
     )
 
+    # ya lo tienes
+    miembro_id = forms.IntegerField(
+        required=False,
+        widget=forms.HiddenInput()
+    )
+
+    # ✅ NUEVO: si el admin decide editar manualmente nombre/apellidos
+    override_nombre = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.HiddenInput()
+    )
+
+    def _get_miembro_nombres(self, miembro):
+        """
+        Intentamos encontrar nombre/apellidos con varios nombres de campos posibles,
+        para no romper si tu modelo Miembro usa otro naming.
+        """
+        # Ajusta este orden si tú sabes exactamente cómo se llaman.
+        nombre = (
+            getattr(miembro, "nombre", None)
+            or getattr(miembro, "nombres", None)
+            or getattr(miembro, "first_name", None)
+            or getattr(miembro, "primer_nombre", None)
+            or ""
+        )
+        apellidos = (
+            getattr(miembro, "apellido", None)
+            or getattr(miembro, "apellidos", None)
+            or getattr(miembro, "last_name", None)
+            or getattr(miembro, "segundo_nombre", None)  # (por si lo usas así)
+            or ""
+        )
+        return (str(nombre).strip(), str(apellidos).strip())
+
     def save(self, commit=True):
         user = super().save(commit=False)
 
-        # Guardar email/nombres (por si acaso, aunque ya vienen en cleaned_data)
-        user.first_name = self.cleaned_data.get("first_name", "")
-        user.last_name = self.cleaned_data.get("last_name", "")
+        # Datos normales del form
         user.email = self.cleaned_data.get("email", "")
+
+        miembro_id = self.cleaned_data.get("miembro_id")
+        override = bool(self.cleaned_data.get("override_nombre"))
+
+        # ✅ Regla híbrida:
+        # Si se vinculó miembro y NO se activó edición manual,
+        # el nombre/apellido del usuario se toma del Miembro (fuente de verdad).
+        if miembro_id and not override:
+            from miembros_app.models import Miembro  # import local para evitar líos
+            miembro = Miembro.objects.filter(id=miembro_id).first()
+            if miembro:
+                nombre, apellidos = self._get_miembro_nombres(miembro)
+                # si por alguna razón vienen vacíos, cae al form
+                user.first_name = nombre or self.cleaned_data.get("first_name", "")
+                user.last_name = apellidos or self.cleaned_data.get("last_name", "")
+            else:
+                user.first_name = self.cleaned_data.get("first_name", "")
+                user.last_name = self.cleaned_data.get("last_name", "")
+        else:
+            # Edición manual o sin miembro
+            user.first_name = self.cleaned_data.get("first_name", "")
+            user.last_name = self.cleaned_data.get("last_name", "")
 
         if commit:
             user.save()
-
-            # Asignar grupo si se eligió
-            grupo = self.cleaned_data.get("grupo")
-            if grupo:
-                user.groups.set([grupo])  # si quieres permitir solo un grupo
-
-        return user
-    def save(self, commit=True):
-        user = super().save(commit=False)
-
-        user.first_name = self.cleaned_data.get("first_name", "")
-        user.last_name = self.cleaned_data.get("last_name", "")
-        user.email = self.cleaned_data.get("email", "")
-
-        if commit:
-            user.save()
-
             grupo = self.cleaned_data.get("grupo")
             if grupo:
                 user.groups.set([grupo])
 
         return user
-
 
     class Meta:
         model = User
@@ -214,6 +255,8 @@ class UsuarioIglesiaForm(UserCreationForm):
             "grupo",
             "password1",
             "password2",
+            "miembro_id",
+            "override_nombre",
         ]
         widgets = {
             "username": forms.TextInput(attrs={

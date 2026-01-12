@@ -34,4 +34,5 @@ urlpatterns = [
 
     # 🔌 AJAX APIs - Reutilizable en todos los módulos
     path("api/buscar-miembros/", ajax_views.buscar_miembros, name="api_buscar_miembros"),
+    path("api/miembro-detalle/<int:miembro_id>/", ajax_views.miembro_detalle, name="api_miembro_detalle"),
 ]

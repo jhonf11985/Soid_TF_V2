@@ -112,3 +112,51 @@ def buscar_miembros(request):
         "resultados": resultados,
         "total": len(resultados),
     }, safe=True)
+
+
+@login_required
+@require_http_methods(["GET"])
+def miembro_detalle(request, miembro_id):
+    """
+    API AJAX para obtener detalles de un miembro específico.
+    Usado para cargar foto, email, nombre al crear usuario.
+    
+    URL: /api/miembro-detalle/<int:miembro_id>/
+    
+    Responde con JSON:
+    {
+        "success": true,
+        "id": 1,
+        "nombre": "Juan",
+        "apellido": "García",
+        "email": "juan@ejemplo.com",
+        "foto_url": "/media/miembros_fotos/foto.jpg"
+    }
+    """
+    try:
+        miembro = Miembro.objects.get(id=miembro_id)
+        
+        # Construir URL de foto
+        foto_url = None
+        if miembro.foto:
+            foto_url = miembro.foto.url
+        
+        return JsonResponse({
+            'success': True,
+            'id': miembro.id,
+            'nombre': miembro.nombres or '',
+            'apellido': miembro.apellidos or '',
+            'email': miembro.email or '',
+            'foto_url': foto_url,
+        })
+        
+    except Miembro.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Miembro no encontrado'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
