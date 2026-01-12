@@ -187,6 +187,18 @@ class UsuarioIglesiaForm(UserCreationForm):
         widget=forms.HiddenInput()
     )
 
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if not email:
+            return email
+
+        existe = User.objects.filter(email__iexact=email).exists()
+        if existe:
+            raise forms.ValidationError(
+                "Ya existe un usuario con este correo electrónico."
+            )
+
+        return email
     def _get_miembro_nombres(self, miembro):
         """
         Intentamos encontrar nombre/apellidos con varios nombres de campos posibles,

@@ -26,6 +26,57 @@ from django.shortcuts import redirect
 from miembros_app.models import Miembro
 from django.db import transaction
 
+
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.contrib.auth.decorators import login_required
+
+User = get_user_model()
+
+@login_required
+def usuarios_listado(request):
+    q = (request.GET.get("q") or "").strip()
+    grupo_id = (request.GET.get("grupo") or "").strip()
+    estado = (request.GET.get("estado") or "").strip()  # "activos" | "inactivos" | ""
+
+    qs = User.objects.all().order_by("-date_joined")
+
+    if q:
+        qs = qs.filter(
+            Q(username__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(email__icontains=q)
+        )
+
+    if grupo_id.isdigit():
+        qs = qs.filter(groups__id=int(grupo_id))
+
+    if estado == "activos":
+        qs = qs.filter(is_active=True)
+    elif estado == "inactivos":
+        qs = qs.filter(is_active=False)
+
+    qs = qs.distinct()
+
+    paginator = Paginator(qs, 20)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    grupos = Group.objects.all().order_by("name")
+
+    context = {
+        "page_obj": page_obj,
+        "q": q,
+        "grupo_id": grupo_id,
+        "estado": estado,
+        "grupos": grupos,
+    }
+    return render(request, "core/usuarios/listado_usuarios.html", context)
+
+
 def root_redirect(request):
     # Si ya está autenticado, lo mandamos al home (dashboard)
     if request.user.is_authenticated:
@@ -653,11 +704,14 @@ def crear_usuario(request):
 
             nombre_mostrar = user.get_full_name() or user.username
             messages.success(request, f"Usuario «{nombre_mostrar}» creado correctamente.")
-            return redirect("core:home")
+            return redirect("usuarios:listado")
+
     else:
         form = UsuarioIglesiaForm()
 
     return render(request, "core/usuarios/crear_usuario.html", {"form": form})
+
+
 
 
 @login_required

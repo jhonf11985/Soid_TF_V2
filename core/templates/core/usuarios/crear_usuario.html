@@ -5,141 +5,200 @@
 
 {% block content %}
 <form method="post" class="odoo-form">
-    {% csrf_token %}
+  {% csrf_token %}
 
-    {% if form.non_field_errors %}
-  <div class="odoo-form-errors">
-    {{ form.non_field_errors }}
+  {% if messages %}
+    <div class="odoo-messages">
+      {% for message in messages %}
+        <div class="odoo-alert odoo-alert-{{ message.tags|default:'info' }}">
+          <span class="material-icons">
+            {% if 'success' in message.tags %}check_circle{% elif 'error' in message.tags or 'danger' in message.tags %}error{% else %}info{% endif %}
+          </span>
+          <div class="odoo-alert-text">{{ message }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if form.non_field_errors %}
+    <div class="odoo-form-errors">
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
+
+  <div class="odoo-control-bar">
+    <div class="odoo-control-left">
+      <a href="javascript:history.back()" class="odoo-breadcrumb-link">
+        <span class="material-icons">arrow_back</span>
+        Usuarios
+      </a>
+      <span class="odoo-breadcrumb-sep">/</span>
+      <span class="odoo-breadcrumb-current">Nuevo</span>
+      <span class="odoo-new-badge">Nuevo</span>
+    </div>
   </div>
-{% endif %}
 
+  <div class="odoo-form-container">
+    <div class="odoo-form-main">
 
-    <div class="odoo-control-bar">
-        <div class="odoo-control-left">
-            <a href="javascript:history.back()" class="odoo-breadcrumb-link">
-                <span class="material-icons">arrow_back</span>
-                Usuarios
-            </a>
-            <span class="odoo-breadcrumb-sep">/</span>
-            <span class="odoo-breadcrumb-current">Nuevo</span>
-            <span class="odoo-new-badge">Nuevo</span>
+      <div class="odoo-form-header">
+        <div class="odoo-avatar-section">
+          <div class="odoo-avatar">
+            <span class="material-icons odoo-avatar-icon">person_add</span>
+          </div>
         </div>
+
+        <div class="odoo-header-info">
+          <div class="odoo-name-field">
+            {{ form.first_name }}
+            {{ form.last_name }}
+          </div>
+
+          {{ form.override_nombre }}
+
+          <!-- Vincular a miembro (Autocomplete) - debajo del nombre -->
+          <div class="odoo-member-link">
+            <span class="material-icons">person_search</span>
+            <div class="autocomplete-wrapper"
+                 data-autocomplete-id="id_miembro_id"
+                 data-endpoint="/api/buscar-miembros/"
+                 data-filtro="sin_usuario"
+                 data-limit="15"
+                 data-min-chars="2"
+                 data-debounce="300">
+
+              {{ form.miembro_id }}
+
+
+              <div class="autocomplete-field">
+                <div class="autocomplete-chip" style="display:none;">
+                  <span class="chip-avatar">M</span>
+                  <span class="chip-text">
+                    <span class="chip-name">—</span>
+                    <span class="chip-code">—</span>
+                  </span>
+                  <button type="button" class="chip-remove" title="Quitar">
+                    <span class="material-icons">close</span>
+                  </button>
+                </div>
+
+                <input type="text"
+                       class="autocomplete-search"
+                       placeholder="Vincular a miembro existente..."
+                       autocomplete="off">
+              </div>
+
+              <div class="autocomplete-dropdown">
+                <ul class="autocomplete-list"></ul>
+                <div class="autocomplete-empty" style="display:none;">
+                  <span class="material-icons">person_search</span>
+                  <p>No se encontraron miembros</p>
+                </div>
+                <div class="autocomplete-loading" style="display:none;">
+                  <span class="material-icons spinner">sync</span>
+                  <p>Buscando…</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="odoo-quick-fields">
+            <div class="odoo-quick-field">
+              <span class="material-icons">email</span>
+              {{ form.email }}
+            </div>
+            <div id="email-status" class="email-status" style="display:none;"></div>
+
+          </div>
+        </div>
+      </div>
+      
+
+      <div class="odoo-form-body">
+        <div class="odoo-form-column">
+          <h3 class="odoo-section-title">Credenciales</h3>
+
+          <div class="odoo-field">
+            <label class="odoo-label">Nombre de usuario</label>
+            {{ form.username }}
+            <small class="odoo-help">Sin espacios. Recomendado: nombre.apellido</small>
+            {% if form.username.errors %}
+              <div class="odoo-field-error">{{ form.username.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="odoo-field">
+            <label class="odoo-label">Rol / Grupo</label>
+            {{ form.grupo }}
+            <small class="odoo-help">Define los permisos del usuario dentro del sistema.</small>
+            {% if form.grupo.errors %}
+              <div class="odoo-field-error">{{ form.grupo.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="odoo-form-column">
+          <h3 class="odoo-section-title">Seguridad</h3>
+
+          <div class="odoo-field">
+            <label class="odoo-label">Contraseña</label>
+            {{ form.password1 }}
+            <small class="odoo-help">Usa una contraseña segura (mínimo 8 caracteres, números y mayúsculas).</small>
+            {% if form.password1.errors %}
+              <div class="odoo-field-error">{{ form.password1.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="odoo-field">
+            <label class="odoo-label">Repetir contraseña</label>
+            {{ form.password2 }}
+            <small class="odoo-help">Debe coincidir exactamente con la contraseña.</small>
+            {% if form.password2.errors %}
+              <div class="odoo-field-error">{{ form.password2.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="odoo-form-container">
-        <div class="odoo-form-main">
-            
-            <div class="odoo-form-header">
-                <div class="odoo-avatar-section">
-                    <div class="odoo-avatar">
-                       <span class="material-icons odoo-avatar-icon">person_add</span>
-
-                    </div>
-                </div>
-
-                <div class="odoo-header-info">
-                    <div class="odoo-name-field">
-                        {{ form.first_name }}
-                        {{ form.last_name }}
-                    </div>
-                    {{ form.override_nombre }}
-
-                    <!-- Vincular a miembro (Autocomplete) - debajo del nombre -->
-                    <div class="odoo-member-link">
-                        <span class="material-icons">person_search</span>
-                        <div class="autocomplete-wrapper"
-                             data-autocomplete-id="id_miembro_id"
-                             data-endpoint="/api/buscar-miembros/"
-                             data-filtro="sin_usuario"
-                             data-limit="15"
-                             data-min-chars="2"
-                             data-debounce="300">
-
-                            <input type="hidden" id="id_miembro_id" name="miembro_id" value="">
-
-                            <div class="autocomplete-field">
-                                <div class="autocomplete-chip" style="display:none;">
-                                    <span class="chip-avatar">M</span>
-                                    <span class="chip-text">
-                                        <span class="chip-name">—</span>
-                                        <span class="chip-code">—</span>
-                                    </span>
-                                    <button type="button" class="chip-remove" title="Quitar">
-                                        <span class="material-icons">close</span>
-                                    </button>
-                                </div>
-
-                                <input type="text"
-                                       class="autocomplete-search"
-                                       placeholder="Vincular a miembro existente..."
-                                       autocomplete="off">
-                            </div>
-
-                            <div class="autocomplete-dropdown">
-                                <ul class="autocomplete-list"></ul>
-                                <div class="autocomplete-empty" style="display:none;">
-                                    <span class="material-icons">person_search</span>
-                                    <p>No se encontraron miembros</p>
-                                </div>
-                                <div class="autocomplete-loading" style="display:none;">
-                                    <span class="material-icons spinner">sync</span>
-                                    <p>Buscando…</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="odoo-quick-fields">
-                        <div class="odoo-quick-field">
-                            <span class="material-icons">email</span>
-                            {{ form.email }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="odoo-form-body">
-                <div class="odoo-form-column">
-                    <h3 class="odoo-section-title">Credenciales</h3>
-                    <div class="odoo-field">
-                        <label class="odoo-label">Nombre de usuario</label>
-                        {{ form.username }}
-                        {% if form.username.errors %}<div class="odoo-field-error">{{ form.username.errors.0 }}</div>{% endif %}
-                    </div>
-                    <div class="odoo-field">
-                        <label class="odoo-label">Rol / Grupo</label>
-                        {{ form.grupo }}
-                    </div>
-                </div>
-
-                <div class="odoo-form-column">
-                    <h3 class="odoo-section-title">Seguridad</h3>
-                    <div class="odoo-field">
-                        <label class="odoo-label">Contraseña</label>
-                        {{ form.password1 }}
-                    </div>
-                    <div class="odoo-field">
-                        <label class="odoo-label">Repetir contraseña</label>
-                        {{ form.password2 }}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="odoo-form-aside">
-            <div class="odoo-aside-actions">
-                <button type="submit" class="odoo-btn odoo-btn-primary">
-                    <span class="material-icons">save</span> Guardar Usuario
-                </button>
-                <a href="javascript:history.back()" class="odoo-btn odoo-btn-secondary">Descartar</a>
-            </div>
-        </div>
+    <div class="odoo-form-aside">
+      <div class="odoo-aside-actions">
+        <button type="submit" class="odoo-btn odoo-btn-primary">
+          <span class="material-icons">save</span> Guardar Usuario
+        </button>
+        <a href="javascript:history.back()" id="btn-descartar" class="odoo-btn odoo-btn-secondary">Descartar</a>
+      </div>
     </div>
+  </div>
+
+  <!-- Acciones móvil tipo app -->
+  <div class="odoo-mobile-actions" aria-label="Acciones">
+    <button type="submit" class="odoo-btn odoo-btn-primary odoo-mobile-save">
+      <span class="material-icons">save</span> Guardar
+    </button>
+    <a href="javascript:history.back()" id="btn-descartar-mobile" class="odoo-btn odoo-btn-secondary odoo-mobile-cancel">
+      Cancelar
+    </a>
+  </div>
 </form>
 
 <style>
 
-    :root{
+    .email-status{
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.email-status.ok{ color: #14532d; }
+.email-status.bad{ color: #991b1b; }
+.email-status.wait{ color: #6b7280; }
+.email-status .material-icons{
+  font-size: 16px;
+  vertical-align: -3px;
+  margin-right: 6px;
+}
+
+  :root{
     --odoo-primary: #714B67;
     --odoo-primary-hover: #5a3c52;
 
@@ -147,23 +206,104 @@
     --odoo-secondary-border: #d1d5db;
     --odoo-secondary-text: #111827;
     --odoo-secondary-hover: #f3f4f6;
-}
-.odoo-avatar-icon {
+  }
+
+  /* ===== Mensajes ===== */
+  .odoo-messages{
+    margin: 12px 20px 0;
+    display: grid;
+    gap: 10px;
+  }
+
+  .odoo-alert{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    padding: 12px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border-subtle);
+    background: #fff;
+    font-size: 13px;
+  }
+
+  .odoo-alert .material-icons{
+    font-size: 20px;
+    margin-top: 1px;
+  }
+
+  .odoo-alert-success{
+    border-color: #86efac;
+    background: #dcfce7;
+    color: #14532d;
+  }
+
+  .odoo-alert-error,
+  .odoo-alert-danger{
+    border-color: #fca5a5;
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .odoo-alert-info{
+    border-color: #93c5fd;
+    background: #dbeafe;
+    color: #1e3a8a;
+  }
+
+  /* ===== Microcopy ===== */
+  .odoo-help{
+    display:block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    line-height: 1.25;
+  }
+
+  /* ===== Errores ===== */
+  .odoo-form-errors{
+    border: 1px solid #fca5a5;
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    margin: 12px 20px 0;
+  }
+
+  .odoo-field-error {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  /* ===== Avatar ===== */
+  .odoo-avatar{
+    width: 90px;
+    height: 90px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ddd;
+    flex: 0 0 auto;
+  }
+
+  .odoo-avatar-icon{
     font-size: 50px;
     color: var(--color-text-muted);
-}
+  }
 
-/* Imagen del avatar cuando se carga desde miembro */
-.odoo-avatar-img {
+  .odoo-avatar-img{
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 0;
-}
+    display:block;
+  }
 
-/* Inputs estilo línea · integrado con main.css */
-.odoo-form input:not([type="checkbox"]),
-.odoo-form select {
+  /* ===== Inputs estilo línea ===== */
+  .odoo-form input:not([type="checkbox"]),
+  .odoo-form select{
     width: 100%;
     padding: 8px 0;
     border: none;
@@ -174,179 +314,248 @@
     color: var(--color-text-main);
     outline: none;
     transition: border-color .15s ease, box-shadow .15s ease;
-}
+    min-width: 0;              /* clave: evita overflow en flex/grid */
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 
-.odoo-form select {
-    padding: 10px 0;
-}
+  .odoo-form select{ padding: 10px 0; }
 
-.odoo-form input:not([type="checkbox"]):focus,
-.odoo-form select:focus {
+  .odoo-form input:not([type="checkbox"]):focus,
+  .odoo-form select:focus{
     border-bottom-color: var(--color-primary);
     box-shadow: 0 1px 0 0 var(--color-primary);
-}
+  }
 
+  /* ===== Contenedores principales ===== */
+  .odoo-form-container{
+    display: flex;
+    background: #fff;
+    min-height: calc(100vh - 120px);
+    margin: 0 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    overflow: hidden; /* evita que el header se “salga” */
+  }
 
+  .odoo-form-main{
+    flex: 1;
+    padding: 40px;
+    border-right: 1px solid #eee;
+    min-width: 0; /* clave */
+  }
 
-    /* 2. Estilo del nombre (Header) */
-    .odoo-name-field {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 8px;
-    }
-.odoo-name-field input {
-    font-size: 24px !important;
+  .odoo-form-aside{
+    width: 300px;
+    padding: 20px;
+    background: #f8f9fa;
+  }
+
+  /* ===== Header ===== */
+  .odoo-form-header{
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .odoo-avatar-section{ flex: 0 0 auto; }
+
+  .odoo-header-info{
+    flex: 1;
+    min-width: 0; /* clave */
+    max-width: 100%;
+  }
+
+  .odoo-name-field{
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+    min-width: 0;
+    flex-wrap: wrap; /* en desktop estrecho, que no rompa */
+  }
+
+  .odoo-name-field input{
+    font-size: 24px;
     font-weight: 600;
     border: none !important;
     border-bottom: 2px solid var(--color-border-subtle) !important;
     border-radius: 0 !important;
     padding: 4px 0 !important;
     color: var(--color-text-main);
-}
+    min-width: 0;
+    flex: 1 1 220px; /* se adapta sin salirse */
+  }
 
+  .odoo-name-field input:focus{
+    border-bottom-color: var(--odoo-primary) !important;
+    box-shadow: none !important;
+  }
 
-    .odoo-name-field input:focus {
-        border-bottom-color: #714B67 !important;
-    }
+  /* ===== Botón inline "Editar manualmente" ===== */
+  .odoo-btn-inline-edit{
+    margin-left: 10px;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid var(--color-border-subtle);
+    background: #fff;
+    color: var(--color-text-main);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    line-height: 1;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+  .odoo-btn-inline-edit:hover{ background: #f9fafb; }
+  .odoo-name-field input.is-locked{ opacity: .85; cursor: not-allowed; }
 
-    /* 3. Contenedores Principales (Copia exacta de miembros) */
-    .odoo-form-container {
-        display: flex;
-        background: #fff;
-        min-height: calc(100vh - 120px);
-        margin: 0 20px;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-    }
-    .odoo-form-main {
-        flex: 1;
-        padding: 40px;
-        border-right: 1px solid #eee;
-    }
-    .odoo-form-aside {
-        width: 300px;
-        padding: 20px;
-        background: #f8f9fa;
-    }
+  /* ===== Email "quick field" (desktop) ===== */
+  .odoo-quick-fields{
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 6px;
+    min-width: 0;
+  }
 
-    /* 4. Cabecera */
-    .odoo-form-header {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-    .odoo-avatar {
-        width: 90px;
-        height: 90px;
-        background: #f0f0f0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid #ddd;
-    }
+  .odoo-quick-field{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 10px;
+    background: #ffffff;
+    min-width: 260px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 
-    /* 5. Columnas */
-    .odoo-form-body {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 40px;
-    }
-    .odoo-field {
-        margin-bottom: 15px;
-    }
-    .odoo-label {
-        font-weight: 600;
-        font-size: 13px;
-        color: #666;
-        display: block;
-        margin-bottom: 5px;
-    }
-.odoo-section-title {
+  .odoo-quick-field .material-icons{
+    font-size: 18px;
+    color: var(--color-text-muted);
+    flex: 0 0 auto;
+  }
+
+  .odoo-quick-field input{ min-width: 0; }
+
+  /* ===== Vincular miembro (ESTILO LÍNEA, no caja) ===== */
+  .odoo-member-link{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 6px;
+
+    padding: 6px 0;
+    border: none;
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: transparent;
+
+    width: 100%;
+    max-width: 520px;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .odoo-member-link:focus-within{
+    border-bottom-color: var(--color-primary);
+    box-shadow: 0 1px 0 0 var(--color-primary);
+  }
+
+  .odoo-member-link > .material-icons{
+    font-size: 18px;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+
+  .odoo-member-link .autocomplete-wrapper{
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ===== Body ===== */
+  .odoo-form-body{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+  }
+
+  .odoo-field{ margin-bottom: 15px; }
+
+  .odoo-label{
+    font-weight: 600;
+    font-size: 13px;
+    color: #666;
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .odoo-section-title{
     font-size: 15px;
     color: var(--color-text-main);
     border-bottom: 1px solid var(--color-border-subtle);
     padding-bottom: 8px;
     margin-bottom: 20px;
     font-weight: 600;
-}
+  }
 
-/* Botones Odoo – heredan colores del sistema */
-.odoo-btn {
+  /* ===== Botones ===== */
+  .odoo-btn{
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     width: 100%;
     padding: 10px;
-    border-radius: 4px; /* forma existente */
+    border-radius: 4px;
     font-weight: 600;
     cursor: pointer;
     margin-bottom: 10px;
     text-decoration: none;
     font-size: 14px;
     transition: background .15s ease, box-shadow .15s ease, transform .05s ease;
-}
+  }
 
-/* Primario = btn-primary del sistema */
-.odoo-btn-primary {
+  .odoo-btn-primary{
     background: var(--color-primary);
     color: #ffffff;
     border: none;
     box-shadow: 0 4px 10px rgba(0, 151, 167, 0.35);
-}
+  }
 
-.odoo-btn-primary:hover {
-    background: #028996; /* mismo hover que btn-primary */
+  .odoo-btn-primary:hover{
+    background: #028996;
     transform: translateY(-1px);
     box-shadow: 0 6px 14px rgba(0, 151, 167, 0.4);
-}
+  }
 
-/* Secundario */
-.odoo-btn-secondary {
+  .odoo-btn-secondary{
     background: #f9fafb;
     color: var(--color-text-main);
     border: 1px solid var(--color-border-subtle);
-}
+  }
 
-.odoo-btn-secondary:hover {
-    background: #f3f4f6;
-}
+  .odoo-btn-secondary:hover{ background: #f3f4f6; }
 
-    
-    /* Errores */
-    .odoo-field-error {
-        color: #dc3545;
-        font-size: 12px;
-        margin-top: 4px;
-    }
+  /* =====================================
+     AUTOCOMPLETE - CHIP/TAG
+     ===================================== */
+  .autocomplete-wrapper{ position: relative; }
 
-    /* Hint */
-    .odoo-field-hint {
-        font-size: 11px;
-        color: var(--color-text-muted);
-        font-style: italic;
-        margin-top: 6px;
-        display: block;
-    }
-
-/* =====================================
-   AUTOCOMPLETE - ESTILO CHIP/TAG
-   ===================================== */
-
-.autocomplete-wrapper {
-    position: relative;
-}
-
-.autocomplete-field {
+  .autocomplete-field{
     display: flex;
     align-items: center;
     min-height: 32px;
     flex-wrap: wrap;
     gap: 6px;
-}
+  }
 
-/* Input de búsqueda */
-.autocomplete-search {
+  .autocomplete-search{
     flex: 1;
     min-width: 120px;
     border: none !important;
@@ -357,34 +566,23 @@
     color: var(--color-text-main);
     font-family: inherit;
     transition: border-color 0.15s;
-}
+  }
 
-.autocomplete-search:hover {
-    border-bottom-color: var(--color-border-subtle) !important;
-}
+  .autocomplete-search:hover{ border-bottom-color: var(--color-border-subtle) !important; }
 
-.autocomplete-search:focus {
+  .autocomplete-search:focus{
     outline: none;
     border-bottom-color: var(--color-primary) !important;
     border-bottom-width: 2px !important;
     padding-bottom: 3px !important;
     box-shadow: none !important;
-}
+  }
 
-.autocomplete-search::placeholder {
-    color: #adb5bd;
-}
+  .autocomplete-search::placeholder{ color: #adb5bd; }
 
-/* Ocultar input cuando hay chip */
-.autocomplete-field.has-selection .autocomplete-search {
-    display: none;
-}
+  .autocomplete-field.has-selection .autocomplete-search{ display: none; }
 
-/* =====================================
-   CHIP / TAG - ESTILO SUTIL Y COMPACTO
-   ===================================== */
-
-.autocomplete-chip {
+  .autocomplete-chip{
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -395,20 +593,15 @@
     font-size: 13px;
     color: var(--color-text-main);
     animation: chipIn 0.15s ease;
-}
+    max-width: 100%;
+  }
 
-@keyframes chipIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
+  @keyframes chipIn{
+    from{ opacity: 0; transform: scale(0.95); }
+    to{ opacity: 1; transform: scale(1); }
+  }
 
-.chip-avatar {
+  .chip-avatar{
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -420,28 +613,28 @@
     align-items: center;
     justify-content: center;
     text-transform: uppercase;
-}
+  }
 
-.chip-text {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    line-height: 1;
-}
+  .chip-text{ display: flex; align-items: center; gap: 6px; line-height: 1; min-width:0; }
 
-.chip-name {
+  .chip-name{
     font-weight: 500;
     color: var(--color-text-main);
     font-size: 13px;
-}
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-.chip-code {
+  .chip-code{
     font-size: 11px;
     color: var(--color-text-muted);
     font-weight: 400;
-}
+    white-space: nowrap;
+  }
 
-.chip-remove {
+  .chip-remove{
     display: flex;
     align-items: center;
     justify-content: center;
@@ -455,22 +648,17 @@
     transition: all 0.15s;
     padding: 0;
     margin-left: 2px;
-}
+    flex: 0 0 auto;
+  }
 
-.chip-remove:hover {
+  .chip-remove:hover{
     background: #e5e7eb;
     color: var(--color-text-main);
-}
+  }
 
-.chip-remove .material-icons {
-    font-size: 14px;
-}
+  .chip-remove .material-icons{ font-size: 14px; }
 
-/* =====================================
-   DROPDOWN
-   ===================================== */
-
-.autocomplete-dropdown {
+  .autocomplete-dropdown{
     position: absolute;
     top: 100%;
     left: 0;
@@ -479,37 +667,29 @@
     background: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(0,0,0,.15);
     z-index: 1000;
     max-height: 280px;
     overflow-y: auto;
     display: none;
-}
+  }
 
-.autocomplete-dropdown.open {
-    display: block;
-}
+  .autocomplete-dropdown.open{ display: block; }
 
-.autocomplete-list {
-    list-style: none;
-    margin: 0;
-    padding: 4px 0;
-}
+  .autocomplete-list{ list-style: none; margin: 0; padding: 4px 0; }
 
-.autocomplete-item {
+  .autocomplete-item{
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 10px 14px;
     cursor: pointer;
     transition: background 0.15s;
-}
+  }
 
-.autocomplete-item:hover {
-    background: rgba(0, 151, 167, 0.08);
-}
+  .autocomplete-item:hover{ background: rgba(0, 151, 167, 0.08); }
 
-.autocomplete-item-avatar {
+  .autocomplete-item-avatar{
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -522,194 +702,199 @@
     justify-content: center;
     text-transform: uppercase;
     flex-shrink: 0;
-}
+  }
 
-.autocomplete-item-info {
-    flex: 1;
-    min-width: 0;
-}
+  .autocomplete-item-info{ flex: 1; min-width: 0; }
 
-.autocomplete-item-name {
+  .autocomplete-item-name{
     font-weight: 500;
     color: #111827;
     font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
+  }
 
-.autocomplete-item-meta {
+  .autocomplete-item-meta{
     font-size: 11px;
     color: #6b7280;
     display: flex;
     gap: 8px;
     margin-top: 2px;
-}
+  }
 
-.autocomplete-item-code {
+  .autocomplete-item-code{
     background: #f3f4f6;
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 10px;
     color: #6b7280;
     font-weight: 500;
-}
+  }
 
-.autocomplete-empty,
-.autocomplete-loading {
+  .autocomplete-empty,
+  .autocomplete-loading{
     padding: 24px 14px;
     text-align: center;
     color: #9ca3af;
     display: none;
-}
+  }
 
-.autocomplete-empty .material-icons,
-.autocomplete-loading .material-icons {
+  .autocomplete-empty .material-icons,
+  .autocomplete-loading .material-icons{
     font-size: 32px;
     opacity: 0.4;
     display: block;
     margin: 0 auto 8px;
-}
+  }
 
-.autocomplete-empty p,
-.autocomplete-loading p {
+  .autocomplete-empty p,
+  .autocomplete-loading p{
     margin: 0;
     font-size: 12px;
-}
+  }
 
-/* Spinner animation */
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+  @keyframes spin{ to { transform: rotate(360deg); } }
+  .spinner{ animation: spin 1s linear infinite; }
 
-.spinner {
-    animation: spin 1s linear infinite;
-}
+  /* ===== Acciones móvil tipo app ===== */
+  .odoo-mobile-actions{ display: none; }
 
-@media (max-width: 768px){
+  /* =====================================================
+     MÓVIL: header estable + acciones sticky + sin overflow
+     ===================================================== */
+  @media (max-width: 768px){
+
+    /* contenedor */
     .odoo-form-container{
-        margin: 0 12px;
-        flex-direction: column;
+      margin: 0 12px;
+      flex-direction: column;
+      border-radius: 12px;
     }
+
     .odoo-form-main{
-        border-right: none;
-        border-bottom: 1px solid var(--color-border-subtle);
-        padding: 18px;
+      border-right: none;
+      border-bottom: 1px solid var(--color-border-subtle);
+      padding: 18px;
     }
-    .odoo-form-aside{
-        width: 100%;
-        padding: 14px;
-    }
+
     .odoo-form-body{
-        grid-template-columns: 1fr;
-        gap: 18px;
-    }
-    .odoo-quick-fields{
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-top: 6px;
-}
-
-.odoo-quick-field{
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 10px;
-    background: #ffffff;
-    min-width: 260px;
-}
-
-.odoo-quick-field .material-icons{
-    font-size: 18px;
-    color: var(--color-text-muted);
-}
-
-/* Vincular a miembro - estilo header */
-.odoo-member-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 10px;
-    background: #ffffff;
-    margin: 8px 0;
-    min-width: 280px;
-    max-width: 400px;
-}
-
-.odoo-member-link > .material-icons {
-    font-size: 18px;
-    color: var(--color-text-muted);
-    flex-shrink: 0;
-}
-
-.odoo-member-link .autocomplete-wrapper {
-    flex: 1;
-    min-width: 0;
-}
-
-.odoo-member-link .autocomplete-search {
-    width: 100%;
-    border: none !important;
-    background: transparent;
-    padding: 2px 0 !important;
-    font-size: 14px;
-}
-
-.odoo-member-link .autocomplete-search:focus {
-    box-shadow: none !important;
-}
-
-.odoo-member-link .autocomplete-chip {
-    margin: 0;
-}
-
-.odoo-form-errors{
-    border: 1px solid #fca5a5;
-    background: #fee2e2;
-    color: #991b1b;
-    padding: 10px 12px;
-    border-radius: 12px;
-    font-size: 13px;
-    margin: 12px 20px 0;
-}
-
-    .autocomplete-chip {
-        max-width: 100%;
+      grid-template-columns: 1fr;
+      gap: 18px;
     }
 
-    .chip-name {
-        max-width: 150px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-}
+    /* ocultar aside y usar acciones abajo */
+    .odoo-form-aside{ display: none; }
 
+    .odoo-mobile-actions{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+
+      padding: 10px 12px;
+      margin: 0 12px 12px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+      z-index: 50;
+    }
+
+    .odoo-mobile-actions .odoo-btn{
+      margin: 0;
+      width: 100%;
+    }
+
+    /* targets táctiles */
+    .odoo-form input:not([type="checkbox"]),
+    .odoo-form select{
+      min-height: 44px;
+    }
+
+    /* header: apilar avatar + info */
+    .odoo-form-header{
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+
+    .odoo-avatar{
+      width: 64px;
+      height: 64px;
+    }
+
+    .odoo-avatar-icon{ font-size: 34px; }
+
+    /* nombre en columna (no se sale) */
+    .odoo-name-field{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .odoo-name-field input{
+      width: 100%;
+      font-size: 18px;
+      flex: initial;
+    }
+
+    /* el botón inline baja debajo para no romper */
+    .odoo-btn-inline-edit{
+      margin-left: 0;
+      margin-top: 6px;
+      width: fit-content;
+    }
+
+    /* email: que no sea caja en móvil */
+    .odoo-quick-fields{ width: 100%; }
+    .odoo-quick-field{
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      border-radius: 0;
+    }
+
+    /* Vincular miembro: 100% ancho y sin min-width */
+    .odoo-member-link{
+      max-width: 100%;
+      width: 100%;
+      min-width: 0;
+    }
+
+    /* por si algún texto/placeholder largo */
+    .odoo-header-info *{ max-width: 100%; }
+  }
 </style>
 
+
 <script>
-  (function(){
-    const form = document.querySelector("form.odoo-form");
-    if(!form) return;
+(function(){
+  const form = document.querySelector("form.odoo-form");
+  if(!form) return;
 
-    const btn = form.querySelector(".odoo-btn-primary");
-    if(!btn) return;
-
+  // Deshabilitar el botón primario al enviar (evita doble submit)
+  const btn = form.querySelector(".odoo-btn-primary");
+  if(btn){
     form.addEventListener("submit", function(){
       btn.disabled = true;
       btn.setAttribute("aria-disabled", "true");
       btn.style.opacity = "0.75";
       btn.style.cursor = "not-allowed";
     });
-  })();
+  }
+})();
 </script>
+
 <script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
+
 <script>
 (function(){
   const wrap = document.querySelector(".autocomplete-wrapper[data-autocomplete-id='id_miembro_id']");
@@ -724,7 +909,6 @@
 
   if(!hiddenMiembro || !first || !last || !override) return;
 
-  // Guardamos el avatar original para restaurarlo
   const avatarOriginalHTML = avatarContainer ? avatarContainer.innerHTML : '';
 
   const nameField = document.querySelector(".odoo-name-field");
@@ -766,30 +950,64 @@
     last.value = parts.slice(1).join(" ");
   }
 
-  // Cargar datos completos del miembro (foto, email)
+
   async function cargarDatosMiembro(miembroId) {
     if (!miembroId) return;
+
+    const wrap = document.querySelector(".autocomplete-wrapper[data-autocomplete-id='id_miembro_id']");
+    const chip = wrap ? wrap.querySelector(".autocomplete-chip") : null;
+    const chipName = wrap ? wrap.querySelector(".chip-name") : null;
+    const chipCode = wrap ? wrap.querySelector(".chip-code") : null;
+    const search = wrap ? wrap.querySelector(".autocomplete-search") : null;
+    const field = wrap ? wrap.querySelector(".autocomplete-field") : null;
+
     try {
       const response = await fetch('/api/miembro-detalle/' + miembroId + '/', {
         credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
       });
       if (!response.ok) return;
+
       const data = await response.json();
-      if (data.success) {
-        if (data.foto_url && avatarContainer) {
-          avatarContainer.innerHTML = '<img src="' + data.foto_url + '" alt="Foto" class="odoo-avatar-img">';
-        }
-        if (data.email && emailInput && !emailInput.value.trim()) {
-          emailInput.value = data.email;
-        }
-        if (data.nombre) first.value = data.nombre;
-        if (data.apellido) last.value = data.apellido;
+      if (!data.success) return;
+
+      // Avatar
+      if (data.foto_url && avatarContainer) {
+        avatarContainer.innerHTML = '<img src="' + data.foto_url + '" alt="Foto" class="odoo-avatar-img">';
       }
+
+      // Autofill (solo si no hay override manual)
+      if (data.email && emailInput && !emailInput.value.trim()) {
+        emailInput.value = data.email;
+      }
+      if (data.nombre) first.value = data.nombre;
+      if (data.apellido) last.value = data.apellido;
+
+      // Chip visible (best effort)
+      if (chip && chipName && chipCode && field) {
+        const fullName =
+          (data.nombre || first.value || "").toString().trim() + " " +
+          (data.apellido || last.value || "").toString().trim();
+        const nombreFinal = fullName.trim() || ("Miembro #" + miembroId);
+
+        const codigo =
+          (data.codigo || data.codigo_miembro || data.miembro_codigo || "").toString().trim() ||
+          ("ID " + miembroId);
+
+        chipName.textContent = nombreFinal;
+        chipCode.textContent = codigo;
+
+        chip.style.display = "inline-flex";
+        field.classList.add("has-selection");
+        if (search) search.style.display = "none";
+      }
+
     } catch (err) {
       console.warn('No se pudieron cargar datos del miembro:', err);
     }
   }
+
+
 
   function restaurarAvatar() {
     if (avatarContainer) {
@@ -802,9 +1020,7 @@
     setFromChipBestEffort();
     lockFields();
     const miembroId = hiddenMiembro.value;
-    if (miembroId) {
-      cargarDatosMiembro(miembroId);
-    }
+    if (miembroId) cargarDatosMiembro(miembroId);
   }
 
   function onMiembroCleared(){
@@ -842,31 +1058,359 @@
 </script>
 
 <style>
-/* Botón inline (pequeño, estilo discreto) */
-.odoo-btn-inline-edit{
-  margin-left: 10px;
-  gap: 6px;
-  align-items: center;
-  border: 1px solid var(--color-border-subtle);
-  background: #fff;
-  color: var(--color-text-main);
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  display: inline-flex;
-  line-height: 1;
-}
-.odoo-btn-inline-edit:hover{
-  background: #f9fafb;
-}
-
-/* Estado bloqueado (sutil) */
-.odoo-name-field input.is-locked{
-  opacity: .85;
-  cursor: not-allowed;
-}
+  .odoo-btn-inline-edit{
+    margin-left: 10px;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid var(--color-border-subtle);
+    background: #fff;
+    color: var(--color-text-main);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    line-height: 1;
+  }
+  .odoo-btn-inline-edit:hover{ background: #f9fafb; }
+  .odoo-name-field input.is-locked{ opacity: .85; cursor: not-allowed; }
 </style>
+
+<script>
+(function(){
+  const form = document.querySelector("form.odoo-form");
+  if(!form) return;
+
+  const btnDescartar = document.getElementById("btn-descartar");
+  const btnDescartarMobile = document.getElementById("btn-descartar-mobile");
+
+  let isDirty = false;
+  const markDirty = () => { isDirty = true; };
+
+  form.addEventListener("input", markDirty, { capture: true });
+  form.addEventListener("change", markDirty, { capture: true });
+
+  form.addEventListener("submit", function(){
+    isDirty = false;
+  });
+
+  window.addEventListener("beforeunload", function(e){
+    if(!isDirty) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+
+  function confirmExit(e){
+    if(!isDirty) return;
+    const ok = confirm("Tienes cambios sin guardar. ¿Seguro que quieres salir?");
+    if(!ok) e.preventDefault();
+  }
+
+  if(btnDescartar) btnDescartar.addEventListener("click", confirmExit);
+  if(btnDescartarMobile) btnDescartarMobile.addEventListener("click", confirmExit);
+})();
+</script>
+
+<script>
+(function(){
+  const form = document.querySelector("form.odoo-form");
+  if (!form) return;
+
+  // Botones posibles (desktop + móvil)
+  const btnSubmitDesktop = form.querySelector(".odoo-form-aside .odoo-btn-primary");
+  const btnSubmitMobile  = document.querySelector(".odoo-mobile-actions .odoo-btn-primary");
+  const btnCancelDesktop = document.getElementById("btn-descartar");
+  const btnCancelMobile  = document.getElementById("btn-descartar-mobile");
+
+  // Inputs clave
+  const miembroHidden = document.getElementById("id_miembro_id"); // hidden
+  const firstName = document.getElementById("id_first_name");
+  const lastName  = document.getElementById("id_last_name");
+  const email     = document.getElementById("id_email");
+  const override  = document.getElementById("id_override_nombre");
+
+  // ------- Dirty tracking (inteligente) -------
+  let isDirty = false;
+  let suppressDirty = false; // cuando el sistema rellena datos automáticamente
+
+  function setDirty(){
+    if (suppressDirty) return;
+    isDirty = true;
+  }
+
+  // Marcar dirty SOLO cuando el usuario interactúa de verdad
+  // input/change en fase capture ayuda a detectar rápido
+  form.addEventListener("input", setDirty, { capture: true });
+  form.addEventListener("change", setDirty, { capture: true });
+
+  // Helper: ejecutar sin marcar dirty
+  function runWithoutDirty(fn){
+    suppressDirty = true;
+    try { fn(); } finally {
+      // pequeño delay por si hay 2-3 asignaciones seguidas
+      setTimeout(() => { suppressDirty = false; }, 0);
+    }
+  }
+
+  // ------- Evitar falsos dirty por Autocomplete -------
+  // 1) Cuando cambia el hidden miembro_id (lo cambia el autocomplete), NO es edición del usuario.
+  // 2) Cuando el sistema rellena nombre/email por miembro, tampoco.
+  // OJO: si el usuario pulsa "Editar manualmente" (override), entonces sí cuenta.
+
+  let lastMiembroId = miembroHidden ? (miembroHidden.value || "") : "";
+  if (miembroHidden){
+    const obs = new MutationObserver(() => {});
+    // Watch indirect? mejor polling ligero como ya usas en tu script,
+    // pero sin meternos: hacemos polling aquí también.
+    setInterval(() => {
+      const v = miembroHidden.value || "";
+      if (v === lastMiembroId) return;
+      lastMiembroId = v;
+
+      // Cambio por autocomplete => NO marcar dirty
+      runWithoutDirty(() => {});
+    }, 250);
+  }
+
+  // Si override se activa, desde ahí ya es manual => cambios cuentan
+  if (override){
+    override.addEventListener("change", () => {
+      // si el usuario decide editar manualmente, lo que haga luego sí cuenta.
+      // No marcamos dirty SOLO por activar el toggle; se marcará al editar.
+    });
+  }
+
+  // ------- Confirmación al salir -------
+  function confirmExit(e){
+    if (!isDirty) return;
+    const ok = confirm("Tienes cambios sin guardar. ¿Seguro que quieres salir?");
+    if (!ok) e.preventDefault();
+  }
+
+  if (btnCancelDesktop) btnCancelDesktop.addEventListener("click", confirmExit);
+  if (btnCancelMobile)  btnCancelMobile.addEventListener("click", confirmExit);
+
+  // Cerrar pestaña / recargar
+  window.addEventListener("beforeunload", function(e){
+    if (!isDirty) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+
+  // ------- UX Submit: bloquear y mostrar estado -------
+  function lockButton(btn, text){
+    if (!btn) return;
+    btn.disabled = true;
+    btn.setAttribute("aria-disabled", "true");
+    btn.style.opacity = "0.78";
+    btn.style.cursor = "not-allowed";
+
+    // Guardar texto original una sola vez
+    if (!btn.dataset.originalHtml){
+      btn.dataset.originalHtml = btn.innerHTML;
+    }
+    btn.innerHTML = `
+      <span class="material-icons spinner" style="font-size:18px;">sync</span>
+      ${text || "Guardando..."}
+    `;
+  }
+
+  function lockCancel(btn){
+    if (!btn) return;
+    btn.style.pointerEvents = "none";
+    btn.style.opacity = "0.6";
+  }
+
+  form.addEventListener("submit", function(){
+    // al enviar, ya no se debe avisar al salir
+    isDirty = false;
+
+    lockButton(btnSubmitDesktop, "Guardando...");
+    lockButton(btnSubmitMobile,  "Guardando...");
+    lockCancel(btnCancelDesktop);
+    lockCancel(btnCancelMobile);
+  });
+
+  // ------- EXTRA: cuando el sistema rellena campos (por miembro), no marcar dirty -------
+  // Esto se usa si tu script asigna valores por JS.
+  // Para que funcione, interceptamos cambios por API (cuando el autocomplete selecciona).
+  // Solo funciona si se llama a "runWithoutDirty" desde el script del miembro,
+  // pero como no queremos tocarlo, hacemos un truco: escuchar eventos custom.
+  document.addEventListener("soid_autofill_start", () => { suppressDirty = true; });
+  document.addEventListener("soid_autofill_end", () => {
+    setTimeout(() => { suppressDirty = false; }, 0);
+  });
+
+})();
+</script>
+
+<style>
+/* Spinner del botón */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { animation: spin 1s linear infinite; }
+</style>
+<script>
+(function(){
+  const emailInput = document.getElementById("id_email");
+  if(!emailInput) return;
+
+  const form = document.querySelector("form.odoo-form");
+  const statusEl = document.getElementById("email-status");
+
+  // Botones submit (desktop + móvil)
+  const btnSubmitDesktop = form ? form.querySelector(".odoo-form-aside .odoo-btn-primary") : null;
+  const btnSubmitMobile  = document.querySelector(".odoo-mobile-actions .odoo-btn-primary");
+
+  function setStatus(type, text){
+    if(!statusEl) return;
+    statusEl.style.display = "block";
+    statusEl.className = "email-status " + type;
+
+    let icon = "info";
+    if(type === "ok") icon = "check_circle";
+    if(type === "bad") icon = "error";
+    if(type === "wait") icon = "hourglass_top";
+
+    statusEl.innerHTML = `<span class="material-icons">${icon}</span>${text}`;
+  }
+
+  function clearStatus(){
+    if(!statusEl) return;
+    statusEl.style.display = "none";
+    statusEl.className = "email-status";
+    statusEl.textContent = "";
+  }
+
+  function setSubmitEnabled(enabled){
+    [btnSubmitDesktop, btnSubmitMobile].forEach(btn => {
+      if(!btn) return;
+      btn.disabled = !enabled;
+      btn.setAttribute("aria-disabled", (!enabled).toString());
+      btn.style.opacity = enabled ? "" : "0.65";
+      btn.style.cursor = enabled ? "" : "not-allowed";
+    });
+  }
+
+  // Reglas rápidas (cliente) antes de preguntar al servidor
+  function isValidEmailFormat(value){
+    // Simple y suficiente para UX. El backend sigue siendo la verdad.
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }
+
+  let timer = null;
+  let lastChecked = "";
+  let pending = false;
+  let ctrl = null;
+
+  async function checkEmailNow(){
+    const raw = (emailInput.value || "").trim();
+    const email = raw.toLowerCase();
+
+    // vacío => sin mensaje y permitir enviar (si tu form no lo requiere, si lo requiere, Django lo bloqueará)
+    if(!email){
+      pending = false;
+      lastChecked = "";
+      clearStatus();
+      setSubmitEnabled(true);
+      return;
+    }
+
+    // formato inválido
+    if(!isValidEmailFormat(email)){
+      pending = false;
+      setStatus("bad", "Formato de correo no válido.");
+      setSubmitEnabled(false);
+      return;
+    }
+
+    // si no cambió, no repitas
+    if(email === lastChecked && !pending) return;
+
+    // cancelar request anterior
+    if(ctrl) ctrl.abort();
+    ctrl = new AbortController();
+
+    pending = true;
+    setStatus("wait", "Comprobando correo…");
+    setSubmitEnabled(false);
+
+    try{
+      const url = `/api/email-disponible/?email=${encodeURIComponent(email)}`;
+      const res = await fetch(url, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        signal: ctrl.signal
+      });
+
+      if(!res.ok){
+        pending = false;
+        setStatus("bad", "No se pudo validar el correo (error del servidor).");
+        setSubmitEnabled(false);
+        return;
+      }
+
+      const data = await res.json();
+      pending = false;
+      lastChecked = email;
+
+      if(data && data.success && data.available){
+        setStatus("ok", data.message || "Correo disponible.");
+        setSubmitEnabled(true);
+      } else {
+        setStatus("bad", (data && data.message) ? data.message : "Este correo ya está en uso.");
+        setSubmitEnabled(false);
+      }
+    } catch(e){
+      if(e && e.name === "AbortError") return;
+      pending = false;
+      setStatus("bad", "No se pudo validar el correo (sin conexión).");
+      setSubmitEnabled(false);
+    }
+  }
+
+  // Debounce al escribir
+  emailInput.addEventListener("input", function(){
+    if(timer) clearTimeout(timer);
+    timer = setTimeout(checkEmailNow, 350);
+  });
+
+  // Al salir del campo, valida ya
+  emailInput.addEventListener("blur", function(){
+    if(timer) clearTimeout(timer);
+    checkEmailNow();
+  });
+
+  // Seguridad extra: antes de enviar, si está pendiente o inválido => no envíes
+  if(form){
+    form.addEventListener("submit", function(e){
+      const raw = (emailInput.value || "").trim();
+      if(!raw) return; // si es requerido, Django lo parará con error
+
+      if(pending){
+        e.preventDefault();
+        setStatus("wait", "Espera a que termine la validación del correo…");
+        return;
+      }
+
+      // Si el último chequeo no corresponde al valor actual, fuerza chequeo y cancela submit
+      const current = raw.toLowerCase();
+      if(current !== lastChecked){
+        e.preventDefault();
+        checkEmailNow();
+        return;
+      }
+
+      // si el botón está deshabilitado, bloquear
+      if(btnSubmitDesktop && btnSubmitDesktop.disabled){
+        e.preventDefault();
+        return;
+      }
+    });
+  }
+
+})();
+</script>
 
 
 {% endblock %}

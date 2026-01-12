@@ -1,0 +1,280 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Usuarios · Soid_Tf_2{% endblock %}
+
+{% block content %}
+
+{% if messages %}
+  <div class="odoo-messages" style="margin: 12px 20px 0;">
+    {% for message in messages %}
+      <div class="odoo-alert odoo-alert-{{ message.tags|default:'info' }}">
+        <span class="material-icons">
+          {% if 'success' in message.tags %}check_circle{% elif 'error' in message.tags or 'danger' in message.tags %}error{% else %}info{% endif %}
+        </span>
+        <div class="odoo-alert-text">{{ message }}</div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="users-wrap">
+  <div class="users-topbar">
+    <div class="users-left">
+      <h1 class="users-title">Usuarios</h1>
+      <p class="users-sub">Gestión de accesos y cuentas del sistema.</p>
+    </div>
+
+    <div class="users-actions">
+      <a class="btn btn-primary" href="{% url 'core:crear_usuario' %}">
+        <span class="material-icons">person_add</span>
+        Nuevo usuario
+      </a>
+    </div>
+  </div>
+
+  <form method="get" class="users-filters">
+    <div class="f-item">
+      <label>Buscar</label>
+      <input type="text" name="q" value="{{ q }}" placeholder="Nombre, usuario o email">
+    </div>
+
+    <div class="f-item">
+      <label>Grupo</label>
+      <select name="grupo">
+        <option value="">Todos</option>
+        {% for g in grupos %}
+          <option value="{{ g.id }}" {% if grupo_id == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="f-item">
+      <label>Estado</label>
+      <select name="estado">
+        <option value="" {% if not estado %}selected{% endif %}>Todos</option>
+        <option value="activos" {% if estado == "activos" %}selected{% endif %}>Activos</option>
+        <option value="inactivos" {% if estado == "inactivos" %}selected{% endif %}>Inactivos</option>
+      </select>
+    </div>
+
+    <div class="f-item f-actions">
+      <button class="btn btn-secondary" type="submit">
+        <span class="material-icons">search</span>
+        Filtrar
+      </button>
+      <a class="btn btn-ghost" href="{% url 'usuarios:listado' %}">
+        Limpiar
+      </a>
+    </div>
+  </form>
+
+  <!-- Desktop: tabla -->
+  <div class="users-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Grupos</th>
+          <th>Estado</th>
+          <th>Alta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in page_obj %}
+          <tr>
+            <td class="mono">{{ u.username }}</td>
+            <td>{{ u.get_full_name|default:"—" }}</td>
+            <td>{{ u.email|default:"—" }}</td>
+            <td class="muted">
+              {% with u.groups.all as gs %}
+                {% if gs %}
+                  {% for g in gs %}
+                    <span class="pill">{{ g.name }}</span>
+                  {% endfor %}
+                {% else %}
+                  —
+                {% endif %}
+              {% endwith %}
+            </td>
+            <td>
+              {% if u.is_active %}
+                <span class="badge badge-ok">Activo</span>
+              {% else %}
+                <span class="badge badge-bad">Inactivo</span>
+              {% endif %}
+            </td>
+            <td class="muted">{{ u.date_joined|date:"d/m/Y" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="empty">No hay usuarios con esos filtros.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Mobile: cards -->
+  <div class="users-cards">
+    {% for u in page_obj %}
+      <div class="ucard">
+        <div class="ucard-top">
+          <div>
+            <div class="ucard-user">{{ u.get_full_name|default:u.username }}</div>
+            <div class="ucard-meta">
+              <span class="mono">{{ u.username }}</span>
+              <span class="dot">•</span>
+              <span>{{ u.email|default:"Sin email" }}</span>
+            </div>
+          </div>
+          <div>
+            {% if u.is_active %}
+              <span class="badge badge-ok">Activo</span>
+            {% else %}
+              <span class="badge badge-bad">Inactivo</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="ucard-groups">
+          {% with u.groups.all as gs %}
+            {% if gs %}
+              {% for g in gs %}
+                <span class="pill">{{ g.name }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="muted">Sin grupos</span>
+            {% endif %}
+          {% endwith %}
+        </div>
+        <div class="ucard-foot muted">
+          Alta: {{ u.date_joined|date:"d/m/Y" }}
+        </div>
+      </div>
+    {% empty %}
+      <div class="empty-card">No hay usuarios con esos filtros.</div>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pager">
+      {% if page_obj.has_previous %}
+        <a class="btn btn-ghost" href="?q={{ q }}&grupo={{ grupo_id }}&estado={{ estado }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+      {% else %}
+        <span></span>
+      {% endif %}
+
+      <div class="muted">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</div>
+
+      {% if page_obj.has_next %}
+        <a class="btn btn-ghost" href="?q={{ q }}&grupo={{ grupo_id }}&estado={{ estado }}&page={{ page_obj.next_page_number }}">Siguiente</a>
+      {% else %}
+        <span></span>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .users-wrap{ margin: 0 20px; }
+  .users-topbar{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin: 14px 0; }
+  .users-title{ margin:0; font-size: 22px; font-weight: 700; }
+  .users-sub{ margin:4px 0 0; color:#6b7280; font-size: 13px; }
+  .users-actions{ display:flex; gap:10px; }
+
+  .users-filters{
+    display:grid;
+    grid-template-columns: 1.4fr 1fr 1fr auto;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    margin-bottom: 12px;
+  }
+  .f-item label{ display:block; font-size: 12px; color:#6b7280; margin-bottom: 6px; }
+  .f-item input, .f-item select{
+    width:100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    outline:none;
+    background:#fff;
+  }
+  .f-actions{ display:flex; align-items:flex-end; gap:10px; }
+
+  .users-table{ background:#fff; border:1px solid #e5e7eb; border-radius: 12px; overflow:hidden; }
+  table{ width:100%; border-collapse: collapse; }
+  th, td{ padding: 12px 12px; border-bottom: 1px solid #f3f4f6; font-size: 14px; text-align:left; }
+  th{ font-size: 12px; color:#6b7280; font-weight: 700; background:#fafafa; }
+  tr:last-child td{ border-bottom:none; }
+  .empty{ text-align:center; color:#6b7280; padding: 18px; }
+  .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; }
+  .muted{ color:#6b7280; }
+
+  .pill{
+    display:inline-block;
+    padding: 4px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    font-size: 12px;
+    background:#fff;
+    margin: 2px 4px 2px 0;
+    white-space: nowrap;
+  }
+  .badge{
+    display:inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge-ok{ background:#dcfce7; color:#14532d; border:1px solid #86efac; }
+  .badge-bad{ background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    text-decoration:none;
+    font-weight: 700;
+    font-size: 14px;
+    border:1px solid transparent;
+    cursor:pointer;
+    background:#fff;
+  }
+  .btn .material-icons{ font-size: 18px; }
+  .btn-primary{ background: var(--color-primary, #0097A7); color:#fff; }
+  .btn-secondary{ background:#111827; color:#fff; }
+  .btn-ghost{ background:#fff; border:1px solid #e5e7eb; color:#111827; }
+
+  .pager{ display:flex; justify-content:space-between; align-items:center; margin: 14px 0 30px; gap: 10px; }
+
+  /* Mobile */
+  .users-cards{ display:none; }
+  @media (max-width: 768px){
+    .users-wrap{ margin: 0 12px; }
+    .users-topbar{ flex-direction: column; }
+    .users-filters{ grid-template-columns: 1fr; }
+    .users-table{ display:none; }
+    .users-cards{ display:grid; gap: 12px; }
+    .ucard{
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      background:#fff;
+      padding: 12px;
+    }
+    .ucard-top{ display:flex; justify-content:space-between; gap: 12px; align-items:flex-start; }
+    .ucard-user{ font-size: 15px; font-weight: 800; }
+    .ucard-meta{ font-size: 12px; color:#6b7280; margin-top: 3px; display:flex; gap:8px; flex-wrap:wrap; }
+    .dot{ opacity:.6; }
+    .ucard-groups{ margin-top: 10px; }
+    .ucard-foot{ margin-top: 10px; font-size: 12px; }
+    .empty-card{ text-align:center; color:#6b7280; padding: 18px; border:1px dashed #e5e7eb; border-radius: 14px; background:#fff; }
+  }
+</style>
+
+{% endblock %}

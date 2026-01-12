@@ -160,3 +160,22 @@ def miembro_detalle(request, miembro_id):
             'success': False,
             'error': str(e)
         }, status=500)
+    
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+@login_required
+@require_http_methods(["GET"])
+def email_disponible(request):
+    email = (request.GET.get("email") or "").strip().lower()
+
+    if not email:
+        return JsonResponse({"success": True, "available": True, "message": ""})
+
+    exists = User.objects.filter(email__iexact=email).exists()
+    return JsonResponse({
+        "success": True,
+        "available": (not exists),
+        "message": "Correo disponible" if not exists else "Ya existe un usuario con este correo."
+    })
