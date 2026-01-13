@@ -343,6 +343,7 @@ def miembros_dashboard(request):
     hace_7_dias = timezone.now() - timedelta(days=7)
     nuevos_creyentes_semana = Miembro.objects.filter(
         nuevo_creyente=True,
+        activo=True,              # 👈 CLAVE
         fecha_creacion__gte=hace_7_dias,
     ).count()
 
@@ -2118,8 +2119,8 @@ def carta_salida_miembro(request, pk):
         if (not miembro.razon_salida) or (not getattr(miembro.razon_salida, "permite_carta", False)):
             messages.error(
                 request,
-                "No aplica carta para esta razón de salida. "
-                "La carta solo se genera para Trasladado / Se fue a otra iglesia."
+                "No aplica carta para este Miembro. "
+                
             )
             return redirect("miembros_app:inactivo_detalle", pk=miembro.pk)
 
