@@ -77,14 +77,17 @@
             <div class="odoo-detail-badges">
                 <span class="odoo-badge odoo-badge-info">Nuevo creyente</span>
 
-                {% if expediente %}
-                    {% if expediente.estado == "abierto" %}
-                        <span class="odoo-badge odoo-badge-warning">En seguimiento</span>
+                {# ✅ SOLO SI EL MÓDULO NUEVO CREYENTE ESTÁ ACTIVO #}
+                {% if modulo_nuevo_creyente_activo %}
+                    {% if expediente %}
+                        {% if expediente.estado == "abierto" %}
+                            <span class="odoo-badge odoo-badge-warning">En seguimiento</span>
+                        {% else %}
+                            <span class="odoo-badge odoo-badge-success">Seguimiento cerrado</span>
+                        {% endif %}
                     {% else %}
-                        <span class="odoo-badge odoo-badge-success">Seguimiento cerrado</span>
+                        <span class="odoo-badge odoo-badge-neutral">Sin expediente</span>
                     {% endif %}
-                {% else %}
-                    <span class="odoo-badge odoo-badge-neutral">Sin expediente</span>
                 {% endif %}
             </div>
 
@@ -110,53 +113,106 @@
         <div class="odoo-situation-content">
             <strong>Seguimiento (Nuevo Creyente)</strong>
 
-            {% if expediente %}
-                {% if expediente.estado == "abierto" %}
-                    <p>Expediente abierto. Se encuentra en proceso de seguimiento.</p>
+            {# ✅ TODO ESTO SOLO SI EL MÓDULO NUEVO CREYENTE ESTÁ ACTIVO #}
+            {% if modulo_nuevo_creyente_activo %}
+                {% if expediente %}
+                    {% if expediente.estado == "abierto" %}
+                        <p>Expediente abierto. Se encuentra en proceso de seguimiento.</p>
+                    {% else %}
+                        <p>Expediente cerrado.</p>
+                    {% endif %}
+
+                    {% if expediente.responsable %}
+                        <p><span class="odoo-sit-label">Responsable:</span>
+                            {{ expediente.responsable.get_full_name|default:expediente.responsable.username }}
+                        </p>
+                    {% endif %}
+
+                    {% if expediente.fecha_apertura %}
+                        <p><span class="odoo-sit-label">Apertura:</span> {{ expediente.fecha_apertura|date:"d/m/Y" }}</p>
+                    {% endif %}
+
+                    {% if expediente.fecha_cierre %}
+                        <p><span class="odoo-sit-label">Cierre:</span> {{ expediente.fecha_cierre|date:"d/m/Y" }}</p>
+                    {% endif %}
+
+                    {% if expediente.motivo_cierre %}
+                        <p><span class="odoo-sit-label">Motivo:</span> {{ expediente.motivo_cierre }}</p>
+                    {% endif %}
                 {% else %}
-                    <p>Expediente cerrado.</p>
-                {% endif %}
-
-                {% if expediente.responsable %}
-                    <p><span class="odoo-sit-label">Responsable:</span>
-                        {{ expediente.responsable.get_full_name|default:expediente.responsable.username }}
-                    </p>
-                {% endif %}
-
-                {% if expediente.fecha_apertura %}
-                    <p><span class="odoo-sit-label">Apertura:</span> {{ expediente.fecha_apertura|date:"d/m/Y" }}</p>
-                {% endif %}
-
-                {% if expediente.fecha_cierre %}
-                    <p><span class="odoo-sit-label">Cierre:</span> {{ expediente.fecha_cierre|date:"d/m/Y" }}</p>
-                {% endif %}
-
-                {% if expediente.motivo_cierre %}
-                    <p><span class="odoo-sit-label">Motivo:</span> {{ expediente.motivo_cierre }}</p>
+                    <p>No hay expediente creado todavía.</p>
                 {% endif %}
             {% else %}
-                <p>No hay expediente creado todavía.</p>
+                <p>El módulo <strong>Nuevo Creyente</strong> está desactivado.</p>
             {% endif %}
         </div>
     </div>
 
     <!-- TABS (solo lo necesario, MISMO ESTILO) -->
-    <div class="odoo-detail-tabs">
-        <button type="button" class="odoo-tab active" data-tab="seguimiento">
-            <span class="material-icons">timeline</span>
-            Seguimiento
-        </button>
+<div class="odoo-detail-tabs">
+    <button type="button" class="odoo-tab active" data-tab="datos">
+        <span class="material-icons">person</span>
+        Datos personales
+    </button>
+
+    <button type="button" class="odoo-tab" data-tab="seguimiento">
+        <span class="material-icons">timeline</span>
+        Seguimiento
+    </button>
+
+    {% if modulo_nuevo_creyente_activo %}
         <button type="button" class="odoo-tab" data-tab="bitacora">
             <span class="material-icons">notes</span>
             Bitácora
         </button>
-    </div>
+    {% endif %}
+</div>
+
 
     <!-- CONTENIDO DE TABS -->
     <div class="odoo-tab-contents">
+        <!-- TAB: DATOS PERSONALES -->
+<div class="odoo-tab-content active" id="tab-datos">
+    <div class="odoo-fields-grid">
+
+        <div class="odoo-field">
+            <label>Correo electrónico</label>
+            <span>{{ miembro.email|default:"—" }}</span>
+        </div>
+
+        <div class="odoo-field">
+            <label>Teléfono</label>
+            <span>{{ miembro.telefono|default:"—" }}</span>
+        </div>
+
+        <div class="odoo-field">
+            <label>WhatsApp</label>
+            <span>{{ miembro.whatsapp|default:"—" }}</span>
+        </div>
+
+        <div class="odoo-field">
+            <label>Fecha de nacimiento</label>
+            <span>
+                {% if miembro.fecha_nacimiento %}
+                    {{ miembro.fecha_nacimiento|date:"d/m/Y" }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+        </div>
+
+        <div class="odoo-field odoo-field-full">
+            <label>Dirección</label>
+            <span>{{ miembro.direccion|default:"—" }}</span>
+        </div>
+
+    </div>
+</div>
+
 
         <!-- TAB: Seguimiento (SOLO CAMPOS DE NUEVO CREYENTE) -->
-        <div class="odoo-tab-content active" id="tab-seguimiento">
+        <div class="odoo-tab-content" id="tab-seguimiento">
+
             <div class="odoo-fields-grid">
 
                 <div class="odoo-field">
@@ -164,10 +220,13 @@
                     <span>{{ miembro.codigo_seguimiento|default:"—" }}</span>
                 </div>
 
-                <div class="odoo-field">
-                    <label>Número seguimiento</label>
-                    <span>{{ miembro.numero_seguimiento|default:"—" }}</span>
-                </div>
+                {# ✅ SOLO SI EL MÓDULO NUEVO CREYENTE ESTÁ ACTIVO #}
+                {% if modulo_nuevo_creyente_activo %}
+                    <div class="odoo-field">
+                        <label>Número seguimiento</label>
+                        <span>{{ miembro.numero_seguimiento|default:"—" }}</span>
+                    </div>
+                {% endif %}
 
                 <div class="odoo-field">
                     <label>Fecha de conversión</label>
@@ -184,30 +243,33 @@
                     <span>{{ miembro.lider_celula|default:"—" }}</span>
                 </div>
 
-                <div class="odoo-field">
-                    <label>Estado del expediente</label>
-                    <span>
-                        {% if expediente %}
-                            {% if expediente.estado == "abierto" %}
-                                <span class="odoo-badge odoo-badge-warning">Abierto</span>
+                {# ✅ SOLO SI EL MÓDULO NUEVO CREYENTE ESTÁ ACTIVO #}
+                {% if modulo_nuevo_creyente_activo %}
+                    <div class="odoo-field">
+                        <label>Estado del expediente</label>
+                        <span>
+                            {% if expediente %}
+                                {% if expediente.estado == "abierto" %}
+                                    <span class="odoo-badge odoo-badge-warning">Abierto</span>
+                                {% else %}
+                                    <span class="odoo-badge odoo-badge-success">Cerrado</span>
+                                {% endif %}
                             {% else %}
-                                <span class="odoo-badge odoo-badge-success">Cerrado</span>
+                                <span class="odoo-badge odoo-badge-neutral">No creado</span>
                             {% endif %}
-                        {% else %}
-                            <span class="odoo-badge odoo-badge-neutral">No creado</span>
-                        {% endif %}
-                    </span>
-                </div>
+                        </span>
+                    </div>
 
-                <div class="odoo-field">
-                    <label>Fecha de apertura</label>
-                    <span>{% if expediente and expediente.fecha_apertura %}{{ expediente.fecha_apertura|date:"d/m/Y" }}{% else %}—{% endif %}</span>
-                </div>
+                    <div class="odoo-field">
+                        <label>Fecha de apertura</label>
+                        <span>{% if expediente and expediente.fecha_apertura %}{{ expediente.fecha_apertura|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                    </div>
 
-                <div class="odoo-field">
-                    <label>Fecha de cierre</label>
-                    <span>{% if expediente and expediente.fecha_cierre %}{{ expediente.fecha_cierre|date:"d/m/Y" }}{% else %}—{% endif %}</span>
-                </div>
+                    <div class="odoo-field">
+                        <label>Fecha de cierre</label>
+                        <span>{% if expediente and expediente.fecha_cierre %}{{ expediente.fecha_cierre|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                    </div>
+                {% endif %}
 
                 <div class="odoo-field odoo-field-full">
                     <label>Observaciones</label>
@@ -223,7 +285,8 @@
             </div>
         </div>
 
-        <!-- TAB: Bitácora -->
+        {# ✅ TAB: BITÁCORA SOLO SI EL MÓDULO NUEVO CREYENTE ESTÁ ACTIVO #}
+        {% if modulo_nuevo_creyente_activo %}
         <div class="odoo-tab-content" id="tab-bitacora">
             {% if bitacora %}
                 <div class="odoo-table-container">
@@ -250,6 +313,7 @@
                 <p class="odoo-empty">Aún no hay notas registradas en la bitácora.</p>
             {% endif %}
         </div>
+        {% endif %}
 
     </div>
 

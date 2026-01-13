@@ -57,6 +57,10 @@ from django.views.decorators.http import require_POST, require_GET
 from django.views.generic import DetailView, UpdateView
 from django.views.decorators.http import require_http_methods
 
+
+
+
+
 @login_required
 @require_POST
 @permission_required("miembros_app.change_miembro", raise_exception=True)
@@ -154,7 +158,11 @@ def _modulo_estructura_activo():
         is_enabled=True,
         code__in=["Estructura", "Unidad", "Unidades"]
     ).exists()
-
+def _modulo_nuevo_creyente_activo():
+    return Module.objects.filter(
+        is_enabled=True,
+        code="nuevo_creyente"
+    ).exists()
 
 def _safe_get_model(app_label, model_name):
     try:
@@ -3269,6 +3277,7 @@ def nuevo_creyente_detalle(request, pk):
         .select_related("responsable")
         .first()
     )
+    modulo_nuevo_creyente_activo = _modulo_nuevo_creyente_activo()
 
     expediente_abierto = bool(expediente and getattr(expediente, "estado", None) == "abierto")
 
@@ -3277,6 +3286,7 @@ def nuevo_creyente_detalle(request, pk):
         "expediente": expediente,
         "expediente_abierto": expediente_abierto,
         "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+         "modulo_nuevo_creyente_activo": modulo_nuevo_creyente_activo,
     }
 
     # ✅ Ajusta este nombre si tu plantilla se llama distinto
