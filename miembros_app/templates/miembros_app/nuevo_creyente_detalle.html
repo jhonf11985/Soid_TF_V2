@@ -1,0 +1,735 @@
+{% extends 'miembros_app/base_miembros.html' %}
+
+{% block title %}Nuevo creyente · {{ miembro.nombres }} {{ miembro.apellidos }}{% endblock %}
+
+{% block miembros_content %}
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (MISMO ESTILO QUE DETALLE MIEMBRO)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+    <div class="odoo-control-left">
+        <a href="{% url 'miembros_app:nuevo_creyente_lista' %}" class="odoo-btn odoo-btn-secondary">
+            <span class="material-icons">arrow_back</span>
+        </a>
+
+        <div class="odoo-breadcrumb">
+            <a href="{% url 'miembros_app:nuevo_creyente_lista' %}" class="odoo-breadcrumb-link">Nuevos Creyentes</a>
+            <span class="material-icons">chevron_right</span>
+            <span class="odoo-breadcrumb-current">{{ miembro.codigo_seguimiento|default:"NC" }}</span>
+        </div>
+    </div>
+
+    <div class="odoo-control-right">
+        {# Si esta URL existe en tu sistema, ok. Si no, quítala. #}
+        <a href="{% url 'miembros_app:nuevo_creyente_ficha' miembro.pk %}" class="odoo-btn odoo-btn-secondary">
+            <span class="material-icons">description</span>
+            Ficha
+        </a>
+
+        {# BOTÓN DAR SALIDA #}
+        {% if expediente and expediente.estado == "abierto" %}
+            <button type="button"
+                    class="odoo-btn odoo-btn-danger"
+                    disabled
+                    title="No se puede dar salida mientras el expediente esté abierto."
+                    style="opacity:.55; cursor:not-allowed;">
+                <span class="material-icons">logout</span>
+                Dar salida
+            </button>
+        {% else %}
+            <a href="{% url 'miembros_app:nuevo_creyente_dar_salida' miembro.pk %}"
+               class="odoo-btn odoo-btn-danger">
+                <span class="material-icons">logout</span>
+                Dar salida
+            </a>
+        {% endif %}
+
+        {# Si esta URL existe en tu sistema, ok. Si no, quítala. #}
+        <a href="{% url 'miembros_app:nuevo_creyente_editar' miembro.pk %}" class="odoo-btn odoo-btn-primary">
+            <span class="material-icons">edit</span>
+            Editar
+        </a>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTENIDO PRINCIPAL (MISMO LAYOUT ODOO)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-detail-container">
+
+    <!-- HEADER: Avatar + Nombre + Badges (MISMA ESTRUCTURA) -->
+    <div class="odoo-detail-header">
+
+        <!-- Avatar -->
+        <div class="odoo-detail-avatar" style="background: {% if miembro.genero == 'M' %}#3b82f6{% else %}#ec4899{% endif %};">
+            {% if miembro.foto %}
+                <img src="{{ miembro.foto.url }}" alt="{{ miembro.nombres }}">
+            {% else %}
+                <span class="odoo-avatar-initial">{{ miembro.nombres|slice:":1"|upper }}</span>
+            {% endif %}
+        </div>
+
+        <!-- Info principal -->
+        <div class="odoo-detail-info">
+            <h1 class="odoo-detail-name">{{ miembro.nombres }} {{ miembro.apellidos }}</h1>
+
+            <div class="odoo-detail-badges">
+                <span class="odoo-badge odoo-badge-info">Nuevo creyente</span>
+
+                {% if expediente %}
+                    {% if expediente.estado == "abierto" %}
+                        <span class="odoo-badge odoo-badge-warning">En seguimiento</span>
+                    {% else %}
+                        <span class="odoo-badge odoo-badge-success">Seguimiento cerrado</span>
+                    {% endif %}
+                {% else %}
+                    <span class="odoo-badge odoo-badge-neutral">Sin expediente</span>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <!-- Código (MISMO BLOQUE, pero usando codigo_seguimiento) -->
+        <div class="odoo-detail-code">
+            <span class="odoo-code-label">Código</span>
+            <span class="odoo-code-value">{{ miembro.codigo_seguimiento|default:"NC" }}</span>
+        </div>
+    </div>
+
+    <!-- SITUACIÓN (MISMA CARD, pero enfocada a seguimiento) -->
+    <div class="odoo-situation-card {% if expediente and expediente.estado == 'abierto' %}odoo-situation-warning{% else %}odoo-situation-ok{% endif %}">
+        <div class="odoo-situation-icon">
+            {% if expediente and expediente.estado == 'abierto' %}
+                <span class="material-icons">auto_awesome</span>
+            {% else %}
+                <span class="material-icons">verified</span>
+            {% endif %}
+        </div>
+
+        <div class="odoo-situation-content">
+            <strong>Seguimiento (Nuevo Creyente)</strong>
+
+            {% if expediente %}
+                {% if expediente.estado == "abierto" %}
+                    <p>Expediente abierto. Se encuentra en proceso de seguimiento.</p>
+                {% else %}
+                    <p>Expediente cerrado.</p>
+                {% endif %}
+
+                {% if expediente.responsable %}
+                    <p><span class="odoo-sit-label">Responsable:</span>
+                        {{ expediente.responsable.get_full_name|default:expediente.responsable.username }}
+                    </p>
+                {% endif %}
+
+                {% if expediente.fecha_apertura %}
+                    <p><span class="odoo-sit-label">Apertura:</span> {{ expediente.fecha_apertura|date:"d/m/Y" }}</p>
+                {% endif %}
+
+                {% if expediente.fecha_cierre %}
+                    <p><span class="odoo-sit-label">Cierre:</span> {{ expediente.fecha_cierre|date:"d/m/Y" }}</p>
+                {% endif %}
+
+                {% if expediente.motivo_cierre %}
+                    <p><span class="odoo-sit-label">Motivo:</span> {{ expediente.motivo_cierre }}</p>
+                {% endif %}
+            {% else %}
+                <p>No hay expediente creado todavía.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- TABS (solo lo necesario, MISMO ESTILO) -->
+    <div class="odoo-detail-tabs">
+        <button type="button" class="odoo-tab active" data-tab="seguimiento">
+            <span class="material-icons">timeline</span>
+            Seguimiento
+        </button>
+        <button type="button" class="odoo-tab" data-tab="bitacora">
+            <span class="material-icons">notes</span>
+            Bitácora
+        </button>
+    </div>
+
+    <!-- CONTENIDO DE TABS -->
+    <div class="odoo-tab-contents">
+
+        <!-- TAB: Seguimiento (SOLO CAMPOS DE NUEVO CREYENTE) -->
+        <div class="odoo-tab-content active" id="tab-seguimiento">
+            <div class="odoo-fields-grid">
+
+                <div class="odoo-field">
+                    <label>Código seguimiento</label>
+                    <span>{{ miembro.codigo_seguimiento|default:"—" }}</span>
+                </div>
+
+                <div class="odoo-field">
+                    <label>Número seguimiento</label>
+                    <span>{{ miembro.numero_seguimiento|default:"—" }}</span>
+                </div>
+
+                <div class="odoo-field">
+                    <label>Fecha de conversión</label>
+                    <span>{% if miembro.fecha_conversion %}{{ miembro.fecha_conversion|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                </div>
+
+                <div class="odoo-field">
+                    <label>Mentor</label>
+                    <span>{{ miembro.mentor|default:"—" }}</span>
+                </div>
+
+                <div class="odoo-field">
+                    <label>Líder de célula</label>
+                    <span>{{ miembro.lider_celula|default:"—" }}</span>
+                </div>
+
+                <div class="odoo-field">
+                    <label>Estado del expediente</label>
+                    <span>
+                        {% if expediente %}
+                            {% if expediente.estado == "abierto" %}
+                                <span class="odoo-badge odoo-badge-warning">Abierto</span>
+                            {% else %}
+                                <span class="odoo-badge odoo-badge-success">Cerrado</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="odoo-badge odoo-badge-neutral">No creado</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="odoo-field">
+                    <label>Fecha de apertura</label>
+                    <span>{% if expediente and expediente.fecha_apertura %}{{ expediente.fecha_apertura|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                </div>
+
+                <div class="odoo-field">
+                    <label>Fecha de cierre</label>
+                    <span>{% if expediente and expediente.fecha_cierre %}{{ expediente.fecha_cierre|date:"d/m/Y" }}{% else %}—{% endif %}</span>
+                </div>
+
+                <div class="odoo-field odoo-field-full">
+                    <label>Observaciones</label>
+                    <span>
+                        {% if expediente and expediente.observaciones %}
+                            {{ expediente.observaciones|linebreaks }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB: Bitácora -->
+        <div class="odoo-tab-content" id="tab-bitacora">
+            {% if bitacora %}
+                <div class="odoo-table-container">
+                    <table class="odoo-table">
+                        <thead>
+                            <tr>
+                                <th style="width:130px;">Fecha</th>
+                                <th>Nota</th>
+                                <th style="width:180px;">Autor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for n in bitacora %}
+                                <tr>
+                                    <td>{{ n.fecha|date:"d/m/Y" }}</td>
+                                    <td>{{ n.nota|default:"—"|linebreaks }}</td>
+                                    <td>{{ n.autor.get_full_name|default:n.autor.username }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="odoo-empty">Aún no hay notas registradas en la bitácora.</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS (COPIADOS DEL DETALLE MIEMBRO PARA QUE SEA IDÉNTICO)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<style>
+
+    .odoo-btn-danger {
+    background: #dc2626;
+    color: white;
+}
+
+.odoo-btn-danger:hover {
+    background: #b91c1c;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BARRA DE CONTROL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.odoo-control-left,
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: #016166;
+}
+
+.odoo-btn-secondary {
+    background: white;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.odoo-btn-secondary:hover {
+    background: #e9ecef;
+}
+
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+}
+
+.odoo-breadcrumb-link {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.odoo-breadcrumb .material-icons {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+.odoo-breadcrumb-current {
+    color: #495057;
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-detail-container {
+    background: white;
+    min-height: calc(100vh - 60px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 24px;
+    border-bottom: 1px solid #e9ecef;
+    background: linear-gradient(180deg, #f8f9fa 0%, white 100%);
+}
+
+.odoo-detail-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.odoo-detail-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.odoo-avatar-initial {
+    font-size: 42px;
+    font-weight: 500;
+    color: white;
+}
+
+.odoo-detail-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.odoo-detail-name {
+    font-size: 24px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 8px 0;
+}
+
+.odoo-detail-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.odoo-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.odoo-badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.odoo-badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.odoo-badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.odoo-badge-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.odoo-badge-neutral {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.odoo-detail-code {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.odoo-code-label {
+    display: block;
+    font-size: 11px;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+.odoo-code-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e3a8a;
+    font-family: 'Roboto Mono', monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SITUATION CARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-situation-card {
+    display: flex;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.odoo-situation-ok {
+    background: #f0fdf4;
+}
+
+.odoo-situation-warning {
+    background: #fffbeb;
+}
+
+.odoo-situation-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.odoo-situation-ok .odoo-situation-icon {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.odoo-situation-warning .odoo-situation-icon {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.odoo-situation-icon .material-icons {
+    font-size: 20px;
+}
+
+.odoo-situation-content {
+    flex: 1;
+}
+
+.odoo-situation-content strong {
+    display: block;
+    font-size: 13px;
+    color: #212529;
+    margin-bottom: 4px;
+}
+
+.odoo-situation-content p {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    color: #495057;
+}
+
+.odoo-sit-label {
+    font-weight: 600;
+    color: #212529;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-detail-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 24px;
+    border-bottom: 1px solid #dee2e6;
+    background: white;
+    overflow-x: auto;
+}
+
+.odoo-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6c757d;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.odoo-tab .material-icons {
+    font-size: 18px;
+}
+
+.odoo-tab:hover {
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.odoo-tab.active {
+    color: #017e84;
+    border-bottom-color: #017e84;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB CONTENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-tab-contents {
+    padding: 24px;
+}
+
+.odoo-tab-content {
+    display: none;
+}
+
+.odoo-tab-content.active {
+    display: block;
+}
+
+.odoo-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.odoo-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.odoo-field-full {
+    grid-column: 1 / -1;
+}
+
+.odoo-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.odoo-field span {
+    font-size: 14px;
+    color: #212529;
+}
+
+.odoo-field a {
+    color: #017e84;
+    text-decoration: none;
+}
+
+.odoo-field a:hover {
+    text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-table-container {
+    overflow-x: auto;
+}
+
+.odoo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.odoo-table th {
+    text-align: left;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 500;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.odoo-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9ecef;
+    color: #212529;
+}
+
+.odoo-table tr:hover {
+    background: #f8f9fa;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMPTY
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-empty {
+    font-size: 13px;
+    color: #6c757d;
+    text-align: center;
+    padding: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 992px) {
+    .odoo-fields-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .odoo-detail-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .odoo-detail-code {
+        text-align: center;
+    }
+
+    .odoo-fields-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .odoo-control-bar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .odoo-control-right {
+        flex-wrap: wrap;
+    }
+}
+</style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT (MISMO DEL DETALLE MIEMBRO)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.odoo-tab');
+    const contents = document.querySelectorAll('.odoo-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetId = 'tab-' + this.dataset.tab;
+
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            this.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+        const targetTab = document.querySelector(`.odoo-tab[data-tab="${tabParam}"]`);
+        if (targetTab) targetTab.click();
+    }
+});
+</script>
+
+{% endblock %}

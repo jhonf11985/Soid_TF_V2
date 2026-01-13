@@ -124,5 +124,11 @@ path("miembros/<int:pk>/finanzas/desbloquear/", views.miembro_finanzas_desbloque
 path("miembros/<int:pk>/finanzas/bloquear/", views.miembro_finanzas_bloquear, name="miembro_finanzas_bloquear"),
 
   path("ajax/validar-cedula/", views.ajax_validar_cedula, name="ajax_validar_cedula"),
+  path(
+    "miembros/<int:pk>/nuevo-creyente/salida/",
+    views.nuevo_creyente_dar_salida,
+    name="nuevo_creyente_dar_salida",
+),
+  path("nuevos-creyentes/<int:pk>/", views.nuevo_creyente_detalle, name="nuevo_creyente_detalle"),
 ]
 

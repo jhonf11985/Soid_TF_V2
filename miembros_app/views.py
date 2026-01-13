@@ -55,7 +55,7 @@ from django.contrib.auth.decorators import permission_required
 from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
 from django.views.decorators.http import require_POST, require_GET
 from django.views.generic import DetailView, UpdateView
-
+from django.views.decorators.http import require_http_methods
 
 @login_required
 @require_POST
@@ -2352,16 +2352,28 @@ def reporte_nuevos_creyentes(request):
         "miembros_app/reportes/reporte_nuevos_creyentes.html",
         context,
     )
+@login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def nuevo_creyente_ficha(request, pk):
     """
     Ficha imprimible del nuevo creyente.
     """
     miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True)
 
+    # 🔍 Verificar si tiene expediente ABIERTO
+    expediente_abierto = NuevoCreyenteExpediente.objects.filter(
+        miembro=miembro,
+        estado="abierto"
+    ).exists()
+
     context = {
         "miembro": miembro,
         "hoy": timezone.localdate(),
+        # 👉 solo se puede dar salida si NO hay expediente abierto
+        "puede_dar_salida": not expediente_abierto,
+        "expediente_abierto": expediente_abierto,
     }
+
     return render(
         request,
         "miembros_app/reportes/nuevo_creyente_ficha.html",
@@ -3181,3 +3193,91 @@ def ajax_validar_cedula(request):
         "exists": exists,
         "message": "Ya existe un miembro con esta cédula." if exists else "Cédula disponible.",
     })
+
+
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+@require_http_methods(["GET", "POST"])
+def nuevo_creyente_dar_salida(request, pk):
+    miembro = get_object_or_404(Miembro, pk=pk)
+
+    # 🔒 BLOQUEO SOLO SI HAY EXPEDIENTE ABIERTO
+    expediente_abierto = NuevoCreyenteExpediente.objects.filter(
+        miembro=miembro,
+        estado="abierto"
+    ).exists()
+
+    if expediente_abierto:
+        messages.error(
+            request,
+            "Este nuevo creyente tiene un expediente de seguimiento activo. "
+            "Primero debes cerrarlo desde el módulo Nuevo Creyente."
+        )
+        return redirect("miembros_app:detalle", pk=miembro.pk)
+
+    # 🛑 Ya tiene salida registrada
+    if not miembro.activo and miembro.fecha_salida:
+        messages.info(
+            request,
+            "Este nuevo creyente ya tiene una salida registrada."
+        )
+        return redirect("miembros_app:detalle", pk=miembro.pk)
+
+    if request.method == "POST":
+        form = MiembroSalidaForm(request.POST, instance=miembro)
+        if form.is_valid():
+            salida = form.save(commit=False)
+            salida.activo = False
+            salida.nuevo_creyente = False
+            salida.save()
+
+            messages.success(
+                request,
+                "El nuevo creyente fue dado de salida correctamente."
+            )
+            return redirect("miembros_app:detalle", pk=miembro.pk)
+    else:
+        form = MiembroSalidaForm(instance=miembro)
+
+    return render(
+        request,
+        "miembros_app/nuevo_creyente_salida_form.html",
+        {
+            "miembro": miembro,
+            "form": form,
+        }
+    )
+
+
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def nuevo_creyente_detalle(request, pk):
+    """
+    Detalle del Nuevo Creyente.
+    Usa la plantilla basada en la ficha de miembro, pero enfocada a seguimiento.
+    """
+    miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True)
+
+    # Parámetro global (lo usa la plantilla de detalle tipo miembro)
+    edad_minima = get_edad_minima_miembro_oficial()
+
+    # Expediente (si existe)
+    expediente = (
+        NuevoCreyenteExpediente.objects
+        .filter(miembro=miembro)
+        .select_related("responsable")
+        .first()
+    )
+
+    expediente_abierto = bool(expediente and getattr(expediente, "estado", None) == "abierto")
+
+    context = {
+        "miembro": miembro,
+        "expediente": expediente,
+        "expediente_abierto": expediente_abierto,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+    }
+
+    # ✅ Ajusta este nombre si tu plantilla se llama distinto
+    return render(request, "miembros_app/nuevo_creyente_detalle.html", context)

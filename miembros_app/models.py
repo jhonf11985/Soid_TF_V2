@@ -56,31 +56,33 @@ SITUACION_ECONOMICA_CHOICES = [
 
 
 class RazonSalidaMiembro(models.Model):
-    nombre = models.CharField(
-        max_length=100,
-        unique=True,
-        help_text="Nombre corto de la razón de salida (Traslado, Distancia, etc.).",
-    )
-    descripcion = models.TextField(
-        blank=True,
-        help_text="Descripción opcional de la razón.",
-    )
-    activo = models.BooleanField(
-        default=True,
-        help_text="Si se desmarca, deja de aparecer en el selector, pero se mantiene el histórico.",
-    )
-    orden = models.PositiveIntegerField(
-        default=0,
-        help_text="Permite ordenar las razones en el selector.",
+
+    APLICA_A_CHOICES = [
+        ("miembro", "Miembro"),
+        ("nuevo_creyente", "Nuevo creyente"),
+        ("ambos", "Ambos"),
+    ]
+
+    nombre = models.CharField(max_length=100, unique=True)
+    descripcion = models.TextField(blank=True)
+    activo = models.BooleanField(default=True)
+    orden = models.PositiveIntegerField(default=0)
+
+    aplica_a = models.CharField(
+        max_length=20,
+        choices=APLICA_A_CHOICES,
+        default="ambos",
+        help_text="Define si esta razón aplica a miembros, nuevos creyentes o ambos.",
     )
 
     class Meta:
-        verbose_name = "Razón de salida de miembro"
-        verbose_name_plural = "Razones de salida de miembros"
+        verbose_name = "Razón de salida"
+        verbose_name_plural = "Razones de salida"
         ordering = ["orden", "nombre"]
 
     def __str__(self):
         return self.nombre
+
 
 
 class Miembro(models.Model):

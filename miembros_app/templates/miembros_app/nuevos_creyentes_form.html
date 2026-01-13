@@ -834,5 +834,117 @@
     }
 }
 </style>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const tel = document.getElementById("{{ form.telefono.id_for_label }}");
+  const wa  = document.getElementById("{{ form.whatsapp.id_for_label }}");
 
+  // (opcional) si en algún momento agregas teléfono secundario
+  const tel2 = document.getElementById("id_telefono_secundario");
+
+  if (!tel || !wa) return;
+
+  function digitsOnly(v) { return (v || "").replace(/\D/g, ""); }
+
+  function formatRD(d) {
+    if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+    d = d.slice(0, 10);
+
+    const a = d.slice(0, 3);
+    const b = d.slice(3, 6);
+    const c = d.slice(6, 10);
+
+    if (d.length <= 3) return a;
+    if (d.length <= 6) return a + "-" + b;
+    return a + "-" + b + "-" + c;
+  }
+
+  function toWhatsAppE164FromDigits(d) {
+    if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+    d = d.slice(0, 10);
+    if (d.length === 10 && /^(809|829|849)/.test(d)) return "+1" + d;
+    return "";
+  }
+
+  function normalizeWhatsAppInput(v) {
+    const digits = digitsOnly(v);
+
+    if (digits.length === 11 && digits.startsWith("1")) {
+      const rd10 = digits.slice(1);
+      return toWhatsAppE164FromDigits(rd10) || ("+" + digits);
+    }
+    if (digits.length === 10) {
+      return toWhatsAppE164FromDigits(digits) || digits;
+    }
+    return digits ? ("+" + digits) : "";
+  }
+
+  let waEditado = false;
+
+function syncFromTelefono() {
+  const raw = digitsOnly(tel.value);
+
+  // Formateo visual del teléfono (RD)
+  tel.value = formatRD(raw);
+
+  // Si WhatsApp fue editado por el usuario y no está vacío, lo respetamos
+  if (waEditado && wa.value.trim()) return;
+
+  // Tomamos dígitos del teléfono ya formateado
+  const d = digitsOnly(tel.value);
+
+  // ✅ Sincronización en tiempo real (parcial)
+  // Si está escribiendo y ya tenemos algo, vamos formando +1 + dígitos (RD)
+  if (d.length > 0) {
+    // si tiene 11 y empieza con 1, lo tratamos como +1 + 10
+    let dd = d;
+    if (dd.length === 11 && dd.startsWith("1")) dd = dd.slice(1);
+    dd = dd.slice(0, 10);
+
+    // Si el número parece RD (o aún va parcial), mostramos +1 + lo que haya
+    // Esto da "tiempo real" desde que empieza a escribir.
+    wa.value = "+1" + dd;
+  } else {
+    wa.value = "";
+  }
+
+  // ✅ Cuando ya está completo y es RD válido, lo dejamos fino (tu lógica final)
+  const e164 = toWhatsAppE164FromDigits(d);
+  if (e164) wa.value = e164;
+}
+
+
+  function syncTelefonoSecundario() {
+    if (!tel2) return;
+    const d = digitsOnly(tel2.value);
+    tel2.value = formatRD(d);
+  }
+
+  tel.addEventListener("input", syncFromTelefono);
+  tel.addEventListener("blur", syncFromTelefono);
+
+  if (tel2) {
+    tel2.addEventListener("input", syncTelefonoSecundario);
+    tel2.addEventListener("blur", syncTelefonoSecundario);
+    syncTelefonoSecundario();
+  }
+
+    wa.addEventListener("input", function (e) {
+    // Solo marcamos "editado" si el input fue del usuario real.
+    // (Autofill / cambios programáticos no deben bloquear la sincronización)
+    if (e.isTrusted) waEditado = true;
+
+    wa.value = normalizeWhatsAppInput(wa.value);
+    });
+
+
+  wa.addEventListener("blur", function () {
+    wa.value = normalizeWhatsAppInput(wa.value);
+  });
+
+  // Inicial
+  syncFromTelefono();
+  if (wa.value && wa.value.trim()) wa.value = normalizeWhatsAppInput(wa.value);
+});
+</script>
 {% endblock %}

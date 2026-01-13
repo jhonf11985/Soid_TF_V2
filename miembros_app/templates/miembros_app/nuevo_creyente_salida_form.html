@@ -1,0 +1,298 @@
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
+
+{% block title %}Dar salida · Nuevo creyente · {{ miembro.nombres }}{% endblock %}
+
+{% block miembros_content %}
+
+<div class="odoo-page-wrapper">
+
+    <!-- CONTROL BAR -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:detalle' miembro.pk %}" class="odoo-btn odoo-btn-secondary">
+                <span class="material-icons">arrow_back</span>
+            </a>
+
+            <div class="odoo-breadcrumb">
+                <a href="{% url 'miembros_app:nuevo_creyente_lista' %}" class="odoo-breadcrumb-link">Nuevos creyentes</a>
+                <span class="material-icons">chevron_right</span>
+                <a href="{% url 'miembros_app:detalle' miembro.pk %}" class="odoo-breadcrumb-link">
+                    {% if miembro.codigo_seguimiento %}
+                        {{ miembro.codigo_seguimiento }}
+                    {% else %}
+                        {{ miembro.nombres }} {{ miembro.apellidos }}
+                    {% endif %}
+                </a>
+                <span class="material-icons">chevron_right</span>
+                <span class="odoo-breadcrumb-current">Dar salida</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="odoo-detail-container" style="background: var(--odoo-page-bg, #f0f2f5);">
+
+        <div class="odoo-form-sheet" style="max-width: 600px; margin: 30px auto; padding: 24px;">
+
+            <h1 class="odoo-detail-name" style="font-size: 24px; margin-bottom: 20px; text-align: center;">
+                Confirmar salida – Nuevo creyente
+            </h1>
+
+            <!-- ALERTA -->
+            <div class="odoo-alert odoo-alert-danger">
+                <span class="material-icons" style="font-size: 24px;">person_off</span>
+                <div>
+                    <strong>Vas a dar salida a este nuevo creyente</strong>
+                    <p>El registro <b>no se elimina</b>: quedará marcado como <b>Inactivo</b> con su historial.</p>
+                </div>
+            </div>
+
+            <!-- RESUMEN -->
+            <div class="odoo-summary-box">
+                <div class="odoo-summary-row">
+                    <span class="odoo-summary-label">Persona</span>
+                    <span class="odoo-summary-value">{{ miembro.nombres }} {{ miembro.apellidos }}</span>
+                </div>
+
+                <div class="odoo-summary-row">
+                    <span class="odoo-summary-label">Código</span>
+                    <span class="odoo-summary-value">
+                        {% if miembro.codigo_seguimiento %}
+                            {{ miembro.codigo_seguimiento }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="odoo-summary-row">
+                    <span class="odoo-summary-label">Estado actual</span>
+                    <span class="odoo-summary-value">
+                        {% if miembro.activo %}
+                            <span class="odoo-badge odoo-badge-success">Nuevo creyente</span>
+                        {% else %}
+                            <span class="odoo-badge odoo-badge-danger">Inactivo</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <!-- FORMULARIO -->
+            <form method="post" class="odoo-form">
+                {% csrf_token %}
+
+                <div class="odoo-form-group">
+                    <label class="odoo-label">Razón de la salida <span class="odoo-required">*</span></label>
+                    {{ form.razon_salida }}
+                    {% if form.razon_salida.errors %}
+                        <div class="odoo-field-error">{{ form.razon_salida.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="odoo-form-group">
+                    <label class="odoo-label">Fecha de salida <span class="odoo-required">*</span></label>
+                    {{ form.fecha_salida }}
+                    {% if form.fecha_salida.errors %}
+                        <div class="odoo-field-error">{{ form.fecha_salida.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="odoo-form-group">
+                    <label class="odoo-label">Comentario (opcional)</label>
+                    {{ form.comentario_salida }}
+                    {% if form.comentario_salida.errors %}
+                        <div class="odoo-field-error">{{ form.comentario_salida.errors }}</div>
+                    {% endif %}
+                    <span class="odoo-field-hint">Ej: mudanza, no respondió, traslado, seguimiento pastoral, etc.</span>
+                </div>
+
+                <!-- ACCIONES -->
+                <div class="odoo-form-actions">
+                    <button type="submit" class="odoo-btn odoo-btn-danger">
+                        <span class="material-icons">person_off</span>
+                        Confirmar salida
+                    </button>
+
+                    <a href="{% url 'miembros_app:detalle' miembro.pk %}" class="odoo-btn odoo-btn-secondary">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<style>
+:root {
+    --odoo-primary: #017e84;
+    --odoo-danger: #dc2626;
+    --odoo-warning: #d97706;
+    --odoo-bg: white;
+    --odoo-page-bg: #f0f2f5;
+    --odoo-border: #dee2e6;
+    --odoo-text: #212529;
+    --odoo-text-muted: #6c757d;
+}
+
+body { font-family: "Roboto", sans-serif; color: var(--odoo-text); }
+
+.odoo-page-wrapper { min-height: 100vh; background: var(--odoo-page-bg); }
+.odoo-detail-container { padding: 10px 16px 40px; }
+
+/* CONTROL BAR */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.odoo-control-left { display: flex; align-items: center; gap: 8px; }
+.odoo-breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; }
+.odoo-breadcrumb-link { color: var(--odoo-primary); text-decoration: none; }
+.odoo-breadcrumb .material-icons { font-size: 16px; color: var(--odoo-text-muted); }
+.odoo-breadcrumb-current { color: var(--odoo-text); font-weight: 500; }
+
+/* SHEET */
+.odoo-form-sheet {
+    background: var(--odoo-bg);
+    border: 1px solid var(--odoo-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* ALERTAS */
+.odoo-alert {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 13px;
+}
+.odoo-alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+.odoo-alert strong { display: block; margin-bottom: 2px; }
+.odoo-alert p { margin: 0; }
+.odoo-alert .material-icons { color: var(--odoo-danger); }
+
+/* RESUMEN */
+.odoo-summary-box{
+    border: 1px solid var(--odoo-border);
+    background: var(--odoo-bg);
+    border-radius: 10px;
+    padding: 14px;
+    margin: 12px 0 18px;
+}
+.odoo-summary-row{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    padding:8px 0;
+    border-bottom: 1px solid var(--odoo-border);
+}
+.odoo-summary-row:last-child{ border-bottom:none; }
+.odoo-summary-label{ color: var(--odoo-text-muted); font-size:13px; font-weight:600; }
+.odoo-summary-value{ color: var(--odoo-text); font-size:14px; font-weight:600; }
+
+/* FORM */
+.odoo-form-group{ margin-top: 15px; }
+.odoo-label{
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--odoo-text-muted);
+    margin-bottom: 5px;
+}
+.odoo-required{ color: var(--odoo-primary); font-weight: 700; margin-left: 2px; }
+
+.odoo-form-group select,
+.odoo-form-group input,
+.odoo-form-group textarea{
+    width:100%;
+    border:1px solid var(--odoo-border);
+    border-radius:6px;
+    padding:10px 12px;
+    font-size:14px;
+    background:#fff;
+    outline:none;
+    box-shadow: none;
+    transition: all 0.2s ease;
+}
+.odoo-form-group select:focus,
+.odoo-form-group input:focus,
+.odoo-form-group textarea:focus{
+    border-color: var(--odoo-primary);
+    box-shadow: 0 0 0 3px rgba(1, 126, 132, 0.15);
+}
+.odoo-form-group textarea{ resize: vertical; min-height: 80px; }
+
+.odoo-field-hint{ display:block; margin-top:6px; color: var(--odoo-text-muted); font-size:12px; }
+.odoo-field-error{ margin-top:6px; color: var(--odoo-danger); font-size:13px; font-weight: 500; }
+
+/* BUTTONS */
+.odoo-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+    flex-wrap: wrap;
+}
+
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.odoo-btn .material-icons { font-size: 18px; }
+
+.odoo-btn-danger { background: var(--odoo-danger); color: white; }
+.odoo-btn-danger:hover { background: #b91c1c; }
+
+.odoo-btn-secondary {
+    background: white;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+.odoo-btn-secondary:hover { background: #e9ecef; }
+
+/* Badges */
+.odoo-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.odoo-badge-success { background: #d1fae5; color: #065f46; }
+.odoo-badge-danger { background: #fee2e2; color: #991b1b; }
+
+/* Responsive */
+@media (max-width: 650px) {
+    .odoo-form-sheet { margin: 15px auto; padding: 15px; max-width: 95%; }
+}
+</style>
+
+{% endblock %}
