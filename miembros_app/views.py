@@ -3351,3 +3351,139 @@ def miembro_inactivo_detalle(request, pk):
         "es_nuevo_creyente": bool(getattr(miembro, "nuevo_creyente", False)),
     }
     return render(request, "miembros_app/inactivo_detalle.html", context)
+
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+@require_POST
+def reincorporar_miembro(request, pk):
+    miembro = get_object_or_404(Miembro, pk=pk)
+
+    # Datos del POST
+    origen = request.POST.get("origen")  # descarriado | traslado | pausa
+    estado = request.POST.get("estado")  # reconciliado | restituido | observacion
+    carta = request.POST.get("carta") == "1"
+    nota = request.POST.get("nota", "").strip()
+
+    # Activar nuevamente
+    miembro.activo = True
+    miembro.fecha_salida = None
+    miembro.razon_salida = None
+
+    # Marcar reincorporación
+    miembro.etapa_actual = "reincorporado"
+    miembro.estado_pastoral_reingreso = estado
+    miembro.origen_reingreso = origen
+    miembro.carta_traslado_recibida = carta
+    miembro.nota_pastoral_reingreso = nota
+    miembro.fecha_reingreso = timezone.now().date()
+
+    miembro.save()
+
+    messages.success(
+        request,
+        "El miembro ha sido reincorporado y enviado a evaluación pastoral."
+    )
+
+    return redirect("miembros_app:reincorporados")
+@login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def reincorporados_listado(request):
+    reincorporados = Miembro.objects.filter(
+        etapa_actual="reincorporado",
+        activo=True
+    ).order_by("-fecha_reingreso", "apellidos", "nombres")
+
+    return render(
+        request,
+        "miembros_app/reincorporados_listado.html",
+        {
+            "reincorporados": reincorporados
+        }
+    )
+
+from .forms import MiembroReingresoForm
+
+
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+@require_http_methods(["GET", "POST"])
+def reincorporar_miembro(request, pk):
+    miembro = get_object_or_404(Miembro, pk=pk)
+
+    # Solo aplica para inactivos
+    if miembro.activo:
+        messages.info(request, "Este registro ya está activo.")
+        return redirect("miembros_app:detalle", pk=miembro.pk)
+
+    es_nuevo_creyente = bool(getattr(miembro, "nuevo_creyente", False))
+    es_bautizado = bool(getattr(miembro, "bautizado_confirmado", False))
+    requiere_carta = bool(miembro.razon_salida and getattr(miembro.razon_salida, "permite_carta", False))
+
+    # Sugerencia automática (no obliga, solo orienta)
+    sugerido = None
+    sugerencia_texto = ""
+
+    if requiere_carta:
+        sugerido = "restituido"
+        sugerencia_texto = "Caso de traslado/otra iglesia: se sugiere Restituido u Observación breve según la carta."
+    else:
+        if es_nuevo_creyente:
+            sugerido = "reconciliado_nuevo"
+            sugerencia_texto = "Nuevo creyente que regresa: se sugiere Reconciliado – nuevo creyente (seguimiento)."
+        else:
+            if es_bautizado:
+                sugerido = "reconciliado_miembro"
+                sugerencia_texto = "Miembro bautizado que regresa: se sugiere Reconciliado – miembro (restauración)."
+            else:
+                sugerido = "observacion"
+                sugerencia_texto = "Se sugiere En observación como punto de partida."
+
+    if request.method == "POST":
+        form = MiembroReingresoForm(request.POST, instance=miembro)
+        if form.is_valid():
+            m = form.save(commit=False)
+
+            # Reactivar
+            m.activo = True
+            m.en_reincorporacion = True
+            m.reingreso_fecha = timezone.localdate()
+
+            # Importante: al hacerse activo, limpiamos datos de salida para coherencia
+            m.razon_salida = None
+            m.fecha_salida = None
+            m.comentario_salida = ""
+
+            # Si es nuevo creyente, permanece como nuevo creyente
+            if es_nuevo_creyente:
+                m.nuevo_creyente = True
+
+            # Ajuste sugerido del estado_miembro interno (sin inventar nuevos estados)
+            # - reconciliado / observación => estado_miembro = "observacion"
+            # - restituido => estado_miembro = "activo"
+            if m.reingreso_estado in ("reconciliado_miembro", "reconciliado_nuevo", "observacion", "otro"):
+                m.estado_miembro = "observacion"
+            elif m.reingreso_estado == "restituido":
+                m.estado_miembro = "activo"
+
+            m.save()
+
+            messages.success(request, "Reincorporación registrada. El miembro volvió a estar activo y quedó en seguimiento.")
+            # Redirigir al detalle correcto
+            if es_nuevo_creyente:
+                return redirect("miembros_app:nuevo_creyente_detalle", pk=m.pk)
+            return redirect("miembros_app:detalle", pk=m.pk)
+    else:
+        form = MiembroReingresoForm(instance=miembro, initial={"reingreso_estado": sugerido} if sugerido else None)
+
+    return render(
+        request,
+        "miembros_app/reincorporacion_form.html",
+        {
+            "miembro": miembro,
+            "form": form,
+            "es_nuevo_creyente": es_nuevo_creyente,
+            "es_bautizado": es_bautizado,
+            "requiere_carta": requiere_carta,
+            "sugerencia_texto": sugerencia_texto,
+        }
+    )

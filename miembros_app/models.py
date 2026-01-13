@@ -8,6 +8,18 @@ from django.conf import settings
 
 
 
+ETAPA_ACTUAL_CHOICES = [
+    ("miembro", "Miembro"),
+    ("nuevo_creyente", "Nuevo creyente"),
+    ("reincorporado", "Reincorporado"),
+    ("inactivo", "Inactivo"),
+]
+
+ESTADO_PASTORAL_REINGRESO_CHOICES = [
+    ("reconciliado", "Reconciliado"),
+    ("restituido", "Restituido"),
+    ("observacion", "En observación"),
+]
 
 GENERO_CHOICES = [
     ("masculino", "Masculino"),
@@ -56,6 +68,8 @@ SITUACION_ECONOMICA_CHOICES = [
 
 
 class RazonSalidaMiembro(models.Model):
+
+
 
     APLICA_A_CHOICES = [
         ("miembro", "Miembro"),
@@ -131,8 +145,42 @@ class Miembro(models.Model):
         blank=True,
         null=True,
         help_text="Número de pasaporte del miembro.",
+        )
+    # -------------------------
+    # REINGRESO / REINCORPORACIÓN
+    # -------------------------
+    etapa_actual = models.CharField(
+        max_length=20,
+        choices=ETAPA_ACTUAL_CHOICES,
+        default="miembro",
+        db_index=True,
     )
 
+    estado_pastoral_reingreso = models.CharField(
+        max_length=20,
+        choices=ESTADO_PASTORAL_REINGRESO_CHOICES,
+        null=True,
+        blank=True,
+    )
+
+    fecha_reingreso = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    origen_reingreso = models.CharField(
+        max_length=20,
+        choices=[
+            ("descarriado", "Descarriado"),
+            ("traslado", "Traslado"),
+            ("pausa", "Pausa voluntaria"),
+        ],
+        null=True,
+        blank=True,
+    )
+
+    carta_traslado_recibida = models.BooleanField(default=False)
+    nota_pastoral_reingreso = models.TextField(blank=True)
     # --- Información de contacto ---
     telefono = models.CharField(max_length=20, blank=True)
     telefono_secundario = models.CharField(max_length=20, blank=True)

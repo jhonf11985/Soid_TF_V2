@@ -665,3 +665,57 @@ class MiembroSalidaForm(forms.ModelForm):
         self.fields["razon_salida"].queryset = RazonSalidaMiembro.objects.filter(activo=True).order_by("orden", "nombre")
         # Texto útil (opcional)
         self.fields["razon_salida"].empty_label = "— Selecciona una razón —"
+
+
+from django import forms
+from django.utils import timezone
+from .models import Miembro
+
+
+class MiembroReingresoForm(forms.ModelForm):
+    class Meta:
+        model = Miembro
+        fields = [
+            "estado_pastoral_reingreso",
+            "origen_reingreso",
+            "carta_traslado_recibida",
+            "nota_pastoral_reingreso",
+        ]
+        widgets = {
+            "estado_pastoral_reingreso": forms.Select(attrs={"class": "odoo-input"}),
+            "origen_reingreso": forms.Select(attrs={"class": "odoo-input"}),
+            "nota_pastoral_reingreso": forms.Textarea(attrs={"rows": 4, "class": "textarea"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.miembro = kwargs.get("instance")
+        super().__init__(*args, **kwargs)
+
+        # Si no requiere carta, ocultamos el campo o lo deshabilitamos
+        requiere_carta = bool(
+            self.miembro
+            and self.miembro.razon_salida
+            and getattr(self.miembro.razon_salida, "permite_carta", False)
+        )
+
+        if not requiere_carta:
+            self.fields["carta_traslado_recibida"].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+
+        requiere_carta = bool(
+            self.miembro
+            and self.miembro.razon_salida
+            and getattr(self.miembro.razon_salida, "permite_carta", False)
+        )
+
+        carta = cleaned.get("carta_traslado_recibida")
+
+        if requiere_carta and not carta:
+            self.add_error(
+                "carta_traslado_recibida",
+                "Para este tipo de salida (traslado/otra iglesia) debes marcar si la carta fue recibida."
+            )
+
+        return cleaned

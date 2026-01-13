@@ -1,0 +1,412 @@
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
+
+{% block title %}Reincorporar · {{ miembro.nombres }} {{ miembro.apellidos }}{% endblock %}
+
+{% block miembros_content %}
+<div class="odoo-page-wrapper">
+
+  <!-- CONTROL BAR -->
+  <div class="odoo-control-bar no-print">
+    <div class="odoo-control-left">
+      <a href="{% url 'miembros_app:inactivo_detalle' miembro.pk %}" class="odoo-btn odoo-btn-secondary" title="Volver">
+        <span class="material-icons">arrow_back</span>
+      </a>
+
+      <div class="odoo-breadcrumb">
+        <span class="odoo-breadcrumb-current">Inactivos</span>
+        <span class="material-icons">chevron_right</span>
+        <span class="odoo-breadcrumb-current">Reincorporación</span>
+      </div>
+    </div>
+
+    <div class="odoo-control-right">
+      <button type="submit" form="reingreso-form" class="odoo-btn odoo-btn-primary">
+        <span class="material-icons">check_circle</span>
+        Guardar
+      </button>
+    </div>
+  </div>
+
+  <div class="odoo-detail-container">
+
+    <!-- HERO -->
+    <div class="odoo-hero odoo-hero-warning">
+      <div class="odoo-hero-left">
+        <div class="odoo-hero-icon">
+          <span class="material-icons">undo</span>
+        </div>
+        <div class="odoo-hero-text">
+          <div class="odoo-hero-title">Reincorporación pastoral</div>
+          <div class="odoo-hero-subtitle">
+            {{ miembro.nombres }} {{ miembro.apellidos }} ·
+            {% if es_nuevo_creyente %}
+              <b>Nuevo creyente</b>
+            {% else %}
+              <b>Miembro</b>
+            {% endif %}
+            {% if es_bautizado %} · Bautizado ✔{% endif %}
+          </div>
+
+          {% if sugerencia_texto %}
+          <div class="odoo-hero-badges" style="margin-top:8px;">
+            <span class="odoo-badge odoo-badge-warning">
+              Sugerencia: {{ sugerencia_texto }}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="odoo-hero-right">
+        <div class="odoo-mini-card">
+          <div class="odoo-mini-label">Estado actual</div>
+          <div class="odoo-mini-value">
+            <span class="odoo-badge odoo-badge-danger">INACTIVO</span>
+          </div>
+        </div>
+        <div class="odoo-mini-card">
+          <div class="odoo-mini-label">Razón salida</div>
+          <div class="odoo-mini-value">
+            {% if miembro.razon_salida %}{{ miembro.razon_salida }}{% else %}—{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="odoo-grid-2">
+
+      <!-- FORM -->
+      <div class="odoo-card">
+        <div class="odoo-card-header">
+          <div class="odoo-card-title">
+            <span class="material-icons">assignment</span>
+            Decisión pastoral al reingresar
+          </div>
+        </div>
+
+        <div class="odoo-card-body">
+          <form id="reingreso-form" method="post">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="odoo-alert odoo-alert-danger">
+                {{ form.non_field_errors }}
+              </div>
+            {% endif %}
+
+            <div class="odoo-form-grid">
+              <div class="odoo-field">
+                <label>Etapa inicial</label>
+                {{ form.reingreso_estado }}
+                {% if form.reingreso_estado.errors %}
+                  <div class="odoo-error">{{ form.reingreso_estado.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="odoo-field">
+                <label>Estado de carta (traslado)</label>
+                {{ form.carta_traslado_estado }}
+                {% if form.carta_traslado_estado.errors %}
+                  <div class="odoo-error">{{ form.carta_traslado_estado.errors }}</div>
+                {% endif %}
+                {% if requiere_carta %}
+                  <div class="odoo-help">Este caso requiere carta o evaluación equivalente.</div>
+                {% else %}
+                  <div class="odoo-help">Si no aplica, se guardará como “No aplica”.</div>
+                {% endif %}
+              </div>
+
+              <div class="odoo-field odoo-field-full">
+                <label>Nota pastoral (privada)</label>
+                {{ form.nota_reingreso }}
+                {% if form.nota_reingreso.errors %}
+                  <div class="odoo-error">{{ form.nota_reingreso.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="odoo-note" style="margin-top:10px;">
+              <span class="material-icons">verified</span>
+              Al guardar: el registro pasa a <b>Activo</b> y queda marcado como <b>En reincorporación</b> (lista temporal).
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- REGLAS / RESUMEN -->
+      <div class="odoo-card odoo-card-soft">
+        <div class="odoo-card-header">
+          <div class="odoo-card-title">
+            <span class="material-icons">rule</span>
+            Reglas que aplican (resumen)
+          </div>
+        </div>
+        <div class="odoo-card-body">
+          <ul class="odoo-bullets">
+            <li><b>Reconciliado</b> = estado pastoral temporal (no define madurez).</li>
+            <li><b>Nuevo creyente</b> reingresa como nuevo creyente (seguimiento, no membresía plena).</li>
+            <li><b>Traslado</b> requiere carta/validación y observación breve.</li>
+            <li>Durante la reincorporación: sin liderazgo ni cargos sensibles (según criterio pastoral).</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+/* ==========================================================
+   Reincorporación (Soid/Odoo look)
+   - No redefine tu sistema completo
+   - Solo ajusta el layout y los componentes propios de esta pantalla
+   ========================================================== */
+
+/* Grid principal */
+.odoo-grid-2{
+  display:grid;
+  grid-template-columns: 1.3fr .7fr;
+  gap:14px;
+  margin-top:14px;
+}
+@media (max-width: 980px){
+  .odoo-grid-2{ grid-template-columns: 1fr; }
+}
+
+/* ==========================================================
+   HERO refinado (mantiene tu estilo, pero lo hace más "acción sensible")
+   ========================================================== */
+.odoo-hero-warning{
+  background: linear-gradient(90deg, #fff7ed, #fffbeb);
+  border: 1px solid rgba(0,0,0,.06);
+  border-left: 6px solid #f59e0b;
+}
+.odoo-hero-warning .odoo-hero-icon{
+  background:#fffbeb;
+  border:1px solid rgba(0,0,0,.06);
+  color:#b45309;
+}
+.odoo-hero-warning .odoo-hero-title{
+  letter-spacing:.2px;
+}
+.odoo-hero-warning .odoo-hero-subtitle{
+  color:#6b7280;
+}
+
+/* Mini cards del hero */
+.odoo-mini-card{
+  border:1px solid rgba(0,0,0,.06);
+  background:#fff;
+  border-radius:12px;
+  padding:10px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+.odoo-mini-label{
+  font-size:11px;
+  color:#6b7280;
+  font-weight:700;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+}
+.odoo-mini-value{
+  margin-top:6px;
+  font-size:14px;
+  color:#111827;
+  font-weight:700;
+}
+
+/* ==========================================================
+   Cards
+   ========================================================== */
+.odoo-card{
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:14px;
+  background:#fff;
+  overflow:hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,.04);
+}
+.odoo-card-header{
+  padding:12px 14px;
+  border-bottom:1px solid rgba(0,0,0,.06);
+  background: linear-gradient(180deg, #ffffff, #fbfbfb);
+}
+.odoo-card-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-weight:800;
+  color:#111827;
+  font-size:14px;
+}
+.odoo-card-title .material-icons{
+  font-size:18px;
+  color:#6b7280;
+}
+.odoo-card-body{
+  padding:14px;
+}
+
+/* Card soft (resumen de reglas) */
+.odoo-card-soft{
+  background:#fafafa;
+  border:1px solid rgba(0,0,0,.06);
+}
+.odoo-card-soft .odoo-card-header{
+  background: linear-gradient(180deg, #fafafa, #f6f6f6);
+}
+
+/* ==========================================================
+   Form layout
+   ========================================================== */
+.odoo-form-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+.odoo-field-full{ grid-column: 1 / -1; }
+
+@media (max-width: 640px){
+  .odoo-form-grid{ grid-template-columns: 1fr; }
+}
+
+/* Labels */
+.odoo-field label{
+  display:block;
+  font-size:12px;
+  color:#6b7280;
+  margin-bottom:6px;
+  font-weight:800;
+  letter-spacing:.2px;
+}
+
+/* Inputs (compatibles con selects/textarea de Django) */
+.odoo-card-body select,
+.odoo-card-body textarea,
+.odoo-card-body input[type="text"],
+.odoo-card-body input[type="number"],
+.odoo-card-body input[type="date"]{
+  width:100%;
+  border:1px solid rgba(0,0,0,.10);
+  border-radius:10px;
+  padding:10px 12px;
+  font-size:14px;
+  background:#fff;
+  color:#111827;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+}
+
+/* Focus elegante */
+.odoo-card-body select:focus,
+.odoo-card-body textarea:focus,
+.odoo-card-body input:focus{
+  outline:none;
+  border-color:#f59e0b;
+  box-shadow: 0 0 0 3px rgba(245,158,11,.18);
+}
+
+/* Textarea */
+.odoo-card-body textarea{
+  min-height: 110px;
+  resize: vertical;
+}
+
+/* Campo destacado (Etapa inicial) */
+.odoo-field-highlight{
+  background:#fffbeb;
+  border:1px dashed rgba(245,158,11,.75);
+  padding:12px;
+  border-radius:12px;
+}
+
+/* Ayudas y errores */
+.odoo-help{
+  font-size:12px;
+  color:#6b7280;
+  margin-top:6px;
+  display:flex;
+  align-items:flex-start;
+  gap:6px;
+}
+.odoo-help .material-icons{
+  font-size:16px;
+  color:#9ca3af;
+  margin-top:1px;
+}
+
+.odoo-error{
+  font-size:12px;
+  color:#dc2626;
+  margin-top:6px;
+  font-weight:700;
+}
+
+/* ==========================================================
+   Alertas (errores no-field)
+   ========================================================== */
+.odoo-alert{
+  padding:10px 12px;
+  border-radius:12px;
+  margin-bottom:12px;
+  border:1px solid #fecaca;
+  background:#fff1f2;
+  color:#7f1d1d;
+  font-size:13px;
+  font-weight:600;
+}
+.odoo-alert-danger{
+  border-color:#fecaca;
+  background:#fff1f2;
+  color:#7f1d1d;
+}
+
+/* ==========================================================
+   Nota inferior (qué pasará al guardar)
+   ========================================================== */
+.odoo-note{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,.06);
+  background:#f8fafc;
+  color:#334155;
+  font-size:13px;
+}
+.odoo-note .material-icons{
+  font-size:18px;
+  color:#10b981;
+  margin-top:1px;
+}
+
+/* ==========================================================
+   Lista de reglas (resumen)
+   ========================================================== */
+.odoo-bullets{
+  margin:0;
+  padding-left:18px;
+  color:#374151;
+  font-size:13px;
+}
+.odoo-bullets li{ margin:8px 0; }
+.odoo-bullets b{ color:#111827; }
+
+/* ==========================================================
+   Pequeños detalles visuales
+   ========================================================== */
+.odoo-hero-badges .odoo-badge{
+  border-radius:999px;
+  font-weight:800;
+}
+
+/* Botón Guardar más contundente (sin romper tu clase base) */
+.odoo-btn.odoo-btn-primary{
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+.odoo-btn.odoo-btn-primary:active{
+  transform: translateY(1px);
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,537 @@
+{% extends 'miembros_app/base_miembros.html' %}
+
+{% block title %}Reincorporados{% endblock %}
+
+{% block miembros_content %}
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar no-print">
+  <div class="odoo-control-left">
+    <div class="odoo-breadcrumb">
+      <span class="odoo-breadcrumb-title">Reincorporados</span>
+      <span class="material-icons odoo-breadcrumb-settings">settings</span>
+    </div>
+  </div>
+
+  <div class="odoo-control-center">
+    <form method="get" class="odoo-search-form" id="search-form">
+      <!-- Mantener filtros existentes -->
+      <input type="hidden" name="estado" value="{{ estado|default:'' }}">
+      <input type="hidden" name="origen" value="{{ origen|default:'' }}">
+      <input type="hidden" name="carta" value="{{ carta|default:'' }}">
+
+      <div class="odoo-search-box">
+        <span class="material-icons">search</span>
+        <input type="text" name="q" placeholder="Buscar..." value="{{ q|default:'' }}">
+
+        {% if q or estado or origen or carta %}
+        <div class="odoo-filter-chips">
+          {% if q %}
+          <span class="odoo-chip">
+            "{{ q }}"
+            <button type="button" onclick="removeFilter('q')">×</button>
+          </span>
+          {% endif %}
+
+          {% if estado %}
+          <span class="odoo-chip">
+            Estado: {{ estado|capfirst }}
+            <button type="button" onclick="removeFilter('estado')">×</button>
+          </span>
+          {% endif %}
+
+          {% if origen %}
+          <span class="odoo-chip">
+            Origen: {{ origen|capfirst }}
+            <button type="button" onclick="removeFilter('origen')">×</button>
+          </span>
+          {% endif %}
+
+          {% if carta %}
+          <span class="odoo-chip">
+            Carta: {% if carta == '1' %}Sí{% else %}No{% endif %}
+            <button type="button" onclick="removeFilter('carta')">×</button>
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <button type="button" class="odoo-filter-btn" onclick="toggleFilterPanel()">
+        <span class="material-icons">filter_list</span>
+        Filtros
+      </button>
+    </form>
+  </div>
+
+  <div class="odoo-control-right">
+    <span class="odoo-pagination-info">
+      {% if reincorporados %}1-{{ reincorporados|length }} / {{ reincorporados|length }}{% else %}0{% endif %}
+    </span>
+
+    <div class="odoo-view-toggle">
+      <button type="button" class="odoo-view-btn active" title="Vista lista">
+        <span class="material-icons">view_list</span>
+      </button>
+    </div>
+
+    <div class="odoo-actions-menu">
+      <button type="button" class="odoo-btn-icon" onclick="toggleActionsMenu()">
+        <span class="material-icons">more_vert</span>
+      </button>
+      <div class="odoo-dropdown" id="actions-dropdown">
+        <button type="button" onclick="window.print()">
+          <span class="material-icons">print</span>
+          Imprimir
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PANEL DE FILTROS EXPANDIBLE
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-filter-panel no-print" id="filter-panel" style="display:none;">
+  <form method="get" class="odoo-filter-form">
+    {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+    <input type="hidden" name="filtros_abiertos" value="1">
+
+    <div class="odoo-filter-grid">
+      <div class="odoo-filter-group">
+        <label>Estado pastoral</label>
+        <select name="estado">
+          <option value="">Todos</option>
+          <option value="reconciliado" {% if estado == "reconciliado" %}selected{% endif %}>Reconciliado</option>
+          <option value="restituido" {% if estado == "restituido" %}selected{% endif %}>Restituido</option>
+          <option value="observacion" {% if estado == "observacion" %}selected{% endif %}>En observación</option>
+        </select>
+      </div>
+
+      <div class="odoo-filter-group">
+        <label>Origen reingreso</label>
+        <select name="origen">
+          <option value="">Todos</option>
+          <option value="descarriado" {% if origen == "descarriado" %}selected{% endif %}>Descarriado</option>
+          <option value="traslado" {% if origen == "traslado" %}selected{% endif %}>Traslado</option>
+          <option value="pausa" {% if origen == "pausa" %}selected{% endif %}>Pausa voluntaria</option>
+        </select>
+      </div>
+
+      <div class="odoo-filter-group">
+        <label>Carta de traslado</label>
+        <select name="carta">
+          <option value="">Indiferente</option>
+          <option value="1" {% if carta == "1" %}selected{% endif %}>Sí</option>
+          <option value="0" {% if carta == "0" %}selected{% endif %}>No</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="odoo-filter-actions">
+      <a href="{{ request.path }}" class="odoo-btn odoo-btn-secondary">Limpiar filtros</a>
+      <button type="submit" class="odoo-btn odoo-btn-primary">Aplicar</button>
+    </div>
+  </form>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ENCABEZADO PARA IMPRESIÓN
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="print-header">
+  <h1>Listado de Reincorporados</h1>
+  <p>Generado el {% now "d/m/Y H:i" %}</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TABLA DE DATOS
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-table-container">
+  <table class="odoo-table">
+    <thead>
+      <tr>
+        <th class="col-check no-print">
+          <input type="checkbox" id="select-all">
+        </th>
+        <th class="col-num">#</th>
+        <th>Código</th>
+        <th>Nombre</th>
+        <th>Contacto</th>
+        <th>Reingreso</th>
+        <th>Origen</th>
+        <th>Estado pastoral</th>
+        <th>Carta</th>
+        <th class="col-actions no-print">Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% if reincorporados %}
+        {% for m in reincorporados %}
+        <tr onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'" class="odoo-row-clickable">
+
+          <td class="col-check no-print" onclick="event.stopPropagation();">
+            <input type="checkbox" class="row-check" value="{{ m.pk }}">
+          </td>
+
+          <td class="col-num">{{ forloop.counter }}</td>
+
+          <td>
+            {% if m.codigo %}
+              <span class="odoo-badge odoo-badge-ri">{{ m.codigo }}</span>
+            {% else %}
+              <span class="odoo-empty-cell">—</span>
+            {% endif %}
+          </td>
+
+          <td>{{ m.nombres }} {{ m.apellidos }}</td>
+
+          <td>
+            {% if m.telefono or m.email %}
+            <div class="odoo-contact-info">
+              {% if m.telefono %}
+              <div class="odoo-contact-row">
+                <span class="material-icons">phone</span>
+                <span>{{ m.telefono }}</span>
+                {% with numero=m.telefono|cut:" "|cut:"-" %}
+                <a href="https://wa.me/{{ numero }}" target="_blank" class="odoo-wa-link no-print" onclick="event.stopPropagation();">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#25d366">
+                    <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2z"/>
+                  </svg>
+                </a>
+                {% endwith %}
+              </div>
+              {% endif %}
+              {% if m.email %}
+              <div class="odoo-contact-row odoo-contact-email">
+                <span class="material-icons">mail</span>
+                <span>{{ m.email }}</span>
+              </div>
+              {% endif %}
+            </div>
+            {% else %}
+            <span class="odoo-empty-cell">Sin datos</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if m.fecha_reingreso %}
+              {{ m.fecha_reingreso|date:"d/m/Y" }}
+            {% else %}
+              <span class="odoo-empty-cell">—</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if m.origen_reingreso %}
+              <span class="odoo-pill odoo-pill-muted">{{ m.get_origen_reingreso_display }}</span>
+            {% else %}
+              <span class="odoo-empty-cell">—</span>
+            {% endif %}
+          </td>
+
+          <td class="col-estado">
+            {% if m.estado_pastoral_reingreso %}
+              {% if m.estado_pastoral_reingreso == "reconciliado" %}
+                <span class="badge-estado badge-reconciliado">
+                  <span class="material-icons">history</span>
+                  Reconciliado
+                </span>
+              {% elif m.estado_pastoral_reingreso == "restituido" %}
+                <span class="badge-estado badge-restituido">
+                  <span class="material-icons">verified</span>
+                  Restituido
+                </span>
+              {% else %}
+                <span class="badge-estado badge-observacion">
+                  <span class="material-icons">visibility</span>
+                  Observación
+                </span>
+              {% endif %}
+            {% else %}
+              <span class="odoo-empty-cell">—</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if m.origen_reingreso == "traslado" %}
+              {% if m.carta_traslado_recibida %}
+                <span class="odoo-pill odoo-pill-ok">Sí</span>
+              {% else %}
+                <span class="odoo-pill odoo-pill-warn">No</span>
+              {% endif %}
+            {% else %}
+              <span class="odoo-empty-cell">—</span>
+            {% endif %}
+          </td>
+
+          <td class="col-actions no-print" onclick="event.stopPropagation();">
+            <div class="odoo-row-actions" style="display:flex; align-items:center; gap:8px;">
+              <a href="{% url 'miembros_app:detalle' m.pk %}" class="odoo-action-btn" title="Ver detalle">
+                <span class="material-icons">visibility</span>
+              </a>
+
+              <!-- Aquí luego pondremos botones de decisión pastoral (pasar a miembro / enviar a NC / etc.) -->
+              <a href="{% url 'miembros_app:editar' m.pk %}" class="odoo-action-btn" title="Editar">
+                <span class="material-icons">edit</span>
+              </a>
+            </div>
+          </td>
+
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="10" class="odoo-empty-table">
+            <span class="material-icons">search_off</span>
+            <p>No hay reincorporados registrados.</p>
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  {% if reincorporados %}
+  <div class="odoo-table-footer no-print">
+    <span>{{ reincorporados|length }} registro{{ reincorporados|length|pluralize:"s" }}</span>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS (copiados del modelo Nuevos Creyentes + mínimos extras)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* (Base idéntica a tu lista de Nuevos Creyentes) */
+.odoo-control-bar{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; padding:8px 16px; background:#f8f9fa;
+  border-bottom:1px solid #dee2e6; position:sticky; top:0; z-index:100;
+}
+.odoo-control-left,.odoo-control-center,.odoo-control-right{display:flex; align-items:center; gap:12px;}
+.odoo-control-center{flex:1; justify-content:center;}
+
+.odoo-btn{display:inline-flex; align-items:center; gap:4px; padding:6px 12px;
+  font-size:13px; font-weight:500; border:none; border-radius:4px; cursor:pointer;
+  text-decoration:none; transition:all .15s ease;}
+.odoo-btn .material-icons{font-size:18px;}
+
+.odoo-btn-primary{background:#017e84; color:#fff;}
+.odoo-btn-primary:hover{background:#016166;}
+.odoo-btn-secondary{background:#fff; color:#495057; border:1px solid #dee2e6;}
+.odoo-btn-secondary:hover{background:#e9ecef;}
+
+.odoo-breadcrumb{display:flex; align-items:center; gap:6px; padding:4px 10px; background:#fff;
+  border:1px solid #dee2e6; border-radius:4px; font-size:13px;}
+.odoo-breadcrumb-title{font-weight:500; color:#495057;}
+.odoo-breadcrumb-settings{font-size:16px; color:#6c757d;}
+
+.odoo-search-form{display:flex; align-items:center; gap:8px; max-width:520px; width:100%;}
+.odoo-search-box{display:flex; align-items:center; gap:8px; flex:1; padding:6px 12px; background:#fff;
+  border:1px solid #dee2e6; border-radius:4px;}
+.odoo-search-box .material-icons{font-size:18px; color:#6c757d;}
+.odoo-search-box input{flex:1; border:none; outline:none; font-size:13px; background:transparent; min-width:100px;}
+
+.odoo-filter-chips{display:flex; gap:4px; flex-wrap:wrap;}
+.odoo-chip{display:inline-flex; align-items:center; gap:4px; padding:2px 8px; background:#e9ecef;
+  border-radius:12px; font-size:11px; color:#495057;}
+.odoo-chip button{background:none; border:none; cursor:pointer; padding:0; font-size:14px; color:#6c757d; line-height:1;}
+.odoo-chip button:hover{color:#dc2626;}
+
+.odoo-filter-btn{display:flex; align-items:center; gap:4px; padding:6px 12px; background:#fff;
+  border:1px solid #dee2e6; border-radius:4px; font-size:13px; cursor:pointer; color:#495057;}
+.odoo-filter-btn:hover{background:#e9ecef;}
+
+.odoo-pagination-info{font-size:13px; color:#6c757d;}
+.odoo-view-toggle{display:flex; border:1px solid #dee2e6; border-radius:4px; overflow:hidden;}
+.odoo-view-btn{display:flex; align-items:center; justify-content:center; width:32px; height:32px;
+  background:#fff; border:none; cursor:pointer;}
+.odoo-view-btn:hover{background:#e9ecef;}
+.odoo-view-btn.active{background:#e9ecef; color:#017e84;}
+
+.odoo-btn-icon{display:flex; align-items:center; justify-content:center; width:32px; height:32px;
+  background:#fff; border:1px solid #dee2e6; border-radius:4px; cursor:pointer; color:#495057;}
+.odoo-btn-icon:hover{background:#e9ecef;}
+.odoo-actions-menu{position:relative;}
+.odoo-dropdown{position:absolute; top:100%; right:0; margin-top:4px; background:#fff; border:1px solid #dee2e6;
+  border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,.1); min-width:180px; z-index:1000; display:none;}
+.odoo-dropdown.show{display:block;}
+.odoo-dropdown button,.odoo-dropdown a{display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px;
+  background:none; border:none; font-size:13px; color:#495057; text-decoration:none; cursor:pointer; text-align:left;}
+.odoo-dropdown button:hover,.odoo-dropdown a:hover{background:#f8f9fa;}
+.odoo-dropdown .material-icons{font-size:18px; color:#6c757d;}
+
+.odoo-filter-panel{padding:16px; background:#fff; border-bottom:1px solid #dee2e6;}
+.odoo-filter-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:16px;}
+.odoo-filter-group{display:flex; flex-direction:column; gap:4px;}
+.odoo-filter-group label{font-size:12px; font-weight:500; color:#495057;}
+.odoo-filter-group input,.odoo-filter-group select{padding:8px 10px; border:1px solid #dee2e6; border-radius:4px; font-size:13px;}
+.odoo-filter-actions{display:flex; justify-content:flex-end; gap:8px;}
+
+.odoo-table-container{background:#fff;}
+.odoo-table{width:100%; border-collapse:collapse; font-size:13px;}
+.odoo-table thead{position:sticky; top:52px; z-index:50;}
+.odoo-table th{background:#f8f9fa; padding:10px 12px; text-align:left; font-weight:500; color:#495057;
+  border-bottom:1px solid #dee2e6; white-space:nowrap;}
+.odoo-table td{padding:10px 12px; border-bottom:1px solid #e9ecef; vertical-align:top;}
+.odoo-row-clickable{cursor:pointer;}
+.odoo-row-clickable:hover{background:#f8f9fa;}
+.col-check{width:40px; text-align:center;}
+.col-num{width:50px; color:#6c757d;}
+.col-actions{width:90px;}
+.odoo-contact-info{display:flex; flex-direction:column; gap:2px;}
+.odoo-contact-row{display:flex; align-items:center; gap:6px; font-size:12px;}
+.odoo-contact-row .material-icons{font-size:14px; color:#6c757d;}
+.odoo-contact-email{font-size:11px; color:#6c757d;}
+.odoo-wa-link{display:flex; align-items:center;}
+.odoo-empty-cell{font-size:11px; color:#9ca3af;}
+
+.odoo-row-actions{display:flex; gap:4px; opacity:0; transition:opacity .15s ease;}
+.odoo-row-clickable:hover .odoo-row-actions{opacity:1;}
+.odoo-action-btn{display:flex; align-items:center; justify-content:center; width:28px; height:28px;
+  background:#fff; border:1px solid #dee2e6; border-radius:4px; color:#6c757d; text-decoration:none;}
+.odoo-action-btn:hover{background:#e9ecef; color:#495057;}
+.odoo-action-btn .material-icons{font-size:16px;}
+
+.odoo-empty-table{text-align:center; padding:48px !important; color:#6c757d;}
+.odoo-empty-table .material-icons{font-size:48px; opacity:.5;}
+.odoo-empty-table p{margin:8px 0 0;}
+
+.odoo-table-footer{padding:10px 16px; font-size:12px; color:#6c757d; border-top:1px solid #e9ecef;}
+
+.print-header{display:none;}
+@media print{
+  .no-print{display:none !important;}
+  .print-header{display:block; text-align:center; margin-bottom:20px; padding-bottom:10px; border-bottom:2px solid #000;}
+  .print-header h1{margin:0; font-size:18px;}
+  .print-header p{margin:5px 0 0; font-size:12px; color:#666;}
+  .odoo-table thead{position:static;}
+  .odoo-table th{background:#f0f0f0 !important; -webkit-print-color-adjust:exact;}
+  .odoo-row-clickable:hover{background:transparent;}
+}
+
+@media (max-width:1024px){
+  .odoo-filter-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media (max-width:768px){
+  .odoo-control-bar{flex-wrap:wrap;}
+  .odoo-control-center{order:3; width:100%; margin-top:8px;}
+  .odoo-search-form{max-width:100%;}
+  .odoo-filter-grid{grid-template-columns:1fr;}
+  .odoo-table-container{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .odoo-table{min-width:1100px;}
+}
+
+/* Extras específicos Reincorporados */
+.odoo-badge-ri{
+  display:inline-block;
+  padding:2px 8px;
+  font-size:11px;
+  font-weight:700;
+  color:#0f172a;
+  background:#e0f2fe;        /* celeste suave */
+  border-radius:12px;
+  letter-spacing:.3px;
+}
+
+.col-estado{width:170px; white-space:nowrap;}
+
+.badge-estado{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:999px;
+  font-size:12px; font-weight:600;
+  border:1px solid #e5e7eb;
+}
+.badge-estado .material-icons{font-size:16px;}
+
+/* reconciliado (amarillo suave) */
+.badge-reconciliado{
+  background:#fff7ed;
+  color:#9a3412;
+  border-color:#fed7aa;
+}
+
+/* restituido (verde suave) */
+.badge-restituido{
+  background:#ecfdf5;
+  color:#065f46;
+  border-color:#a7f3d0;
+}
+
+/* observación (azul suave) */
+.badge-observacion{
+  background:#eef2ff;
+  color:#3730a3;
+  border-color:#c7d2fe;
+}
+
+/* Pills */
+.odoo-pill{
+  display:inline-flex; align-items:center; padding:3px 10px;
+  border-radius:999px; font-size:12px; font-weight:600;
+  border:1px solid #e5e7eb; background:#f8fafc; color:#334155;
+  white-space:nowrap;
+}
+.odoo-pill-muted{background:#f1f5f9; color:#334155;}
+.odoo-pill-ok{background:#ecfdf5; color:#065f46; border-color:#a7f3d0;}
+.odoo-pill-warn{background:#fff7ed; color:#9a3412; border-color:#fed7aa;}
+</style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+function toggleFilterPanel(){
+  const panel = document.getElementById('filter-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleActionsMenu(){
+  const dropdown = document.getElementById('actions-dropdown');
+  dropdown.classList.toggle('show');
+}
+
+function removeFilter(filterName){
+  const form = document.getElementById('search-form');
+  const input = form.querySelector(`input[name="${filterName}"], select[name="${filterName}"]`);
+  if (input){
+    if (input.type === 'checkbox') input.checked = false;
+    else input.value = '';
+  }
+  const hiddenInput = form.querySelector(`input[type="hidden"][name="${filterName}"]`);
+  if (hiddenInput) hiddenInput.remove();
+
+  let hidden = form.querySelector('input[name="filtros_abiertos"]');
+  if (!hidden){
+    hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'filtros_abiertos';
+    form.appendChild(hidden);
+  }
+  hidden.value = '1';
+  form.submit();
+}
+
+document.addEventListener('click', function(e){
+  const menu = document.querySelector('.odoo-actions-menu');
+  const dropdown = document.getElementById('actions-dropdown');
+  if (menu && !menu.contains(e.target)){
+    dropdown.classList.remove('show');
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('filtros_abiertos') === '1'){
+    document.getElementById('filter-panel').style.display = 'block';
+  }
+});
+
+document.getElementById('select-all')?.addEventListener('change', function(){
+  document.querySelectorAll('.row-check').forEach(cb => cb.checked = this.checked);
+});
+</script>
+
+{% endblock %}

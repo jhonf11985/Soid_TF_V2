@@ -34,6 +34,30 @@
                 <span class="material-icons">description</span>
                 Carta
             </a>
+{% if not miembro.activo and miembro.etapa_actual != "reincorporado" %}
+<form method="post"
+      action="{% url 'miembros_app:reincorporar_miembro' miembro.pk %}"
+      onsubmit="return confirm('¿Deseas reincorporar este registro y enviarlo a evaluación pastoral?');">
+    {% csrf_token %}
+
+    <!-- Valores iniciales (se ajustarán luego con modal si quieres) -->
+    <input type="hidden" name="origen"
+           value="{% if miembro.razon_salida and miembro.razon_salida.codigo == 'TRASLADO' %}traslado{% else %}descarriado{% endif %}">
+
+    <input type="hidden" name="estado"
+           value="{% if miembro.razon_salida and miembro.razon_salida.codigo == 'TRASLADO' %}restituido{% else %}reconciliado{% endif %}">
+
+{% if not miembro.activo and miembro.etapa_actual != "reincorporado" %}
+  <a href="{% url 'miembros_app:reincorporar_miembro' miembro.pk %}"
+     class="odoo-action-btn odoo-action-btn-primary"
+     title="Reincorporar y enviar a evaluación pastoral">
+      <span class="material-icons">restart_alt</span>
+      Reincorporar (evaluación pastoral)
+  </a>
+{% endif %}
+
+</form>
+{% endif %}
 
             <button type="button" class="odoo-btn odoo-btn-primary" onclick="window.print()">
                 <span class="material-icons">print</span>

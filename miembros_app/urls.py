@@ -132,6 +132,14 @@ path("miembros/<int:pk>/finanzas/bloquear/", views.miembro_finanzas_bloquear, na
   path("nuevos-creyentes/<int:pk>/", views.nuevo_creyente_detalle, name="nuevo_creyente_detalle"),
 path("inactivos/<int:pk>/", views.miembro_inactivo_detalle, name="inactivo_detalle"),
 
+path(
+    "reincorporados/",
+    views.reincorporados_listado,
+    name="reincorporados"
+),
+
+
+path("inactivos/<int:pk>/reincorporar/", views.reincorporar_miembro, name="reincorporar_miembro"),
 
 ]
 
