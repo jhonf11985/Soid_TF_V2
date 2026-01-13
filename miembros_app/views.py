@@ -132,6 +132,13 @@ def enviar_a_nuevo_creyente(request, pk):
         # Ajusta este name si tu módulo usa otro
         # (si tu ruta es /nuevo-creyente/ normalmente es "nuevo_creyente_app:dashboard" o "nuevo_creyente_app:lista")
         next_url = reverse("nuevo_creyente_app:dashboard")
+    # 🚫 No permitir enviar si está inactivo
+    if not miembro.activo:
+        messages.error(
+            request,
+            "No se puede enviar a seguimiento: este nuevo creyente ya fue dado de salida."
+        )
+        return redirect(next_url)
 
     # Validación: ya existe expediente
     if hasattr(miembro, "expediente_nuevo_creyente"):
@@ -2101,21 +2108,26 @@ def reporte_miembros_nuevos_mes(request):
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def carta_salida_miembro(request, pk):
     """
-    Genera una carta imprimible de salida / traslado para un miembro.
-    En caso de error, muestra el mensaje en pantalla para depurar.
+    Genera una carta imprimible de salida / traslado para un miembro,
+    PERO solo si la razón de salida lo permite.
     """
     try:
         miembro = get_object_or_404(Miembro, pk=pk)
 
+        # ✅ BLOQUEO: solo permitir carta si la razón lo permite
+        if (not miembro.razon_salida) or (not getattr(miembro.razon_salida, "permite_carta", False)):
+            messages.error(
+                request,
+                "No aplica carta para esta razón de salida. "
+                "La carta solo se genera para Trasladado / Se fue a otra iglesia."
+            )
+            return redirect("miembros_app:inactivo_detalle", pk=miembro.pk)
+
         hoy = timezone.localdate()
 
         iglesia_nombre = getattr(settings, "NOMBRE_IGLESIA", "Iglesia Torre Fuerte")
-        iglesia_ciudad = getattr(
-            settings, "CIUDAD_IGLESIA", "Higüey, República Dominicana"
-        )
-        pastor_principal = getattr(
-            settings, "PASTOR_PRINCIPAL", "Pastor de la iglesia"
-        )
+        iglesia_ciudad = getattr(settings, "CIUDAD_IGLESIA", "Higüey, República Dominicana")
+        pastor_principal = getattr(settings, "PASTOR_PRINCIPAL", "Pastor de la iglesia")
 
         context = {
             "miembro": miembro,
@@ -2133,14 +2145,13 @@ def carta_salida_miembro(request, pk):
 
     except Exception as e:
         import traceback
-        # Imprime el error en la consola (por si acaso)
         traceback.print_exc()
-        # Y lo muestra en el navegador para que sepamos qué está pasando
         return HttpResponse(
             f"<h2>Error en carta_salida_miembro</h2>"
             f"<pre>{e}</pre>",
             status=500,
         )
+
 from django.utils import timezone  # ya lo tienes arriba
 def nuevo_creyente_crear(request):
     """
@@ -2198,7 +2209,14 @@ def nuevo_creyente_lista(request):
     fecha_hasta = request.GET.get("fecha_hasta", "").strip()
     solo_contacto = request.GET.get("solo_contacto", "") == "1"
 
+    ver_inactivos = request.GET.get("ver_inactivos", "") == "1"
+
     miembros = Miembro.objects.filter(nuevo_creyente=True)
+
+    # ✅ Por defecto: SOLO activos
+    if not ver_inactivos:
+        miembros = miembros.filter(activo=True)
+
 
     # Búsqueda por nombre / contacto
     if query:
@@ -2248,6 +2266,7 @@ def nuevo_creyente_lista(request):
         "-fecha_creacion",
         "apellidos",
         "nombres",
+        
     )
 
     # Para llenar el select de género en la plantilla
@@ -2262,6 +2281,8 @@ def nuevo_creyente_lista(request):
         "fecha_hasta": fecha_hasta,
         "solo_contacto": solo_contacto,
         "hoy": timezone.localdate(),
+        "ver_inactivos": ver_inactivos,
+
     }
     return render(
         request,
@@ -3202,7 +3223,6 @@ def ajax_validar_cedula(request):
         "message": "Ya existe un miembro con esta cédula." if exists else "Cédula disponible.",
     })
 
-
 @login_required
 @permission_required("miembros_app.change_miembro", raise_exception=True)
 @require_http_methods(["GET", "POST"])
@@ -3236,7 +3256,10 @@ def nuevo_creyente_dar_salida(request, pk):
         if form.is_valid():
             salida = form.save(commit=False)
             salida.activo = False
-            salida.nuevo_creyente = False
+
+            # ✅ CLAVE: mantenerlo como nuevo creyente SIEMPRE
+            salida.nuevo_creyente = True
+
             salida.save()
 
             messages.success(
@@ -3255,6 +3278,7 @@ def nuevo_creyente_dar_salida(request, pk):
             "form": form,
         }
     )
+
 
 
 @login_required
@@ -3291,3 +3315,38 @@ def nuevo_creyente_detalle(request, pk):
 
     # ✅ Ajusta este nombre si tu plantilla se llama distinto
     return render(request, "miembros_app/nuevo_creyente_detalle.html", context)
+
+
+
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def miembro_inactivo_detalle(request, pk):
+    """
+    Pantalla única para ver el resumen de salida de un registro inactivo.
+    Funciona tanto para Miembro como para Nuevo Creyente (porque ambos viven en Miembro).
+    """
+    miembro = get_object_or_404(Miembro, pk=pk)
+
+    # Si por alguna razón el registro está activo, lo mandamos a su detalle real
+    if miembro.activo:
+        if getattr(miembro, "nuevo_creyente", False):
+            return redirect("miembros_app:nuevo_creyente_detalle", pk=miembro.pk)
+        return redirect("miembros_app:detalle", pk=miembro.pk)
+
+    hoy = timezone.localdate()
+
+    dias_desde_salida = None
+    if miembro.fecha_salida:
+        try:
+            dias_desde_salida = (hoy - miembro.fecha_salida).days
+        except Exception:
+            dias_desde_salida = None
+
+    context = {
+        "miembro": miembro,
+        "hoy": hoy,
+        "dias_desde_salida": dias_desde_salida,
+        "es_nuevo_creyente": bool(getattr(miembro, "nuevo_creyente", False)),
+    }
+    return render(request, "miembros_app/inactivo_detalle.html", context)

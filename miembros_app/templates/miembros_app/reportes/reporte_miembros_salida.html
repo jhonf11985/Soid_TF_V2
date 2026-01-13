@@ -17,7 +17,7 @@
     <div class="odoo-control-center">
         <form method="get" class="odoo-search-form" id="main-search-form">
             <span class="material-icons odoo-search-icon">search</span>
-            
+
             <div class="odoo-search-filters">
                 {% if razon_salida_obj %}
                 <span class="odoo-filter-tag">
@@ -32,17 +32,17 @@
                 </span>
                 {% endif %}
             </div>
-            
-            <input type="text" 
-                   name="q" 
-                   class="odoo-search-input" 
-                   placeholder="Buscar por nombre, teléfono..."
+
+            <input type="text"
+                   name="q"
+                   class="odoo-search-input"
+                   placeholder="Buscar por nombre, teléfono."
                    value="{{ query }}">
-            
+
             <input type="hidden" name="fecha_desde" id="hidden_fecha_desde" value="{{ fecha_desde }}">
             <input type="hidden" name="fecha_hasta" id="hidden_fecha_hasta" value="{{ fecha_hasta }}">
             <input type="hidden" name="razon_salida" id="hidden_razon_salida" value="{{ razon_salida_id }}">
-            
+
             <div class="odoo-filter-dropdown">
                 <button type="button" class="odoo-filter-btn" onclick="toggleFilterPanel()">
                     <span class="material-icons">filter_list</span>
@@ -50,51 +50,38 @@
                     <span class="material-icons">arrow_drop_down</span>
                 </button>
             </div>
+
+            <button type="submit" class="odoo-search-submit">
+                <span class="material-icons">search</span>
+            </button>
         </form>
     </div>
 
     <div class="odoo-control-right">
-        <span class="odoo-pagination-info">
-            {% if miembros %}
-                Total: {{ miembros|length }}
-            {% else %}
-                0 registros
-            {% endif %}
-        </span>
-        
-        <div class="odoo-view-toggle">
-            <button type="button" class="odoo-view-btn active" data-view="lista" title="Vista lista">
+        <div class="odoo-view-switcher">
+            <button class="odoo-view-btn active" onclick="switchView('lista')" id="btn-lista" type="button">
                 <span class="material-icons">view_list</span>
             </button>
-            <button type="button" class="odoo-view-btn" data-view="grid" title="Vista tarjetas">
+            <button class="odoo-view-btn" onclick="switchView('cuadricula')" id="btn-cuadricula" type="button">
                 <span class="material-icons">grid_view</span>
             </button>
         </div>
 
-        <button type="button" class="odoo-btn odoo-btn-text" onclick="window.print()" title="Imprimir">
+        <button type="button" class="btn-secondary" onclick="window.print()">
             <span class="material-icons">print</span>
+            Imprimir
         </button>
     </div>
 </div>
 
-<div class="odoo-filter-panel no-print" id="filter-panel" style="display: none;">
-    <form method="get" class="odoo-filter-form">
-        <input type="hidden" name="q" value="{{ query }}">
-        
+<!-- PANEL DE FILTROS -->
+<div class="odoo-filter-panel no-print" id="filter-panel" style="display:none;">
+    <div class="odoo-filter-panel-inner">
         <div class="odoo-filter-grid">
-            <div class="odoo-filter-group odoo-filter-group-wide">
-                <label>Fecha de salida</label>
-                <div class="odoo-filter-range">
-                    <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="odoo-input">
-                    <span>hasta</span>
-                    <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="odoo-input">
-                </div>
-            </div>
-
-            <div class="odoo-filter-group">
+            <div class="odoo-filter-item">
                 <label>Razón de salida</label>
-                <select name="razon_salida">
-                    <option value="">Todas las razones</option>
+                <select id="razon_salida" onchange="applyFilters()">
+                    <option value="">Todas</option>
                     {% for r in razones_disponibles %}
                         <option value="{{ r.id }}" {% if razon_salida_id == r.id %}selected{% endif %}>
                             {{ r.nombre }}
@@ -102,33 +89,31 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <div class="odoo-filter-item">
+                <label>Desde</label>
+                <input type="date" id="fecha_desde" value="{{ fecha_desde }}" onchange="applyFilters()">
+            </div>
+
+            <div class="odoo-filter-item">
+                <label>Hasta</label>
+                <input type="date" id="fecha_hasta" value="{{ fecha_hasta }}" onchange="applyFilters()">
+            </div>
         </div>
 
         <div class="odoo-filter-actions">
-            <a href="{{ request.path }}" class="odoo-btn odoo-btn-text">
-                Limpiar filtros
-            </a>
-            <button type="submit" class="odoo-btn odoo-btn-primary">
-                Aplicar filtros
+            <button type="button" class="btn-secondary" onclick="clearFilters()">
+                <span class="material-icons">clear</span>
+                Limpiar
+            </button>
+            <button type="button" class="btn-primary" onclick="applyFilters(true)">
+                <span class="material-icons">done</span>
+                Aplicar
             </button>
         </div>
-    </form>
-</div>
-
-<div class="only-print" style="text-align:center; margin-bottom:12px;">
-    {% if CFG.logo %}
-        <img src="{{ CFG.logo.url }}" alt="Logo" style="max-height:70px; margin-bottom:6px;">
-    {% endif %}
-    <h2 style="margin:0; font-size:18px; font-weight:700;">
-        {% if CFG.nombre_iglesia %}{{ CFG.nombre_iglesia|upper }}{% else %}IGLESIA TORRE FUERTE{% endif %}
-    </h2>
-    <div style="font-size:11px; color:#6b7280; margin-top:6px;">
-        Reporte: Miembros que se fueron · Fecha: {{ hoy|date:"d/m/Y" }}
-        {% if fecha_desde or fecha_hasta %}
-            (Desde {{ fecha_desde|default:"Inicio" }} hasta {{ fecha_hasta|default:"Hoy" }})
-        {% endif %}
     </div>
-    <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
+
+    <div style="padding: 0 18px 14px; border:none; border-top:1px solid #e5e7eb;"></div>
 </div>
 
 <div class="odoo-list-container" id="vista-lista">
@@ -147,8 +132,10 @@
         <tbody>
             {% if miembros %}
                 {% for m in miembros %}
-                <tr class="odoo-row" onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'" style="cursor: pointer;">
-                    
+                <tr class="odoo-row"
+                    onclick="window.location='{% url 'miembros_app:inactivo_detalle' m.pk %}'"
+                    style="cursor: pointer;">
+
                     <td class="odoo-td-checkbox no-print" style="font-size:11px; color:#9ca3af;">
                         {{ forloop.counter }}
                     </td>
@@ -214,11 +201,12 @@
                     </td>
 
                     <td class="odoo-td-actions no-print" onclick="event.stopPropagation();">
-                        <div class="odoo-row-actions" style="opacity: 1;"> <a href="{% url 'miembros_app:detalle' m.pk %}" 
-                               class="odoo-action-icon" title="Ver detalles">
+                        <div class="odoo-row-actions" style="opacity: 1;">
+                            <a href="{% url 'miembros_app:inactivo_detalle' m.pk %}"
+                               class="odoo-action-icon" title="Ver detalle de salida">
                                 <span class="material-icons">visibility</span>
                             </a>
-                            <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}" 
+                            <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}"
                                class="odoo-action-icon" title="Carta de salida">
                                 <span class="material-icons">description</span>
                             </a>
@@ -243,8 +231,8 @@
         <div class="odoo-kanban-grid">
             {% for m in miembros %}
             <article class="odoo-kanban-card odoo-kanban-card-inactive"
-                     onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'">
-                
+                     onclick="window.location='{% url 'miembros_app:inactivo_detalle' m.pk %}'">
+
                 <div class="odoo-kanban-avatar" style="background: #ef4444;">
                     {% if m.foto %}
                         <img src="{{ m.foto.url }}" alt="{{ m.nombres }}">
@@ -258,49 +246,41 @@
                         {{ m.nombres }} {{ m.apellidos }}
                     </div>
 
-                    <div class="odoo-kanban-info">
-                        <div class="odoo-kanban-info-row" style="color:#b91c1c; font-weight:500;">
-                            <span class="material-icons" style="color:#b91c1c;">logout</span>
-                            <span>{{ m.razon_salida.nombre|default:"Salida" }}</span>
-                        </div>
-                        
+                    <div class="odoo-kanban-meta">
+                        {% if m.razon_salida %}
+                            <span class="odoo-badge odoo-badge-danger">{{ m.razon_salida.nombre }}</span>
+                        {% else %}
+                            <span class="odoo-empty">Razón: —</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="odoo-kanban-meta">
                         {% if m.fecha_salida %}
-                        <div class="odoo-kanban-info-row">
-                            <span class="material-icons">calendar_today</span>
-                            <span>{{ m.fecha_salida|date:"d/m/Y" }}</span>
-                        </div>
-                        {% endif %}
-
-                        {% if m.telefono %}
-                        <div class="odoo-kanban-info-row">
-                            <span class="material-icons">phone</span>
-                            <span>{{ m.telefono }}</span>
-                        </div>
+                            <span style="font-weight:600;">{{ m.fecha_salida|date:"d/m/Y" }}</span>
+                            <span class="odoo-member-sub"> · {{ m.fecha_salida|timesince }} atrás</span>
+                        {% else %}
+                            <span class="odoo-empty">Fecha: —</span>
                         {% endif %}
                     </div>
+                </div>
 
-                    <div class="odoo-kanban-footer">
-                        <div class="odoo-kanban-badges">
-                            <span class="odoo-kanban-badge">
-                                Inactivo
-                            </span>
-                        </div>
-                        
-                        <div class="odoo-kanban-actions" onclick="event.stopPropagation();">
-                            <a href="{% url 'miembros_app:carta_salida_miembro' m.pk %}" 
-                               class="odoo-kanban-action-btn" title="Carta">
-                                <span class="material-icons">description</span>
-                            </a>
-                        </div>
-                    </div>
+                <div class="odoo-kanban-actions" onclick="event.stopPropagation();">
+                    <a class="odoo-action-icon" title="Ver detalle de salida"
+                       href="{% url 'miembros_app:inactivo_detalle' m.pk %}">
+                        <span class="material-icons">visibility</span>
+                    </a>
+                    <a class="odoo-action-icon" title="Carta de salida"
+                       href="{% url 'miembros_app:carta_salida_miembro' m.pk %}">
+                        <span class="material-icons">description</span>
+                    </a>
                 </div>
             </article>
             {% endfor %}
         </div>
     {% else %}
-        <div class="odoo-empty-kanban">
-            <span class="material-icons">search_off</span>
-            <p>No se encontraron registros.</p>
+        <div class="odoo-empty-row" style="margin-top: 14px;">
+            <span class="material-icons">person_off</span>
+            No se encontraron registros.
         </div>
     {% endif %}
 </div>

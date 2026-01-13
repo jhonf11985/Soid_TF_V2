@@ -67,6 +67,11 @@ class RazonSalidaMiembro(models.Model):
     descripcion = models.TextField(blank=True)
     activo = models.BooleanField(default=True)
     orden = models.PositiveIntegerField(default=0)
+    
+    permite_carta = models.BooleanField(
+        default=False,
+        help_text="Permite generar/enviar carta de salida (ej: Trasladado, Otra iglesia)."
+    )
 
     aplica_a = models.CharField(
         max_length=20,

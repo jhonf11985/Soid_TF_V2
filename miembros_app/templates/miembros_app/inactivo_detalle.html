@@ -1,0 +1,439 @@
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
+
+{% block title %}Perfil inactivo · {{ miembro.nombres }}{% endblock %}
+
+{% block miembros_content %}
+
+<div class="odoo-page-wrapper">
+
+    <!-- CONTROL BAR -->
+    <div class="odoo-control-bar no-print">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:reporte_miembros_salida' %}" class="odoo-btn odoo-btn-secondary" title="Volver al reporte">
+                <span class="material-icons">arrow_back</span>
+            </a>
+
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-current">Perfil inactivo</span>
+                <span class="material-icons">chevron_right</span>
+                <span class="odoo-breadcrumb-current">
+                    {% if miembro.codigo_seguimiento %}
+                        {{ miembro.codigo_seguimiento }}
+                    {% elif miembro.codigo_miembro %}
+                        {{ miembro.codigo_miembro }}
+                    {% else %}
+                        {{ miembro.nombres }} {{ miembro.apellidos }}
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div class="odoo-control-right">
+            <a href="{% url 'miembros_app:carta_salida_miembro' miembro.pk %}" class="odoo-btn odoo-btn-secondary" title="Carta de salida">
+                <span class="material-icons">description</span>
+                Carta
+            </a>
+
+            <button type="button" class="odoo-btn odoo-btn-primary" onclick="window.print()">
+                <span class="material-icons">print</span>
+                Imprimir
+            </button>
+        </div>
+    </div>
+
+    <!-- CONTENIDO -->
+    <div class="odoo-detail-container">
+
+        <!-- CABECERA -->
+        <div class="odoo-hero odoo-hero-danger">
+            <div class="odoo-hero-left">
+                <div class="odoo-hero-icon">
+                    <span class="material-icons">person_off</span>
+                </div>
+
+                <div class="odoo-hero-text">
+                    <div class="odoo-hero-title">
+                        {{ miembro.nombres }} {{ miembro.apellidos }}
+                    </div>
+
+                    <div class="odoo-hero-subtitle">
+                        Este registro fue dado de salida y se mantiene como <b>Inactivo</b>.
+                    </div>
+
+                    <div class="odoo-hero-badges">
+                        {% if es_nuevo_creyente %}
+                            <span class="odoo-badge odoo-badge-warning">Nuevo creyente</span>
+                        {% else %}
+                            <span class="odoo-badge odoo-badge-muted">Miembro</span>
+                        {% endif %}
+                        <span class="odoo-badge odoo-badge-danger">INACTIVO</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="odoo-hero-right">
+                <div class="odoo-mini-card">
+                    <div class="odoo-mini-label">Código</div>
+                    <div class="odoo-mini-value">
+                        {% if miembro.codigo_seguimiento %}
+                            {{ miembro.codigo_seguimiento }}
+                        {% elif miembro.codigo_miembro %}
+                            {{ miembro.codigo_miembro }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="odoo-mini-card">
+                    <div class="odoo-mini-label">Salida</div>
+                    <div class="odoo-mini-value">
+                        {% if miembro.fecha_salida %}
+                            {{ miembro.fecha_salida|date:"d/m/Y" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="odoo-mini-card">
+                    <div class="odoo-mini-label">Hace</div>
+                    <div class="odoo-mini-value">
+                        {% if miembro.fecha_salida %}
+                            {% if dias_desde_salida != None %}
+                                {{ dias_desde_salida }} día{% if dias_desde_salida != 1 %}s{% endif %}
+                            {% else %}
+                                {{ miembro.fecha_salida|timesince }}
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOQUE PRINCIPAL -->
+        <div class="odoo-grid">
+            <!-- DETALLES DE SALIDA -->
+            <div class="odoo-card">
+                <div class="odoo-card-header">
+                    <div class="odoo-card-title">
+                        <span class="material-icons">info</span>
+                        Detalles de la salida
+                    </div>
+                </div>
+
+                <div class="odoo-card-body">
+                    <div class="odoo-fields-grid">
+
+                        <div class="odoo-field">
+                            <div class="odoo-field-label">Razón de salida</div>
+                            <div class="odoo-field-value">
+                                {% if miembro.razon_salida %}
+                                    <span class="odoo-badge odoo-badge-danger">{{ miembro.razon_salida.nombre }}</span>
+                                {% else %}
+                                    <span class="odoo-empty">No especificada</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="odoo-field">
+                            <div class="odoo-field-label">Fecha (día)</div>
+                            <div class="odoo-field-value">
+                                {% if miembro.fecha_salida %}
+                                    <div class="odoo-strong">{{ miembro.fecha_salida|date:"l" }}</div>
+                                    <div class="odoo-muted">{{ miembro.fecha_salida|date:"d/m/Y" }}</div>
+                                {% else %}
+                                    <span class="odoo-empty">—</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="odoo-field">
+                            <div class="odoo-field-label">Último estado</div>
+                            <div class="odoo-field-value">
+                                {% if miembro.estado_miembro %}
+                                    <span class="odoo-badge odoo-badge-muted">{{ miembro.get_estado_miembro_display }}</span>
+                                {% else %}
+                                    <span class="odoo-empty">—</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="odoo-field">
+                            <div class="odoo-field-label">Contacto</div>
+                            <div class="odoo-field-value">
+                                {% if miembro.telefono %}
+                                    <div class="odoo-inline">
+                                        <span class="material-icons">phone</span>
+                                        {{ miembro.telefono }}
+                                    </div>
+                                {% endif %}
+                                {% if miembro.email %}
+                                    <div class="odoo-inline odoo-email">
+                                        <span class="material-icons">mail</span>
+                                        {{ miembro.email }}
+                                    </div>
+                                {% endif %}
+                                {% if not miembro.telefono and not miembro.email %}
+                                    <span class="odoo-empty">Sin datos</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="odoo-field odoo-field-full">
+                            <div class="odoo-field-label">Comentario (si aplica)</div>
+                            <div class="odoo-field-value">
+                                {% if miembro.comentario_salida %}
+                                    <div class="odoo-comment">{{ miembro.comentario_salida }}</div>
+                                {% else %}
+                                    <span class="odoo-empty">—</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACCIONES / ENLACES -->
+            <div class="odoo-card odoo-card-soft">
+                <div class="odoo-card-header">
+                    <div class="odoo-card-title">
+                        <span class="material-icons">bolt</span>
+                        Acciones rápidas
+                    </div>
+                </div>
+
+                <div class="odoo-card-body">
+                    <div class="odoo-actions-stack">
+                        <a href="{% url 'miembros_app:reporte_miembros_salida' %}" class="odoo-action-btn">
+                            <span class="material-icons">arrow_back</span>
+                            Volver al reporte
+                        </a>
+
+                        <a href="{% url 'miembros_app:carta_salida_miembro' miembro.pk %}" class="odoo-action-btn">
+                            <span class="material-icons">description</span>
+                            Ver carta de salida
+                        </a>
+
+                        {% if es_nuevo_creyente %}
+                            <a href="{% url 'miembros_app:nuevo_creyente_detalle' miembro.pk %}" class="odoo-action-btn">
+                                <span class="material-icons">visibility</span>
+                                Ver detalle (Nuevo creyente)
+                            </a>
+                        {% else %}
+                            <a href="{% url 'miembros_app:detalle' miembro.pk %}" class="odoo-action-btn">
+                                <span class="material-icons">visibility</span>
+                                Ver detalle (Miembro)
+                            </a>
+                        {% endif %}
+
+                        <button type="button" class="odoo-action-btn odoo-action-btn-primary" onclick="window.print()">
+                            <span class="material-icons">print</span>
+                            Imprimir
+                        </button>
+                    </div>
+
+                    <div class="odoo-note">
+                        <span class="material-icons">lock</span>
+                        Esta pantalla es un resumen informativo para registros inactivos.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+:root{
+    --odoo-primary:#017e84;
+    --odoo-danger:#dc2626;
+    --odoo-warning:#d97706;
+    --odoo-bg:#ffffff;
+    --odoo-page-bg:#f0f2f5;
+    --odoo-border:#dee2e6;
+    --odoo-text:#111827;
+    --odoo-muted:#6b7280;
+}
+
+/* Layout */
+.odoo-page-wrapper{ min-height: 100vh; background: var(--odoo-page-bg); }
+.odoo-detail-container{ padding: 14px 16px 40px; max-width: 1100px; margin: 0 auto; }
+
+/* Control bar */
+.odoo-control-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 8px 16px; background:#f8f9fa; border-bottom:1px solid var(--odoo-border);
+    position: sticky; top: 0; z-index: 100;
+}
+.odoo-control-left{ display:flex; align-items:center; gap:10px; }
+.odoo-control-right{ display:flex; align-items:center; gap:10px; }
+
+/* Breadcrumb */
+.odoo-breadcrumb{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--odoo-muted); }
+.odoo-breadcrumb .material-icons{ font-size:16px; color:var(--odoo-muted); }
+.odoo-breadcrumb-current{ color:#374151; font-weight:600; }
+
+/* Buttons */
+.odoo-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 8px 14px; font-size: 13px; font-weight:600;
+    border:1px solid transparent; border-radius: 8px; cursor:pointer; text-decoration:none;
+    transition: all .15s ease; background:#fff;
+}
+.odoo-btn .material-icons{ font-size:18px; }
+.odoo-btn-primary{ background: var(--odoo-primary); color:#fff; }
+.odoo-btn-primary:hover{ filter: brightness(0.95); }
+.odoo-btn-secondary{ border-color: var(--odoo-border); color:#374151; }
+.odoo-btn-secondary:hover{ background:#eef2f7; }
+
+/* Hero */
+.odoo-hero{
+    display:flex; justify-content:space-between; gap:14px;
+    border:1px solid var(--odoo-border); background: var(--odoo-bg);
+    border-radius: 14px; padding: 16px; margin-top: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+.odoo-hero-danger{ border-left: 6px solid #ef4444; }
+.odoo-hero-left{ display:flex; gap:12px; align-items:flex-start; flex:1; }
+.odoo-hero-icon{
+    width: 46px; height: 46px; border-radius: 14px;
+    background:#fee2e2; display:flex; align-items:center; justify-content:center;
+}
+.odoo-hero-icon .material-icons{ color:#ef4444; font-size:24px; }
+.odoo-hero-title{ font-size:18px; font-weight:800; color:var(--odoo-text); }
+.odoo-hero-subtitle{ margin-top:4px; font-size:13px; color:var(--odoo-muted); }
+.odoo-hero-badges{ margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+
+.odoo-hero-right{
+    display:flex; gap:10px; align-items:stretch; flex-wrap:wrap;
+}
+.odoo-mini-card{
+    min-width: 140px;
+    border:1px solid var(--odoo-border);
+    border-radius: 12px;
+    background:#fff;
+    padding: 10px 12px;
+}
+.odoo-mini-label{ font-size:12px; color:var(--odoo-muted); font-weight:700; }
+.odoo-mini-value{ margin-top:6px; font-size:14px; font-weight:800; color:#111827; }
+
+/* Cards / grid */
+.odoo-grid{
+    display:grid;
+    grid-template-columns: 1.4fr 0.8fr;
+    gap: 14px;
+    margin-top: 14px;
+}
+.odoo-card{
+    border:1px solid var(--odoo-border);
+    background: var(--odoo-bg);
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    overflow:hidden;
+}
+.odoo-card-soft{ background:#fbfbfc; }
+.odoo-card-header{
+    padding: 12px 14px;
+    border-bottom: 1px solid #eef2f7;
+    background: #fff;
+}
+.odoo-card-title{
+    display:flex; align-items:center; gap:8px;
+    font-weight:800; color:#111827; font-size:13px;
+}
+.odoo-card-title .material-icons{ font-size:18px; color: var(--odoo-primary); }
+.odoo-card-body{ padding: 14px; }
+
+/* Fields */
+.odoo-fields-grid{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+.odoo-field-full{ grid-column: 1 / -1; }
+.odoo-field-label{ font-size:12px; color:var(--odoo-muted); font-weight:800; margin-bottom:6px; }
+.odoo-field-value{ font-size:14px; color:#111827; font-weight:700; }
+.odoo-strong{ font-weight:900; }
+.odoo-muted{ color: var(--odoo-muted); font-size:12px; font-weight:600; }
+.odoo-empty{ color:#9ca3af; font-weight:700; }
+.odoo-inline{ display:flex; gap:8px; align-items:center; font-size:13px; color:#374151; font-weight:700; margin-bottom:6px; }
+.odoo-inline .material-icons{ font-size:16px; color:#6b7280; }
+.odoo-email{ color: var(--odoo-primary); }
+.odoo-comment{
+    white-space: pre-wrap;
+    border: 1px solid #eef2f7;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #fff;
+    color:#374151;
+    font-weight:600;
+    line-height: 1.45;
+}
+
+/* Badges */
+.odoo-badge{
+    display:inline-flex; align-items:center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .2px;
+}
+.odoo-badge-danger{ background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+.odoo-badge-warning{ background:#ffedd5; color:#9a3412; border:1px solid #fed7aa; }
+.odoo-badge-muted{ background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb; }
+
+/* Actions */
+.odoo-actions-stack{ display:flex; flex-direction:column; gap:10px; }
+.odoo-action-btn{
+    display:flex; align-items:center; gap:10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border:1px solid var(--odoo-border);
+    background:#fff;
+    text-decoration:none;
+    color:#374151;
+    font-weight:800;
+    transition: all .15s ease;
+}
+.odoo-action-btn:hover{ background:#eef2f7; }
+.odoo-action-btn .material-icons{ font-size:18px; color: var(--odoo-primary); }
+.odoo-action-btn-primary{
+    background: var(--odoo-primary);
+    color:#fff;
+    border-color: transparent;
+}
+.odoo-action-btn-primary .material-icons{ color:#fff; }
+.odoo-action-btn-primary:hover{ filter: brightness(0.95); }
+
+.odoo-note{
+    display:flex; align-items:center; gap:8px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background:#eef2ff;
+    border:1px solid #c7d2fe;
+    color:#3730a3;
+    font-weight:800;
+    font-size:12px;
+}
+.odoo-note .material-icons{ font-size:18px; }
+
+/* Responsive */
+@media (max-width: 980px){
+    .odoo-grid{ grid-template-columns: 1fr; }
+    .odoo-mini-card{ min-width: 120px; }
+}
+@media (max-width: 650px){
+    .odoo-hero{ flex-direction: column; }
+    .odoo-hero-right{ width: 100%; }
+    .odoo-fields-grid{ grid-template-columns: 1fr; }
+}
+</style>
+
+{% endblock %}
