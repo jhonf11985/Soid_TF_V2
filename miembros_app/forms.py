@@ -137,6 +137,7 @@ class MiembroForm(forms.ModelForm):
             "nuevo_creyente",
             "numero_miembro",
             "codigo_miembro",
+            "etapa_actual",
 
 
         )
@@ -649,7 +650,6 @@ class EnviarFichaMiembroEmailForm(forms.Form):
     )
 
 
-
 class MiembroSalidaForm(forms.ModelForm):
     class Meta:
         model = Miembro
@@ -661,11 +661,23 @@ class MiembroSalidaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Solo razones activas
-        self.fields["razon_salida"].queryset = RazonSalidaMiembro.objects.filter(activo=True).order_by("orden", "nombre")
-        # Texto útil (opcional)
-        self.fields["razon_salida"].empty_label = "— Selecciona una razón —"
 
+        miembro = self.instance
+        es_nuevo_creyente = bool(miembro and miembro.nuevo_creyente)
+
+        # 🔹 Filtrar razones según tipo
+        if es_nuevo_creyente:
+            aplica = ["nuevo_creyente", "ambos"]
+        else:
+            aplica = ["miembro", "ambos"]
+
+        self.fields["razon_salida"].queryset = (
+            RazonSalidaMiembro.objects
+            .filter(activo=True, aplica_a__in=aplica)
+            .order_by("orden", "nombre")
+        )
+
+        self.fields["razon_salida"].empty_label = "— Selecciona una razón —"
 
 from django import forms
 from django.utils import timezone

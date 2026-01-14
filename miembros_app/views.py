@@ -816,9 +816,7 @@ def miembro_crear(request):
 
     return render(request, "miembros_app/miembro_form.html", context)
 
-# -------------------------------------
-# EDITAR MIEMBRO
-# -------------------------------------
+
 # -------------------------------------
 # EDITAR MIEMBRO
 # -------------------------------------
@@ -3092,57 +3090,7 @@ def importar_miembros_excel(request):
     return redirect("miembros_app:lista")
 
 
-def miembro_dar_salida(request, pk):
-    """
-    Registrar salida de un miembro:
-    - Marca activo=False
-    - Guarda razon_salida, fecha_salida, comentario_salida
-    - Limpia estado_miembro (opcional)
-    Protegido por permisos.
-    """
-    miembro = get_object_or_404(Miembro, pk=pk)
 
-    # ✅ Protección (simple y segura)
-    # Si tienes un permiso custom, cámbialo aquí:
-    #   "miembros_app.dar_salida_miembro"
-    if not (request.user.is_superuser or request.user.has_perm("miembros_app.change_miembro")):
-        return HttpResponseForbidden("No tienes permisos para dar salida a miembros.")
-
-    # Si ya está inactivo, no tiene sentido repetir
-    if not miembro.activo:
-        messages.info(request, "Este miembro ya está inactivo. No se puede registrar una salida de nuevo.")
-        return redirect("miembros_app:detalle", pk=miembro.pk)
-
-    if request.method == "POST":
-        form = MiembroSalidaForm(request.POST, instance=miembro)
-        if form.is_valid():
-            miembro_editado = form.save(commit=False)
-
-            # Marcar inactivo
-            miembro_editado.activo = False
-
-            # Si no eligieron fecha, ponemos hoy
-            if not miembro_editado.fecha_salida:
-                miembro_editado.fecha_salida = timezone.localdate()
-
-            # (Opcional) limpiar estado pastoral cuando sale
-            miembro_editado.estado_miembro = ""
-
-            miembro_editado.save()
-
-            messages.success(request, "Salida registrada correctamente. El miembro ha quedado inactivo.")
-            return redirect("miembros_app:detalle", pk=miembro_editado.pk)
-        else:
-            messages.error(request, "Hay errores en el formulario. Revisa los campos marcados.")
-    else:
-        # Fecha por defecto hoy
-        form = MiembroSalidaForm(instance=miembro, initial={"fecha_salida": timezone.localdate()})
-
-    context = {
-        "miembro": miembro,
-        "form": form,
-    }
-    return render(request, "miembros_app/miembro_salida_form.html", context)
 
 def _miembro_tiene_asignacion_en_unidades(miembro_obj):
     """
@@ -3224,62 +3172,11 @@ def ajax_validar_cedula(request):
         "message": "Ya existe un miembro con esta cédula." if exists else "Cédula disponible.",
     })
 
-@login_required
-@permission_required("miembros_app.change_miembro", raise_exception=True)
-@require_http_methods(["GET", "POST"])
+def miembro_dar_salida(request, pk):
+    return salida_form(request, pk)
+
 def nuevo_creyente_dar_salida(request, pk):
-    miembro = get_object_or_404(Miembro, pk=pk)
-
-    # 🔒 BLOQUEO SOLO SI HAY EXPEDIENTE ABIERTO
-    expediente_abierto = NuevoCreyenteExpediente.objects.filter(
-        miembro=miembro,
-        estado="abierto"
-    ).exists()
-
-    if expediente_abierto:
-        messages.error(
-            request,
-            "Este nuevo creyente tiene un expediente de seguimiento activo. "
-            "Primero debes cerrarlo desde el módulo Nuevo Creyente."
-        )
-        return redirect("miembros_app:detalle", pk=miembro.pk)
-
-    # 🛑 Ya tiene salida registrada
-    if not miembro.activo and miembro.fecha_salida:
-        messages.info(
-            request,
-            "Este nuevo creyente ya tiene una salida registrada."
-        )
-        return redirect("miembros_app:detalle", pk=miembro.pk)
-
-    if request.method == "POST":
-        form = MiembroSalidaForm(request.POST, instance=miembro)
-        if form.is_valid():
-            salida = form.save(commit=False)
-            salida.activo = False
-
-            # ✅ CLAVE: mantenerlo como nuevo creyente SIEMPRE
-            salida.nuevo_creyente = True
-
-            salida.save()
-
-            messages.success(
-                request,
-                "El nuevo creyente fue dado de salida correctamente."
-            )
-            return redirect("miembros_app:detalle", pk=miembro.pk)
-    else:
-        form = MiembroSalidaForm(instance=miembro)
-
-    return render(
-        request,
-        "miembros_app/nuevo_creyente_salida_form.html",
-        {
-            "miembro": miembro,
-            "form": form,
-        }
-    )
-
+    return salida_form(request, pk)
 
 
 @login_required
@@ -3486,4 +3383,68 @@ def reincorporar_miembro(request, pk):
             "requiere_carta": requiere_carta,
             "sugerencia_texto": sugerencia_texto,
         }
+    )
+
+
+
+@require_http_methods(["GET", "POST"])
+def salida_form(request, pk):
+    miembro = get_object_or_404(Miembro, pk=pk)
+
+    # Permisos (igual que tu vista actual)
+    if not (request.user.is_superuser or request.user.has_perm("miembros_app.change_miembro")):
+        return HttpResponseForbidden("No tienes permisos para dar salida a miembros.")
+
+    # Si ya está inactivo, no repetir
+    if not miembro.activo:
+        messages.info(request, "Este registro ya está inactivo. No se puede registrar una salida de nuevo.")
+        return redirect("miembros_app:detalle", pk=miembro.pk)
+
+    # ✅ Regla: si es nuevo creyente y tiene expediente ABIERTO, no permitir salida
+    es_nuevo_creyente = bool(getattr(miembro, "nuevo_creyente", False))
+    if es_nuevo_creyente:
+        expediente_abierto = NuevoCreyenteExpediente.objects.filter(miembro=miembro, estado="abierto").first()
+        if expediente_abierto:
+            messages.error(
+                request,
+                "Este nuevo creyente está en seguimiento. Primero debes cerrar el expediente desde el módulo Nuevo Creyente."
+            )
+            return redirect("miembros_app:detalle", pk=miembro.pk)
+
+    if request.method == "POST":
+        form = MiembroSalidaForm(request.POST, instance=miembro)
+        if form.is_valid():
+            miembro_editado = form.save(commit=False)
+
+            # Marcar inactivo
+            miembro_editado.activo = False
+
+            # Fecha por defecto
+            if not miembro_editado.fecha_salida:
+                miembro_editado.fecha_salida = timezone.localdate()
+
+            # ✅ Estado al dar salida (según razón)
+            # Si tu RazonSalidaMiembro usa "permite_carta" para Trasladado, perfecto:
+            if miembro_editado.razon_salida and getattr(miembro_editado.razon_salida, "permite_carta", False):
+                miembro_editado.estado_miembro = "trasladado"
+            else:
+                miembro_editado.estado_miembro = "descarriado"
+
+            miembro_editado.save()
+
+            messages.success(request, "Salida registrada correctamente. El registro ha quedado inactivo.")
+            return redirect("miembros_app:detalle", pk=miembro_editado.pk)
+
+        messages.error(request, "Hay errores en el formulario. Revisa los campos marcados.")
+    else:
+        form = MiembroSalidaForm(instance=miembro)
+
+    return render(
+        request,
+        "miembros_app/salida_form.html",
+        {
+            "miembro": miembro,
+            "form": form,
+            "es_nuevo_creyente": es_nuevo_creyente,
+        },
     )

@@ -14,6 +14,19 @@
 <form method="post" enctype="multipart/form-data" class="odoo-form">
     {% csrf_token %}
 
+    {% if form.errors %}
+  <div class="odoo-alert odoo-alert-danger">
+    <strong>⚠️ Por favor corrige los siguientes errores:</strong>
+    <ul>
+      {% for field in form %}
+        {% for error in field.errors %}
+          <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+        {% endfor %}
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
 {% if bloquear_identidad %}
   <div class="odoo-alert odoo-alert-warning" style="margin-bottom: 16px;">
     ⚠️ <strong>Algunos campos están bloqueados</strong> porque este miembro
@@ -2623,23 +2636,39 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 
-  function buildHiddenFromRows(){
-    const container = q('#familiares-hidden-inputs');
-    if (!container) return;
-    container.innerHTML = "";
 
-    const rows = qa('#familiares-pendientes tr');
-    rows.forEach(tr => {
-      const payload = JSON.parse(tr.getAttribute('data-payload'));
-      container.insertAdjacentHTML('beforeend', `
-        <input type="hidden" name="familiares_miembro_id[]" value="${payload.id}">
-        <input type="hidden" name="familiares_tipo_relacion[]" value="${payload.tipo_relacion}">
-        <input type="hidden" name="familiares_vive_junto[]" value="${payload.vive_junto ? '1':'0'}">
-        <input type="hidden" name="familiares_es_responsable[]" value="${payload.es_responsable ? '1':'0'}">
-        <input type="hidden" name="familiares_notas[]" value="${escapeHtml(payload.notas)}">
-      `);
-    });
-  }
+  function buildHiddenFromRows(){
+  const container = q('#familiares-hidden-inputs');
+  if (!container) return;
+  container.innerHTML = "";
+
+  // ✅ Solo filas que tengan data-payload
+  const rows = qa('#familiares-pendientes tr[data-payload]');
+
+  rows.forEach(tr => {
+    const raw = tr.getAttribute('data-payload');
+    if (!raw) return;
+
+    let payload = null;
+    try {
+      payload = JSON.parse(raw);
+    } catch (e) {
+      return;
+    }
+
+    // ✅ Evitar payload null o sin id
+    if (!payload || !payload.id) return;
+
+    container.insertAdjacentHTML('beforeend', `
+      <input type="hidden" name="familiares_miembro_id[]" value="${payload.id}">
+      <input type="hidden" name="familiares_tipo_relacion[]" value="${payload.tipo_relacion || ''}">
+      <input type="hidden" name="familiares_vive_junto[]" value="${payload.vive_junto ? '1':'0'}">
+      <input type="hidden" name="familiares_es_responsable[]" value="${payload.es_responsable ? '1':'0'}">
+      <input type="hidden" name="familiares_notas[]" value="${escapeHtml(payload.notas || '')}">
+    `);
+  });
+}
+
 
 function clearInline(){
   const { wrapper } = getSelectedMiembro();

@@ -17,9 +17,11 @@ ETAPA_ACTUAL_CHOICES = [
 
 ESTADO_PASTORAL_REINGRESO_CHOICES = [
     ("reconciliado", "Reconciliado"),
-    ("restituido", "Restituido"),
+    ("integrado", "Integrado (viene de otra iglesia)"),
     ("observacion", "En observación"),
+    
 ]
+
 
 GENERO_CHOICES = [
     ("masculino", "Masculino"),
@@ -34,6 +36,7 @@ ESTADO_MIEMBRO_CHOICES = [
     ("disciplina", "En disciplina"),
     ("descarriado", "Descarriado"),
     ("catecumeno", "Catecúmeno"),
+    ("trasladado", "Trasladado"),
 ]
 
 CATEGORIA_EDAD_CHOICES = [
@@ -82,6 +85,20 @@ class RazonSalidaMiembro(models.Model):
     activo = models.BooleanField(default=True)
     orden = models.PositiveIntegerField(default=0)
     
+    ESTADO_RESULTANTE_CHOICES = [
+    ("", "—"),
+    ("descarriado", "Descarriado"),
+    ("trasladado", "Trasladado"),
+    ]
+
+    estado_resultante = models.CharField(
+        max_length=20,
+        choices=ESTADO_RESULTANTE_CHOICES,
+        blank=True,
+        default="",
+        help_text="Al dar salida, este será el estado_miembro que quedará marcado (ej: descarriado/trasladado).",
+    )
+
     permite_carta = models.BooleanField(
         default=False,
         help_text="Permite generar/enviar carta de salida (ej: Trasladado, Otra iglesia)."

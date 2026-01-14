@@ -141,5 +141,10 @@ path(
 
 path("inactivos/<int:pk>/reincorporar/", views.reincorporar_miembro, name="reincorporar_miembro"),
 
+    path(
+        "miembros/<int:pk>/salida/",
+        views.salida_form,
+        name="salida_form"
+    ),
 ]
 
