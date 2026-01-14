@@ -3431,7 +3431,7 @@ def salida_form(request, pk):
             miembro_editado.save()
 
             messages.success(request, "Salida registrada correctamente. El registro ha quedado inactivo.")
-            return redirect("miembros_app:detalle", pk=miembro_editado.pk)
+            return redirect("miembros_app:inactivo_detalle", pk=miembro_editado.pk)
 
         messages.error(request, "Hay errores en el formulario. Revisa los campos marcados.")
     else:
