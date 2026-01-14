@@ -3423,12 +3423,10 @@ def salida_form(request, pk):
             if not miembro_editado.fecha_salida:
                 miembro_editado.fecha_salida = timezone.localdate()
 
-            # ✅ Estado al dar salida (según razón)
-            # Si tu RazonSalidaMiembro usa "permite_carta" para Trasladado, perfecto:
-            if miembro_editado.razon_salida and getattr(miembro_editado.razon_salida, "permite_carta", False):
-                miembro_editado.estado_miembro = "trasladado"
-            else:
-                miembro_editado.estado_miembro = "descarriado"
+            # ✅ Estado al dar salida (según razón configurada)
+            if miembro_editado.razon_salida and miembro_editado.razon_salida.estado_resultante:
+                miembro_editado.estado_miembro = miembro_editado.razon_salida.estado_resultante
+
 
             miembro_editado.save()
 

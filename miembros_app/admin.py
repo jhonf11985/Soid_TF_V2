@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
+from django.core.exceptions import ValidationError
 
 
 # ---------------------------
@@ -7,10 +8,22 @@ from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
 # ---------------------------
 @admin.register(RazonSalidaMiembro)
 class RazonSalidaMiembroAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "activo", "orden")
-    list_filter = ("activo",)
-    search_fields = ("nombre",)
+    list_display = ("nombre", "aplica_a", "estado_resultante", "permite_carta", "activo", "orden")
+    list_filter = ("activo", "aplica_a", "estado_resultante", "permite_carta")
+    search_fields = ("nombre", "descripcion")
     ordering = ("orden", "nombre")
+
+    list_editable = ("aplica_a", "estado_resultante", "permite_carta", "activo", "orden")
+
+    fieldsets = (
+        ("Datos principales", {
+            "fields": ("nombre", "descripcion", "activo", "orden")
+        }),
+        ("Reglas del sistema", {
+            "fields": ("aplica_a", "estado_resultante", "permite_carta"),
+            "description": "Estas reglas controlan el estado pastoral automático y si aplica carta."
+        }),
+    )
 
 
 # ---------------------------
@@ -24,14 +37,18 @@ class MiembroAdmin(admin.ModelAdmin):
         "telefono",
         "email",
         "estado_miembro",
+        "activo",
         "fecha_ingreso_iglesia",
     )
+
     list_filter = (
         "estado_miembro",
+        "activo",
         "genero",
         "estado_civil",
         "nivel_educativo",
     )
+
     search_fields = (
         "nombres",
         "apellidos",
@@ -39,8 +56,39 @@ class MiembroAdmin(admin.ModelAdmin):
         "email",
         "iglesia_anterior",
     )
+
     ordering = ("nombres", "apellidos")
     list_per_page = 25
+
+    # 🔒 REGLAS DE NEGOCIO EN ADMIN
+    def save_model(self, request, obj, form, change):
+        if obj.razon_salida_id:
+            # Fecha de salida obligatoria
+            if not obj.fecha_salida:
+                raise ValidationError(
+                    "Si defines una razón de salida, debes indicar la fecha de salida."
+                )
+
+            # Estado automático según razón
+            if obj.razon_salida.estado_resultante:
+                obj.estado_miembro = obj.razon_salida.estado_resultante
+
+            # Activo SIEMPRE falso si hay salida
+            obj.activo = False
+
+        else:
+            # Si no hay razón de salida, no debe existir fecha
+            if obj.fecha_salida:
+                obj.fecha_salida = None
+
+        super().save_model(request, obj, form, change)
+
+    # 🔒 Bloquear edición manual cuando hay salida
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj and obj.razon_salida_id:
+            readonly.extend(["estado_miembro", "activo"])
+        return readonly
 
 
 # ---------------------------
