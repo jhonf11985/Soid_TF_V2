@@ -118,6 +118,11 @@
                                    value="{{ form.telefono.value|default:'' }}"
                                    placeholder="Teléfono">
                         </div>
+                        <div id="telefono-dup-msg" class="odoo-field-hint" style="display:none; margin-top:6px;">
+  <span class="material-icons" style="font-size:16px; vertical-align:-3px;">warning</span>
+  <span id="telefono-dup-text"></span>
+</div>
+
                         <div class="odoo-quick-field">
                             <span class="material-icons">chat</span>
                             <input type="tel" 
@@ -882,8 +887,103 @@
     .odoo-field-error {
         padding-left: 0;
     }
+    #telefono-dup-msg{
+  background:#fff3cd;
+  border:1px solid #ffe69c;
+  color:#664d03;
+  border-radius:8px;
+  padding:8px 10px;
+  font-size:12px;
+}
+#telefono-dup-msg .material-icons{
+  margin-right:6px;
+}
+button[disabled].odoo-btn-save{
+  opacity:.6;
+  cursor:not-allowed;
+}
+
 }
 </style>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const tel = document.getElementById("{{ form.telefono.id_for_label }}");
+  if (!tel) return;
+
+  const msgBox  = document.getElementById("telefono-dup-msg");
+  const msgText = document.getElementById("telefono-dup-text");
+
+  // Botón Guardar (en tu template está el submit aquí) :contentReference[oaicite:5]{index=5}
+  const formEl = tel.closest("form");
+  const btnSave = formEl ? formEl.querySelector('button[type="submit"]') : null;
+
+  // PK si estás editando (para excluirse a sí mismo)
+  const pk = "{% if modo == 'editar' and objeto %}{{ objeto.pk }}{% endif %}";
+
+  function digitsOnly(v){ return (v || "").replace(/\D/g, ""); }
+
+  function showDup(msg){
+    if (msgBox && msgText){
+      msgText.textContent = msg;
+      msgBox.style.display = "block";
+    }
+    tel.classList.add("odoo-input-error");
+    if (btnSave) btnSave.disabled = true;
+  }
+
+  function clearDup(){
+    if (msgBox){
+      msgBox.style.display = "none";
+    }
+    tel.classList.remove("odoo-input-error");
+    if (btnSave) btnSave.disabled = false;
+  }
+
+  let tmr = null;
+
+  async function checkTelefono(){
+    const raw = tel.value;
+    const d = digitsOnly(raw);
+
+    // No molestamos si no hay nada, o si está demasiado corto (evita spam al servidor)
+    if (!d || d.length < 7){
+      clearDup();
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.append("telefono", raw);
+    if (pk) params.append("pk", pk);
+
+    try {
+      const url = "{% url 'miembros_app:validar_telefono' %}?" + params.toString();
+      const res = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+      const data = await res.json();
+
+      if (data && data.existe){
+        showDup("Este número ya está registrado en el sistema.");
+      } else {
+        clearDup();
+      }
+    } catch (e) {
+      // Si falla el fetch, no bloqueamos (pero podrías avisar si quieres)
+      clearDup();
+    }
+  }
+
+  function debounceCheck(){
+    clearTimeout(tmr);
+    tmr = setTimeout(checkTelefono, 300);
+  }
+
+  tel.addEventListener("input", debounceCheck);
+  tel.addEventListener("blur", checkTelefono);
+
+  // chequeo inicial si ya viene lleno (modo editar)
+  setTimeout(checkTelefono, 50);
+});
+</script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const tel = document.getElementById("{{ form.telefono.id_for_label }}");
