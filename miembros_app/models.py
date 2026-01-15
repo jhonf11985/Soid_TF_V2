@@ -601,6 +601,41 @@ class Miembro(models.Model):
                 fecha=timezone.now(),
             )
 
+
+    def registrar_evento(
+        self,
+        tipo,
+        descripcion,
+        detalle="",
+        valor_anterior="",
+        valor_nuevo="",
+        usuario=None,
+        referencia_tipo="",
+        referencia_id=None,
+    ):
+        '''
+        Atajo para registrar eventos en el timeline del miembro.
+        
+        Uso:
+            miembro.registrar_evento(
+                tipo="bautismo",
+                descripcion="Registrado como bautizado",
+                usuario=request.user,
+            )
+        '''
+        from .models import TimelineEvent
+        
+        return TimelineEvent.registrar(
+            miembro=self,
+            tipo=tipo,
+            descripcion=descripcion,
+            detalle=detalle,
+            valor_anterior=valor_anterior,
+            valor_nuevo=valor_nuevo,
+            usuario=usuario,
+            referencia_tipo=referencia_tipo,
+            referencia_id=referencia_id,
+        )
 class MiembroRelacion(models.Model):
     # ✅ Tipos (guardamos CLAVES neutras y mostramos bonito según género)
     TIPO_RELACION_CHOICES = [
@@ -804,3 +839,165 @@ class MiembroBitacora(models.Model):
 
     def __str__(self):
         return f"{self.miembro_id} - {self.tipo} - {self.titulo}"
+
+
+
+class TimelineEvent(models.Model):
+    """
+    Registro automático de eventos del sistema para cada miembro.
+    Separado de la bitácora manual para mantener un historial limpio y automático.
+    """
+
+    class TipoEvento(models.TextChoices):
+        CREACION = "creacion", "Creación"
+        EDICION = "edicion", "Edición de datos"
+        ESTADO = "estado", "Cambio de estado"
+        ETAPA = "etapa", "Cambio de etapa"
+        BAUTISMO = "bautismo", "Bautismo"
+        UNIDAD_ASIGNADA = "unidad_asignada", "Asignación a unidad"
+        UNIDAD_REMOVIDA = "unidad_removida", "Remoción de unidad"
+        EMAIL = "email", "Envío de correo"
+        BAJA = "baja", "Baja"
+        REINGRESO = "reingreso", "Reingreso"
+        FOTO = "foto", "Cambio de foto"
+        RELACION = "relacion", "Relación familiar"
+        OTRO = "otro", "Otro"
+
+    # Iconos para cada tipo de evento (Material Icons)
+    ICONOS = {
+        "creacion": "person_add",
+        "edicion": "edit",
+        "estado": "swap_horiz",
+        "etapa": "trending_up",
+        "bautismo": "water_drop",
+        "unidad_asignada": "group_add",
+        "unidad_removida": "group_remove",
+        "email": "mail",
+        "baja": "person_off",
+        "reingreso": "person_add_alt",
+        "foto": "photo_camera",
+        "relacion": "family_restroom",
+        "otro": "info",
+    }
+
+    # Colores para cada tipo de evento
+    COLORES = {
+        "creacion": "#10b981",      # verde
+        "edicion": "#6b7280",       # gris
+        "estado": "#f59e0b",        # amarillo
+        "etapa": "#8b5cf6",         # púrpura
+        "bautismo": "#0ea5e9",      # azul cielo
+        "unidad_asignada": "#0097a7", # teal
+        "unidad_removida": "#ef4444", # rojo
+        "email": "#3b82f6",         # azul
+        "baja": "#dc2626",          # rojo oscuro
+        "reingreso": "#22c55e",     # verde claro
+        "foto": "#ec4899",          # rosa
+        "relacion": "#a855f7",      # púrpura claro
+        "otro": "#9ca3af",          # gris claro
+    }
+
+    miembro = models.ForeignKey(
+        "miembros_app.Miembro",
+        on_delete=models.CASCADE,
+        related_name="timeline",
+    )
+
+    tipo = models.CharField(
+        max_length=20,
+        choices=TipoEvento.choices,
+        default=TipoEvento.OTRO,
+        db_index=True,
+    )
+
+    descripcion = models.CharField(
+        max_length=255,
+        help_text="Descripción corta del evento",
+    )
+
+    detalle = models.TextField(
+        blank=True,
+        default="",
+        help_text="Información adicional del evento (opcional)",
+    )
+
+    # Valores para cambios (de → a)
+    valor_anterior = models.CharField(max_length=100, blank=True, default="")
+    valor_nuevo = models.CharField(max_length=100, blank=True, default="")
+
+    # Metadatos
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="timeline_events",
+    )
+
+    fecha = models.DateTimeField(default=timezone.now, db_index=True)
+
+    # Campo para referencias (ej: ID de unidad, ID de email, etc.)
+    referencia_tipo = models.CharField(max_length=50, blank=True, default="")
+    referencia_id = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+        verbose_name = "Evento de Timeline"
+        verbose_name_plural = "Eventos de Timeline"
+        indexes = [
+            models.Index(fields=["miembro", "-fecha"]),
+            models.Index(fields=["tipo", "-fecha"]),
+        ]
+
+    def __str__(self):
+        return f"{self.miembro} - {self.get_tipo_display()} - {self.fecha:%d/%m/%Y}"
+
+    @property
+    def icono(self):
+        return self.ICONOS.get(self.tipo, "info")
+
+    @property
+    def color(self):
+        return self.COLORES.get(self.tipo, "#9ca3af")
+
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # HELPER PARA REGISTRAR EVENTOS FÁCILMENTE
+    # ═══════════════════════════════════════════════════════════════════════════
+    @classmethod
+    def registrar(
+        cls,
+        miembro,
+        tipo,
+        descripcion,
+        detalle="",
+        valor_anterior="",
+        valor_nuevo="",
+        usuario=None,
+        referencia_tipo="",
+        referencia_id=None,
+    ):
+        """
+        Helper para registrar eventos de forma sencilla.
+        
+        Ejemplo de uso:
+            TimelineEvent.registrar(
+                miembro=miembro,
+                tipo="estado",
+                descripcion="Cambio de estado",
+                valor_anterior="Activo",
+                valor_nuevo="Pasivo",
+                usuario=request.user,
+            )
+        """
+        return cls.objects.create(
+            miembro=miembro,
+            tipo=tipo,
+            descripcion=descripcion,
+            detalle=detalle,
+            valor_anterior=valor_anterior,
+            valor_nuevo=valor_nuevo,
+            usuario=usuario if usuario and getattr(usuario, "is_authenticated", False) else None,
+            referencia_tipo=referencia_tipo,
+            referencia_id=referencia_id,
+        )
