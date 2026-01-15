@@ -3255,7 +3255,6 @@ def miembro_inactivo_detalle(request, pk):
 
 
 
-
 @login_required
 @permission_required("miembros_app.change_miembro", raise_exception=True)
 @require_http_methods(["GET", "POST"])
@@ -3269,16 +3268,22 @@ def reincorporar_miembro(request, pk):
             return redirect("miembros_app:nuevo_creyente_detalle", pk=miembro.pk)
         return redirect("miembros_app:detalle", pk=miembro.pk)
 
-    # Estado anterior (ANTES de tocar nada)
-    estado_anterior = miembro.estado_miembro
+    # =========================
+    # SNAPSHOT (ANTES de tocar)
+    # =========================
+    estado_antes = getattr(miembro, "estado_miembro", "") or ""
+    etapa_antes = getattr(miembro, "etapa_actual", "") or ""
+    razon_txt = "—"
+    if getattr(miembro, "razon_salida", None):
+        # nombre es el __str__ también, pero así queda claro
+        razon_txt = getattr(miembro.razon_salida, "nombre", None) or str(miembro.razon_salida)
+
     es_nuevo_creyente = bool(getattr(miembro, "nuevo_creyente", False))
 
     # Para UI: si la razón permite carta, lo mostramos como “requiere”
     requiere_carta = bool(
         miembro.razon_salida and getattr(miembro.razon_salida, "permite_carta", False)
     )
-
-
 
     if request.method == "POST":
         form = MiembroReingresoForm(request.POST)  # ✅ sin instance
@@ -3303,17 +3308,20 @@ def reincorporar_miembro(request, pk):
                 miembro.nuevo_creyente = False
                 miembro.estado_miembro = "observacion"
 
-                if estado_anterior == "descarriado":
+                if estado_antes == "descarriado":
                     miembro.origen_reingreso = "descarriado"
                     miembro.estado_pastoral_reingreso = "reconciliado"
-                elif estado_anterior == "trasladado":
+                elif estado_antes == "trasladado":
                     miembro.origen_reingreso = "traslado"
                     miembro.estado_pastoral_reingreso = "integrado"
                 else:
-                    miembro.estado_pastoral_reingreso = miembro.estado_pastoral_reingreso or "observacion"
+                    miembro.estado_pastoral_reingreso = (
+                        miembro.estado_pastoral_reingreso or "observacion"
+                    )
 
             miembro.save()
-            
+
+            # ✅ Bitácora
             miembro.log_event(
                 tipo="reingreso",
                 titulo="Reincorporación registrada",
@@ -3336,7 +3344,6 @@ def reincorporar_miembro(request, pk):
     else:
         form = MiembroReingresoForm()  # ✅ sin instance
 
-
     return render(
         request,
         "miembros_app/reincorporacion_form.html",
@@ -3345,9 +3352,10 @@ def reincorporar_miembro(request, pk):
             "form": form,
             "requiere_carta": requiere_carta,
             "es_nuevo_creyente": es_nuevo_creyente,
-            "estado_anterior": estado_anterior,  # para que la plantilla explique lo que hará
+            "estado_anterior": estado_antes,  # para que la plantilla explique lo que hará
         }
     )
+
 
 @require_http_methods(["GET", "POST"])
 def salida_form(request, pk):
