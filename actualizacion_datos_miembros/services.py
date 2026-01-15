@@ -92,12 +92,17 @@ def crear_miembro_desde_solicitud_alta(solicitud: SolicitudAltaMiembro) -> Miemb
             whatsapp=(solicitud.whatsapp or "").strip(),
             direccion=(solicitud.direccion or "").strip(),
             sector=(solicitud.sector or "").strip(),
+
+            # ✅ VALORES POR DEFECTO (NO visibles en el formulario)
+            provincia="La Altagracia",
+            ciudad="Higüey",
+
             cedula=ced or None,
             foto=solicitud.foto if getattr(solicitud, "foto", None) else None,
 
-             bautizado_confirmado=(solicitud.estado_miembro != "catecumeno"),
-
+            bautizado_confirmado=(solicitud.estado_miembro != "catecumeno"),
         )
+
 
         acceso, _ = AccesoActualizacionDatos.objects.get_or_create(miembro=miembro)
         if not acceso.activo:

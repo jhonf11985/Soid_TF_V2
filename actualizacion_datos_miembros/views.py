@@ -295,12 +295,28 @@ def alta_publica(request):
                 # form.add_error(None, "Ya existe una solicitud pendiente con este teléfono.")
                 return render(request, "actualizacion_datos_miembros/alta_publico.html", {"form": form})
          
-            if Miembro.objects.filter(telefono=tel).exists():
+
+            import re
+
+            digits = re.sub(r"\D+", "", tel)
+
+            # Si viene como +1XXXXXXXXXX, quitamos el 1
+            if len(digits) == 11 and digits.startswith("1"):
+                digits = digits[1:]
+
+            tel_norm = digits[:10] if len(digits) >= 10 else ""
+
+            if tel_norm and Miembro.objects.filter(telefono_norm=tel_norm).exists():
                 form.add_error(
                     "telefono",
-                    "Este teléfono ya está registrado en el sistema. Si necesitas actualizar datos, solicita el enlace de actualización."
+                    "Este teléfono ya está registrado en el sistema. "
+                    "Si necesitas actualizar datos, solicita el enlace de actualización."
                 )
-                return render(request, "actualizacion_datos_miembros/alta_publico.html", {"form": form})
+                return render(
+                    request,
+                    "actualizacion_datos_miembros/alta_publico.html",
+                    {"form": form}
+                )
 
             # Anti-duplicado por cédula (solo si fue enviada)
             if cedula:
