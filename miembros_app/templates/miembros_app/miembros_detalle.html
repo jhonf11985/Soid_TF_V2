@@ -792,6 +792,121 @@
 
     </div>
 
+    <!-- ══════════════════════════════════════════════════════════════════════════════════════════
+         CHATTER / BITÁCORA ESTILO ODOO
+         ══════════════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-chatter">
+        
+        <!-- Botones de acción del chatter -->
+        <div class="odoo-chatter-actions">
+            <button type="button" class="odoo-chatter-btn odoo-chatter-btn-primary" id="btn-enviar-mensaje">
+                Enviar mensaje
+            </button>
+            <button type="button" class="odoo-chatter-btn" id="btn-registrar-nota">
+                Registrar una nota
+            </button>
+        </div>
+
+        <!-- Formulario de mensaje (oculto por defecto) -->
+        <div class="odoo-chatter-compose" id="compose-mensaje" style="display:none;">
+            <form method="post" action="{% url 'miembros_app:bitacora_add' miembro.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="tipo" value="sistema">
+                <textarea name="texto" rows="3" placeholder="Escribe un mensaje..." required></textarea>
+                <div class="odoo-chatter-compose-actions">
+                    <button type="submit" class="odoo-btn odoo-btn-primary odoo-btn-sm">
+                        <span class="material-icons">send</span>
+                        Enviar
+                    </button>
+                    <button type="button" class="odoo-btn odoo-btn-secondary odoo-btn-sm btn-cancelar">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Formulario de nota (oculto por defecto) -->
+        <div class="odoo-chatter-compose odoo-chatter-compose-note" id="compose-nota" style="display:none;">
+            <form method="post" action="{% url 'miembros_app:bitacora_add' miembro.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="tipo" value="nota">
+                <textarea name="texto" rows="3" placeholder="Registrar una nota interna..." required></textarea>
+                <div class="odoo-chatter-compose-actions">
+                    <button type="submit" class="odoo-btn odoo-btn-warning odoo-btn-sm">
+                        <span class="material-icons">sticky_note_2</span>
+                        Registrar nota
+                    </button>
+                    <button type="button" class="odoo-btn odoo-btn-secondary odoo-btn-sm btn-cancelar">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Timeline / Historial -->
+        <div class="odoo-chatter-timeline">
+            {% regroup miembro.bitacora.all by fecha|date:"d M Y" as items_by_date %}
+            
+            {% for date_group in items_by_date %}
+            <div class="odoo-chatter-date-separator">
+                <span>{{ date_group.grouper }}</span>
+            </div>
+            
+            {% for item in date_group.list %}
+            <div class="odoo-chatter-item {% if item.tipo == 'nota' %}odoo-chatter-item-note{% endif %}">
+                <!-- Avatar del autor -->
+                <div class="odoo-chatter-avatar" style="background: {% if item.autor %}#714B67{% else %}#6b7280{% endif %};">
+                    {% if item.autor %}
+                        {{ item.autor.first_name|slice:":1"|upper|default:item.autor.username|slice:":1"|upper }}
+                    {% else %}
+                        <span class="material-icons" style="font-size:16px;">smart_toy</span>
+                    {% endif %}
+                </div>
+                
+                <!-- Contenido del mensaje -->
+                <div class="odoo-chatter-content">
+                    <div class="odoo-chatter-header">
+                        <span class="odoo-chatter-author">
+                            {% if item.autor %}
+                                {{ item.autor.get_full_name|default:item.autor.username }}
+                            {% else %}
+                                Sistema
+                            {% endif %}
+                        </span>
+                        <span class="odoo-chatter-time">{{ item.fecha|date:"g:i a" }}</span>
+                        {% if item.tipo != 'nota' and item.tipo != 'sistema' %}
+                        <span class="odoo-chatter-type-badge odoo-chatter-type-{{ item.tipo }}">
+                            {{ item.get_tipo_display }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="odoo-chatter-body">
+                        {% if item.titulo %}
+                            <strong>{{ item.titulo }}</strong>
+                            {% if item.detalle %}<br>{% endif %}
+                        {% endif %}
+                        {{ item.detalle|default:""|linebreaks }}
+                        
+                        {% if item.estado_from or item.estado_to %}
+                        <div class="odoo-chatter-meta">
+                            {% if item.estado_from %}<span class="odoo-meta-chip">De: {{ item.estado_from }}</span>{% endif %}
+                            {% if item.estado_to %}<span class="odoo-meta-chip">A: {{ item.estado_to }}</span>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% empty %}
+            <div class="odoo-chatter-empty">
+                <span class="material-icons">forum</span>
+                <p>Aún no hay registros en la bitácora.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
@@ -1590,6 +1705,291 @@
     border-radius: 6px;
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   CHATTER ESTILO ODOO - COMPACTO
+   ═══════════════════════════════════════════════════════════════════ */
+.odoo-chatter {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 24px;
+}
+
+/* Botones de acción del chatter */
+.odoo-chatter-actions {
+    display: flex;
+    gap: 6px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fafbfc;
+}
+
+.odoo-chatter-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.odoo-chatter-btn:hover {
+    background: #f3f4f6;
+}
+
+.odoo-chatter-btn-primary {
+    background: #714B67;
+    color: #fff;
+    border-color: #714B67;
+}
+
+.odoo-chatter-btn-primary:hover {
+    background: #5a3d54;
+}
+
+/* Área de composición */
+.odoo-chatter-compose {
+    padding: 10px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f0f9ff;
+}
+
+.odoo-chatter-compose-note {
+    background: #fefce8;
+}
+
+.odoo-chatter-compose textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+}
+
+.odoo-chatter-compose textarea:focus {
+    outline: none;
+    border-color: #714B67;
+    box-shadow: 0 0 0 2px rgba(113, 75, 103, 0.1);
+}
+
+.odoo-chatter-compose-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+/* Timeline del chatter */
+.odoo-chatter-timeline {
+    padding: 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Separador de fecha */
+.odoo-chatter-date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px 4px 16px;
+    position: relative;
+}
+
+.odoo-chatter-date-separator::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background: #e5e7eb;
+    top: 50%;
+}
+
+.odoo-chatter-date-separator span {
+    font-size: 10px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: #fff;
+    padding: 0 8px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Item del chatter - COMPACTO */
+.odoo-chatter-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.15s ease;
+}
+
+.odoo-chatter-item:hover {
+    background: #fafbfc;
+}
+
+.odoo-chatter-item:last-child {
+    border-bottom: none;
+}
+
+/* Nota interna (fondo amarillo claro) */
+.odoo-chatter-item-note {
+    background: #fffbeb;
+}
+
+.odoo-chatter-item-note:hover {
+    background: #fef3c7;
+}
+
+/* Avatar - más pequeño */
+.odoo-chatter-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+}
+
+/* Contenido del mensaje */
+.odoo-chatter-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.odoo-chatter-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.odoo-chatter-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.odoo-chatter-time {
+    font-size: 10px;
+    color: #9ca3af;
+}
+
+.odoo-chatter-type-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.odoo-chatter-type-salida {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.odoo-chatter-type-reingreso {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.odoo-chatter-type-cambio_estado {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.odoo-chatter-type-cambio_etapa {
+    background: #e0e7ff;
+    color: #4f46e5;
+}
+
+.odoo-chatter-type-documento {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+.odoo-chatter-body {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.4;
+}
+
+.odoo-chatter-body p {
+    margin: 0;
+}
+
+.odoo-chatter-body strong {
+    color: #1f2937;
+    font-size: 12px;
+}
+
+.odoo-chatter-meta {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.odoo-meta-chip {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 10px;
+    background: #e5e7eb;
+    color: #4b5563;
+    border-radius: 3px;
+}
+
+/* Estado vacío */
+.odoo-chatter-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 16px;
+    color: #9ca3af;
+}
+
+.odoo-chatter-empty .material-icons {
+    font-size: 36px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.odoo-chatter-empty p {
+    margin: 0;
+    font-size: 13px;
+}
+
+/* Responsive chatter */
+@media (max-width: 768px) {
+    .odoo-chatter-actions {
+        flex-wrap: wrap;
+    }
+    
+    .odoo-chatter-item {
+        padding: 12px 16px;
+    }
+    
+    .odoo-chatter-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+}
+
 </style>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
@@ -1624,6 +2024,40 @@ document.addEventListener('DOMContentLoaded', function() {
             targetTab.click();
         }
     }
+    
+    // Chatter compose toggles
+    const btnMensaje = document.getElementById('btn-enviar-mensaje');
+    const btnNota = document.getElementById('btn-registrar-nota');
+    const composeMensaje = document.getElementById('compose-mensaje');
+    const composeNota = document.getElementById('compose-nota');
+    
+    if (btnMensaje) {
+        btnMensaje.addEventListener('click', function() {
+            composeMensaje.style.display = composeMensaje.style.display === 'none' ? 'block' : 'none';
+            composeNota.style.display = 'none';
+            if (composeMensaje.style.display === 'block') {
+                composeMensaje.querySelector('textarea').focus();
+            }
+        });
+    }
+    
+    if (btnNota) {
+        btnNota.addEventListener('click', function() {
+            composeNota.style.display = composeNota.style.display === 'none' ? 'block' : 'none';
+            composeMensaje.style.display = 'none';
+            if (composeNota.style.display === 'block') {
+                composeNota.querySelector('textarea').focus();
+            }
+        });
+    }
+    
+    // Cancelar botones
+    document.querySelectorAll('.btn-cancelar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (composeMensaje) composeMensaje.style.display = 'none';
+            if (composeNota) composeNota.style.display = 'none';
+        });
+    });
 });
 </script>
 

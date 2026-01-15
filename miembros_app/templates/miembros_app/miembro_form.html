@@ -327,15 +327,18 @@
                     <div id="cedula_feedback" class="hint" style="margin-top:6px; display:none;"></div>
 
 
-<input type="date"
-       name="fecha_nacimiento"
-       id="{{ form.fecha_nacimiento.id_for_label }}"
-       class="odoo-input"
-       value="{{ form.fecha_nacimiento.value|date:'Y-m-d' }}"
-       {% if bloquear_identidad %}disabled{% endif %}>
-{% if bloquear_identidad %}
-  <input type="hidden" name="fecha_nacimiento" value="{{ form.fecha_nacimiento.value|date:'Y-m-d' }}">
-{% endif %}
+                    <div class="odoo-field">
+                        <label class="odoo-label">Fecha nacimiento</label>
+                        <input type="date"
+                               name="fecha_nacimiento"
+                               id="{{ form.fecha_nacimiento.id_for_label }}"
+                               class="odoo-input"
+                               value="{{ form.fecha_nacimiento.value|date:'Y-m-d' }}"
+                               {% if bloquear_identidad %}disabled{% endif %}>
+                        {% if bloquear_identidad %}
+                        <input type="hidden" name="fecha_nacimiento" value="{{ form.fecha_nacimiento.value|date:'Y-m-d' }}">
+                        {% endif %}
+                    </div>
 
 
                     <!-- Aviso de edad mínima -->
@@ -397,6 +400,36 @@
                                    {% if form.activo.value %}checked{% endif %}>
                             <span>Miembro activo</span>
                         </label>
+                    </div>
+
+                    <!-- Fecha de ingreso (campo importante) -->
+                    <div class="odoo-field">
+                        <label class="odoo-label">Fecha ingreso</label>
+                        {% if modo == "editar" %}
+                        <input type="date"
+                               id="{{ form.fecha_ingreso_iglesia.id_for_label }}"
+                               class="odoo-input"
+                               value="{{ form.fecha_ingreso_iglesia.value|date:'Y-m-d' }}"
+                               readonly
+                               style="background: #e9ecef; cursor: not-allowed;">
+                        <input type="hidden"
+                               name="fecha_ingreso_iglesia"
+                               value="{{ form.fecha_ingreso_iglesia.value|date:'Y-m-d' }}">
+                        {% else %}
+                        <input type="date"
+                               name="fecha_ingreso_iglesia"
+                               id="{{ form.fecha_ingreso_iglesia.id_for_label }}"
+                               class="odoo-input"
+                               value="{% if form.fecha_ingreso_iglesia.value %}{{ form.fecha_ingreso_iglesia.value|date:'Y-m-d' }}{% else %}{% now 'Y-m-d' %}{% endif %}">
+                        {% endif %}
+                    </div>
+                    <div class="odoo-field-note">
+                        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">info</span>
+                        {% if modo == "editar" %}
+                        Esta fecha no se puede editar una vez guardada.
+                        {% else %}
+                        <strong>Importante:</strong> Esta fecha no se podrá editar después de guardar. Si no recuerda la fecha exacta, ponga una fecha aproximada.
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -513,35 +546,6 @@
                     <!-- TAB: Membresía -->
                     <div class="odoo-tab-panel" id="tab-membresia">
                         <div class="odoo-tab-grid">
-                            <div class="odoo-field">
-    <label class="odoo-label">Fecha ingreso</label>
-
-    <!-- Visible (solo lectura) -->
-    <input
-        type="date"
-        id="{{ form.fecha_ingreso_iglesia.id_for_label }}"
-        class="odoo-input"
-        value="{% if form.fecha_ingreso_iglesia.value %}
-                    {{ form.fecha_ingreso_iglesia.value|date:'Y-m-d' }}
-               {% else %}
-                    {% now 'Y-m-d' %}
-               {% endif %}"
-        readonly
-    >
-
-    <!-- Hidden (se envía en POST) -->
-    <input
-        type="hidden"
-        name="fecha_ingreso_iglesia"
-        value="{% if form.fecha_ingreso_iglesia.value %}
-                    {{ form.fecha_ingreso_iglesia.value|date:'Y-m-d' }}
-               {% else %}
-                    {% now 'Y-m-d' %}
-               {% endif %}"
-    >
-</div>
-
-
                             <div class="odoo-field">
                                 <label class="odoo-label">Fecha conversión</label>
                                 <input type="date" name="fecha_conversion"
@@ -1430,6 +1434,24 @@
     max-width: 80px;
 }
 
+/* Nota informativa de campo */
+.odoo-field-note {
+    margin-left: 132px;
+    font-size: 12px;
+    color: #6c757d;
+    background: #fff8e6;
+    border: 1px solid #ffe4a0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    line-height: 1.4;
+}
+
+.odoo-field-note .material-icons {
+    color: #856404;
+    margin-right: 4px;
+}
+
 select.odoo-input {
     cursor: pointer;
     background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='%236c757d' d='M6 8L1 3h10z'/%3e%3c/svg%3e") no-repeat right center;
@@ -1838,7 +1860,7 @@ select.odoo-input {
 /* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 1200px) {
+@media (max-width: 992px) {
     .odoo-form-container {
         grid-template-columns: 1fr;
     }
@@ -1898,6 +1920,10 @@ select.odoo-input {
     .odoo-field-checkbox,
     .odoo-field-checkboxes {
         padding-left: 0;
+    }
+
+    .odoo-field-note {
+        margin-left: 0;
     }
 
     .odoo-field-error {

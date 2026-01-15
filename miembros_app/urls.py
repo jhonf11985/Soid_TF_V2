@@ -142,5 +142,7 @@ path("inactivos/<int:pk>/reincorporar/", views.reincorporar_miembro, name="reinc
         views.salida_form,
         name="salida_form"
     ),
+
+    path('miembros/<int:pk>/bitacora/add/', views.miembro_bitacora_add, name='bitacora_add'),
 ]
 

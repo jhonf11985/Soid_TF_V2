@@ -739,7 +739,7 @@ def miembro_crear(request):
 
         if form.is_valid():
             miembro = form.save(commit=False)
-            
+
             # Fecha de ingreso automática
             if not miembro.fecha_ingreso_iglesia:
                 miembro.fecha_ingreso_iglesia = date.today()
@@ -3278,79 +3278,64 @@ def reincorporar_miembro(request, pk):
         miembro.razon_salida and getattr(miembro.razon_salida, "permite_carta", False)
     )
 
-    if request.method == "POST":
-        form = MiembroReingresoForm(request.POST, instance=miembro)
-        if form.is_valid():
-            m = form.save(commit=False)
 
+
+    if request.method == "POST":
+        form = MiembroReingresoForm(request.POST)  # ✅ sin instance
+
+        if form.is_valid():
             # ✅ Reactivar
-            m.activo = True
-            m.fecha_reingreso = timezone.localdate()
+            miembro.activo = True
+            miembro.fecha_reingreso = timezone.localdate()
 
             # ✅ Limpiar salida
-            m.razon_salida = None
-            m.fecha_salida = None
-            m.comentario_salida = ""
+            miembro.razon_salida = None
+            miembro.fecha_salida = None
+            miembro.comentario_salida = ""
 
-            # ✅ LÓGICA AUTOMÁTICA (tu regla)
+            # ✅ Tu lógica automática (la que ya tienes)
             if es_nuevo_creyente:
-                # Nuevo creyente: vuelve a seguimiento
-                m.nuevo_creyente = True
-                m.estado_miembro = "observacion"  # o catecumeno si lo prefieres
-                m.origen_reingreso = "descarriado"
-                m.estado_pastoral_reingreso = "reconciliado"
-
-                # (Opcional) refuerzo de historial textual
-                if hasattr(m, "nota_pastoral_reingreso"):
-                    nota = (getattr(m, "nota_reingreso", "") or "").strip()
-                    pref = "NC RECONCILIADO: "
-                    m.nota_pastoral_reingreso = (pref + nota) if nota else "NC RECONCILIADO"
-
+                miembro.nuevo_creyente = True
+                miembro.estado_miembro = "observacion"
+                miembro.origen_reingreso = "descarriado"
+                miembro.estado_pastoral_reingreso = "reconciliado"
             else:
-                # Miembro oficial: siempre entra a membresía con observación
-                m.nuevo_creyente = False
-                m.estado_miembro = "observacion"
+                miembro.nuevo_creyente = False
+                miembro.estado_miembro = "observacion"
 
                 if estado_anterior == "descarriado":
-                    # Miembro descarriado → reconciliado
-                    m.origen_reingreso = "descarriado"
-                    m.estado_pastoral_reingreso = "reconciliado"
-
+                    miembro.origen_reingreso = "descarriado"
+                    miembro.estado_pastoral_reingreso = "reconciliado"
                 elif estado_anterior == "trasladado":
-                    # Traslado → NO reconciliado, pero sí integrado + carta
-                    m.origen_reingreso = "traslado"
-                    m.estado_pastoral_reingreso = "integrado"
-
-                    # Carta (si tu form la trae)
-                    carta_estado = getattr(m, "carta_traslado_estado", "") or ""
-                    if hasattr(m, "carta_traslado_recibida"):
-                        m.carta_traslado_recibida = (carta_estado == "recibida")
-
+                    miembro.origen_reingreso = "traslado"
+                    miembro.estado_pastoral_reingreso = "integrado"
                 else:
-                    # Fallback
-                    m.estado_pastoral_reingreso = m.estado_pastoral_reingreso or "observacion"
+                    miembro.estado_pastoral_reingreso = miembro.estado_pastoral_reingreso or "observacion"
 
-            # Nota pastoral (si tu modelo la tiene)
-            if hasattr(m, "nota_pastoral_reingreso"):
-                nota = (getattr(m, "nota_reingreso", "") or "").strip()
-                # Si ya la pusimos arriba (NC RECONCILIADO), no la pisamos
-                if not (m.nota_pastoral_reingreso or "").strip():
-                    m.nota_pastoral_reingreso = nota
+            miembro.save()
+            
+            miembro.log_event(
+                tipo="reingreso",
+                titulo="Reincorporación registrada",
+                detalle=f"Razón de salida anterior: {razon_txt}",
+                user=request.user,
+                estado_from=estado_antes,
+                estado_to=getattr(miembro, "estado_miembro", "") or "",
+                etapa_from=etapa_antes,
+                etapa_to=getattr(miembro, "etapa_actual", "") or "",
+            )
 
-            m.save()
-
-            # ✅ Redirección automática
-            if m.nuevo_creyente:
+            if miembro.nuevo_creyente:
                 messages.success(request, "Reingreso registrado: Nuevo Creyente (seguimiento).")
-                return redirect("miembros_app:nuevo_creyente_detalle", pk=m.pk)
+                return redirect("miembros_app:nuevo_creyente_detalle", pk=miembro.pk)
 
             messages.success(request, "Reincorporación registrada: Miembro en observación.")
-            return redirect("miembros_app:detalle", pk=m.pk)
+            return redirect("miembros_app:detalle", pk=miembro.pk)
 
-        messages.error(request, "Hay errores en el formulario. Revisa los campos marcados.")
-
+        messages.error(request, "Hay errores en el formulario.")
     else:
-        form = MiembroReingresoForm(instance=miembro)
+        form = MiembroReingresoForm()  # ✅ sin instance
+
 
     return render(
         request,
@@ -3367,6 +3352,9 @@ def reincorporar_miembro(request, pk):
 @require_http_methods(["GET", "POST"])
 def salida_form(request, pk):
     miembro = get_object_or_404(Miembro, pk=pk)
+    estado_antes = getattr(miembro, "estado_miembro", "") or ""
+    etapa_antes = getattr(miembro, "etapa_actual", "") or ""
+
 
     # Permisos (igual que tu vista actual)
     if not (request.user.is_superuser or request.user.has_perm("miembros_app.change_miembro")):
@@ -3406,6 +3394,18 @@ def salida_form(request, pk):
 
 
             miembro_editado.save()
+            
+
+            miembro.log_event(
+                tipo="salida",
+                titulo="Salida registrada",
+                detalle=f"Razón: {miembro_editado.razon_salida or '—'}",
+                user=request.user,
+                estado_from=estado_antes,
+                estado_to=getattr(miembro_editado, "estado_miembro", "") or "",
+                etapa_from=etapa_antes,
+                etapa_to=getattr(miembro_editado, "etapa_actual", "") or "",
+)
 
             messages.success(request, "Salida registrada correctamente. El registro ha quedado inactivo.")
             return redirect("miembros_app:inactivo_detalle", pk=miembro_editado.pk)
@@ -3423,3 +3423,46 @@ def salida_form(request, pk):
             "es_nuevo_creyente": es_nuevo_creyente,
         },
     )
+
+# Agregar esta vista a views.py de miembros_app
+
+@login_required
+@require_POST
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+def miembro_bitacora_add(request, pk):
+    """
+    Agregar una entrada manual a la bitácora del miembro.
+    """
+    from .models import MiembroBitacora
+    
+    miembro = get_object_or_404(Miembro, pk=pk)
+    
+    tipo = request.POST.get("tipo", "sistema")
+    texto = request.POST.get("texto", "").strip()
+    
+    if texto:
+        # Determinar título según tipo
+        if tipo == "nota":
+            titulo = "Nota registrada"
+        else:
+            titulo = "Mensaje"
+        
+        MiembroBitacora.objects.create(
+            miembro=miembro,
+            tipo=tipo,
+            titulo=titulo,
+            detalle=texto,
+            creado_por=request.user,
+        )
+        
+        messages.success(request, "Entrada agregada a la bitácora.")
+    else:
+        messages.error(request, "El texto no puede estar vacío.")
+    
+    return redirect("miembros_app:detalle", pk=miembro.pk)
+
+
+# ============================================
+# Agregar esta URL en urls.py de miembros_app:
+# ============================================
+# path('miembros/<int:pk>/bitacora/add/', views.miembro_bitacora_add, name='bitacora_add'),

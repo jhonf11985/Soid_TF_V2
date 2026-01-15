@@ -553,7 +553,32 @@ class Miembro(models.Model):
 
         fecha_fin = self.fecha_salida or date.today()
         return (fecha_fin - self.fecha_ingreso_iglesia).days
+    def log_event(
+            self,
+            *,
+            tipo,
+            titulo,
+            detalle="",
+            user=None,
+            estado_from="",
+            estado_to="",
+            etapa_from="",
+            etapa_to="",
+        ):
+            from .models import MiembroBitacora  # evita imports circulares
 
+            MiembroBitacora.objects.create(
+                miembro=self,
+                tipo=tipo,
+                titulo=titulo,
+                detalle=detalle or "",
+                estado_from=estado_from or "",
+                estado_to=estado_to or "",
+                etapa_from=etapa_from or "",
+                etapa_to=etapa_to or "",
+                creado_por=user if user and getattr(user, "is_authenticated", False) else None,
+                fecha=timezone.now(),
+            )
 
 class MiembroRelacion(models.Model):
     # ✅ Tipos (guardamos CLAVES neutras y mostramos bonito según género)
@@ -701,3 +726,60 @@ class MiembroRelacion(models.Model):
             return "yerno"  # la etiqueta bonita se resuelve por género al mostrar
 
         return base
+
+
+class MiembroBitacora(models.Model):
+    """
+    Bitácora (historial) del miembro.
+    Guarda eventos automáticos (salida, reincorporación, cambios) y notas manuales.
+    """
+
+    class Tipos(models.TextChoices):
+        SISTEMA = "sistema", "Sistema"
+        SALIDA = "salida", "Salida"
+        REINGRESO = "reingreso", "Reincorporación"
+        CAMBIO_ESTADO = "cambio_estado", "Cambio de estado"
+        CAMBIO_ETAPA = "cambio_etapa", "Cambio de etapa"
+        NOTA = "nota", "Nota"
+        DOCUMENTO = "documento", "Documento"
+
+    miembro = models.ForeignKey(
+        "miembros_app.Miembro",
+        on_delete=models.CASCADE,
+        related_name="bitacora",
+    )
+
+    tipo = models.CharField(max_length=30, choices=Tipos.choices, default=Tipos.SISTEMA)
+
+    titulo = models.CharField(max_length=140)
+    detalle = models.TextField(blank=True, default="")
+
+    # Campos opcionales tipo “antes / después” (muy útil)
+    estado_from = models.CharField(max_length=40, blank=True, default="")
+    estado_to = models.CharField(max_length=40, blank=True, default="")
+
+    etapa_from = models.CharField(max_length=40, blank=True, default="")
+    etapa_to = models.CharField(max_length=40, blank=True, default="")
+
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="miembro_bitacoras",
+    )
+
+    fecha = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+        verbose_name = "Bitácora (Miembro)"
+        verbose_name_plural = "Bitácoras (Miembro)"
+
+    @property
+    def autor(self):
+        # Para que el template pueda usar item.autor como en tu chatter actual :contentReference[oaicite:2]{index=2}
+        return self.creado_por
+
+    def __str__(self):
+        return f"{self.miembro_id} - {self.tipo} - {self.titulo}"
