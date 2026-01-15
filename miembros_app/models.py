@@ -9,7 +9,15 @@ from django.utils import timezone
 import re
 
 
+CIUDAD_CHOICES = [
+    ("Higuey", "Higüey"),
+    ("Punta Cana", "Punta Cana"),
+    ("San Rafael del Yuma", "San Rafael del Yuma"),
+]
 
+PROVINCIA_CHOICES = [
+    ("La Altagracia", "La Altagracia"),
+]
 
 ETAPA_ACTUAL_CHOICES = [
     ("miembro", "Miembro"),
@@ -217,8 +225,18 @@ class Miembro(models.Model):
 
     direccion = models.TextField(blank=True)
     sector = models.CharField(max_length=100, blank=True)
-    ciudad = models.CharField(max_length=100, blank=True)
-    provincia = models.CharField(max_length=100, blank=True)
+    ciudad = models.CharField(
+        max_length=100,
+        choices=CIUDAD_CHOICES,
+        blank=True,
+    )
+
+    provincia = models.CharField(
+        max_length=100,
+        choices=PROVINCIA_CHOICES,
+        blank=True,
+    )
+
     codigo_postal = models.CharField(max_length=20, blank=True)
 
     # --- Contacto de emergencia y salud ---
@@ -1001,3 +1019,39 @@ class TimelineEvent(models.Model):
             referencia_tipo=referencia_tipo,
             referencia_id=referencia_id,
         )
+
+class ZonaGeo(models.Model):
+    """
+    Guarda coordenadas (lat/lng) por zona para no geocodificar cada vez.
+    Zona = combinación sector + ciudad + provincia.
+    """
+    sector = models.CharField(max_length=100, blank=True, default="")
+
+    ciudad = models.CharField(
+        max_length=50,
+        choices=CIUDAD_CHOICES,
+        blank=True,
+        default="Higuey",
+    )
+
+    provincia = models.CharField(
+        max_length=50,
+        choices=PROVINCIA_CHOICES,
+        blank=True,
+        default="La Altagracia",
+    )
+
+    lat = models.FloatField(null=True, blank=True)
+    lng = models.FloatField(null=True, blank=True)
+
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("sector", "ciudad", "provincia")
+        ordering = ["provincia", "ciudad", "sector"]
+        verbose_name = "Zona (Geo)"
+        verbose_name_plural = "Zonas (Geo)"
+
+    def __str__(self):
+        parts = [p for p in [self.sector, self.ciudad, self.provincia] if p]
+        return " / ".join(parts) if parts else "—"

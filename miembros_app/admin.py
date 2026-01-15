@@ -3,6 +3,14 @@ from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
 from django.core.exceptions import ValidationError
 
 
+from .models import ZonaGeo
+
+@admin.register(ZonaGeo)
+class ZonaGeoAdmin(admin.ModelAdmin):
+    list_display = ("provincia", "ciudad", "sector", "lat", "lng", "actualizado")
+    search_fields = ("provincia", "ciudad", "sector")
+    list_filter = ("provincia", "ciudad")
+
 # ---------------------------
 #  ADMIN PARA RAZONES DE SALIDA
 # ---------------------------

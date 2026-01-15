@@ -151,6 +151,8 @@ path("inactivos/<int:pk>/reincorporar/", views.reincorporar_miembro, name="reinc
 ),
 path("ajax/validar-telefono/", views.validar_telefono, name="validar_telefono"),
 
+    path("mapa/", views.mapa_miembros, name="mapa_miembros"),
+    path("api/mapa-miembros/", views.api_mapa_miembros, name="api_mapa_miembros"),
 
 ]
 

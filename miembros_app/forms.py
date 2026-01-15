@@ -249,9 +249,20 @@ class MiembroForm(forms.ModelForm):
 
             "direccion": forms.Textarea(attrs={"rows": 2, "placeholder": "Calle, número, referencia…"}),
             "sector": forms.TextInput(attrs={"placeholder": "Sector o barrio"}),
-            "ciudad": forms.TextInput(attrs={"placeholder": "Ciudad"}),
-            "provincia": forms.TextInput(attrs={"placeholder": "Provincia"}),
+
             "codigo_postal": forms.TextInput(attrs={"placeholder": "Código postal"}),
+            
+            "ciudad": forms.Select(
+                attrs={
+                    "class": "odoo-input",
+                }
+            ),
+
+            "provincia": forms.Select(
+                attrs={
+                    "class": "odoo-input",
+                }
+            ),
 
             
             # 👇 AQUÍ EL WIDGET DE CÉDULA

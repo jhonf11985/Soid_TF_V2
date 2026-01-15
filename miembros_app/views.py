@@ -3530,3 +3530,91 @@ def validar_telefono(request):
         qs = qs.exclude(pk=pk)
 
     return JsonResponse({"existe": qs.exists()})
+
+
+
+from .models import Miembro, ZonaGeo
+
+
+@login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def mapa_miembros(request):
+    """
+    Pantalla del mapa (Leaflet). Los puntos se cargan por AJAX desde la API.
+    """
+    return render(request, "miembros_app/mapa_miembros.html")
+
+
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def api_mapa_miembros(request):
+    """
+    Devuelve puntos por zona (sector/ciudad/provincia) con conteo,
+    usando ZonaGeo como cache de coordenadas.
+    """
+    # Filtros
+    activo = request.GET.get("activo", "")  # "1" / "0" / ""
+    tipo = request.GET.get("tipo", "")      # "miembro" / "nuevo" / ""
+    estado = request.GET.get("estado", "")  # activo/pasivo/...
+
+    qs = Miembro.objects.all()
+
+    if activo == "1":
+        qs = qs.filter(activo=True)
+    elif activo == "0":
+        qs = qs.filter(activo=False)
+
+    if tipo == "miembro":
+        qs = qs.filter(nuevo_creyente=False)
+    elif tipo == "nuevo":
+        qs = qs.filter(nuevo_creyente=True)
+
+    if estado:
+        qs = qs.filter(estado_miembro=estado)
+
+    # Agrupar por zona
+    agrupado = (
+        qs.values("sector", "ciudad", "provincia")
+          .annotate(total=Count("id"))
+          .order_by("-total")
+    )
+
+    puntos = []
+    faltantes = []
+
+    for row in agrupado:
+        sector = (row.get("sector") or "").strip()
+        ciudad = (row.get("ciudad") or "").strip()
+        provincia = (row.get("provincia") or "").strip()
+        total = row["total"]
+
+        zona = ZonaGeo.objects.filter(
+            sector=sector,
+            ciudad=ciudad,
+            provincia=provincia,
+        ).first()
+
+        if zona and zona.lat is not None and zona.lng is not None:
+            puntos.append({
+                "sector": sector,
+                "ciudad": ciudad,
+                "provincia": provincia,
+                "total": total,
+                "lat": zona.lat,
+                "lng": zona.lng,
+            })
+        else:
+            # Para que sepas qué zonas no tienen coordenadas todavía
+            faltantes.append({
+                "sector": sector,
+                "ciudad": ciudad,
+                "provincia": provincia,
+                "total": total,
+            })
+
+    return JsonResponse({
+        "puntos": puntos,
+        "faltantes": faltantes[:50],  # limitamos para no explotar la respuesta
+        "faltantes_total": len(faltantes),
+    })

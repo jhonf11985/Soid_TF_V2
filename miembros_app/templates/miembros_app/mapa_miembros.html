@@ -1,0 +1,1457 @@
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
+
+{% block miembros_content %}
+<div class="mapa-page">
+
+  <!-- Header con estadísticas -->
+  <div class="mapa-header">
+    <div class="mapa-header__info">
+      <h1 class="mapa-title">
+        <span class="material-icons">map</span>
+        Mapa de Concentración
+      </h1>
+      <p class="mapa-subtitle">Distribución geográfica de miembros por zona</p>
+    </div>
+    <div class="mapa-stats">
+      <div class="mapa-stat">
+        <span class="mapa-stat__value" id="stat_total">0</span>
+        <span class="mapa-stat__label">Total miembros</span>
+      </div>
+      <div class="mapa-stat">
+        <span class="mapa-stat__value" id="stat_zonas">0</span>
+        <span class="mapa-stat__label">Zonas</span>
+      </div>
+      <div class="mapa-stat">
+        <span class="mapa-stat__value" id="stat_sin_geo">0</span>
+        <span class="mapa-stat__label">Sin ubicación</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de filtros -->
+  <div class="mapa-filters">
+    <div class="mapa-filters__row">
+      <div class="mapa-filter-group">
+        <label class="mapa-filter-label">
+          <span class="material-icons">filter_list</span>
+          Estado
+        </label>
+        <select id="f_activo" class="mapa-select">
+          <option value="">Todos</option>
+          <option value="1" selected>Activos</option>
+          <option value="0">Inactivos</option>
+        </select>
+      </div>
+
+      <div class="mapa-filter-group">
+        <label class="mapa-filter-label">
+          <span class="material-icons">people</span>
+          Tipo
+        </label>
+        <select id="f_tipo" class="mapa-select">
+          <option value="">Todos</option>
+          <option value="miembro">Miembro</option>
+          <option value="nuevo">Nuevo creyente</option>
+        </select>
+      </div>
+
+      <div class="mapa-filter-group">
+        <label class="mapa-filter-label">
+          <span class="material-icons">favorite</span>
+          Estado pastoral
+        </label>
+        <select id="f_estado" class="mapa-select">
+          <option value="">Todos</option>
+          <option value="activo">Activo</option>
+          <option value="pasivo">Pasivo</option>
+          <option value="observacion">En observación</option>
+          <option value="disciplina">En disciplina</option>
+          <option value="descarriado">Descarriado</option>
+          <option value="catecumeno">Catecúmeno</option>
+          <option value="trasladado">Trasladado</option>
+        </select>
+      </div>
+
+      <div class="mapa-filter-group">
+        <label class="mapa-filter-label">
+          <span class="material-icons">layers</span>
+          Visualización
+        </label>
+        <div class="mapa-view-toggle">
+          <button type="button" class="mapa-view-btn active" data-view="markers" title="Marcadores">
+            <span class="material-icons">place</span>
+          </button>
+          <button type="button" class="mapa-view-btn" data-view="heat" title="Mapa de calor">
+            <span class="material-icons">whatshot</span>
+          </button>
+          <button type="button" class="mapa-view-btn" data-view="both" title="Ambos">
+            <span class="material-icons">layers</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="mapa-filter-group">
+        <label class="mapa-filter-label">
+          <span class="material-icons">palette</span>
+          Estilo mapa
+        </label>
+        <div class="mapa-view-toggle">
+          <button type="button" class="mapa-style-btn active" data-style="dark" title="Oscuro">
+            <span class="material-icons">dark_mode</span>
+          </button>
+          <button type="button" class="mapa-style-btn" data-style="satellite" title="Satélite">
+            <span class="material-icons">satellite</span>
+          </button>
+          <button type="button" class="mapa-style-btn" data-style="streets" title="Calles">
+            <span class="material-icons">map</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="mapa-filter-actions">
+        <button id="btn_cargar" class="mapa-btn mapa-btn--primary" type="button">
+          <span class="material-icons">refresh</span>
+          Actualizar
+        </button>
+        <button id="btn_fullscreen" class="mapa-btn mapa-btn--icon" type="button" title="Pantalla completa">
+          <span class="material-icons">fullscreen</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor del mapa -->
+  <div class="mapa-container" id="mapa_container">
+    <div id="map" class="mapa-canvas"></div>
+    
+    <!-- Loading overlay -->
+    <div id="mapa_loading" class="mapa-loading">
+      <div class="mapa-loading__spinner"></div>
+      <span>Cargando datos...</span>
+    </div>
+
+    <!-- Leyenda -->
+    <div class="mapa-legend" id="mapa_legend">
+      <div class="mapa-legend__title">
+        <span class="material-icons">info</span>
+        Leyenda
+      </div>
+      <div class="mapa-legend__items">
+        <div class="mapa-legend__item">
+          <span class="mapa-legend__dot mapa-legend__dot--small"></span>
+          <span>1-5 miembros</span>
+        </div>
+        <div class="mapa-legend__item">
+          <span class="mapa-legend__dot mapa-legend__dot--medium"></span>
+          <span>6-15 miembros</span>
+        </div>
+        <div class="mapa-legend__item">
+          <span class="mapa-legend__dot mapa-legend__dot--large"></span>
+          <span>16+ miembros</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controles del mapa -->
+    <div class="mapa-controls">
+      <button type="button" class="mapa-control-btn" id="btn_zoom_in" title="Acercar">
+        <span class="material-icons">add</span>
+      </button>
+      <button type="button" class="mapa-control-btn" id="btn_zoom_out" title="Alejar">
+        <span class="material-icons">remove</span>
+      </button>
+      <button type="button" class="mapa-control-btn" id="btn_center" title="Centrar mapa">
+        <span class="material-icons">my_location</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Alerta de zonas faltantes -->
+  <div id="faltantes_box" class="mapa-alert" style="display:none;">
+    <div class="mapa-alert__header">
+      <span class="material-icons">warning</span>
+      <strong>Zonas sin coordenadas</strong>
+      <button type="button" class="mapa-alert__toggle" id="toggle_faltantes">
+        <span class="material-icons">expand_more</span>
+      </button>
+    </div>
+    <div class="mapa-alert__body" id="faltantes_body">
+      <p>Completa las coordenadas en <code>ZonaGeo</code> (admin) para visualizar estas zonas.</p>
+      <div id="faltantes_list" class="mapa-faltantes-list"></div>
+    </div>
+  </div>
+
+  <!-- Lista de zonas -->
+  <div class="mapa-zonas-panel" id="zonas_panel">
+    <div class="mapa-zonas-header">
+      <h3>
+        <span class="material-icons">list</span>
+        Zonas encontradas
+      </h3>
+      <button type="button" class="mapa-btn mapa-btn--text" id="btn_toggle_panel">
+        <span class="material-icons">expand_less</span>
+      </button>
+    </div>
+    <div class="mapa-zonas-body" id="zonas_body">
+      <div class="mapa-zonas-search">
+        <span class="material-icons">search</span>
+        <input type="text" id="search_zona" placeholder="Buscar zona..." class="mapa-search-input">
+      </div>
+      <div class="mapa-zonas-list" id="zonas_list"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<style>
+/* ========================================
+   Variables
+======================================== */
+:root {
+  --mapa-primary: #0097a7;
+  --mapa-primary-dark: #00838f;
+  --mapa-primary-light: #b2ebf2;
+  --mapa-secondary: #ff7043;
+  --mapa-success: #4caf50;
+  --mapa-warning: #ff9800;
+  --mapa-danger: #f44336;
+  --mapa-gray-50: #fafafa;
+  --mapa-gray-100: #f5f5f5;
+  --mapa-gray-200: #eeeeee;
+  --mapa-gray-300: #e0e0e0;
+  --mapa-gray-400: #bdbdbd;
+  --mapa-gray-500: #9e9e9e;
+  --mapa-gray-600: #757575;
+  --mapa-gray-700: #616161;
+  --mapa-gray-800: #424242;
+  --mapa-gray-900: #212121;
+  --mapa-shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --mapa-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  --mapa-shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --mapa-radius: 12px;
+  --mapa-radius-lg: 16px;
+  --mapa-transition: all 0.2s ease;
+}
+
+/* ========================================
+   Page Layout
+======================================== */
+.mapa-page {
+  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ========================================
+   Header
+======================================== */
+.mapa-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.mapa-header__info {
+  flex: 1;
+  min-width: 250px;
+}
+
+.mapa-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--mapa-gray-900);
+  margin: 0;
+}
+
+.mapa-title .material-icons {
+  font-size: 32px;
+  color: var(--mapa-primary);
+}
+
+.mapa-subtitle {
+  color: var(--mapa-gray-600);
+  margin: 6px 0 0 44px;
+  font-size: 0.95rem;
+}
+
+.mapa-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mapa-stat {
+  background: linear-gradient(135deg, var(--mapa-primary) 0%, var(--mapa-primary-dark) 100%);
+  color: white;
+  padding: 14px 20px;
+  border-radius: var(--mapa-radius);
+  min-width: 120px;
+  text-align: center;
+  box-shadow: var(--mapa-shadow);
+}
+
+.mapa-stat__value {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.mapa-stat__label {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.9;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========================================
+   Filters
+======================================== */
+.mapa-filters {
+  background: white;
+  border-radius: var(--mapa-radius-lg);
+  padding: 18px 22px;
+  box-shadow: var(--mapa-shadow-sm);
+  margin-bottom: 20px;
+  border: 1px solid var(--mapa-gray-200);
+}
+
+.mapa-filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.mapa-filter-group {
+  flex: 1;
+  min-width: 160px;
+  max-width: 220px;
+}
+
+.mapa-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mapa-gray-700);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.mapa-filter-label .material-icons {
+  font-size: 16px;
+  color: var(--mapa-primary);
+}
+
+.mapa-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--mapa-gray-200);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--mapa-gray-800);
+  background: white;
+  cursor: pointer;
+  transition: var(--mapa-transition);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23757575' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.mapa-select:hover {
+  border-color: var(--mapa-primary-light);
+}
+
+.mapa-select:focus {
+  outline: none;
+  border-color: var(--mapa-primary);
+  box-shadow: 0 0 0 3px rgba(0,151,167,0.15);
+}
+
+/* View Toggle */
+.mapa-view-toggle {
+  display: flex;
+  background: var(--mapa-gray-100);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.mapa-view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--mapa-gray-600);
+  transition: var(--mapa-transition);
+}
+
+.mapa-view-btn:hover {
+  background: var(--mapa-gray-200);
+  color: var(--mapa-gray-800);
+}
+
+.mapa-view-btn.active {
+  background: var(--mapa-primary);
+  color: white;
+  box-shadow: var(--mapa-shadow-sm);
+}
+
+.mapa-view-btn .material-icons {
+  font-size: 20px;
+}
+
+.mapa-style-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--mapa-gray-600);
+  transition: var(--mapa-transition);
+}
+
+.mapa-style-btn:hover {
+  background: var(--mapa-gray-200);
+  color: var(--mapa-gray-800);
+}
+
+.mapa-style-btn.active {
+  background: var(--mapa-primary);
+  color: white;
+  box-shadow: var(--mapa-shadow-sm);
+}
+
+.mapa-style-btn .material-icons {
+  font-size: 20px;
+}
+
+/* Filter Actions */
+.mapa-filter-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.mapa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--mapa-transition);
+}
+
+.mapa-btn--primary {
+  background: linear-gradient(135deg, var(--mapa-primary) 0%, var(--mapa-primary-dark) 100%);
+  color: white;
+  box-shadow: var(--mapa-shadow-sm);
+}
+
+.mapa-btn--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--mapa-shadow);
+}
+
+.mapa-btn--icon {
+  padding: 10px;
+  background: var(--mapa-gray-100);
+  color: var(--mapa-gray-700);
+}
+
+.mapa-btn--icon:hover {
+  background: var(--mapa-gray-200);
+}
+
+.mapa-btn--text {
+  background: transparent;
+  color: var(--mapa-gray-600);
+  padding: 8px;
+}
+
+.mapa-btn--text:hover {
+  background: var(--mapa-gray-100);
+}
+
+.mapa-btn .material-icons {
+  font-size: 20px;
+}
+
+/* ========================================
+   Map Container
+======================================== */
+.mapa-container {
+  position: relative;
+  background: #1a1a2e;
+  border-radius: var(--mapa-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--mapa-shadow), 0 0 40px rgba(0,229,255,0.15);
+  border: 2px solid rgba(0,229,255,0.3);
+}
+
+.mapa-canvas {
+  height: 65vh;
+  min-height: 450px;
+  width: 100%;
+  background: #1a1a2e;
+}
+
+/* Fullscreen mode */
+.mapa-container.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  border-radius: 0;
+  margin: 0;
+}
+
+.mapa-container.fullscreen .mapa-canvas {
+  height: 100vh;
+}
+
+/* Loading */
+.mapa-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255,255,255,0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.mapa-loading.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.mapa-loading__spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--mapa-gray-200);
+  border-top-color: var(--mapa-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Legend */
+.mapa-legend {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  background: rgba(26,26,46,0.95);
+  padding: 14px 18px;
+  border-radius: var(--mapa-radius);
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
+  border: 1px solid rgba(0,229,255,0.3);
+  z-index: 500;
+  min-width: 160px;
+  backdrop-filter: blur(4px);
+}
+
+.mapa-legend__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #ffffff;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0,229,255,0.3);
+}
+
+.mapa-legend__title .material-icons {
+  font-size: 18px;
+  color: #00e5ff;
+}
+
+.mapa-legend__items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mapa-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.8);
+}
+
+.mapa-legend__dot {
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00e5ff 0%, #00bcd4 100%);
+  border: 2px solid white;
+  box-shadow: 0 0 10px rgba(0,229,255,0.5), var(--mapa-shadow-sm);
+}
+
+.mapa-legend__dot--small {
+  width: 18px;
+  height: 18px;
+}
+
+.mapa-legend__dot--medium {
+  width: 26px;
+  height: 26px;
+}
+
+.mapa-legend__dot--large {
+  width: 34px;
+  height: 34px;
+}
+
+/* Controls */
+.mapa-controls {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 500;
+}
+
+.mapa-control-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(26,26,46,0.9);
+  border: 2px solid rgba(0,229,255,0.4);
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.3);
+  cursor: pointer;
+  color: #00e5ff;
+  transition: var(--mapa-transition);
+  backdrop-filter: blur(4px);
+}
+
+.mapa-control-btn:hover {
+  background: rgba(0,229,255,0.2);
+  border-color: #00e5ff;
+  box-shadow: 0 0 20px rgba(0,229,255,0.4);
+}
+
+/* ========================================
+   Alert
+======================================== */
+.mapa-alert {
+  background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+  border: 1px solid #ffe082;
+  border-radius: var(--mapa-radius);
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+.mapa-alert__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  color: #f57c00;
+}
+
+.mapa-alert__header .material-icons {
+  font-size: 22px;
+}
+
+.mapa-alert__toggle {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #f57c00;
+  padding: 4px;
+  border-radius: 4px;
+  transition: var(--mapa-transition);
+}
+
+.mapa-alert__toggle:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.mapa-alert__toggle .material-icons {
+  transition: transform 0.3s;
+}
+
+.mapa-alert__toggle.collapsed .material-icons {
+  transform: rotate(180deg);
+}
+
+.mapa-alert__body {
+  padding: 0 18px 18px;
+  display: block;
+}
+
+.mapa-alert__body.collapsed {
+  display: none;
+}
+
+.mapa-alert__body p {
+  margin: 0 0 12px;
+  color: var(--mapa-gray-700);
+  font-size: 0.9rem;
+}
+
+.mapa-alert__body code {
+  background: rgba(0,0,0,0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.mapa-faltantes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+}
+
+.mapa-faltante-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.mapa-faltante-item__name {
+  color: var(--mapa-gray-800);
+}
+
+.mapa-faltante-item__count {
+  background: var(--mapa-warning);
+  color: white;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* ========================================
+   Zonas Panel
+======================================== */
+.mapa-zonas-panel {
+  background: white;
+  border-radius: var(--mapa-radius-lg);
+  margin-top: 20px;
+  box-shadow: var(--mapa-shadow-sm);
+  border: 1px solid var(--mapa-gray-200);
+  overflow: hidden;
+}
+
+.mapa-zonas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--mapa-gray-200);
+}
+
+.mapa-zonas-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--mapa-gray-800);
+}
+
+.mapa-zonas-header .material-icons {
+  color: var(--mapa-primary);
+}
+
+.mapa-zonas-body {
+  padding: 16px 20px;
+}
+
+.mapa-zonas-body.collapsed {
+  display: none;
+}
+
+.mapa-zonas-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--mapa-gray-100);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.mapa-zonas-search .material-icons {
+  color: var(--mapa-gray-500);
+}
+
+.mapa-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.mapa-zonas-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.mapa-zona-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--mapa-gray-50);
+  padding: 14px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: var(--mapa-transition);
+  border: 2px solid transparent;
+}
+
+.mapa-zona-card:hover {
+  background: var(--mapa-primary-light);
+  border-color: var(--mapa-primary);
+}
+
+.mapa-zona-card__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, var(--mapa-primary) 0%, var(--mapa-primary-dark) 100%);
+  color: white;
+  font-weight: 800;
+  font-size: 1rem;
+  border-radius: 10px;
+}
+
+.mapa-zona-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mapa-zona-card__name {
+  font-weight: 600;
+  color: var(--mapa-gray-900);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mapa-zona-card__detail {
+  font-size: 0.8rem;
+  color: var(--mapa-gray-500);
+  margin-top: 2px;
+}
+
+.mapa-zona-card__arrow {
+  color: var(--mapa-gray-400);
+}
+
+.mapa-zona-card:hover .mapa-zona-card__arrow {
+  color: var(--mapa-primary);
+}
+
+/* ========================================
+   Custom Markers
+======================================== */
+.zona-marker {
+  background: transparent;
+  border: none;
+}
+
+.zona-marker__bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00e5ff 0%, #00bcd4 50%, #0097a7 100%);
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 20px rgba(0,229,255,0.6), 0 4px 15px rgba(0,0,0,0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(0,229,255,0.6), 0 4px 15px rgba(0,0,0,0.3); }
+  50% { box-shadow: 0 0 30px rgba(0,229,255,0.8), 0 4px 20px rgba(0,0,0,0.4); }
+}
+
+.zona-marker__bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 12px solid #0097a7;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.zona-marker__bubble:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 35px rgba(0,229,255,1), 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.zona-marker__num {
+  color: #003d42;
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+
+/* Cluster styles - brillantes para fondo oscuro */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
+  background: rgba(0,229,255,0.4) !important;
+  animation: cluster-pulse 2s ease-in-out infinite;
+}
+
+@keyframes cluster-pulse {
+  0%, 100% { background: rgba(0,229,255,0.4) !important; }
+  50% { background: rgba(0,229,255,0.6) !important; }
+}
+
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background: linear-gradient(135deg, #00e5ff 0%, #00bcd4 100%) !important;
+  color: #003d42 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 15px rgba(0,229,255,0.7) !important;
+}
+
+/* Popup styles */
+.leaflet-popup-content-wrapper {
+  border-radius: 14px !important;
+  box-shadow: 0 0 30px rgba(0,0,0,0.5), 0 0 15px rgba(0,229,255,0.3) !important;
+  background: rgba(26,26,46,0.98) !important;
+  border: 1px solid rgba(0,229,255,0.4) !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(26,26,46,0.98) !important;
+  border: 1px solid rgba(0,229,255,0.4) !important;
+  box-shadow: none !important;
+}
+
+.leaflet-popup-content {
+  margin: 14px 16px !important;
+  color: white !important;
+}
+
+.mapa-popup {
+  min-width: 200px;
+}
+
+.mapa-popup__title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #ffffff;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid rgba(0,229,255,0.5);
+}
+
+.mapa-popup__stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  color: rgba(255,255,255,0.85);
+}
+
+.mapa-popup__stat .material-icons {
+  font-size: 18px;
+  color: #00e5ff;
+}
+
+.mapa-popup__stat strong {
+  color: #00e5ff;
+}
+
+/* ========================================
+   Responsive
+======================================== */
+@media (max-width: 768px) {
+  .mapa-page {
+    padding: 16px;
+  }
+
+  .mapa-header {
+    flex-direction: column;
+  }
+
+  .mapa-title {
+    font-size: 1.4rem;
+  }
+
+  .mapa-subtitle {
+    margin-left: 0;
+    margin-top: 8px;
+  }
+
+  .mapa-stats {
+    width: 100%;
+  }
+
+  .mapa-stat {
+    flex: 1;
+    min-width: auto;
+    padding: 12px 14px;
+  }
+
+  .mapa-stat__value {
+    font-size: 1.4rem;
+  }
+
+  .mapa-filters__row {
+    flex-direction: column;
+  }
+
+  .mapa-filter-group {
+    max-width: none;
+  }
+
+  .mapa-filter-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .mapa-filter-actions .mapa-btn--primary {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .mapa-canvas {
+    height: 55vh;
+    min-height: 350px;
+  }
+
+  .mapa-legend {
+    bottom: 16px;
+    left: 16px;
+    padding: 12px 14px;
+  }
+
+  .mapa-controls {
+    top: 16px;
+    right: 16px;
+  }
+
+  .mapa-zonas-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Hide default Leaflet controls */
+.leaflet-control-zoom {
+  display: none !important;
+}
+</style>
+
+<script>
+(function(){
+  // ============================================
+  // Map initialization
+  // ============================================
+  const map = L.map("map", {
+    zoomControl: false,
+    scrollWheelZoom: true
+  }).setView([18.6150, -68.7080], 13);
+
+  // Tile layer con estilo oscuro para mejor contraste
+  let currentTileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  }).addTo(map);
+
+  const tileStyles = {
+    dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    streets: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+  };
+
+  let clusterLayer = L.markerClusterGroup({
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    maxClusterRadius: 50
+  });
+  let heatLayer = null;
+  let currentView = 'markers';
+  let allPuntos = [];
+  let mapBounds = null;
+
+  // ============================================
+  // UI Elements
+  // ============================================
+  const loading = document.getElementById('mapa_loading');
+  const statTotal = document.getElementById('stat_total');
+  const statZonas = document.getElementById('stat_zonas');
+  const statSinGeo = document.getElementById('stat_sin_geo');
+  const zonasList = document.getElementById('zonas_list');
+  const searchInput = document.getElementById('search_zona');
+  const faltantesBox = document.getElementById('faltantes_box');
+  const faltantesBody = document.getElementById('faltantes_body');
+  const faltantesList = document.getElementById('faltantes_list');
+  const zonasBody = document.getElementById('zonas_body');
+  const container = document.getElementById('mapa_container');
+
+  // ============================================
+  // Helper functions
+  // ============================================
+  function showLoading() {
+    loading.classList.add('visible');
+  }
+
+  function hideLoading() {
+    loading.classList.remove('visible');
+  }
+
+  function clearLayers() {
+    if (clusterLayer) {
+      map.removeLayer(clusterLayer);
+      clusterLayer = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        maxClusterRadius: 50
+      });
+    }
+    if (heatLayer) {
+      map.removeLayer(heatLayer);
+      heatLayer = null;
+    }
+  }
+
+  function getMarkerSize(total) {
+    if (total <= 5) return 32;
+    if (total <= 15) return 42;
+    return Math.min(56, 42 + (total - 15) * 0.5);
+  }
+
+  function buildPopup(p) {
+    const zona = [p.sector, p.ciudad, p.provincia].filter(Boolean).join(" / ") || "Sin nombre";
+    return `
+      <div class="mapa-popup">
+        <div class="mapa-popup__title">${zona}</div>
+        <div class="mapa-popup__stat">
+          <span class="material-icons">people</span>
+          <span><strong>${p.total}</strong> miembros</span>
+        </div>
+        <div class="mapa-popup__stat">
+          <span class="material-icons">place</span>
+          <span>${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function createMarker(p) {
+    const size = getMarkerSize(p.total);
+    const icon = L.divIcon({
+      className: "zona-marker",
+      html: `<div class="zona-marker__bubble" style="width:${size}px;height:${size}px;">
+              <span class="zona-marker__num">${p.total}</span>
+             </div>`,
+      iconSize: [size, size + 10],
+      iconAnchor: [size / 2, size + 8],
+      popupAnchor: [0, -size]
+    });
+
+    const marker = L.marker([p.lat, p.lng], { icon });
+    marker.bindPopup(buildPopup(p));
+    return marker;
+  }
+
+  function renderZonasList(puntos) {
+    zonasList.innerHTML = '';
+    
+    if (!puntos.length) {
+      zonasList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--mapa-gray-500);">No hay zonas para mostrar</div>';
+      return;
+    }
+
+    puntos.sort((a, b) => b.total - a.total).forEach(p => {
+      const zona = [p.sector, p.ciudad, p.provincia].filter(Boolean).join(" / ") || "Sin nombre";
+      const card = document.createElement('div');
+      card.className = 'mapa-zona-card';
+      card.innerHTML = `
+        <div class="mapa-zona-card__badge">${p.total}</div>
+        <div class="mapa-zona-card__info">
+          <div class="mapa-zona-card__name">${zona}</div>
+          <div class="mapa-zona-card__detail">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</div>
+        </div>
+        <span class="material-icons mapa-zona-card__arrow">chevron_right</span>
+      `;
+      card.addEventListener('click', () => {
+        map.setView([p.lat, p.lng], 16);
+      });
+      zonasList.appendChild(card);
+    });
+  }
+
+  function renderFaltantes(faltantes, total) {
+    if (total > 0) {
+      faltantesBox.style.display = 'block';
+      faltantesList.innerHTML = '';
+      
+      faltantes.forEach(z => {
+        const name = [z.sector, z.ciudad, z.provincia].filter(Boolean).join(" / ") || "Sin especificar";
+        const item = document.createElement('div');
+        item.className = 'mapa-faltante-item';
+        item.innerHTML = `
+          <span class="mapa-faltante-item__name">${name}</span>
+          <span class="mapa-faltante-item__count">${z.total}</span>
+        `;
+        faltantesList.appendChild(item);
+      });
+    } else {
+      faltantesBox.style.display = 'none';
+    }
+  }
+
+  function updateStats(puntos, faltantesTotal) {
+    const totalMiembros = puntos.reduce((sum, p) => sum + p.total, 0);
+    statTotal.textContent = totalMiembros.toLocaleString();
+    statZonas.textContent = puntos.length;
+    statSinGeo.textContent = faltantesTotal;
+  }
+
+  function applyView() {
+    clearLayers();
+    const heatPoints = [];
+
+    allPuntos.forEach(p => {
+      const marker = createMarker(p);
+      clusterLayer.addLayer(marker);
+      heatPoints.push([p.lat, p.lng, Math.max(1, p.total)]);
+    });
+
+    if (currentView === 'markers' || currentView === 'both') {
+      map.addLayer(clusterLayer);
+    }
+
+    if ((currentView === 'heat' || currentView === 'both') && heatPoints.length) {
+      heatLayer = L.heatLayer(heatPoints, {
+        radius: 40,
+        blur: 30,
+        maxZoom: 17,
+        minOpacity: 0.4,
+        gradient: {
+          0.1: '#004d40',
+          0.3: '#00796b',
+          0.5: '#00bcd4',
+          0.7: '#00e5ff',
+          0.85: '#64ffda',
+          1.0: '#a7ffeb'
+        }
+      });
+      map.addLayer(heatLayer);
+    }
+
+    // Adjust bounds
+    if (allPuntos.length && mapBounds) {
+      map.fitBounds(mapBounds.pad(0.1));
+    }
+  }
+
+  // ============================================
+  // Main load function
+  // ============================================
+  async function cargar() {
+    showLoading();
+
+    const activo = document.getElementById("f_activo").value;
+    const tipo = document.getElementById("f_tipo").value;
+    const estado = document.getElementById("f_estado").value;
+
+    const url = new URL("{% url 'miembros_app:api_mapa_miembros' %}", window.location.origin);
+    if (activo) url.searchParams.set("activo", activo);
+    if (tipo) url.searchParams.set("tipo", tipo);
+    if (estado) url.searchParams.set("estado", estado);
+
+    try {
+      const res = await fetch(url.toString(), {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+      const data = await res.json();
+
+      allPuntos = data.puntos || [];
+      
+      if (allPuntos.length) {
+        mapBounds = L.latLngBounds(allPuntos.map(p => [p.lat, p.lng]));
+      }
+
+      applyView();
+      updateStats(allPuntos, data.faltantes_total || 0);
+      renderZonasList(allPuntos);
+      renderFaltantes(data.faltantes || [], data.faltantes_total || 0);
+
+    } catch (error) {
+      console.error('Error loading map data:', error);
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // ============================================
+  // Event listeners
+  // ============================================
+  
+  // Cargar button
+  document.getElementById("btn_cargar").addEventListener("click", cargar);
+
+  // View toggle
+  document.querySelectorAll('.mapa-view-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.mapa-view-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      currentView = this.dataset.view;
+      applyView();
+    });
+  });
+
+  // Style toggle
+  document.querySelectorAll('.mapa-style-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.mapa-style-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      const style = this.dataset.style;
+      
+      map.removeLayer(currentTileLayer);
+      currentTileLayer = L.tileLayer(tileStyles[style], {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+      }).addTo(map);
+    });
+  });
+
+  // Zoom controls
+  document.getElementById('btn_zoom_in').addEventListener('click', () => map.zoomIn());
+  document.getElementById('btn_zoom_out').addEventListener('click', () => map.zoomOut());
+  document.getElementById('btn_center').addEventListener('click', () => {
+    if (mapBounds) {
+      map.fitBounds(mapBounds.pad(0.1));
+    }
+  });
+
+  // Fullscreen
+  document.getElementById('btn_fullscreen').addEventListener('click', function() {
+    container.classList.toggle('fullscreen');
+    const icon = this.querySelector('.material-icons');
+    icon.textContent = container.classList.contains('fullscreen') ? 'fullscreen_exit' : 'fullscreen';
+    setTimeout(() => map.invalidateSize(), 300);
+  });
+
+  // Search zones
+  searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    const filtered = query 
+      ? allPuntos.filter(p => {
+          const zona = [p.sector, p.ciudad, p.provincia].filter(Boolean).join(" ").toLowerCase();
+          return zona.includes(query);
+        })
+      : allPuntos;
+    renderZonasList(filtered);
+  });
+
+  // Toggle faltantes
+  document.getElementById('toggle_faltantes').addEventListener('click', function() {
+    this.classList.toggle('collapsed');
+    faltantesBody.classList.toggle('collapsed');
+  });
+
+  // Toggle zonas panel
+  document.getElementById('btn_toggle_panel').addEventListener('click', function() {
+    zonasBody.classList.toggle('collapsed');
+    const icon = this.querySelector('.material-icons');
+    icon.textContent = zonasBody.classList.contains('collapsed') ? 'expand_more' : 'expand_less';
+  });
+
+  // ESC to exit fullscreen
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && container.classList.contains('fullscreen')) {
+      container.classList.remove('fullscreen');
+      document.querySelector('#btn_fullscreen .material-icons').textContent = 'fullscreen';
+      setTimeout(() => map.invalidateSize(), 300);
+    }
+  });
+
+  // Auto-refresh on filter change
+  ['f_activo', 'f_tipo', 'f_estado'].forEach(id => {
+    document.getElementById(id).addEventListener('change', cargar);
+  });
+
+  // Initial load
+  cargar();
+})();
+</script>
+
+{% endblock %}
