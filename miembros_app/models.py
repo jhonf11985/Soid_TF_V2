@@ -8,6 +8,8 @@ from django.conf import settings
 from django.utils import timezone
 
 
+
+
 ETAPA_ACTUAL_CHOICES = [
     ("miembro", "Miembro"),
     ("nuevo_creyente", "Nuevo creyente"),
@@ -129,6 +131,14 @@ class Miembro(models.Model):
         max_length=20,
         choices=GENERO_CHOICES,
         blank=True,
+    )
+
+    telefono_norm = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True,
+        db_index=True,
+        editable=False,
     )
 
     fecha_nacimiento = models.DateField(
@@ -470,6 +480,16 @@ class Miembro(models.Model):
 
 
     def save(self, *args, **kwargs):
+ # ======================================
+    # NORMALIZAR TELÉFONO
+    # ======================================
+        if self.telefono:
+            digits = re.sub(r"\D+", "", self.telefono)
+            if len(digits) == 11 and digits.startswith("1"):
+                digits = digits[1:]
+            self.telefono_norm = digits[:10] if digits else None
+        else:
+            self.telefono_norm = None
 
         # Mantén tu lógica existente (edad, etc.)
         self.actualizar_categoria_edad()

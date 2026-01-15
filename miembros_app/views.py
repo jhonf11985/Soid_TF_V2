@@ -56,7 +56,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMix
 from django.views.decorators.http import require_POST, require_GET
 from django.views.generic import DetailView, UpdateView
 from django.views.decorators.http import require_http_methods
-
+from urllib.parse import quote
 
 
 
@@ -2156,12 +2156,20 @@ def carta_salida_miembro(request, pk):
         )
 
 from django.utils import timezone  # ya lo tienes arriba
+
+@login_required
+@permission_required("miembros_app.add_miembro", raise_exception=True)
 def nuevo_creyente_crear(request):
     """
     Registro rápido de nuevos creyentes.
     Guarda en Miembro pero marcando nuevo_creyente=True
     y sin mezclarlos todavía con la membresía oficial.
     """
+
+    def wa_digits(v):
+        # deja solo números (WhatsApp wa.me no acepta + ni espacios)
+        return "".join(ch for ch in (v or "") if ch.isdigit())
+
     if request.method == "POST":
         form = NuevoCreyenteForm(request.POST)
         if form.is_valid():
@@ -2169,36 +2177,62 @@ def nuevo_creyente_crear(request):
 
             # 🔔 Crear notificación de nuevo creyente
             try:
-                # URL a la pantalla de edición de ese nuevo creyente
-                url_detalle = reverse("miembros_app:nuevo_creyente_editar", args=[miembro.pk])
+                url_detalle = reverse(
+                    "miembros_app:nuevo_creyente_editar",
+                    args=[miembro.pk]
+                )
 
                 crear_notificacion(
                     usuario=request.user,
                     titulo="Nuevo creyente registrado",
                     mensaje=f"{miembro.nombres} {miembro.apellidos} ha entregado su vida a Cristo.",
-                    # Le pasamos la URL ya resuelta; utils la usará tal cual si no puede hacer reverse
                     url_name=url_detalle,
                     tipo="info",
                 )
             except Exception as e:
                 print("Error creando notificación de nuevo creyente:", e)
 
+            # ✅ Mensaje de éxito
             messages.success(
                 request,
-                f"Nuevo creyente registrado correctamente: {miembro.nombres} {miembro.apellidos}.",
+                f"Nuevo creyente registrado correctamente: "
+                f"{miembro.nombres} {miembro.apellidos}.",
             )
+
+            # ───────────────────────────────────────────
+            # 📲 WhatsApp (opcional, desde el formulario)
+            # ───────────────────────────────────────────
+            enviar_whatsapp = request.POST.get("enviar_whatsapp") == "1"
+
+            if enviar_whatsapp and miembro.whatsapp:
+                mensaje = (
+                    f"Hola {miembro.nombres}, 👋\n\n"
+                    "¡Bienvenido a Iglesia Torre Fuerte! 🙏\n\n"
+                    "Nos alegra mucho que hayas dado este paso tan importante. "
+                    "Muy pronto alguien del equipo se pondrá en contacto contigo "
+                    "para acompañarte en este nuevo comienzo.\n\n"
+                    "Dios te bendiga."
+                )
+
+                wa_url = (
+                    f"https://wa.me/{wa_digits(miembro.whatsapp)}"
+                    f"?text={quote(mensaje)}"
+                )
+
+                # 👉 Redirige directamente a WhatsApp
+                return redirect(wa_url)
+
+            # 🔁 Flujo normal (si no se envía WhatsApp)
             return redirect("miembros_app:nuevo_creyente_lista")
+
     else:
         form = NuevoCreyenteForm()
 
     context = {
         "form": form,
-        "modo": "crear",  
+        "modo": "crear",
     }
     return render(request, "miembros_app/nuevos_creyentes_form.html", context)
-
-
-
 def nuevo_creyente_lista(request):
     """
     Lista de nuevos creyentes (miembros con nuevo_creyente=True),
@@ -3474,3 +3508,25 @@ def miembro_bitacora_add(request, pk):
 # Agregar esta URL en urls.py de miembros_app:
 # ============================================
 # path('miembros/<int:pk>/bitacora/add/', views.miembro_bitacora_add, name='bitacora_add'),
+
+@login_required
+@require_GET
+def validar_telefono(request):
+    telefono = request.GET.get("telefono", "")
+    pk = request.GET.get("pk", "")  # para edición
+
+    # Normalizar: solo dígitos, quitar el 1 inicial si tiene 11
+    telefono_norm = re.sub(r"\D+", "", telefono)
+    if len(telefono_norm) == 11 and telefono_norm.startswith("1"):
+        telefono_norm = telefono_norm[1:]
+    telefono_norm = telefono_norm[:10]
+
+    if not telefono_norm:
+        return JsonResponse({"existe": False})
+
+    qs = Miembro.objects.filter(telefono_norm=telefono_norm)
+
+    if pk:
+        qs = qs.exclude(pk=pk)
+
+    return JsonResponse({"existe": qs.exists()})

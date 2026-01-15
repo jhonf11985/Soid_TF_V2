@@ -9,6 +9,28 @@ from .models import Miembro, MiembroRelacion
 from .models import Miembro, RazonSalidaMiembro
 
    
+import re
+
+def _digits_only(v: str) -> str:
+    return re.sub(r"\D+", "", (v or ""))
+
+def _norm_rd_phone(v: str) -> str:
+    """
+    Normaliza teléfono RD:
+    - deja solo dígitos
+    - si viene con 1 delante (11 dígitos), lo recorta a 10
+    - recorta a 10
+    """
+    d = _digits_only(v)
+
+    if len(d) == 11 and d.startswith("1"):
+        d = d[1:]
+
+    # si se pasan de 10, nos quedamos con los primeros 10
+    if len(d) > 10:
+        d = d[:10]
+
+    return d
 
 class MiembroForm(forms.ModelForm):
     # ==========================
@@ -307,6 +329,22 @@ class MiembroForm(forms.ModelForm):
                 }
             ),
         }
+    def clean_telefono(self):
+        tel = self.cleaned_data.get("telefono", "")
+        tel_norm = _norm_rd_phone(tel)
+
+        if not tel_norm:
+            return tel  # Si viene vacío, no validamos duplicados
+
+        qs = Miembro.objects.filter(telefono_norm=tel_norm)
+
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError("Este número de teléfono ya está registrado.")
+
+        return tel
 
     # ==========================
     # VALIDACIONES / LÓGICA DE NEGOCIO
@@ -567,6 +605,25 @@ class NuevoCreyenteForm(forms.ModelForm):
                 }
             ),
         }
+
+    def clean_telefono(self):
+        tel = self.cleaned_data.get("telefono", "")
+        tel_norm = _norm_rd_phone(tel)
+
+        if not tel_norm:
+            return tel  # si viene vacío, no validamos duplicados
+
+        qs = Miembro.objects.filter(telefono_norm=tel_norm)
+
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError("Este número de teléfono ya está registrado en otro miembro.")
+
+        return tel  # ✅ devolvemos el tel con guiones (como lo formatea el frontend)
+
+
 
     def save(self, commit=True):
         miembro = super().save(commit=False)

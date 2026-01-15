@@ -164,6 +164,10 @@
                                    value="{{ form.telefono.value|default:'' }}"
                                    placeholder="Teléfono">
                         </div>
+                        <div class="field-error" id="telefono-error" style="display:none;">
+    Este número de teléfono ya está registrado.
+</div>
+
                         <div class="odoo-quick-field">
                             <span class="material-icons">chat</span>
                             <input type="tel" 
@@ -3379,6 +3383,55 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // inicial
   pass.value = normalizePassport(pass.value);
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // 🔍 buscamos el input por name (más seguro que por id fijo)
+    const telInput = document.querySelector("input[name='telefono']");
+    const errorBox = document.getElementById("telefono-error");
+    const submitBtn = document.querySelector("button[type='submit']");
+
+    if (!telInput || !errorBox || !submitBtn) return;
+
+    let timer = null;
+
+    function onlyDigits(v){
+        return (v || "").replace(/\D/g, "");
+    }
+
+    telInput.addEventListener("input", function () {
+        clearTimeout(timer);
+
+        const value = onlyDigits(telInput.value);
+
+        // si no llega a 10 dígitos, no validamos todavía
+        if (value.length < 10) {
+            errorBox.style.display = "none";
+            submitBtn.disabled = false;
+            return;
+        }
+
+        timer = setTimeout(() => {
+            fetch(`/miembros/ajax/validar-telefono/?telefono=${value}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.existe) {
+                        errorBox.style.display = "block";
+                        submitBtn.disabled = true;
+                    } else {
+                        errorBox.style.display = "none";
+                        submitBtn.disabled = false;
+                    }
+                })
+                .catch(() => {
+                    // si falla la llamada, no bloqueamos el formulario
+                    submitBtn.disabled = false;
+                });
+        }, 450); // debounce
+    });
 });
 </script>
 
