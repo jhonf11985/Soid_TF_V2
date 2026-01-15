@@ -15,11 +15,12 @@ from .models import (
 )
 from .forms import SolicitudActualizacionForm, SolicitudAltaPublicaForm
 from .services import aplicar_solicitud_a_miembro, crear_miembro_desde_solicitud_alta
-
+from .services import _normalizar_cedula_rd
 from django.db.models import Q
 from .models import AltaMasivaConfig
 from .models import ActualizacionDatosConfig
 from .forms import ActualizacionDatosConfigForm
+import re
 
 @login_required
 def actualizacion_config(request):
@@ -277,7 +278,12 @@ def alta_publica(request):
 
         if form.is_valid():
             tel = (form.cleaned_data.get("telefono") or "").strip()
-            cedula = limpiar_cedula(form.cleaned_data.get("cedula"))
+            cedula = _normalizar_cedula_rd(form.cleaned_data.get("cedula") or "")
+
+            # Normalizar cédula a formato 000-0000000-0 si hay 11 dígitos
+            ced_norm = _normalizar_cedula_rd(cedula)
+            ced_digits = re.sub(r"\D", "", (cedula or "").strip())
+
 
 
             
@@ -296,8 +302,7 @@ def alta_publica(request):
                 return render(request, "actualizacion_datos_miembros/alta_publico.html", {"form": form})
          
 
-            import re
-
+       
             digits = re.sub(r"\D+", "", tel)
 
             # Si viene como +1XXXXXXXXXX, quitamos el 1
@@ -344,7 +349,11 @@ def alta_publica(request):
                     "actualizacion_datos_miembros/alta_publico.html",
                     {"form": form}
                 )
+
+      
+            
             solicitud = form.save(commit=False)
+            solicitud.cedula = cedula
             solicitud.telefono = tel
             solicitud.estado = SolicitudAltaMiembro.Estados.PENDIENTE
             solicitud.ip_origen = _get_client_ip(request)
