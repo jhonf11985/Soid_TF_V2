@@ -314,9 +314,15 @@ class MiembroForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Fecha de conversión por defecto (como ya lo tenías)
-        if not self.instance.pk and not self.initial.get("fecha_conversion"):
-            self.initial["fecha_conversion"] = date.today()
+
+
+        # ✅ Fecha de ingreso por defecto (solo al crear)
+        if not self.instance.pk and not self.initial.get("fecha_ingreso_iglesia"):
+            self.initial["fecha_ingreso_iglesia"] = date.today()
+
+# ❌ NO autollenar fecha_conversion en el formulario de miembro
+# (eso solo aplica al formulario de nuevo creyente)
+
 
         # === CÓDIGO PREVIO DE MIEMBRO, USANDO CONFIGURACIÓN ===
         cfg = get_config()

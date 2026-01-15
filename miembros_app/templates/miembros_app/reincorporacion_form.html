@@ -4,408 +4,723 @@
 {% block title %}Reincorporar · {{ miembro.nombres }} {{ miembro.apellidos }}{% endblock %}
 
 {% block miembros_content %}
+
 <div class="odoo-page-wrapper">
 
-  <!-- CONTROL BAR -->
-  <div class="odoo-control-bar no-print">
-    <div class="odoo-control-left">
-      <a href="{% url 'miembros_app:inactivo_detalle' miembro.pk %}" class="odoo-btn odoo-btn-secondary" title="Volver">
-        <span class="material-icons">arrow_back</span>
-      </a>
+    <!-- CONTROL BAR -->
+    <div class="odoo-control-bar no-print">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:inactivo_detalle' miembro.pk %}" class="odoo-btn odoo-btn-secondary" title="Volver">
+                <span class="material-icons">arrow_back</span>
+            </a>
 
-      <div class="odoo-breadcrumb">
-        <span class="odoo-breadcrumb-current">Inactivos</span>
-        <span class="material-icons">chevron_right</span>
-        <span class="odoo-breadcrumb-current">Reincorporación</span>
-      </div>
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-current">Inactivos</span>
+                <span class="material-icons">chevron_right</span>
+                <span class="odoo-breadcrumb-current">Reincorporación</span>
+            </div>
+        </div>
+
+        <div class="odoo-control-right">
+            <button type="submit" form="reingreso-form" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons">check_circle</span>
+                Reingresar
+            </button>
+        </div>
     </div>
 
-    <div class="odoo-control-right">
-      <button type="submit" form="reingreso-form" class="odoo-btn odoo-btn-primary">
-        <span class="material-icons">check_circle</span>
-        Guardar
-      </button>
-    </div>
-  </div>
+    <!-- CONTENIDO -->
+    <div class="odoo-detail-container">
 
-  <div class="odoo-detail-container">
-
-    <!-- HERO -->
-    <div class="odoo-hero odoo-hero-warning">
-      <div class="odoo-hero-left">
-        <div class="odoo-hero-icon">
-          <span class="material-icons">undo</span>
-        </div>
-        <div class="odoo-hero-text">
-          <div class="odoo-hero-title">Reincorporación pastoral</div>
-          <div class="odoo-hero-subtitle">
-            {{ miembro.nombres }} {{ miembro.apellidos }} ·
-            {% if es_nuevo_creyente %}
-              <b>Nuevo creyente</b>
-            {% else %}
-              <b>Miembro</b>
-            {% endif %}
-            {% if es_bautizado %} · Bautizado ✔{% endif %}
-          </div>
-
-          {% if sugerencia_texto %}
-          <div class="odoo-hero-badges" style="margin-top:8px;">
-            <span class="odoo-badge odoo-badge-warning">
-              Sugerencia: {{ sugerencia_texto }}
-            </span>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="odoo-hero-right">
-        <div class="odoo-mini-card">
-          <div class="odoo-mini-label">Estado actual</div>
-          <div class="odoo-mini-value">
-            <span class="odoo-badge odoo-badge-danger">INACTIVO</span>
-          </div>
-        </div>
-        <div class="odoo-mini-card">
-          <div class="odoo-mini-label">Razón salida</div>
-          <div class="odoo-mini-value">
-            {% if miembro.razon_salida %}{{ miembro.razon_salida }}{% else %}—{% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="odoo-grid-2">
-
-      <!-- FORM -->
-      <div class="odoo-card">
-        <div class="odoo-card-header">
-          <div class="odoo-card-title">
-            <span class="material-icons">assignment</span>
-            Decisión pastoral al reingresar
-          </div>
+        <!-- CABECERA CELEBRACIÓN -->
+        <div class="hero-celebration">
+            <div class="hero-celebration-icon">
+                <span class="material-icons">celebration</span>
+            </div>
+            <div class="hero-celebration-content">
+                <div class="hero-celebration-title">
+                    🎉 ¡Enhorabuena! {{ miembro.nombres }} ha vuelto
+                </div>
+                <div class="hero-celebration-subtitle">
+                    Estamos a punto de registrar el regreso de <b>{{ miembro.nombres }} {{ miembro.apellidos }}</b> a nuestra congregación.
+                </div>
+                <div class="hero-celebration-badges">
+                    {% if es_nuevo_creyente %}
+                        <span class="odoo-badge odoo-badge-warning">Nuevo creyente</span>
+                    {% else %}
+                        <span class="odoo-badge odoo-badge-muted">Miembro</span>
+                    {% endif %}
+                    <span class="odoo-badge odoo-badge-danger">INACTIVO</span>
+                    <span class="material-icons hero-arrow">arrow_forward</span>
+                    <span class="odoo-badge odoo-badge-success">ACTIVO</span>
+                </div>
+            </div>
+            <div class="hero-celebration-stats">
+                <div class="odoo-mini-card">
+                    <div class="odoo-mini-label">Código</div>
+                    <div class="odoo-mini-value">
+                        {% if miembro.codigo_seguimiento %}
+                            {{ miembro.codigo_seguimiento }}
+                        {% elif miembro.codigo_miembro %}
+                            {{ miembro.codigo_miembro }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="odoo-mini-card">
+                    <div class="odoo-mini-label">Salida</div>
+                    <div class="odoo-mini-value">
+                        {% if miembro.fecha_salida %}
+                            {{ miembro.fecha_salida|date:"d/m/Y" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="odoo-mini-card">
+                    <div class="odoo-mini-label">Razón</div>
+                    <div class="odoo-mini-value">
+                        {% if miembro.razon_salida %}
+                            {{ miembro.razon_salida.nombre }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="odoo-card-body">
-          <form id="reingreso-form" method="post">
-            {% csrf_token %}
+        <!-- HISTORIA PASTORAL -->
+        <div class="story-card">
+            <div class="story-icon">
+                <span class="material-icons">auto_stories</span>
+            </div>
+            <div class="story-content">
+                <div class="story-text">
+                    <b>{{ miembro.nombres }} {{ miembro.apellidos }}</b>
+                    {% if es_nuevo_creyente %}
+                        llegó a nuestra congregación como <b>nuevo creyente</b>
+                    {% else %}
+                        formó parte de nuestra <b>membresía</b>
+                    {% endif %}
+                    {% if miembro.fecha_ingreso_iglesia %}
+                        desde el <b>{{ miembro.fecha_ingreso_iglesia|date:"d/m/Y" }}</b>.
+                    {% else %}
+                        y compartió con nosotros momentos de fe y comunión.
+                    {% endif %}
+                    
+                    {% with dias=miembro.dias_en_iglesia %}
+                        {% if dias %}
+                            Estuvo con nosotros durante <b>{{ dias }}</b> día{{ dias|pluralize }} de crecimiento espiritual.
+                        {% endif %}
+                    {% endwith %}
+                    
+                    {% if miembro.fecha_salida %}
+                        El <b>{{ miembro.fecha_salida|date:"d/m/Y" }}</b>
+                        {% if miembro.razon_salida %}
+                            se registró su salida por <b>{{ miembro.razon_salida.nombre|lower }}</b>.
+                        {% else %}
+                            se registró su salida de la congregación.
+                        {% endif %}
+                    {% endif %}
+                </div>
+                <div class="story-footer">
+                    <span class="material-icons">favorite</span>
+                    Hoy celebramos su regreso. ¡Gloria a Dios!
+                </div>
+            </div>
+        </div>
 
-            {% if form.non_field_errors %}
-              <div class="odoo-alert odoo-alert-danger">
-                {{ form.non_field_errors }}
-              </div>
-            {% endif %}
+        <!-- BLOQUE PRINCIPAL -->
+        <div class="odoo-grid">
 
-            <div class="odoo-form-grid">
-              <div class="odoo-field">
-                <label>Etapa inicial</label>
-                {{ form.reingreso_estado }}
-                {% if form.reingreso_estado.errors %}
-                  <div class="odoo-error">{{ form.reingreso_estado.errors }}</div>
-                {% endif %}
-              </div>
+            <!-- FORMULARIO -->
+            <div class="odoo-card">
+                <div class="odoo-card-header">
+                    <div class="odoo-card-title">
+                        <span class="material-icons">assignment</span>
+                        Datos del reingreso
+                    </div>
+                </div>
 
-              <div class="odoo-field">
-                <label>Estado de carta (traslado)</label>
-                {{ form.carta_traslado_estado }}
-                {% if form.carta_traslado_estado.errors %}
-                  <div class="odoo-error">{{ form.carta_traslado_estado.errors }}</div>
-                {% endif %}
-                {% if requiere_carta %}
-                  <div class="odoo-help">Este caso requiere carta o evaluación equivalente.</div>
-                {% else %}
-                  <div class="odoo-help">Si no aplica, se guardará como “No aplica”.</div>
-                {% endif %}
-              </div>
+                <div class="odoo-card-body">
+                    <form id="reingreso-form" method="post">
+                        {% csrf_token %}
 
-              <div class="odoo-field odoo-field-full">
-                <label>Nota pastoral (privada)</label>
-                {{ form.nota_reingreso }}
-                {% if form.nota_reingreso.errors %}
-                  <div class="odoo-error">{{ form.nota_reingreso.errors }}</div>
-                {% endif %}
-              </div>
+                        {% if form.non_field_errors %}
+                            <div class="odoo-alert odoo-alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="odoo-fields-grid">
+
+                            <div class="odoo-field">
+                                <div class="odoo-field-label">Estado de reingreso</div>
+                                <div class="odoo-field-input">
+                                    {{ form.reingreso_estado }}
+                                </div>
+                                {% if form.reingreso_estado.errors %}
+                                    <div class="odoo-field-error">{{ form.reingreso_estado.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="odoo-field">
+                                <div class="odoo-field-label">Carta de traslado</div>
+                                <div class="odoo-field-input">
+                                    {{ form.carta_traslado_estado }}
+                                </div>
+                                {% if form.carta_traslado_estado.errors %}
+                                    <div class="odoo-field-error">{{ form.carta_traslado_estado.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="odoo-field odoo-field-full">
+                                <div class="odoo-field-label">Nota pastoral</div>
+                                <div class="odoo-field-input">
+                                    {{ form.nota_reingreso }}
+                                </div>
+                                <div class="odoo-field-hint">Condición, acuerdos y próximos pasos</div>
+                                {% if form.nota_reingreso.errors %}
+                                    <div class="odoo-field-error">{{ form.nota_reingreso.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                        </div>
+                    </form>
+
+                    <div class="odoo-note odoo-note-success">
+                        <span class="material-icons">verified</span>
+                        {% if es_nuevo_creyente %}
+                            Volverá a <b>Activo</b> en seguimiento como <b>Nuevo creyente reconciliado</b>.
+                        {% else %}
+                            Volverá a <b>Activo</b> en <b>Observación</b>.
+                            {% if estado_anterior == "descarriado" %}Se registrará como <b>Reconciliado</b>.{% endif %}
+                            {% if estado_anterior == "trasladado" %}Se gestionará como <b>Traslado</b>.{% endif %}
+                        {% endif %}
+                    </div>
+                </div>
             </div>
 
-            <div class="odoo-note" style="margin-top:10px;">
-              <span class="material-icons">verified</span>
-              Al guardar: el registro pasa a <b>Activo</b> y queda marcado como <b>En reincorporación</b> (lista temporal).
-            </div>
-          </form>
-        </div>
-      </div>
+            <!-- PANEL LATERAL -->
+            <div class="odoo-card odoo-card-soft">
+                <div class="odoo-card-header">
+                    <div class="odoo-card-title">
+                        <span class="material-icons">send</span>
+                        Dar la bienvenida
+                    </div>
+                </div>
 
-      <!-- REGLAS / RESUMEN -->
-      <div class="odoo-card odoo-card-soft">
-        <div class="odoo-card-header">
-          <div class="odoo-card-title">
-            <span class="material-icons">rule</span>
-            Reglas que aplican (resumen)
-          </div>
+                <div class="odoo-card-body">
+                    {% if miembro.telefono %}
+                        <div class="welcome-message-box">
+                            <div class="welcome-message-label">
+                                <span class="material-icons">chat</span>
+                                Mensaje de bienvenida
+                            </div>
+                            <div class="welcome-message-preview">
+                                ¡Hola {{ miembro.nombres }}! 🙏 Nos alegra mucho saber de tu regreso a nuestra congregación. Estamos aquí para acompañarte. ¡Bienvenido/a de vuelta a casa!
+                            </div>
+                            <a href="https://wa.me/{{ miembro.telefono|cut:'-'|cut:' '|cut:'('|cut:')' }}?text=%C2%A1Hola%20{{ miembro.nombres|urlencode }}!%20%F0%9F%99%8F%20Nos%20alegra%20mucho%20saber%20de%20tu%20regreso%20a%20nuestra%20congregaci%C3%B3n.%20Estamos%20aqu%C3%AD%20para%20acompa%C3%B1arte.%20%C2%A1Bienvenido%2Fa%20de%20vuelta%20a%20casa!"
+                               target="_blank"
+                               class="whatsapp-btn">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                </svg>
+                                Enviar por WhatsApp
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="no-phone-notice">
+                            <span class="material-icons">phone_disabled</span>
+                            <div>
+                                <div class="no-phone-title">Sin teléfono registrado</div>
+                                <div class="no-phone-desc">No se puede enviar mensaje de bienvenida automático.</div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <div class="ref-divider"></div>
+
+                    <div class="odoo-card-subtitle">
+                        <span class="material-icons">help_outline</span>
+                        Referencia rápida
+                    </div>
+
+                    <div class="odoo-ref-list">
+                        <div class="odoo-ref-item">
+                            <span class="material-icons">fiber_new</span>
+                            <div>
+                                <div class="odoo-ref-title">Nuevo creyente</div>
+                                <div class="odoo-ref-desc">Va a seguimiento</div>
+                            </div>
+                        </div>
+
+                        <div class="odoo-ref-item">
+                            <span class="material-icons">person</span>
+                            <div>
+                                <div class="odoo-ref-title">Miembro</div>
+                                <div class="odoo-ref-desc">Entra en observación</div>
+                            </div>
+                        </div>
+
+                        <div class="odoo-ref-item">
+                            <span class="material-icons">favorite</span>
+                            <div>
+                                <div class="odoo-ref-title">Reconciliado</div>
+                                <div class="odoo-ref-desc">Se apartó (descarriado)</div>
+                            </div>
+                        </div>
+
+                        <div class="odoo-ref-item">
+                            <span class="material-icons">swap_horiz</span>
+                            <div>
+                                <div class="odoo-ref-title">Traslado</div>
+                                <div class="odoo-ref-desc">Requiere carta</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="odoo-card-body">
-          <ul class="odoo-bullets">
-            <li><b>Reconciliado</b> = estado pastoral temporal (no define madurez).</li>
-            <li><b>Nuevo creyente</b> reingresa como nuevo creyente (seguimiento, no membresía plena).</li>
-            <li><b>Traslado</b> requiere carta/validación y observación breve.</li>
-            <li>Durante la reincorporación: sin liderazgo ni cargos sensibles (según criterio pastoral).</li>
-          </ul>
-        </div>
-      </div>
 
     </div>
-  </div>
 </div>
 
 <style>
-/* ==========================================================
-   Reincorporación (Soid/Odoo look)
-   - No redefine tu sistema completo
-   - Solo ajusta el layout y los componentes propios de esta pantalla
-   ========================================================== */
-
-/* Grid principal */
-.odoo-grid-2{
-  display:grid;
-  grid-template-columns: 1.3fr .7fr;
-  gap:14px;
-  margin-top:14px;
-}
-@media (max-width: 980px){
-  .odoo-grid-2{ grid-template-columns: 1fr; }
+:root{
+    --odoo-primary:#017e84;
+    --odoo-danger:#dc2626;
+    --odoo-warning:#d97706;
+    --odoo-success:#059669;
+    --odoo-bg:#ffffff;
+    --odoo-page-bg:#f0f2f5;
+    --odoo-border:#dee2e6;
+    --odoo-text:#111827;
+    --odoo-muted:#6b7280;
+    --whatsapp:#25D366;
 }
 
-/* ==========================================================
-   HERO refinado (mantiene tu estilo, pero lo hace más "acción sensible")
-   ========================================================== */
-.odoo-hero-warning{
-  background: linear-gradient(90deg, #fff7ed, #fffbeb);
-  border: 1px solid rgba(0,0,0,.06);
-  border-left: 6px solid #f59e0b;
+/* Layout */
+.odoo-page-wrapper{ min-height: 100vh; background: var(--odoo-page-bg); }
+.odoo-detail-container{ padding: 14px 16px 40px; max-width: 1100px; margin: 0 auto; }
+
+/* Control bar */
+.odoo-control-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 8px 16px; background:#f8f9fa; border-bottom:1px solid var(--odoo-border);
+    position: sticky; top: 0; z-index: 100;
 }
-.odoo-hero-warning .odoo-hero-icon{
-  background:#fffbeb;
-  border:1px solid rgba(0,0,0,.06);
-  color:#b45309;
+.odoo-control-left{ display:flex; align-items:center; gap:10px; }
+.odoo-control-right{ display:flex; align-items:center; gap:10px; }
+
+/* Breadcrumb */
+.odoo-breadcrumb{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--odoo-muted); }
+.odoo-breadcrumb .material-icons{ font-size:16px; color:var(--odoo-muted); }
+.odoo-breadcrumb-current{ color:#374151; font-weight:600; }
+
+/* Buttons */
+.odoo-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 8px 14px; font-size: 13px; font-weight:600;
+    border:1px solid transparent; border-radius: 8px; cursor:pointer; text-decoration:none;
+    transition: all .15s ease; background:#fff;
 }
-.odoo-hero-warning .odoo-hero-title{
-  letter-spacing:.2px;
-}
-.odoo-hero-warning .odoo-hero-subtitle{
-  color:#6b7280;
+.odoo-btn .material-icons{ font-size:18px; }
+.odoo-btn-primary{ background: var(--odoo-primary); color:#fff; }
+.odoo-btn-primary:hover{ filter: brightness(0.95); }
+.odoo-btn-secondary{ border-color: var(--odoo-border); color:#374151; }
+.odoo-btn-secondary:hover{ background:#eef2f7; }
+
+/* =====================================================
+   HISTORIA PASTORAL
+   ===================================================== */
+.story-card{
+    display:flex;
+    gap:14px;
+    margin-top:14px;
+    padding:16px 18px;
+    background:#fff;
+    border:1px solid var(--odoo-border);
+    border-left:4px solid var(--odoo-primary);
+    border-radius:12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
-/* Mini cards del hero */
+.story-icon{
+    width:42px; height:42px;
+    background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+}
+.story-icon .material-icons{
+    font-size:22px;
+    color:#0369a1;
+}
+
+.story-content{ flex:1; }
+
+.story-text{
+    font-size:14px;
+    color:#374151;
+    line-height:1.7;
+}
+.story-text b{
+    color:#111827;
+}
+
+.story-footer{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px dashed #e5e7eb;
+    font-size:13px;
+    font-weight:700;
+    color:var(--odoo-success);
+}
+.story-footer .material-icons{
+    font-size:16px;
+    color:#f472b6;
+}
+
+/* =====================================================
+   HERO CELEBRACIÓN
+   ===================================================== */
+.hero-celebration{
+    display:flex;
+    align-items:flex-start;
+    gap:16px;
+    margin-top:14px;
+    padding:20px;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%);
+    border:1px solid #6ee7b7;
+    border-left:6px solid var(--odoo-success);
+    border-radius:14px;
+    box-shadow: 0 4px 12px rgba(5,150,105,0.08);
+}
+
+.hero-celebration-icon{
+    width:56px; height:56px;
+    background:#fff;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    flex-shrink:0;
+}
+.hero-celebration-icon .material-icons{
+    font-size:28px;
+    color:var(--odoo-success);
+}
+
+.hero-celebration-content{ flex:1; }
+
+.hero-celebration-title{
+    font-size:20px;
+    font-weight:900;
+    color:#065f46;
+    margin-bottom:6px;
+}
+
+.hero-celebration-subtitle{
+    font-size:14px;
+    color:#047857;
+    line-height:1.5;
+}
+
+.hero-celebration-badges{
+    margin-top:12px;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+}
+
+.hero-arrow{
+    font-size:18px;
+    color:#059669;
+}
+
+.hero-celebration-stats{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+/* Mini cards */
 .odoo-mini-card{
-  border:1px solid rgba(0,0,0,.06);
-  background:#fff;
-  border-radius:12px;
-  padding:10px 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    min-width:90px;
+    border:1px solid rgba(255,255,255,0.6);
+    border-radius:12px;
+    background:rgba(255,255,255,0.85);
+    padding:10px 12px;
+    backdrop-filter:blur(4px);
 }
-.odoo-mini-label{
-  font-size:11px;
-  color:#6b7280;
-  font-weight:700;
-  letter-spacing:.3px;
-  text-transform:uppercase;
-}
-.odoo-mini-value{
-  margin-top:6px;
-  font-size:14px;
-  color:#111827;
-  font-weight:700;
-}
+.odoo-mini-label{ font-size:11px; color:var(--odoo-muted); font-weight:700; text-transform:uppercase; }
+.odoo-mini-value{ margin-top:4px; font-size:13px; font-weight:800; color:#111827; }
 
-/* ==========================================================
-   Cards
-   ========================================================== */
-.odoo-card{
-  border:1px solid rgba(0,0,0,.06);
-  border-radius:14px;
-  background:#fff;
-  overflow:hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,.04);
+/* Cards / grid */
+.odoo-grid{
+    display:grid;
+    grid-template-columns: 1.4fr 0.6fr;
+    gap: 14px;
+    margin-top: 14px;
 }
+.odoo-card{
+    border:1px solid var(--odoo-border);
+    background: var(--odoo-bg);
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    overflow:hidden;
+}
+.odoo-card-soft{ background:#fbfbfc; }
 .odoo-card-header{
-  padding:12px 14px;
-  border-bottom:1px solid rgba(0,0,0,.06);
-  background: linear-gradient(180deg, #ffffff, #fbfbfb);
+    padding: 12px 14px;
+    border-bottom: 1px solid #eef2f7;
+    background: #fff;
 }
 .odoo-card-title{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-weight:800;
-  color:#111827;
-  font-size:14px;
+    display:flex; align-items:center; gap:8px;
+    font-weight:800; color:#111827; font-size:13px;
 }
-.odoo-card-title .material-icons{
-  font-size:18px;
-  color:#6b7280;
-}
-.odoo-card-body{
-  padding:14px;
-}
+.odoo-card-title .material-icons{ font-size:18px; color: var(--odoo-primary); }
+.odoo-card-body{ padding: 14px; }
 
-/* Card soft (resumen de reglas) */
-.odoo-card-soft{
-  background:#fafafa;
-  border:1px solid rgba(0,0,0,.06);
+.odoo-card-subtitle{
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; font-weight:800; color:var(--odoo-muted);
+    margin-bottom:12px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
 }
-.odoo-card-soft .odoo-card-header{
-  background: linear-gradient(180deg, #fafafa, #f6f6f6);
-}
+.odoo-card-subtitle .material-icons{ font-size:16px; }
 
-/* ==========================================================
-   Form layout
-   ========================================================== */
-.odoo-form-grid{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:12px;
+/* Fields */
+.odoo-fields-grid{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
 }
 .odoo-field-full{ grid-column: 1 / -1; }
+.odoo-field-label{ font-size:12px; color:var(--odoo-muted); font-weight:800; margin-bottom:6px; }
+.odoo-field-hint{ font-size:11px; color:#9ca3af; margin-top:4px; }
+.odoo-field-error{ font-size:11px; color:#dc2626; margin-top:4px; font-weight:600; }
 
-@media (max-width: 640px){
-  .odoo-form-grid{ grid-template-columns: 1fr; }
+/* Form inputs */
+.odoo-field-input select,
+.odoo-field-input textarea,
+.odoo-field-input input[type="text"],
+.odoo-field-input input[type="number"],
+.odoo-field-input input[type="date"]{
+    width:100%;
+    border:1px solid var(--odoo-border);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:14px;
+    background:#fff;
+    color:#111827;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+.odoo-field-input select:focus,
+.odoo-field-input textarea:focus,
+.odoo-field-input input:focus{
+    outline:none;
+    border-color: var(--odoo-primary);
+    box-shadow: 0 0 0 3px rgba(1,126,132,.12);
+}
+.odoo-field-input textarea{
+    min-height: 100px;
+    resize: vertical;
 }
 
-/* Labels */
-.odoo-field label{
-  display:block;
-  font-size:12px;
-  color:#6b7280;
-  margin-bottom:6px;
-  font-weight:800;
-  letter-spacing:.2px;
+/* Badges */
+.odoo-badge{
+    display:inline-flex; align-items:center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .2px;
 }
+.odoo-badge-danger{ background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+.odoo-badge-warning{ background:#ffedd5; color:#9a3412; border:1px solid #fed7aa; }
+.odoo-badge-muted{ background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb; }
+.odoo-badge-success{ background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
 
-/* Inputs (compatibles con selects/textarea de Django) */
-.odoo-card-body select,
-.odoo-card-body textarea,
-.odoo-card-body input[type="text"],
-.odoo-card-body input[type="number"],
-.odoo-card-body input[type="date"]{
-  width:100%;
-  border:1px solid rgba(0,0,0,.10);
-  border-radius:10px;
-  padding:10px 12px;
-  font-size:14px;
-  background:#fff;
-  color:#111827;
-  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
-}
-
-/* Focus elegante */
-.odoo-card-body select:focus,
-.odoo-card-body textarea:focus,
-.odoo-card-body input:focus{
-  outline:none;
-  border-color:#f59e0b;
-  box-shadow: 0 0 0 3px rgba(245,158,11,.18);
-}
-
-/* Textarea */
-.odoo-card-body textarea{
-  min-height: 110px;
-  resize: vertical;
-}
-
-/* Campo destacado (Etapa inicial) */
-.odoo-field-highlight{
-  background:#fffbeb;
-  border:1px dashed rgba(245,158,11,.75);
-  padding:12px;
-  border-radius:12px;
-}
-
-/* Ayudas y errores */
-.odoo-help{
-  font-size:12px;
-  color:#6b7280;
-  margin-top:6px;
-  display:flex;
-  align-items:flex-start;
-  gap:6px;
-}
-.odoo-help .material-icons{
-  font-size:16px;
-  color:#9ca3af;
-  margin-top:1px;
-}
-
-.odoo-error{
-  font-size:12px;
-  color:#dc2626;
-  margin-top:6px;
-  font-weight:700;
-}
-
-/* ==========================================================
-   Alertas (errores no-field)
-   ========================================================== */
+/* Alert */
 .odoo-alert{
-  padding:10px 12px;
-  border-radius:12px;
-  margin-bottom:12px;
-  border:1px solid #fecaca;
-  background:#fff1f2;
-  color:#7f1d1d;
-  font-size:13px;
-  font-weight:600;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 600;
 }
 .odoo-alert-danger{
-  border-color:#fecaca;
-  background:#fff1f2;
-  color:#7f1d1d;
+    background:#fee2e2;
+    border:1px solid #fecaca;
+    color:#991b1b;
 }
 
-/* ==========================================================
-   Nota inferior (qué pasará al guardar)
-   ========================================================== */
+/* Notes */
 .odoo-note{
-  display:flex;
-  align-items:flex-start;
-  gap:8px;
-  padding:10px 12px;
-  border-radius:12px;
-  border:1px solid rgba(0,0,0,.06);
-  background:#f8fafc;
-  color:#334155;
-  font-size:13px;
+    display:flex; align-items:center; gap:8px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background:#eef2ff;
+    border:1px solid #c7d2fe;
+    color:#3730a3;
+    font-weight:700;
+    font-size:12px;
 }
-.odoo-note .material-icons{
-  font-size:18px;
-  color:#10b981;
-  margin-top:1px;
-}
-
-/* ==========================================================
-   Lista de reglas (resumen)
-   ========================================================== */
-.odoo-bullets{
-  margin:0;
-  padding-left:18px;
-  color:#374151;
-  font-size:13px;
-}
-.odoo-bullets li{ margin:8px 0; }
-.odoo-bullets b{ color:#111827; }
-
-/* ==========================================================
-   Pequeños detalles visuales
-   ========================================================== */
-.odoo-hero-badges .odoo-badge{
-  border-radius:999px;
-  font-weight:800;
+.odoo-note .material-icons{ font-size:18px; }
+.odoo-note-success{
+    background:#ecfdf5;
+    border-color:#a7f3d0;
+    color:#065f46;
 }
 
-/* Botón Guardar más contundente (sin romper tu clase base) */
-.odoo-btn.odoo-btn-primary{
-  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+/* =====================================================
+   WHATSAPP / BIENVENIDA
+   ===================================================== */
+.welcome-message-box{
+    background:#fff;
+    border:1px solid var(--odoo-border);
+    border-radius:12px;
+    padding:14px;
 }
-.odoo-btn.odoo-btn-primary:active{
-  transform: translateY(1px);
+
+.welcome-message-label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    font-weight:800;
+    color:var(--odoo-muted);
+    margin-bottom:10px;
+}
+.welcome-message-label .material-icons{ font-size:16px; }
+
+.welcome-message-preview{
+    background:#f0fdf4;
+    border:1px solid #bbf7d0;
+    border-radius:10px;
+    padding:12px;
+    font-size:13px;
+    color:#166534;
+    line-height:1.5;
+    margin-bottom:12px;
+}
+
+.whatsapp-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    width:100%;
+    padding:12px 16px;
+    background:var(--whatsapp);
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    border-radius:10px;
+    text-decoration:none;
+    transition: all .15s ease;
+    box-shadow: 0 4px 12px rgba(37,211,102,0.25);
+}
+.whatsapp-btn:hover{
+    background:#20bd5a;
+    transform:translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37,211,102,0.3);
+}
+.whatsapp-btn svg{ flex-shrink:0; }
+
+.no-phone-notice{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:12px;
+    background:#fef3c7;
+    border:1px solid #fcd34d;
+    border-radius:10px;
+}
+.no-phone-notice .material-icons{
+    font-size:20px;
+    color:#d97706;
+}
+.no-phone-title{
+    font-size:13px;
+    font-weight:800;
+    color:#92400e;
+}
+.no-phone-desc{
+    font-size:12px;
+    color:#a16207;
+    margin-top:2px;
+}
+
+.ref-divider{
+    height:1px;
+    background:var(--odoo-border);
+    margin:16px 0;
+}
+
+/* Reference list */
+.odoo-ref-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+.odoo-ref-item{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+}
+.odoo-ref-item .material-icons{
+    font-size:16px;
+    color: var(--odoo-primary);
+    margin-top:1px;
+}
+.odoo-ref-title{
+    font-size:12px;
+    font-weight:800;
+    color:#111827;
+}
+.odoo-ref-desc{
+    font-size:11px;
+    color:var(--odoo-muted);
+}
+
+/* Responsive */
+@media (max-width: 980px){
+    .odoo-grid{ grid-template-columns: 1fr; }
+    .hero-celebration{ flex-direction:column; }
+    .hero-celebration-stats{ width:100%; }
+}
+@media (max-width: 650px){
+    .odoo-fields-grid{ grid-template-columns: 1fr; }
+    .hero-celebration-title{ font-size:18px; }
+}
+@media (max-width: 640px) {
+    .odoo-control-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .odoo-control-left,
+    .odoo-control-right {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .odoo-control-right button {
+        width: 100%;
+        justify-content: center;
+    }
 }
 </style>
 

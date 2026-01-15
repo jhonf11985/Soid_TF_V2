@@ -5,7 +5,7 @@ from django.core.validators import RegexValidator
 from django.db.models import Max
 from core.models import ConfiguracionSistema
 from django.conf import settings
-
+from django.utils import timezone
 
 
 ETAPA_ACTUAL_CHOICES = [
@@ -290,11 +290,12 @@ class Miembro(models.Model):
         default=True,
         help_text="Si está desmarcado, el miembro ya no pertenece a la iglesia Torre Fuerte.",
     )
+
     fecha_ingreso_iglesia = models.DateField(
-        blank=True,
-        null=True,
+        default=timezone.localdate,   # ✅ evita el prompt y rellena los NULL existentes
         help_text="Fecha en que empezó a congregarse en la iglesia.",
     )
+
     es_trasladado = models.BooleanField(
         default=False,
         help_text="Marcar si el miembro viene trasladado de otra iglesia.",
@@ -541,6 +542,17 @@ class Miembro(models.Model):
             edad -= 1
         return edad
 
+    def dias_en_iglesia(self):
+        """
+        Devuelve los días transcurridos entre la fecha de ingreso
+        y la fecha de salida.
+        Si no tiene salida, calcula hasta hoy.
+        """
+        if not self.fecha_ingreso_iglesia:
+            return None
+
+        fecha_fin = self.fecha_salida or date.today()
+        return (fecha_fin - self.fecha_ingreso_iglesia).days
 
 
 class MiembroRelacion(models.Model):
