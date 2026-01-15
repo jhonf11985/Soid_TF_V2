@@ -6,6 +6,7 @@ from django.http import HttpResponseForbidden
 from django.urls import reverse
 from miembros_app.models import ESTADO_MIEMBRO_CHOICES
 from .models import AltaMasivaConfig
+from .utils import traducir_user_agent
 
 from miembros_app.models import Miembro
 from .models import (
@@ -522,9 +523,12 @@ def solicitud_detalle(request, pk):
         SolicitudActualizacionMiembro.objects.select_related("miembro"),
         pk=pk
     )
+    ua_legible = traducir_user_agent(s.user_agent)
+
     return render(request, "actualizacion_datos_miembros/solicitud_detalle.html", {
         "s": solicitud,
         "Estados": SolicitudActualizacionMiembro.Estados,
+        "ua_legible": ua_legible,
     })
 
 
@@ -631,9 +635,12 @@ def altas_lista(request):
 @login_required
 def alta_detalle(request, pk):
     s = get_object_or_404(SolicitudAltaMiembro, pk=pk)
+    ua_legible = traducir_user_agent(s.user_agent)
+
     return render(request, "actualizacion_datos_miembros/alta_detalle.html", {
         "s": s,
         "Estados": SolicitudAltaMiembro.Estados,
+        "ua_legible": ua_legible,
     })
 
 @login_required
