@@ -41,7 +41,7 @@
 
 <body>
 
-<header class="topbar">
+<header class="topbar" id="mainTopbar">
     <a href="/" class="topbar__brand" style="text-decoration: none;">
         {% if CFG.logo %}
             <img src="{{ CFG.logo.url }}" alt="{{ CFG.nombre_iglesia|default:'Logo iglesia' }}" class="topbar__logo">
@@ -178,7 +178,7 @@
 </header>
 
 <!-- 🔹 MENÚ GLOBAL -->
-<nav class="main-nav">
+<nav class="main-nav" id="mainNav">
     <div class="main-nav__inner">
         <div class="main-nav__left">
             <a href="/" class="main-nav__link">
@@ -198,6 +198,55 @@
 <main class="layout {% block layout_class %}{% endblock %}">
     {% block content %}{% endblock %}
 </main>
+
+<!-- ========== BOTTOM NAVIGATION BAR (solo móvil) ========== -->
+{% if user.is_authenticated %}
+<nav class="bottom-nav" id="bottomNav">
+    <!-- Inicio -->
+    <a href="/" class="bottom-nav__item {% if request.path == '/' %}active{% endif %}">
+        <span class="material-icons bottom-nav__icon" style="color: var(--color-primary)">home</span>
+        <span class="bottom-nav__label">Inicio</span>
+    </a>
+    
+    <!-- Módulos principales (primeros 3) -->
+    {% for modulo in MODULOS_PRINCIPALES %}
+    <a href="{% url modulo.url_name %}" class="bottom-nav__item {% if modulo.url_name in request.resolver_match.view_name %}active{% endif %}">
+        <span class="material-icons bottom-nav__icon" style="color: {{ modulo.color|default:'#6b7280' }}">{{ modulo.icon|default:"apps" }}</span>
+        <span class="bottom-nav__label">{{ modulo.name }}</span>
+    </a>
+    {% endfor %}
+    
+    <!-- Botón "Más" si hay módulos extras -->
+    {% if MODULOS_EXTRAS %}
+    <button type="button" class="bottom-nav__item bottom-nav__more-btn" id="bottomNavMoreBtn">
+        <span class="material-icons bottom-nav__icon" style="color: #6b7280">more_horiz</span>
+        <span class="bottom-nav__label">Más</span>
+    </button>
+    {% endif %}
+</nav>
+
+<!-- Menú popup de "Más" -->
+{% if MODULOS_EXTRAS %}
+<div class="bottom-nav-more-menu" id="bottomNavMoreMenu">
+    <div class="bottom-nav-more-menu__header">
+        <span>Más módulos</span>
+        <button type="button" class="bottom-nav-more-menu__close" id="bottomNavMoreClose">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
+    <div class="bottom-nav-more-menu__list">
+        {% for modulo in MODULOS_EXTRAS %}
+        <a href="{% url modulo.url_name %}" class="bottom-nav-more-menu__item">
+            <span class="material-icons" style="color: {{ modulo.color|default:'#6b7280' }}">{{ modulo.icon|default:"apps" }}</span>
+            <span>{{ modulo.name }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+<div class="bottom-nav-more-overlay" id="bottomNavMoreOverlay"></div>
+{% endif %}
+{% endif %}
+
 <!-- Modal de bienvenida Soid_Tf_2 -->
 <div id="modal-bienvenida-soid" class="welcome-modal-backdrop" hidden>
     <div class="welcome-modal-card">
@@ -239,12 +288,14 @@
 <footer class="footer">
     <span>
         {% if CFG.nombre_iglesia %}
-            Soid · Sistema de Gestión Itengral {{ CFG.nombre_iglesia }}
+            Soid · Sistema de Gestión Integral {{ CFG.nombre_iglesia }}
         {% else %}
-            Soid · Sistema de Gestión Itengral
+            Soid · Sistema de Gestión Integral
         {% endif %}
     </span>
 </footer>
+
+<!-- Scripts de notificaciones -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const notifWrapper = document.getElementById('topbarNotifWrapper');
@@ -261,14 +312,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const isOpening = !notifWrapper.classList.contains('is-open');
         notifWrapper.classList.toggle('is-open');
 
-        // Si se está abriendo -> marcar como leídas
         if (isOpening) {
             fetch("{% url 'notificaciones_app:marcar_todas_leidas' %}", {
                 method: "GET",
                 credentials: "same-origin",
             }).then(response => response.json())
               .then(data => {
-                  // Ocultar el badge rojo del contador
                   const badge = document.querySelector('.topbar-notif-badge');
                   if (badge) badge.style.display = "none";
               });
@@ -285,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-
+<!-- Scripts del menú de usuario -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const wrapper = document.getElementById('topbarUserWrapper');
@@ -311,6 +360,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+
+<!-- Scripts del modal de bienvenida -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const modal = document.getElementById("modal-bienvenida-soid");
@@ -339,26 +390,23 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
-
-
 </script>
+
+<!-- Service Worker -->
 <script>
   (function () {
     if (!("serviceWorker" in navigator)) return;
 
-    // ✅ No registrar SW en desarrollo
     const isDev =
       location.hostname === "127.0.0.1" ||
       location.hostname === "localhost" ||
       location.hostname.endsWith(".local");
 
     if (isDev) {
-      // Si ya había un SW registrado de antes, lo desregistramos
       navigator.serviceWorker.getRegistrations().then((regs) => {
         regs.forEach((reg) => reg.unregister());
       });
 
-      // Y limpiamos caches para que no te sirva plantillas viejas
       if ("caches" in window) {
         caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
       }
@@ -366,7 +414,6 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    // ✅ Producción: registrar normal
     window.addEventListener("load", function () {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
@@ -375,6 +422,77 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
   })();
+</script>
+
+<!-- Bottom Nav "Más" menu -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const moreBtn = document.getElementById('bottomNavMoreBtn');
+    const moreMenu = document.getElementById('bottomNavMoreMenu');
+    const moreOverlay = document.getElementById('bottomNavMoreOverlay');
+    const moreClose = document.getElementById('bottomNavMoreClose');
+    
+    if (!moreBtn || !moreMenu) return;
+    
+    function openMoreMenu() {
+        moreMenu.classList.add('is-open');
+        moreOverlay.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeMoreMenu() {
+        moreMenu.classList.remove('is-open');
+        moreOverlay.classList.remove('is-open');
+        document.body.style.overflow = '';
+    }
+    
+    moreBtn.addEventListener('click', openMoreMenu);
+    moreClose.addEventListener('click', closeMoreMenu);
+    moreOverlay.addEventListener('click', closeMoreMenu);
+});
+</script>
+
+<!-- Header hide on scroll (solo móvil) -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const topbar = document.getElementById('mainTopbar');
+    const mainNav = document.getElementById('mainNav');
+    
+    if (!topbar) return;
+    
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+    
+    function updateHeader() {
+        const currentScrollY = window.scrollY;
+        const isMobile = window.innerWidth <= 768;
+        
+        if (!isMobile) {
+            topbar.classList.remove('header-hidden');
+            if (mainNav) mainNav.classList.remove('header-hidden');
+            return;
+        }
+        
+        // Solo ocultar si scrolleamos más de 60px hacia abajo
+        if (currentScrollY > lastScrollY && currentScrollY > 60) {
+            topbar.classList.add('header-hidden');
+            if (mainNav) mainNav.classList.add('header-hidden');
+        } else if (currentScrollY < lastScrollY) {
+            topbar.classList.remove('header-hidden');
+            if (mainNav) mainNav.classList.remove('header-hidden');
+        }
+        
+        lastScrollY = currentScrollY;
+        ticking = false;
+    }
+    
+    window.addEventListener('scroll', function() {
+        if (!ticking) {
+            window.requestAnimationFrame(updateHeader);
+            ticking = true;
+        }
+    }, { passive: true });
+});
 </script>
 
 {% block extra_js %}{% endblock %}

@@ -153,9 +153,18 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     PANEL DE FILTROS (Desplegable estilo Odoo)
+     PANEL DE FILTROS (Desplegable estilo Odoo / Modal en móvil)
      ══════════════════════════════════════════════════════════════════════════ -->
-<div class="odoo-filter-panel no-print" id="filter-panel" style="display: none;">
+<!-- Overlay para móvil -->
+<div class="odoo-filter-overlay no-print" id="filter-overlay"></div>
+
+<div class="odoo-filter-panel no-print" id="filter-panel">
+    <div class="odoo-filter-panel-header">
+        <span>Filtros</span>
+        <button type="button" class="odoo-filter-close-btn" id="filter-close-btn">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
     <form method="get" class="odoo-filter-form">
         <!-- Mantener búsqueda actual -->
         <input type="hidden" name="q" value="{{ query }}">
@@ -199,18 +208,16 @@
                     {% endfor %}
                 </select>
             </div>
-            <!-- Bautismo -->
-            <td>
-            {% if m.bautizado_confirmado or m.fecha_bautismo %}
-                <span class="odoo-badge odoo-badge-success">Sí</span>
-                {% if m.fecha_bautismo %}
-                <div class="odoo-sub-info">{{ m.fecha_bautismo|date:"d/m/Y" }}</div>
-                {% endif %}
-            {% else %}
-                <span class="odoo-badge odoo-badge-muted">No</span>
-            {% endif %}
-            </td>
 
+            <!-- Bautismo -->
+            <div class="odoo-filter-group">
+                <label>Bautismo</label>
+                <select name="bautizado">
+                    <option value="">Todos</option>
+                    <option value="1" {% if bautizado == "1" %}selected{% endif %}>Bautizados</option>
+                    <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
+                </select>
+            </div>
 
             <!-- Rango de edad -->
             <div class="odoo-filter-group odoo-filter-group-wide">
@@ -253,11 +260,11 @@
         </div>
 
         <div class="odoo-filter-actions">
-            
-              
-           
+            <button type="button" class="odoo-btn odoo-btn-secondary" onclick="clearFilters()">
+                Limpiar
+            </button>
             <button type="submit" class="odoo-btn odoo-btn-primary">
-                Aplicar
+                Aplicar filtros
             </button>
         </div>
     </form>
@@ -865,10 +872,23 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    PANEL DE FILTROS
    ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-filter-overlay {
+    display: none;
+}
+
 .odoo-filter-panel {
+    display: none;
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
     padding: 16px;
+}
+
+.odoo-filter-panel.is-open {
+    display: block;
+}
+
+.odoo-filter-panel-header {
+    display: none;
 }
 
 .odoo-filter-grid {
@@ -1425,29 +1445,270 @@
     }
 }
 
-@media (max-width: 640px) {
-    .odoo-control-left {
-        flex-wrap: wrap;
+@media (max-width: 768px) {
+    /* Forzar vista tarjetas en móvil */
+    #vista-lista {
+        display: none !important;
     }
-
-    .odoo-breadcrumb {
+    
+    #vista-cuadricula {
+        display: block !important;
+    }
+    
+    /* Ocultar toggle de vista en móvil */
+    .odoo-view-toggle {
         display: none;
     }
-
-    .odoo-table {
+    
+    /* Barra de control compacta */
+    .odoo-control-bar {
+        padding: 8px 12px;
+        gap: 8px;
+    }
+    
+    .odoo-control-left {
+        flex: 1;
+    }
+    
+    .odoo-control-right {
+        gap: 6px;
+    }
+    
+    /* Ocultar paginación en móvil */
+    .odoo-pagination-info,
+    .odoo-pagination-btns {
+        display: none;
+    }
+    
+    /* Búsqueda más compacta */
+    .odoo-search-form {
+        padding: 6px 10px;
+    }
+    
+    .odoo-search-input {
+        font-size: 14px;
+    }
+    
+    /* Filtros en 2 columnas */
+    .odoo-filter-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    .odoo-filter-group label {
         font-size: 11px;
     }
-
-    .odoo-table th,
-    .odoo-table td {
-        padding: 8px 6px;
+    
+    .odoo-filter-group select,
+    .odoo-filter-group input {
+        font-size: 13px;
+        padding: 8px 10px;
     }
-
-    .odoo-td-code {
-        position: sticky;
+    
+    /* Panel de filtros compacto */
+    .odoo-filter-panel {
+        padding: 12px;
+    }
+    
+    .odoo-filter-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .odoo-filter-actions .odoo-btn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    /* Kanban grid 1 columna en móvil pequeño */
+    .odoo-kanban-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 12px;
+    }
+    
+    /* Tarjetas más compactas */
+    .odoo-kanban-card {
+        padding: 0;
+        gap: 0;
+        height: 90px;
+    }
+    
+    .odoo-kanban-avatar {
+        width: 90px;
+        min-width: 90px;
+        height: 90px;
+    }
+    
+    .odoo-kanban-content {
+        height: 90px;
+    }
+    
+    .odoo-kanban-initial {
+        font-size: 32px;
+    }
+    
+    .odoo-kanban-name {
+        font-size: 14px;
+    }
+    
+    .odoo-kanban-info-row {
+        font-size: 12px;
+    }
+    
+    .odoo-kanban-info-row .material-icons {
+        font-size: 14px;
+    }
+    
+    /* Botón nuevo más compacto */
+    .odoo-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    .odoo-btn .material-icons {
+        font-size: 18px;
+    }
+    
+    /* Ocultar texto en botón nuevo, solo ícono */
+    .odoo-btn-primary span:not(.material-icons) {
+        display: none;
+    }
+    
+    .odoo-btn-primary {
+        padding: 8px 10px;
+    }
+    
+    /* ===== FILTROS COMO MODAL SHEET EN MÓVIL ===== */
+    .odoo-filter-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+    
+    .odoo-filter-overlay.is-open {
+        display: block;
+        opacity: 1;
+    }
+    
+    .odoo-filter-panel {
+        position: fixed;
+        bottom: 0;
         left: 0;
-        background: inherit;
-        z-index: 1;
+        right: 0;
+        max-height: 85vh;
+        background: white;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+        z-index: 1001;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .odoo-filter-panel.is-open {
+        transform: translateY(0);
+    }
+    
+    .odoo-filter-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        font-size: 16px;
+        color: #1f2937;
+        flex-shrink: 0;
+    }
+    
+    .odoo-filter-close-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+    }
+    
+    .odoo-filter-close-btn:hover {
+        background: #e5e7eb;
+    }
+    
+    .odoo-filter-form {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0));
+    }
+    
+    .odoo-filter-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    
+    .odoo-filter-group-wide {
+        grid-column: span 2;
+    }
+    
+    .odoo-filter-actions {
+        flex-direction: row;
+        gap: 10px;
+    }
+    
+    .odoo-filter-actions .odoo-btn {
+        flex: 1;
+        justify-content: center;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 400px) {
+    /* Kanban aún más compacto */
+    .odoo-kanban-card {
+        height: 80px;
+    }
+    
+    .odoo-kanban-avatar {
+        width: 80px;
+        min-width: 80px;
+        height: 80px;
+    }
+    
+    .odoo-kanban-content {
+        height: 80px;
+        padding: 8px 10px;
+    }
+    
+    .odoo-kanban-initial {
+        font-size: 28px;
+    }
+    
+    .odoo-kanban-name {
+        font-size: 13px;
+    }
+    
+    .odoo-kanban-info {
+        gap: 2px;
+    }
+    
+    .odoo-kanban-info-row {
+        font-size: 11px;
+    }
+    
+    /* Filtros en 1 columna en pantallas muy pequeñas */
+    .odoo-filter-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -1457,10 +1718,34 @@
      SCRIPTS
      ══════════════════════════════════════════════════════════════════════════ -->
 <script>
-// Toggle panel de filtros
+// Toggle panel de filtros (modal en móvil)
 function toggleFilterPanel() {
     const panel = document.getElementById('filter-panel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    const overlay = document.getElementById('filter-overlay');
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        panel.classList.toggle('is-open');
+        overlay.classList.toggle('is-open');
+        document.body.style.overflow = panel.classList.contains('is-open') ? 'hidden' : '';
+    } else {
+        panel.classList.toggle('is-open');
+    }
+}
+
+function closeFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    const overlay = document.getElementById('filter-overlay');
+    panel.classList.remove('is-open');
+    overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+
+function clearFilters() {
+    const form = document.querySelector('.odoo-filter-form');
+    form.querySelectorAll('select').forEach(s => s.value = '');
+    form.querySelectorAll('input[type="number"]').forEach(i => i.value = '');
+    form.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
 }
 
 // Toggle menú de acciones
@@ -1469,7 +1754,7 @@ function toggleActionsMenu() {
     dropdown.classList.toggle('show');
 }
 
-// Cerrar dropdown al hacer clic fuera
+// Cerrar dropdown y filtros al hacer clic fuera
 document.addEventListener('click', function(e) {
     const actionsMenu = document.querySelector('.odoo-actions-menu');
     const dropdown = document.getElementById('actions-dropdown');
@@ -1477,6 +1762,15 @@ document.addEventListener('click', function(e) {
     if (actionsMenu && !actionsMenu.contains(e.target)) {
         dropdown.classList.remove('show');
     }
+});
+
+// Event listeners para cerrar filtros
+document.addEventListener('DOMContentLoaded', function() {
+    const overlay = document.getElementById('filter-overlay');
+    const closeBtn = document.getElementById('filter-close-btn');
+    
+    if (overlay) overlay.addEventListener('click', closeFilterPanel);
+    if (closeBtn) closeBtn.addEventListener('click', closeFilterPanel);
 });
 
 function removeFilter(filterName) {
@@ -1500,7 +1794,10 @@ function removeFilter(filterName) {
 document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('filtros_abiertos') === '1') {
-        document.getElementById('filter-panel').style.display = 'block';
+        document.getElementById('filter-panel').classList.add('is-open');
+        if (window.innerWidth <= 768) {
+            document.getElementById('filter-overlay').classList.add('is-open');
+        }
     }
 });
 // Toggle de vistas (lista/cuadrícula)
