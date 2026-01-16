@@ -142,6 +142,16 @@ class Miembro(models.Model):
         blank=True,
     )
 
+    # Padres espirituales (complemento: funciona aunque NO exista el módulo Nuevo Creyente)
+    padres_espirituales = models.ManyToManyField(
+        "self",
+        symmetrical=False,
+        blank=True,
+        related_name="hijos_espirituales",
+        verbose_name="Padres espirituales",
+    )
+
+
     telefono_norm = models.CharField(
         max_length=10,
         blank=True,

@@ -1,4 +1,5 @@
 {% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
 
 {% block title %}Nuevo creyente · {{ miembro.nombres }} {{ miembro.apellidos }}{% endblock %}
 
@@ -171,6 +172,10 @@
         <span class="material-icons">timeline</span>
         Seguimiento
     </button>
+<button type="button" class="odoo-tab" data-tab="padre">
+    <span class="material-icons">supervisor_account</span>
+    Padre espiritual
+</button>
 
     {% if modulo_nuevo_creyente_activo %}
         <button type="button" class="odoo-tab" data-tab="bitacora">
@@ -297,6 +302,107 @@
             </div>
         </div>
 
+  <div class="odoo-tab-content" id="tab-padre">
+    <div class="odoo-fields-grid">
+
+        <div class="odoo-field odoo-field-full">
+            <label>Padre espiritual</label>
+
+            {# 1) Si el módulo Nuevo Creyente está activo, NO se asigna aquí #}
+            {% if modulo_nuevo_creyente_activo %}
+                <div class="odoo-empty" style="padding:10px 0;">
+                    El módulo <strong>Nuevo Creyente</strong> está activo.
+                    La asignación de padre espiritual se gestiona dentro del módulo.
+                </div>
+
+            {# 2) Si el módulo está inactivo, esto es el COMPLEMENTO (sin expediente) #}
+            {% else %}
+
+                {# LISTADO desde Miembro (complemento) #}
+                {% if miembro.padres_espirituales.exists %}
+                    <div class="odoo-assign-grid" style="margin-bottom:10px;">
+                        {% for p in miembro.padres_espirituales.all %}
+                            <div class="odoo-assign-card">
+                                <div class="odoo-assign-avatar">
+                                    {{ p.nombres|slice:":1"|upper }}
+                                </div>
+                                <div class="odoo-assign-meta">
+                                    <div class="odoo-assign-name">{{ p.nombres }} {{ p.apellidos }}</div>
+                                    <div class="odoo-assign-sub">{{ p.codigo_miembro|default:p.codigo_seguimiento|default:"" }}</div>
+                                </div>
+
+                                <form method="post"
+                                      action="{% url 'miembros_app:padre_remove_simple' miembro.id p.id %}"
+                                      style="margin-left:auto;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="odoo-btn odoo-btn-secondary" title="Quitar">
+                                        <span class="material-icons">person_remove</span>
+                                        Quitar
+                                    </button>
+                                </form>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="odoo-empty" style="padding:10px 0;">
+                        Aún no tiene padre espiritual asignado.
+                    </div>
+                {% endif %}
+
+                {# AUTOCOMPLETE del complemento #}
+                <form method="post" action="{% url 'miembros_app:padre_add_simple' miembro.id %}">
+                    {% csrf_token %}
+
+                    <div class="odoo-autocomplete-row">
+                        <div
+                            class="autocomplete-wrapper"
+                            data-autocomplete-id="id_padre_espiritual"
+                            data-endpoint="/api/buscar-miembros/"
+                            data-filtro="activos"
+                            data-limit="15"
+                        >
+                            <input type="hidden" name="padre_espiritual_id" id="id_padre_espiritual" value="">
+
+                            <div class="autocomplete-field">
+                                <div class="autocomplete-chip" style="display:none;">
+                                    <div class="chip-avatar"></div>
+                                    <div class="chip-text">
+                                        <div class="chip-name"></div>
+                                        <div class="chip-code"></div>
+                                    </div>
+                                    <button type="button" class="chip-remove" title="Quitar">×</button>
+                                </div>
+
+                                <input
+                                    type="text"
+                                    class="autocomplete-search input"
+                                    placeholder="Buscar miembro activo…"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <div class="autocomplete-dropdown">
+                                <div class="autocomplete-loading" style="display:none;">Buscando…</div>
+                                <ul class="autocomplete-list"></ul>
+                                <div class="autocomplete-empty" style="display:none;">Sin resultados</div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="odoo-btn odoo-btn-secondary">
+                            <span class="material-icons">person_add</span>
+                            Añadir
+                        </button>
+                    </div>
+                </form>
+
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+
+
         {# ✅ TAB: BITÁCORA SOLO SI EL MÓDULO NUEVO CREYENTE ESTÁ ACTIVO #}
         {% if modulo_nuevo_creyente_activo %}
         <div class="odoo-tab-content" id="tab-bitacora">
@@ -335,6 +441,42 @@
      ESTILOS (COPIADOS DEL DETALLE MIEMBRO PARA QUE SEA IDÉNTICO)
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
+/* Autocomplete row (reutilizado) */
+.odoo-autocomplete-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+.odoo-autocomplete-row .autocomplete-wrapper { flex: 1; }
+
+/* Cards simples para listado de padres */
+.odoo-assign-grid{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+.odoo-assign-card{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    border:1px solid #e9ecef;
+    border-radius:8px;
+    background:#fff;
+}
+.odoo-assign-avatar{
+    width:34px;
+    height:34px;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#f3f4f6;
+    color:#111827;
+    font-weight:700;
+}
+.odoo-assign-name{ font-weight:600; font-size:13px; color:#111827; }
+.odoo-assign-sub{ font-size:12px; color:#6b7280; }
 
     .odoo-btn-danger {
     background: #dc2626;
@@ -807,6 +949,8 @@
 <!-- ══════════════════════════════════════════════════════════════════════════
      JAVASCRIPT (MISMO DEL DETALLE MIEMBRO)
      ══════════════════════════════════════════════════════════════════════════ -->
+     <script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tabs = document.querySelectorAll('.odoo-tab');

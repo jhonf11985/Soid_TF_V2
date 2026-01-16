@@ -2,10 +2,13 @@
    VARIABLES GENERALES
 ============================ */
 :root {
+    /* Color primario - puede ser sobrescrito por el template */
+    --color-primary: #0097A7;
+    --color-secundario: #F59E0B;
+    
     --color-bg: #f5f5f7;
     --color-surface: #ffffff;
     --color-border-subtle: #e5e7eb;
-    --color-primary: var(--color-primary);
     --color-primary-soft: #e0f7fa;
     --color-text-main: #111827;
     --color-text-muted: #6b7280;
@@ -16,6 +19,15 @@
 
     --layout-max-width: 1100px;
     --layout-side-padding: 20px;
+    
+    /* Variables del sidebar */
+    --sidebar-width: 260px;
+    --odoo-text: #1f2937;
+    --odoo-text-light: #6b7280;
+    --odoo-border: #e5e7eb;
+    --odoo-hover: #f3f4f6;
+    --odoo-active-bg: #ede9fe;
+    --odoo-active-text: #0097A7;
 }
 
 /* ============================
@@ -75,10 +87,6 @@ a {
 
 .topbar__right {
     font-size: 13px;
-}
-/* Usuario en la barra superior */
-.topbar__right {
-    font-size: 13px;
     display: flex;
     align-items: center;
 }
@@ -87,20 +95,23 @@ a {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 10px;
+    padding: 5px 10px;
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.20);
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
 }
 
 .topbar-user-avatar {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.28);
+    background: var(--color-secundario, #FFD166);
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     font-size: 14px;
     font-weight: 600;
     color: #ffffff;
@@ -115,22 +126,204 @@ a {
 .topbar-user-name {
     font-size: 13px;
     font-weight: 500;
+    color: #ffffff;
 }
 
 .topbar-user-role {
     font-size: 11px;
     opacity: 0.9;
+    color: #ffffff;
 }
 
-/* En móvil mostramos solo el circulito para no llenar la barra */
 @media (max-width: 600px) {
     .topbar-user-text {
         display: none;
     }
 
     .topbar-user-pill {
-        padding-right: 6px;
-        padding-left: 6px;
+        padding: 4px;
+    }
+}
+
+.topbar-user-wrapper {
+    position: relative;
+}
+
+.topbar-user-arrow {
+    font-size: 18px;
+    margin-left: 4px;
+    opacity: 0.9;
+    transition: transform 0.15s ease;
+}
+
+.topbar-user-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 190px;
+    background: #ffffff;
+    color: #111827;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(15,23,42,0.25);
+    padding: 6px 0;
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 9999;
+}
+
+.topbar-user-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.topbar-user-menu-item:hover {
+    background: #f3f4f6;
+}
+
+.topbar-user-menu-icon {
+    font-size: 18px;
+    color: var(--color-primary);
+}
+
+.topbar-user-wrapper.is-open .topbar-user-menu {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.topbar-user-wrapper.is-open .topbar-user-arrow {
+    transform: rotate(180deg);
+}
+
+/* ===========================
+   Notificaciones en la topbar
+   =========================== */
+.topbar-notif-wrapper {
+    position: relative;
+    margin-right: 12px;
+}
+
+.topbar-notif-bell {
+    position: relative;
+    border: none;
+    background: transparent;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.topbar-notif-bell .material-icons {
+    font-size: 24px;
+}
+
+.topbar-notif-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translate(45%, -45%);
+    background: #EF4444;
+    color: #ffffff;
+    border-radius: 999px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 3px;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 1px rgba(15,23,42,0.2);
+}
+
+.topbar-notif-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 260px;
+    background: #ffffff;
+    color: #111827;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(15,23,42,0.25);
+    padding: 6px 0;
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 9999;
+}
+
+.topbar-notif-header {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.topbar-notif-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.topbar-notif-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.topbar-notif-item:last-child {
+    border-bottom: none;
+}
+
+.topbar-notif-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
+
+.topbar-notif-title {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.topbar-notif-message {
+    font-size: 12px;
+    color: #4b5563;
+    margin-bottom: 2px;
+}
+
+.topbar-notif-date {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.topbar-notif-empty {
+    font-size: 12px;
+    color: #6b7280;
+    padding: 10px 12px;
+}
+
+.topbar-notif-wrapper.is-open .topbar-notif-menu {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+@media (max-width: 600px) {
+    .topbar-notif-wrapper {
+        margin-right: 6px;
     }
 }
 
@@ -147,7 +340,6 @@ a {
     width: 100%;
     padding: 0 var(--layout-side-padding);
     min-height: 44px;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -171,13 +363,11 @@ a {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-
     padding: 6px 10px;
     border-radius: var(--radius-pill);
     font-size: 13px;
     text-decoration: none;
     color: #4b5563;
-
     transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -191,7 +381,6 @@ a {
     font-size: 18px;
 }
 
-/* Si en el futuro usamos clase de "activo" */
 .main-nav__link--active {
     background: var(--color-primary-soft);
     color: var(--color-primary);
@@ -207,7 +396,6 @@ a {
     padding: 0;
 }
 
-/* Contenedor de página (útil para cards, dashboards, etc.) */
 .page-section {
     background: var(--color-surface);
     border-radius: var(--radius-soft);
@@ -216,7 +404,6 @@ a {
     border: 1px solid var(--color-border-subtle);
 }
 
-/* Encabezados de página reutilizables */
 .page-header {
     display: flex;
     justify-content: space-between;
@@ -289,7 +476,6 @@ a {
     border-color: #9ca3af;
 }
 
-/* Pills generales (Sí / No, estados, etc.) */
 .pill {
     display: inline-flex;
     align-items: center;
@@ -318,7 +504,7 @@ a {
 .table-wrapper {
     width: 100%;
     overflow-x: auto;
-    overflow-y: visible;   /* deja que el menú pueda salir hacia abajo */
+    overflow-y: visible;
 }
 
 .table {
@@ -356,7 +542,6 @@ a {
     padding: 20px 0;
 }
 
-/* Columna centrada */
 .col-center {
     text-align: center;
 }
@@ -414,8 +599,9 @@ a {
     padding-top: 12px;
     border-top: 1px solid #e5e7eb;
 }
+
 /* ============================
-   HOME TIPO ODOO - ESTILO ODOO
+   HOME TIPO ODOO
 ============================ */
 .app-container {
     width: 100%;
@@ -426,17 +612,13 @@ a {
 
 .app-grid {
     display: grid;
-
-    /* 🔹 Más separación entre los módulos */
     grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
-    gap: 25px;  /* ← antes 16px, ahora más aire */
-
+    gap: 25px;
     width: 100%;
     max-width: 780px;
     padding: 12px;
 }
 
-/* Enlace general del módulo */
 .odoo-app {
     display: flex;
     flex-direction: column;
@@ -447,23 +629,18 @@ a {
     cursor: pointer;
 }
 
-/* Bloque de color */
 .odoo-app-icon {
     width: 65px;
     height: 65px;
-
     border-radius: 18px;
     color: #ffffff;
-
     display: flex;
     justify-content: center;
     align-items: center;
-
     font-size: 30px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-
     transition: transform .2s ease, box-shadow .2s ease;
-    margin-bottom: 8px; /* más espacio entre icono y texto */
+    margin-bottom: 8px;
 }
 
 .odoo-app:hover .odoo-app-icon {
@@ -476,17 +653,10 @@ a {
     font-weight: 600;
     text-align: center;
     line-height: 1.2;
-
     color: #333;
-    
-    /* 🔹 Antes max-width: 90px; ahora más grande */
     max-width: 120px;
     word-wrap: break-word;
 }
-
-
-
-
 
 /* ============================
    FOOTER
@@ -500,117 +670,6 @@ a {
     border-top: 1px solid #ddd;
 }
 
-/* ============================
-   RESPONSIVE – MOBILE FIRST
-============================ */
-
-/* 📱 Móviles (<= 768px) */
-@media (max-width: 768px) {
-
-    :root {
-        --layout-side-padding: 12px;
-    }
-
-    .topbar {
-        padding: 8px var(--layout-side-padding);
-    }
-
-    .topbar__logo {
-        height: 32px;
-    }
-
-    .topbar__brand-main {
-        font-size: 18px;
-    }
-
-    .layout {
-        margin-top: 24px;
-        padding: 0 var(--layout-side-padding);
-    }
-
-    /* Nav: permitir que se acomode en 2 líneas si hace falta */
-    .main-nav__inner {
-        padding: 0 var(--layout-side-padding);
-        flex-wrap: wrap;
-        align-items: flex-start;
-        gap: 6px;
-    }
-
-    .main-nav__left {
-        width: 100%;
-        overflow-x: auto;
-        padding: 4px 0;
-    }
-
-    .main-nav__link {
-        white-space: nowrap;
-    }
-
-    .main-nav__right {
-        width: 100%;
-        text-align: right;
-        font-size: 11px;
-        padding-bottom: 4px;
-    }
-
-    /* Encabezado de página */
-    .page-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .page-title {
-        font-size: 18px;
-    }
-
-    .page-header-actions {
-        width: 100%;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-    }
-
-    .btn-primary,
-    .btn-secondary {
-        padding: 7px 14px;
-        font-size: 13px;
-    }
-
-    /* Formularios: campos a una sola columna cuando haga falta */
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .form-field-full {
-        grid-column: 1 / -1;
-    }
-
-    /* Tablas: scroll horizontal */
-    .table-wrapper {
-        margin: 0 -12px;
-        padding: 0 12px;
-    }
-
-    .table th,
-    .table td {
-        padding: 8px 6px;
-    }
-
-    .footer {
-        padding: 12px;
-        font-size: 11px;
-    }
-}
-
-/* 💻 Pantallas grandes (>= 1200px) – opcional para más aire */
-@media (min-width: 1200px) {
-    .layout {
-        margin-top: 48px;
-    }
-
-    .page-title {
-        font-size: 22px;
-    }
-}
 /* ============================
    MENSAJES DJANGO (ALERTAS)
 ============================ */
@@ -627,28 +686,24 @@ a {
     border: 1px solid transparent;
 }
 
-/* Warning (amarillo) */
 .alert-warning {
     background: #fef9c3;
     border-color: #facc15;
     color: #854d0e;
 }
 
-/* Success (verde) */
 .alert-success {
     background: #dcfce7;
     border-color: #86efac;
     color: #166534;
 }
 
-/* Error (rojo) */
 .alert-error {
     background: #fee2e2;
     border-color: #fca5a5;
     color: #991b1b;
 }
 
-/* Info (azul suave) */
 .alert-info {
     background: #dbeafe;
     border-color: #93c5fd;
@@ -661,7 +716,7 @@ a {
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.55); /* fondo oscuro */
+    background: rgba(15, 23, 42, 0.55);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -723,7 +778,6 @@ a {
     color: #111827;
 }
 
-/* Colores según tipo de mensaje */
 .modal-message-warning {
     background: #fef9c3;
     color: #854d0e;
@@ -752,7 +806,10 @@ a {
 .modal-footer .btn-primary {
     padding-inline: 14px;
 }
-/* BOTÓN FLOTANTE SOLO PARA EL HOME */
+
+/* ============================
+   BOTÓN FLOTANTE HOME
+============================ */
 .fab-home-nuevo-creyente {
     position: fixed;
     bottom: 20px;
@@ -780,22 +837,17 @@ a {
     font-size: 32px;
 }
 
-/* ============================
-   BOTÓN FLOTANTE HOME – MENÚ NUEVO CREYENTE / MIEMBRO
-============================ */
 .fab-home-wrapper {
     position: fixed;
     right: 20px;
     bottom: 20px;
     z-index: 9999;
-
     display: flex;
     flex-direction: column-reverse;
     align-items: flex-end;
     gap: 10px;
 }
 
-/* Botón principal (+) */
 .fab-home-main {
     width: 60px;
     height: 60px;
@@ -803,14 +855,11 @@ a {
     border: none;
     outline: none;
     cursor: pointer;
-
     background: var(--color-primary);
     color: #ffffff;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     box-shadow: 0 6px 18px rgba(0,0,0,0.28);
     transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.2s ease;
 }
@@ -824,27 +873,21 @@ a {
     box-shadow: 0 8px 22px rgba(0,0,0,0.35);
 }
 
-/* Contenedor de acciones (opciones) */
 .fab-home-actions {
-    /* 🔴 OCULTO por defecto */
     display: none;
-
     flex-direction: column;
     align-items: flex-end;
     gap: 8px;
-
     opacity: 0;
     pointer-events: none;
     transform: translateY(10px);
     transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-/* Cada acción */
 .fab-home-action {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-
     padding: 6px 10px;
     border-radius: 999px;
     background: #ffffff;
@@ -853,7 +896,6 @@ a {
     color: #111827;
     font-size: 12px;
     box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22);
-
     transform: translateY(4px);
     transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -874,302 +916,28 @@ a {
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.28);
 }
 
-/* Estado ABIERTO: cuando el wrapper tiene la clase .is-open */
 .fab-home-wrapper.is-open .fab-home-actions {
-    display: flex;              /* 🔵 AHORA sí se muestran */
+    display: flex;
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
 }
 
-/* Rotación del botón principal cuando el menú está abierto (opcional) */
 .fab-home-wrapper.is-open .fab-home-main {
     transform: rotate(45deg);
-}
-/* ============================
-   USUARIO EN LA BARRA SUPERIOR
-============================ */
-.topbar-user-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 10px;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 999px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.20);
-}
-
-.topbar-user-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--color-secundario, #FFD166);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 14px;
-    font-weight: 600;
-    color: #ffffff;
-}
-
-.topbar-user-text {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.1;
-}
-
-.topbar-user-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: #ffffff;
-}
-
-.topbar-user-role {
-    font-size: 11px;
-    opacity: 0.9;
-    color: #ffffff;
-}
-
-/* En pantallas pequeñas solo mostramos el avatar */
-@media (max-width: 600px) {
-    .topbar-user-text {
-        display: none;
-    }
-
-    .topbar-user-pill {
-        padding: 4px;
-    }
-}
-/* Wrapper para menú de usuario */
-.topbar-user-wrapper {
-    position: relative;
-}
-
-/* Botón (pill) como botón real */
-.topbar-user-pill {
-    border: none;
-    background: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
-    cursor: pointer;
-}
-
-/* Flechita */
-.topbar-user-arrow {
-    font-size: 18px;
-    margin-left: 4px;
-    opacity: 0.9;
-    transition: transform 0.15s ease;
-}
-
-/* Menú desplegable */
-.topbar-user-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-
-    min-width: 190px;
-    background: #ffffff;
-    color: #111827;
-    border-radius: 10px;
-    box-shadow: 0 10px 25px rgba(15,23,42,0.25);
-    padding: 6px 0;
-
-    opacity: 0;
-    transform: translateY(-4px);
-    pointer-events: none;
-    transition: opacity 0.15s ease, transform 0.15s ease;
-    z-index: 9999;
-}
-
-/* Items del menú */
-.topbar-user-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    font-size: 13px;
-    text-decoration: none;
-    color: inherit;
-}
-
-.topbar-user-menu-item:hover {
-    background: #f3f4f6;
-}
-
-.topbar-user-menu-icon {
-    font-size: 18px;
-    color: var(--color-primary);
-}
-
-/* Estado abierto */
-.topbar-user-wrapper.is-open .topbar-user-menu {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-}
-
-.topbar-user-wrapper.is-open .topbar-user-arrow {
-    transform: rotate(180deg);
-}
-
-/* En móvil, mantenemos solo el avatar en la pill, pero el menú sigue normal */
-@media (max-width: 600px) {
-    .topbar-user-text {
-        display: none;
-    }
-
-    .topbar-user-pill {
-        padding-right: 6px;
-        padding-left: 6px;
-    }
-}
-/* ===========================
-   Notificaciones en la topbar
-   =========================== */
-
-.topbar-notif-wrapper {
-    position: relative;
-    margin-right: 12px;
-}
-
-.topbar-notif-bell {
-    position: relative;
-    border: none;
-    background: transparent;
-    color: #ffffff;
-    cursor: pointer;
-    padding: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.topbar-notif-bell .material-icons {
-    font-size: 24px;
-}
-
-/* Burbuja roja con el número */
-.topbar-notif-badge {
-    position: absolute;
-    top: 0;
-    right: 0;
-    transform: translate(45%, -45%);
-    background: #EF4444;
-    color: #ffffff;
-    border-radius: 999px;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 3px;
-    font-size: 10px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 0 1px rgba(15,23,42,0.2);
-}
-
-/* Menú desplegable de notificaciones */
-.topbar-notif-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    width: 260px;
-
-    background: #ffffff;
-    color: #111827;
-    border-radius: 10px;
-    box-shadow: 0 10px 25px rgba(15,23,42,0.25);
-    padding: 6px 0;
-
-    opacity: 0;
-    transform: translateY(-4px);
-    pointer-events: none;
-    transition: opacity 0.15s ease, transform 0.15s ease;
-    z-index: 9999;
-}
-
-.topbar-notif-header {
-    font-size: 13px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.topbar-notif-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    max-height: 260px;
-    overflow-y: auto;
-}
-
-.topbar-notif-item {
-    padding: 8px 12px;
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.topbar-notif-item:last-child {
-    border-bottom: none;
-}
-
-.topbar-notif-link {
-    display: block;
-    text-decoration: none;
-    color: inherit;
-}
-
-.topbar-notif-title {
-    font-size: 13px;
-    font-weight: 500;
-    margin-bottom: 2px;
-}
-
-.topbar-notif-message {
-    font-size: 12px;
-    color: #4b5563;
-    margin-bottom: 2px;
-}
-
-.topbar-notif-date {
-    font-size: 11px;
-    color: #9ca3af;
-}
-
-.topbar-notif-empty {
-    font-size: 12px;
-    color: #6b7280;
-    padding: 10px 12px;
-}
-
-/* Estado abierto */
-.topbar-notif-wrapper.is-open .topbar-notif-menu {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-}
-
-/* En móviles, acercamos un poco la campana al borde */
-@media (max-width: 600px) {
-    .topbar-notif-wrapper {
-        margin-right: 6px;
-    }
 }
 
 /* ============================
    NOMBRE DE LA IGLESIA – RESPONSIVE
 ============================ */
-
-/* Mostrar por defecto el nombre completo */
 .nombre-escritorio {
     display: inline;
 }
 
-/* Ocultar la versión móvil en pantallas grandes */
 .nombre-movil {
     display: none;
 }
 
-/* 📱 Solo en móvil mostramos el nombre corto */
 @media (max-width: 768px) {
     .nombre-escritorio {
         display: none;
@@ -1179,44 +947,38 @@ a {
         display: inline;
     }
 }
+
 /* ============================================
    UNIFICACIÓN DE BOTONES DE ACCIÓN (GLOBAL)
 =============================================== */
-
 .btn-accion {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-
-    height: 30px;            /* MISMO ALTO PARA TODOS */
-    padding: 0 16px;         /* Uniforme */
-
+    height: 30px;
+    padding: 0 16px;
     font-size: 14px;
     font-weight: 500;
-
     border-radius: var(--radius-pill);
     cursor: pointer;
     text-decoration: none;
-
     transition: all 0.15s ease;
 }
 
-/* Ajuste automático de iconos */
 .btn-accion .material-icons {
     font-size: 18px !important;
     line-height: 1;
 }
-/* ============================================
-   MENÚ DE ACCIONES MINIMALISTA · APPLE / GOOGLE
-   ============================================ */
 
+/* ============================================
+   MENÚ DE ACCIONES MINIMALISTA
+   ============================================ */
 .action-menu-wrapper {
     position: relative;
     display: inline-block;
-    
 }
-/* Botón principal (icono ···) */
+
 .action-menu-toggle {
     background: #f1f5f9;        
     border: none;
@@ -1233,14 +995,12 @@ a {
 
 .action-menu-toggle .material-symbols-rounded {
     font-size: 22px;
-    color: #475569; /* gris minimalista tipo Google */
+    color: #475569;
     font-weight: 400;
 }
 
-/* MENÚ desplegable */
-
 .action-menu-dropdown {
-    position: fixed;  /* ← CAMBIO: de absolute a fixed */
+    position: fixed;
     background: #ffffff;
     border-radius: 12px;
     padding: 8px 0;
@@ -1248,21 +1008,17 @@ a {
     box-shadow: 0 8px 22px rgba(0,0,0,0.12);
     display: none;
     z-index: 9000;
-    /* Los estilos top/left se calculan con JS */
 }
 
-/* cuando se abre normalmente (hacia abajo) */
 .action-menu-wrapper.open .action-menu-dropdown {
     display: block;
 }
 
-/* cuando queremos que se abra hacia ARRIBA */
 .action-menu-dropdown.dropup {
     top: auto;
-    bottom: calc(100% + 4px); /* se ancla por encima del botón */
+    bottom: calc(100% + 4px);
 }
 
-/* Opciones del menú */
 .action-menu-item {
     display: flex;
     align-items: center;
@@ -1278,22 +1034,434 @@ a {
     background: #f8fafc;
 }
 
-/* Iconos del menú */
 .action-menu-item .material-symbols-rounded {
     font-size: 21px;
     font-weight: 300;
 }
 
-/* Colores Apple/Google para cada acción */
 .action-edit .material-symbols-rounded { color: #4F8BF9; }
 .action-print .material-symbols-rounded { color: #6B7280; }
 .action-duplicate .material-symbols-rounded { color: #8B5CF6; }
 .action-approve .material-symbols-rounded { color: #22C55E; }
 .action-delete .material-symbols-rounded { color: #EF4444; }
 
-/* Asegurar que las tarjetas y secciones no recorten los menús flotantes */
 .page-section,
 .layout {
     overflow: visible;
 }
 
+/* =====================================
+   SIDEBAR ESTILO ODOO - FONDO BLANCO
+   ===================================== */
+
+.sidebar-layout {
+    display: flex;
+    min-height: calc(100vh - 120px);
+    width: 100%;
+}
+
+/* ===== SIDEBAR ===== */
+.module-sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 120px);
+    overflow: hidden;
+    border-right: 1px solid var(--odoo-border);
+}
+
+/* ===== HEADER (con color primario) ===== */
+.sidebar-module-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.sidebar-header-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sidebar-header-content .material-icons {
+    font-size: 20px;
+    color: #fff;
+}
+
+.sidebar-module-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.sidebar-close-btn {
+    display: none;
+    width: 28px;
+    height: 28px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-close-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+.sidebar-close-btn .material-icons {
+    font-size: 18px;
+}
+
+/* ===== CONTENEDOR DEL MENÚ ===== */
+.sidebar-menu-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #fff;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+.sidebar-menu-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-menu-container::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+
+/* ===== NAVEGACIÓN ===== */
+.sidebar-nav {
+    padding: 8px 0;
+}
+
+.sidebar-section-title {
+    padding: 16px 20px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--odoo-text);
+    letter-spacing: -0.01em;
+    border-top: 1px solid var(--odoo-border);
+    margin-top: 4px;
+}
+
+.sidebar-section-title:first-child {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 12px;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    color: var(--odoo-text-light);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 400;
+    transition: all 0.12s ease;
+    border-left: 3px solid transparent;
+    margin: 0;
+}
+
+.sidebar-link:hover {
+    color: var(--odoo-text);
+    background: var(--odoo-hover);
+}
+
+.sidebar-link.active {
+    color: var(--odoo-active-text);
+    background: var(--odoo-active-bg);
+    border-left-color: var(--color-primary);
+    font-weight: 500;
+}
+
+.sidebar-link .material-icons {
+    font-size: 20px;
+    opacity: 0.7;
+    color: var(--odoo-text-light);
+}
+
+.sidebar-link:hover .material-icons {
+    opacity: 0.85;
+    color: var(--odoo-text);
+}
+
+.sidebar-link.active .material-icons {
+    opacity: 1;
+    color: var(--odoo-active-text);
+}
+
+.sidebar-link.sub-item {
+    padding-left: 36px;
+    font-size: 13px;
+}
+
+/* ===== RESUMEN ===== */
+.sidebar-summary {
+    padding: 14px 16px;
+    margin: 8px 12px 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid var(--odoo-border);
+}
+
+.sidebar-summary-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--odoo-text-light);
+    margin-bottom: 8px;
+}
+
+.sidebar-summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 4px 0;
+    color: var(--odoo-text);
+}
+
+.sidebar-summary-row .text-success { color: #059669; font-weight: 500; }
+.sidebar-summary-row .text-danger { color: #dc2626; font-weight: 500; }
+
+/* ===== CONTENIDO PRINCIPAL ===== */
+.module-main {
+    flex: 1;
+    padding: 20px 24px;
+    background: #f8f9fa;
+    overflow-y: auto;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+.sidebar-layout .layout {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.module-main .dashboard-content,
+.module-main .page-content,
+.module-main > div {
+    max-width: 100%;
+    width: 100%;
+}
+
+/* ===== BOTÓN TOGGLE (oculto en desktop) ===== */
+.sidebar-toggle-btn {
+    display: none;
+}
+
+/* ===== OVERLAY ===== */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 998;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* ===== RESPONSIVE - TABLET ===== */
+@media (max-width: 1024px) {
+    :root {
+        --sidebar-width: 230px;
+    }
+    
+    .module-main {
+        padding: 16px;
+    }
+}
+
+/* ===== RESPONSIVE - MÓVIL ===== */
+@media (max-width: 768px) {
+    :root {
+        --layout-side-padding: 12px;
+        --sidebar-width: 280px;
+    }
+
+    .topbar {
+        padding: 8px var(--layout-side-padding);
+    }
+
+    .topbar__logo {
+        height: 32px;
+    }
+
+    .topbar__brand-main {
+        font-size: 18px;
+    }
+
+    .layout {
+        margin-top: 24px;
+        padding: 0 var(--layout-side-padding);
+    }
+
+    .main-nav__inner {
+        padding: 0 var(--layout-side-padding);
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .main-nav__left {
+        width: 100%;
+        overflow-x: auto;
+        padding: 4px 0;
+    }
+
+    .main-nav__link {
+        white-space: nowrap;
+    }
+
+    .main-nav__right {
+        width: 100%;
+        text-align: right;
+        font-size: 11px;
+        padding-bottom: 4px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page-title {
+        font-size: 18px;
+    }
+
+    .page-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 7px 14px;
+        font-size: 13px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-field-full {
+        grid-column: 1 / -1;
+    }
+
+    .table-wrapper {
+        margin: 0 -12px;
+        padding: 0 12px;
+    }
+
+    .table th,
+    .table td {
+        padding: 8px 6px;
+    }
+
+    .footer {
+        padding: 12px;
+        font-size: 11px;
+    }
+
+    .sidebar-layout {
+        flex-direction: column;
+    }
+    
+    /* Sidebar como drawer - OCULTO por defecto con visibility */
+    .module-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 999;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    visibility 0s linear 0.28s;
+        box-shadow: none;
+        border-right: none;
+        visibility: hidden;
+    }
+    
+    .module-sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.12);
+        visibility: visible;
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    visibility 0s linear 0s;
+    }
+    
+    .sidebar-close-btn {
+        display: flex;
+    }
+    
+    /* Botón toggle visible */
+    .sidebar-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--color-primary);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        margin-bottom: 14px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .sidebar-toggle-btn:active {
+        transform: scale(0.98);
+    }
+    
+    .sidebar-toggle-btn .material-icons {
+        font-size: 20px;
+    }
+    
+    .module-main {
+        padding: 14px;
+        width: 100%;
+    }
+}
+
+@media (min-width: 1200px) {
+    .layout {
+        margin-top: 48px;
+    }
+
+    .page-title {
+        font-size: 22px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .module-sidebar,
+    .sidebar-overlay {
+        transition: none;
+    }
+}

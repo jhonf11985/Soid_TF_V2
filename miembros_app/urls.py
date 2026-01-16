@@ -154,5 +154,8 @@ path("ajax/validar-telefono/", views.validar_telefono, name="validar_telefono"),
     path("mapa/", views.mapa_miembros, name="mapa_miembros"),
     path("api/mapa-miembros/", views.api_mapa_miembros, name="api_mapa_miembros"),
 
+path("miembros/<int:miembro_id>/padre/add/", views.padre_espiritual_add_simple, name="padre_add_simple"),
+path("miembros/<int:miembro_id>/padre/<int:padre_id>/remove/", views.padre_espiritual_remove_simple, name="padre_remove_simple"),
+
 ]
 

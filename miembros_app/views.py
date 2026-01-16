@@ -3618,3 +3618,67 @@ def api_mapa_miembros(request):
         "faltantes": faltantes[:50],  # limitamos para no explotar la respuesta
         "faltantes_total": len(faltantes),
     })
+
+
+
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+@require_POST
+def padre_espiritual_add_simple(request, miembro_id):
+    miembro = get_object_or_404(Miembro, pk=miembro_id)
+
+    padre_id = request.POST.get("padre_espiritual_id")
+    if not padre_id:
+        messages.error(request, "Debes seleccionar un padre espiritual.")
+        return redirect(
+            request.POST.get(
+                "return_to",
+                reverse("miembros_app:nuevo_creyente_detalle", kwargs={"pk": miembro.pk})
+            )
+        )
+
+    padre = get_object_or_404(Miembro, pk=int(padre_id))
+
+    if padre == miembro:
+        messages.error(request, "Un miembro no puede ser su propio padre espiritual.")
+        return redirect(
+            request.POST.get(
+                "return_to",
+                reverse("miembros_app:nuevo_creyente_detalle", kwargs={"pk": miembro.pk})
+            )
+        )
+
+    miembro.padres_espirituales.add(padre)
+
+    messages.success(
+        request,
+        f"Padre espiritual asignado: {padre.nombres} {padre.apellidos}."
+    )
+
+    return redirect(
+        request.POST.get(
+            "return_to",
+            reverse("miembros_app:nuevo_creyente_detalle", kwargs={"pk": miembro.pk})
+        )
+    )
+
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+@require_POST
+def padre_espiritual_remove_simple(request, miembro_id, padre_id):
+    miembro = get_object_or_404(Miembro, pk=miembro_id)
+    padre = get_object_or_404(Miembro, pk=padre_id)
+
+    miembro.padres_espirituales.remove(padre)
+
+    messages.success(
+        request,
+        f"Padre espiritual removido: {padre.nombres} {padre.apellidos}."
+    )
+
+    return redirect(
+        request.POST.get(
+            "return_to",
+            reverse("miembros_app:nuevo_creyente_detalle", kwargs={"pk": miembro.pk})
+        )
+    )
