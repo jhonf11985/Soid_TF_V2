@@ -92,27 +92,50 @@ def alta_masiva_link(request):
 
     if request.method == "POST":
         accion = (request.POST.get("accion") or "").strip()
+
         if accion == "abrir":
             config.activo = True
+            config.save(update_fields=["activo", "actualizado_en"])
+            messages.success(request, "Alta masiva ACTIVADA.")
+            return redirect("actualizacion_datos_miembros:alta_masiva_link")
+
         elif accion == "cerrar":
             config.activo = False
-        config.save(update_fields=["activo", "actualizado_en"])
+            config.save(update_fields=["activo", "actualizado_en"])
+            messages.success(request, "Alta masiva CERRADA.")
+            return redirect("actualizacion_datos_miembros:alta_masiva_link")
 
-        messages.success(
-            request,
-            "Alta masiva ACTIVADA." if config.activo else "Alta masiva CERRADA."
-        )
-        return redirect("actualizacion_datos_miembros:alta_masiva_link")
+        elif accion == "guardar_mensaje":
+            mensaje = (request.POST.get("mensaje_compartir") or "").strip()
+
+            # Si lo dejan vacío, no lo borramos (mantenemos el actual)
+            if mensaje:
+                config.mensaje_compartir = mensaje
+                config.save(update_fields=["mensaje_compartir", "actualizado_en"])
+                messages.success(request, "Mensaje de WhatsApp guardado.")
+            else:
+                messages.warning(request, "El mensaje no puede estar vacío.")
+
+            return redirect("actualizacion_datos_miembros:alta_masiva_link")
+
+        else:
+            messages.error(request, "Acción inválida.")
+            return redirect("actualizacion_datos_miembros:alta_masiva_link")
 
     link = request.build_absolute_uri(reverse("actualizacion_datos_miembros:alta_publica"))
 
-    return render(request, "actualizacion_datos_miembros/alta_masiva_link.html", {
-        "link": link,
-        "public_url": link,
-        "config": config,
-        "Estados": SolicitudActualizacionMiembro.Estados,
-        "EstadosAlta": SolicitudAltaMiembro.Estados,
-    })
+    return render(
+        request,
+        "actualizacion_datos_miembros/alta_masiva_link.html",
+        {
+            "link": link,
+            "public_url": link,
+            "config": config,
+            "Estados": SolicitudActualizacionMiembro.Estados,
+            "EstadosAlta": SolicitudAltaMiembro.Estados,
+        },
+    )
+
 
 
 @login_required

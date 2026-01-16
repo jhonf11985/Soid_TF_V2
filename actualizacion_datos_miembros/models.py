@@ -181,15 +181,37 @@ from django.db import models
 
 class AltaMasivaConfig(models.Model):
     activo = models.BooleanField(default=True)
+    mensaje_compartir = models.TextField(
+        default=(
+            "Registro de miembro\n\n"
+            "Hola 👋\n"
+            "Estamos probando un formulario digital para registrar datos de la iglesia.\n"
+            "¿Podrías llenarlo y decirme si algo no se entiende?\n\n"
+            "Gracias 🙏"
+        )
+    )
     actualizado_en = models.DateTimeField(auto_now=True)
 
     @classmethod
     def get_solo(cls):
-        obj, _ = cls.objects.get_or_create(pk=1, defaults={"activo": True})
+        obj, _ = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                "activo": True,
+                "mensaje_compartir": (
+                    "Registro de miembro\n\n"
+                    "Hola 👋\n"
+                    "Estamos probando un formulario digital para registrar datos de la iglesia.\n"
+                    "¿Podrías llenarlo y decirme si algo no se entiende?\n\n"
+                    "Gracias 🙏"
+                ),
+            },
+        )
         return obj
 
     def __str__(self):
         return "Alta masiva: " + ("Activa" if self.activo else "Cerrada")
+
 
 
 class ActualizacionDatosConfig(models.Model):
