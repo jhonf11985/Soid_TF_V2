@@ -74,13 +74,22 @@
     </div>
 </div>
 
-<!-- PANEL DE FILTROS -->
-<div class="odoo-filter-panel no-print" id="filter-panel" style="display:none;">
-    <div class="odoo-filter-panel-inner">
+<!-- Overlay para móvil -->
+<div class="odoo-filter-overlay no-print" id="filter-overlay"></div>
+
+<!-- PANEL DE FILTROS (Modal en móvil) -->
+<div class="odoo-filter-panel no-print" id="filter-panel">
+    <div class="odoo-filter-panel-header">
+        <span>Filtros</span>
+        <button type="button" class="odoo-filter-close-btn" id="filter-close-btn">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
+    <div class="odoo-filter-form">
         <div class="odoo-filter-grid">
-            <div class="odoo-filter-item">
+            <div class="odoo-filter-group">
                 <label>Razón de salida</label>
-                <select id="razon_salida" onchange="applyFilters()">
+                <select id="razon_salida">
                     <option value="">Todas</option>
                     {% for r in razones_disponibles %}
                         <option value="{{ r.id }}" {% if razon_salida_id == r.id %}selected{% endif %}>
@@ -90,30 +99,28 @@
                 </select>
             </div>
 
-            <div class="odoo-filter-item">
+            <div class="odoo-filter-group">
                 <label>Desde</label>
-                <input type="date" id="fecha_desde" value="{{ fecha_desde }}" onchange="applyFilters()">
+                <input type="date" id="fecha_desde" value="{{ fecha_desde }}">
             </div>
 
-            <div class="odoo-filter-item">
+            <div class="odoo-filter-group">
                 <label>Hasta</label>
-                <input type="date" id="fecha_hasta" value="{{ fecha_hasta }}" onchange="applyFilters()">
+                <input type="date" id="fecha_hasta" value="{{ fecha_hasta }}">
             </div>
         </div>
 
         <div class="odoo-filter-actions">
-            <button type="button" class="btn-secondary" onclick="clearFilters()">
+            <button type="button" class="odoo-btn odoo-btn-secondary" onclick="clearFilters()">
                 <span class="material-icons">clear</span>
                 Limpiar
             </button>
-            <button type="button" class="btn-primary" onclick="applyFilters(true)">
+            <button type="button" class="odoo-btn odoo-btn-primary" onclick="applyFilters()">
                 <span class="material-icons">done</span>
                 Aplicar
             </button>
         </div>
     </div>
-
-    <div style="padding: 0 18px 14px; border:none; border-top:1px solid #e5e7eb;"></div>
 </div>
 
 <div class="odoo-list-container" id="vista-lista">
@@ -323,7 +330,11 @@
 .odoo-filter-btn:hover { color: #495057; }
 
 /* PANEL DE FILTROS */
-.odoo-filter-panel { background: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: 16px; }
+.odoo-filter-overlay { display: none; }
+.odoo-filter-panel { display: none; background: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: 16px; }
+.odoo-filter-panel.is-open { display: block; }
+.odoo-filter-panel-header { display: none; }
+.odoo-filter-form { display: block; }
 .odoo-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
 .odoo-filter-group { display: flex; flex-direction: column; gap: 4px; }
 .odoo-filter-group-wide { grid-column: span 2; }
@@ -331,6 +342,11 @@
 .odoo-filter-group select, .odoo-filter-group input { padding: 6px 10px; font-size: 13px; border: 1px solid #dee2e6; border-radius: 4px; background: white; }
 .odoo-filter-range { display: flex; align-items: center; gap: 8px; }
 .odoo-filter-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #dee2e6; }
+.odoo-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; font-size: 13px; font-weight: 500; border: none; border-radius: 4px; cursor: pointer; }
+.odoo-btn-secondary { background: #e9ecef; color: #495057; }
+.odoo-btn-secondary:hover { background: #dee2e6; }
+.odoo-btn-primary { background: #017e84; color: white; }
+.odoo-btn-primary:hover { background: #016166; }
 
 /* TABLE */
 .odoo-list-container { background: white; }
@@ -395,20 +411,479 @@
     .odoo-control-bar { flex-wrap: wrap; gap: 8px; }
     .odoo-control-center { order: 3; max-width: 100%; flex-basis: 100%; }
 }
+
+/* ========== MOBILE FULLSCREEN ========== */
+@media (max-width: 768px) {
+    /* Control bar móvil compacto */
+    .odoo-control-bar {
+        padding: 8px 12px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .odoo-control-left {
+        order: 1;
+        flex: 1;
+    }
+
+    .odoo-control-right {
+        order: 2;
+        gap: 6px;
+    }
+
+    .odoo-control-center {
+        order: 3;
+        flex-basis: 100%;
+        max-width: 100%;
+    }
+
+    /* Breadcrumb compacto */
+    .odoo-breadcrumb {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+    .odoo-breadcrumb-title:first-child {
+        display: none;
+    }
+
+    .odoo-breadcrumb-icon:first-of-type {
+        display: none;
+    }
+
+    /* Búsqueda móvil */
+    .odoo-search-form {
+        padding: 0 6px;
+        gap: 4px;
+    }
+
+    .odoo-search-input {
+        font-size: 14px;
+        padding: 10px 0;
+        min-width: 80px;
+    }
+
+    .odoo-search-icon {
+        font-size: 18px;
+    }
+
+    .odoo-filter-btn span:not(.material-icons) {
+        display: none;
+    }
+
+    .odoo-filter-btn {
+        padding: 6px;
+    }
+
+    .odoo-search-submit {
+        padding: 6px;
+    }
+
+    /* Filtros tags compactos */
+    .odoo-filter-tag {
+        font-size: 11px;
+        padding: 2px 6px;
+    }
+
+    /* Ocultar botón imprimir en móvil */
+    .odoo-control-right .btn-secondary {
+        display: none;
+    }
+
+    /* View switcher */
+    .odoo-view-btn {
+        padding: 6px;
+    }
+
+    /* ===== TABLA MOBILE: CARD LAYOUT ===== */
+    .odoo-list-container {
+        padding: 0;
+    }
+
+    .odoo-table {
+        display: block;
+    }
+
+    .odoo-table thead {
+        display: none;
+    }
+
+    .odoo-table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .odoo-table tr.odoo-row {
+        display: flex;
+        flex-wrap: wrap;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px;
+        gap: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        position: relative;
+    }
+
+    .odoo-table tr.odoo-row:active {
+        background: #f3f4f6;
+    }
+
+    /* Ocultar columnas innecesarias en móvil */
+    .odoo-td-checkbox {
+        display: none !important;
+    }
+
+    /* Nombre principal - ancho completo */
+    .odoo-td-main {
+        flex: 1 1 100%;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .odoo-member-name {
+        font-size: 15px;
+        color: #017e84 !important;
+    }
+
+    .odoo-member-sub {
+        font-size: 12px;
+        margin-top: 2px;
+    }
+
+    /* Contacto */
+    .odoo-td-contact {
+        flex: 1 1 50%;
+        padding: 0 !important;
+        border: none !important;
+        font-size: 12px;
+    }
+
+    /* Estado, Razón, Fecha en línea */
+    .odoo-table td:nth-child(4),
+    .odoo-table td:nth-child(5),
+    .odoo-table td:nth-child(6) {
+        flex: 0 0 auto;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .odoo-badge {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+
+    /* Fecha salida */
+    .odoo-table td:nth-child(6) div:first-child {
+        font-size: 12px !important;
+    }
+
+    .odoo-table td:nth-child(6) .odoo-member-sub {
+        font-size: 10px;
+    }
+
+    /* Acciones - posición absoluta arriba derecha */
+    .odoo-td-actions {
+        position: absolute !important;
+        top: 8px;
+        right: 8px;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .odoo-row-actions {
+        gap: 2px;
+    }
+
+    .odoo-action-icon {
+        width: 32px;
+        height: 32px;
+        background: #f3f4f6;
+        border-radius: 6px;
+    }
+
+    .odoo-action-icon .material-icons {
+        font-size: 18px;
+    }
+
+    /* Empty row */
+    .odoo-empty-row {
+        padding: 30px 20px !important;
+        font-size: 13px;
+    }
+
+    /* ===== KANBAN MOBILE ===== */
+    .odoo-kanban-container {
+        padding: 12px;
+        min-height: auto;
+    }
+
+    .odoo-kanban-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .odoo-kanban-card {
+        height: auto;
+        min-height: 90px;
+    }
+
+    .odoo-kanban-avatar {
+        width: 80px;
+        min-width: 80px;
+    }
+
+    .odoo-kanban-initial {
+        font-size: 32px;
+    }
+
+    .odoo-kanban-content {
+        padding: 10px;
+    }
+
+    .odoo-kanban-name {
+        font-size: 14px;
+    }
+
+    .odoo-kanban-meta {
+        font-size: 11px;
+    }
+
+    .odoo-kanban-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px 6px;
+        background: #f8f9fa;
+        border-left: 1px solid #e5e7eb;
+    }
+
+    .odoo-kanban-actions .odoo-action-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* ===== FILTROS COMO MODAL SHEET EN MÓVIL ===== */
+    .odoo-filter-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+    
+    .odoo-filter-overlay.is-open {
+        display: block;
+        opacity: 1;
+    }
+    
+    .odoo-filter-panel {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 85vh;
+        background: white;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+        z-index: 1001;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        border: none;
+        padding: 0;
+    }
+    
+    .odoo-filter-panel.is-open {
+        transform: translateY(0);
+    }
+    
+    .odoo-filter-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        font-size: 16px;
+        color: #1f2937;
+        flex-shrink: 0;
+    }
+    
+    .odoo-filter-close-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+    }
+    
+    .odoo-filter-close-btn:hover {
+        background: #e5e7eb;
+    }
+    
+    .odoo-filter-form {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0));
+    }
+    
+    .odoo-filter-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    
+    .odoo-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .odoo-filter-group label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #374151;
+    }
+    
+    .odoo-filter-group select,
+    .odoo-filter-group input {
+        padding: 12px;
+        font-size: 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: white;
+    }
+    
+    .odoo-filter-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    .odoo-filter-actions .odoo-btn {
+        flex: 1;
+        justify-content: center;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .odoo-btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+    
+    .odoo-btn-primary {
+        background: #017e84;
+        color: white;
+        border: none;
+    }
+}
+
+/* ========== PANTALLAS MUY PEQUEÑAS ========== */
+@media (max-width: 400px) {
+    .odoo-control-bar {
+        padding: 6px 10px;
+    }
+
+    .odoo-breadcrumb {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+
+    .odoo-table tbody {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .odoo-table tr.odoo-row {
+        padding: 10px;
+    }
+
+    .odoo-member-name {
+        font-size: 14px;
+    }
+
+    .odoo-kanban-avatar {
+        width: 70px;
+        min-width: 70px;
+    }
+    
+    /* Filtros en 1 columna en pantallas muy pequeñas */
+    .odoo-filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
 <script>
-// Toggle panel de filtros
+// Toggle panel de filtros (modal en móvil)
 function toggleFilterPanel() {
     const panel = document.getElementById('filter-panel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    const overlay = document.getElementById('filter-overlay');
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        panel.classList.toggle('is-open');
+        overlay.classList.toggle('is-open');
+        document.body.style.overflow = panel.classList.contains('is-open') ? 'hidden' : '';
+    } else {
+        panel.classList.toggle('is-open');
+    }
+}
+
+function closeFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    const overlay = document.getElementById('filter-overlay');
+    panel.classList.remove('is-open');
+    overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+
+// Limpiar filtros
+function clearFilters() {
+    document.getElementById('razon_salida').value = '';
+    document.getElementById('fecha_desde').value = '';
+    document.getElementById('fecha_hasta').value = '';
+}
+
+// Aplicar filtros
+function applyFilters() {
+    const form = document.getElementById('main-search-form');
+    const razon = document.getElementById('razon_salida').value;
+    const desde = document.getElementById('fecha_desde').value;
+    const hasta = document.getElementById('fecha_hasta').value;
+    
+    document.getElementById('hidden_razon_salida').value = razon;
+    document.getElementById('hidden_fecha_desde').value = desde;
+    document.getElementById('hidden_fecha_hasta').value = hasta;
+    
+    closeFilterPanel();
+    form.submit();
 }
 
 // Resetear filtro específico y enviar
 function resetField(fieldName) {
     document.getElementById('hidden_' + fieldName).value = '';
-    // También limpiar el input del panel si existe
-    const panelInput = document.querySelector(`[name="${fieldName}"]`);
+    const panelInput = document.getElementById(fieldName);
     if(panelInput) panelInput.value = '';
     
     document.getElementById('main-search-form').submit();
@@ -418,8 +893,19 @@ function resetField(fieldName) {
 function resetFechas() {
     document.getElementById('hidden_fecha_desde').value = '';
     document.getElementById('hidden_fecha_hasta').value = '';
+    document.getElementById('fecha_desde').value = '';
+    document.getElementById('fecha_hasta').value = '';
     document.getElementById('main-search-form').submit();
 }
+
+// Event listeners para cerrar filtros
+document.addEventListener('DOMContentLoaded', function() {
+    const overlay = document.getElementById('filter-overlay');
+    const closeBtn = document.getElementById('filter-close-btn');
+    
+    if (overlay) overlay.addEventListener('click', closeFilterPanel);
+    if (closeBtn) closeBtn.addEventListener('click', closeFilterPanel);
+});
 
 // Lógica de Vistas (Lista vs Grid)
 document.addEventListener('DOMContentLoaded', function() {

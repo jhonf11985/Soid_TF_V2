@@ -7,8 +7,8 @@
 
 <div class="odoo-page-wrapper">
 
-    <!-- CONTROL BAR -->
-    <div class="odoo-control-bar no-print">
+    <!-- CONTROL BAR - Desktop -->
+    <div class="odoo-control-bar no-print desktop-only">
         <div class="odoo-control-left">
             <a href="{% url 'miembros_app:reporte_miembros_salida' %}" class="odoo-btn odoo-btn-secondary" title="Volver al reporte">
                 <span class="material-icons">arrow_back</span>
@@ -51,11 +51,122 @@
         </div>
     </div>
 
+    <!-- MOBILE HEADER -->
+    <div class="mobile-header no-print mobile-only">
+        <a href="{% url 'miembros_app:reporte_miembros_salida' %}" class="mobile-back-btn">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        <div class="mobile-header-title">
+            <span class="mobile-title-text">Perfil inactivo</span>
+            <span class="mobile-subtitle-text">
+                {% if miembro.codigo_seguimiento %}
+                    {{ miembro.codigo_seguimiento }}
+                {% elif miembro.codigo_miembro %}
+                    {{ miembro.codigo_miembro }}
+                {% endif %}
+            </span>
+        </div>
+        <button type="button" class="mobile-action-btn" onclick="toggleMobileMenu()">
+            <span class="material-icons">more_vert</span>
+        </button>
+    </div>
+
+    <!-- MOBILE DROPDOWN MENU -->
+    <div class="mobile-dropdown-menu no-print mobile-only" id="mobileMenu">
+        <a href="{% url 'miembros_app:carta_salida_miembro' miembro.pk %}" class="mobile-menu-item">
+            <span class="material-icons">description</span>
+            Ver carta de salida
+        </a>
+{% if not miembro.activo and miembro.etapa_actual != "reincorporado" %}
+        <a href="{% url 'miembros_app:reincorporar_miembro' miembro.pk %}" class="mobile-menu-item mobile-menu-success">
+            <span class="material-icons">restart_alt</span>
+            Reincorporar
+        </a>
+{% endif %}
+        {% if es_nuevo_creyente %}
+        <a href="{% url 'miembros_app:nuevo_creyente_detalle' miembro.pk %}" class="mobile-menu-item">
+            <span class="material-icons">visibility</span>
+            Ver detalle completo
+        </a>
+        {% else %}
+        <a href="{% url 'miembros_app:detalle' miembro.pk %}" class="mobile-menu-item">
+            <span class="material-icons">visibility</span>
+            Ver detalle completo
+        </a>
+        {% endif %}
+        <button type="button" class="mobile-menu-item" onclick="window.print(); closeMobileMenu();">
+            <span class="material-icons">print</span>
+            Imprimir
+        </button>
+    </div>
+    <div class="mobile-menu-overlay mobile-only" id="mobileOverlay" onclick="closeMobileMenu()"></div>
+
     <!-- CONTENIDO -->
     <div class="odoo-detail-container">
 
-        <!-- CABECERA -->
-        <div class="odoo-hero odoo-hero-danger">
+        <!-- CABECERA MOBILE -->
+        <div class="mobile-profile-header mobile-only">
+            <div class="mobile-profile-icon">
+                <span class="material-icons">person_off</span>
+            </div>
+            <div class="mobile-profile-name">{{ miembro.nombres }} {{ miembro.apellidos }}</div>
+            <div class="mobile-profile-badges">
+                {% if es_nuevo_creyente %}
+                    <span class="odoo-badge odoo-badge-warning">Nuevo creyente</span>
+                {% else %}
+                    <span class="odoo-badge odoo-badge-muted">Miembro</span>
+                {% endif %}
+                <span class="odoo-badge odoo-badge-danger">INACTIVO</span>
+            </div>
+            <div class="mobile-profile-subtitle">
+                Este registro fue dado de salida y se mantiene como <b>Inactivo</b>.
+            </div>
+        </div>
+
+        <!-- STATS MÓVILES -->
+        <div class="mobile-stats-row mobile-only">
+            <div class="mobile-stat-item">
+                <div class="mobile-stat-value">
+                    {% if miembro.codigo_seguimiento %}
+                        {{ miembro.codigo_seguimiento }}
+                    {% elif miembro.codigo_miembro %}
+                        {{ miembro.codigo_miembro }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="mobile-stat-label">Código</div>
+            </div>
+            <div class="mobile-stat-divider"></div>
+            <div class="mobile-stat-item">
+                <div class="mobile-stat-value">
+                    {% if miembro.fecha_salida %}
+                        {{ miembro.fecha_salida|date:"d/m/Y" }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="mobile-stat-label">Salida</div>
+            </div>
+            <div class="mobile-stat-divider"></div>
+            <div class="mobile-stat-item">
+                <div class="mobile-stat-value">
+                    {% if miembro.fecha_salida %}
+                        {% if dias_desde_salida != None %}
+                            {{ dias_desde_salida }}d
+                        {% else %}
+                            {{ miembro.fecha_salida|timesince }}
+                        {% endif %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="mobile-stat-label">Hace</div>
+            </div>
+        </div>
+
+        <!-- CABECERA DESKTOP -->
+        <div class="odoo-hero odoo-hero-danger desktop-only">
             <div class="odoo-hero-left">
                 <div class="odoo-hero-icon">
                     <span class="material-icons">person_off</span>
@@ -175,16 +286,16 @@
                             <div class="odoo-field-label">Contacto</div>
                             <div class="odoo-field-value">
                                 {% if miembro.telefono %}
-                                    <div class="odoo-inline">
+                                    <a href="tel:{{ miembro.telefono }}" class="odoo-inline odoo-link-touch">
                                         <span class="material-icons">phone</span>
                                         {{ miembro.telefono }}
-                                    </div>
+                                    </a>
                                 {% endif %}
                                 {% if miembro.email %}
-                                    <div class="odoo-inline odoo-email">
+                                    <a href="mailto:{{ miembro.email }}" class="odoo-inline odoo-email odoo-link-touch">
                                         <span class="material-icons">mail</span>
-                                        {{ miembro.email }}
-                                    </div>
+                                        <span class="email-text">{{ miembro.email }}</span>
+                                    </a>
                                 {% endif %}
                                 {% if not miembro.telefono and not miembro.email %}
                                     <span class="odoo-empty">Sin datos</span>
@@ -207,8 +318,8 @@
                 </div>
             </div>
 
-            <!-- ACCIONES / ENLACES -->
-            <div class="odoo-card odoo-card-soft">
+            <!-- ACCIONES / ENLACES (Desktop) -->
+            <div class="odoo-card odoo-card-soft desktop-only">
                 <div class="odoo-card-header">
                     <div class="odoo-card-title">
                         <span class="material-icons">bolt</span>
@@ -254,7 +365,20 @@
             </div>
         </div>
 
+        <!-- NOTA MÓVIL -->
+        <div class="odoo-note mobile-note mobile-only">
+            <span class="material-icons">lock</span>
+            Resumen informativo para registros inactivos.
+        </div>
+
     </div>
+
+    <!-- FAB MÓVIL -->
+{% if not miembro.activo and miembro.etapa_actual != "reincorporado" %}
+    <a href="{% url 'miembros_app:reincorporar_miembro' miembro.pk %}" class="mobile-fab no-print mobile-only">
+        <span class="material-icons">restart_alt</span>
+    </a>
+{% endif %}
 </div>
 
 <style>
@@ -273,7 +397,11 @@
 .odoo-page-wrapper{ min-height: 100vh; background: var(--odoo-page-bg); }
 .odoo-detail-container{ padding: 14px 16px 40px; max-width: 1100px; margin: 0 auto; }
 
-/* Control bar */
+/* Visibility helpers */
+.desktop-only { display: block; }
+.mobile-only { display: none; }
+
+/* Control bar Desktop */
 .odoo-control-bar{
     display:flex; align-items:center; justify-content:space-between;
     padding: 8px 16px; background:#f8f9fa; border-bottom:1px solid var(--odoo-border);
@@ -300,7 +428,7 @@
 .odoo-btn-secondary{ border-color: var(--odoo-border); color:#374151; }
 .odoo-btn-secondary:hover{ background:#eef2f7; }
 
-/* Hero */
+/* Hero Desktop */
 .odoo-hero{
     display:flex; justify-content:space-between; gap:14px;
     border:1px solid var(--odoo-border); background: var(--odoo-bg);
@@ -370,9 +498,10 @@
 .odoo-strong{ font-weight:900; }
 .odoo-muted{ color: var(--odoo-muted); font-size:12px; font-weight:600; }
 .odoo-empty{ color:#9ca3af; font-weight:700; }
-.odoo-inline{ display:flex; gap:8px; align-items:center; font-size:13px; color:#374151; font-weight:700; margin-bottom:6px; }
+.odoo-inline{ display:flex; gap:8px; align-items:center; font-size:13px; color:#374151; font-weight:700; margin-bottom:6px; text-decoration: none; }
 .odoo-inline .material-icons{ font-size:16px; color:#6b7280; }
 .odoo-email{ color: var(--odoo-primary); }
+.odoo-link-touch{ padding: 6px 0; }
 .odoo-comment{
     white-space: pre-wrap;
     border: 1px solid #eef2f7;
@@ -397,7 +526,7 @@
 .odoo-badge-warning{ background:#ffedd5; color:#9a3412; border:1px solid #fed7aa; }
 .odoo-badge-muted{ background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb; }
 
-/* Actions */
+/* Actions Desktop */
 .odoo-actions-stack{ display:flex; flex-direction:column; gap:10px; }
 .odoo-action-btn{
     display:flex; align-items:center; gap:10px;
@@ -408,7 +537,9 @@
     text-decoration:none;
     color:#374151;
     font-weight:800;
+    font-size: 13px;
     transition: all .15s ease;
+    cursor: pointer;
 }
 .odoo-action-btn:hover{ background:#eef2f7; }
 .odoo-action-btn .material-icons{ font-size:18px; color: var(--odoo-primary); }
@@ -433,39 +564,343 @@
 }
 .odoo-note .material-icons{ font-size:18px; }
 
-/* Responsive */
+/* ==================== MOBILE STYLES ==================== */
+
+/* Mobile Header */
+.mobile-header{
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    padding: 0 4px;
+    height: 56px;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.mobile-back-btn{
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+.mobile-back-btn:active{ background: rgba(255,255,255,0.15); }
+.mobile-back-btn .material-icons{ font-size: 24px; }
+
+.mobile-header-title{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 8px;
+    min-width: 0;
+}
+.mobile-title-text{
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mobile-subtitle-text{
+    font-size: 12px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+}
+
+.mobile-action-btn{
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.mobile-action-btn:active{ background: rgba(255,255,255,0.15); }
+.mobile-action-btn .material-icons{ font-size: 24px; }
+
+/* Mobile Dropdown Menu */
+.mobile-dropdown-menu{
+    display: none;
+    position: fixed;
+    top: 56px;
+    right: 8px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    z-index: 200;
+    min-width: 220px;
+    overflow: hidden;
+    transform: scale(0.95);
+    opacity: 0;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.mobile-dropdown-menu.active{
+    transform: scale(1);
+    opacity: 1;
+}
+.mobile-menu-item{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    color: #374151;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.mobile-menu-item:active{ background: #f3f4f6; }
+.mobile-menu-item .material-icons{ font-size: 20px; color: var(--odoo-muted); }
+.mobile-menu-item.mobile-menu-success .material-icons{ color: #10b981; }
+.mobile-menu-item + .mobile-menu-item{ border-top: 1px solid #f3f4f6; }
+
+.mobile-menu-overlay{
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 150;
+}
+.mobile-menu-overlay.active{ display: block; }
+
+/* Mobile Profile Header */
+.mobile-profile-header{
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px 16px 16px;
+    background: linear-gradient(180deg, #fef2f2 0%, var(--odoo-page-bg) 100%);
+    border-radius: 0 0 20px 20px;
+    margin: -14px -16px 16px;
+}
+.mobile-profile-icon{
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #fee2e2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    border: 3px solid #ef4444;
+}
+.mobile-profile-icon .material-icons{ font-size: 32px; color: #ef4444; }
+.mobile-profile-name{
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--odoo-text);
+    margin-bottom: 8px;
+}
+.mobile-profile-badges{
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+.mobile-profile-subtitle{
+    font-size: 13px;
+    color: var(--odoo-muted);
+    max-width: 280px;
+    line-height: 1.4;
+}
+
+/* Mobile Stats Row */
+.mobile-stats-row{
+    display: none;
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 8px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border: 1px solid var(--odoo-border);
+}
+.mobile-stat-item{
+    flex: 1;
+    text-align: center;
+    padding: 0 8px;
+}
+.mobile-stat-value{
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--odoo-text);
+    margin-bottom: 2px;
+}
+.mobile-stat-label{
+    font-size: 11px;
+    color: var(--odoo-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.mobile-stat-divider{
+    width: 1px;
+    background: var(--odoo-border);
+    align-self: stretch;
+}
+
+/* Mobile Note */
+.mobile-note{
+    margin-top: 14px;
+}
+
+/* Mobile FAB */
+.mobile-fab{
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+    text-decoration: none;
+    z-index: 90;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.mobile-fab:active{
+    transform: scale(0.95);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+.mobile-fab .material-icons{ font-size: 26px; }
+
+/* ==================== RESPONSIVE ==================== */
+
 @media (max-width: 980px){
     .odoo-grid{ grid-template-columns: 1fr; }
     .odoo-mini-card{ min-width: 120px; }
 }
-@media (max-width: 650px){
-    .odoo-hero{ flex-direction: column; }
-    .odoo-hero-right{ width: 100%; }
-    .odoo-fields-grid{ grid-template-columns: 1fr; }
+
+@media (max-width: 768px){
+    /* Toggle visibility */
+    .desktop-only{ display: none !important; }
+    .mobile-only{ display: flex !important; }
+    
+    /* Mobile header visible */
+    .mobile-header{ display: flex; }
+    .mobile-profile-header{ display: flex; }
+    .mobile-stats-row{ display: flex; }
+    .mobile-fab{ display: flex; }
+    
+    /* Adjust container */
+    .odoo-detail-container{
+        padding: 14px 12px 100px;
+    }
+    
+    /* Card adjustments */
+    .odoo-card{
+        border-radius: 12px;
+    }
+    .odoo-card-header{
+        padding: 12px;
+    }
+    .odoo-card-body{
+        padding: 12px;
+    }
+    
+    /* Fields single column */
+    .odoo-fields-grid{
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    /* Touch-friendly links */
+    .odoo-link-touch{
+        padding: 10px 12px;
+        margin: -4px -12px;
+        background: #f9fafb;
+        border-radius: 8px;
+    }
+    .odoo-link-touch:active{
+        background: #f3f4f6;
+    }
+    
+    /* Email truncation */
+    .email-text{
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* Grid single column */
+    .odoo-grid{
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
 }
-@media (max-width: 640px) {
 
-    .odoo-control-bar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
+@media (max-width: 380px){
+    .mobile-profile-name{
+        font-size: 18px;
     }
-
-    .odoo-control-left {
-        width: 100%;
+    .mobile-stat-value{
+        font-size: 13px;
     }
-
-    .odoo-control-right {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .odoo-control-right .odoo-btn {
-        flex: 0 0 auto;
+    .mobile-stat-label{
+        font-size: 10px;
     }
 }
 
+/* Print */
+@media print{
+    .no-print{ display: none !important; }
+    .mobile-only{ display: none !important; }
+    .desktop-only{ display: block !important; }
+    .odoo-hero{ display: flex !important; }
+    .odoo-page-wrapper{ background: #fff; }
+    .odoo-control-bar{ display: none; }
+    .odoo-card{ box-shadow: none; border: 1px solid #ddd; }
+}
 </style>
 
-{% endblock %}
+<script>
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const overlay = document.getElementById('mobileOverlay');
+    menu.style.display = 'block';
+    overlay.classList.add('active');
+    requestAnimationFrame(() => {
+        menu.classList.add('active');
+    });
+}
+
+function closeMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const overlay = document.getElementById('mobileOverlay');
+    menu.classList.remove('active');
+    overlay.classList.remove('active');
+    setTimeout(() => {
+        menu.style.display = 'none';
+    }, 150);
+}
+
+// Close menu on escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMobileMenu();
+});
+</script>
+
+{% endblock %}  
