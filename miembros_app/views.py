@@ -2296,7 +2296,12 @@ def nuevo_creyente_lista(request):
             NuevoCreyenteExpediente.objects.filter(miembro_id=OuterRef("pk"))
         )
     )
+        
 
+    # ✅ Marcar si tiene Padres Espirituales asignados (ManyToMany)
+    miembros = miembros.annotate(
+        padres_espirituales_count=Count("padres_espirituales", distinct=True)
+    )
 
     miembros = miembros.order_by(
         "-fecha_conversion",

@@ -155,7 +155,7 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     TABLA DE DATOS
+     TABLA DE DATOS (COLUMNAS REDUCIDAS)
      ══════════════════════════════════════════════════════════════════════════ -->
 <div class="odoo-table-container">
     <table class="odoo-table">
@@ -165,44 +165,46 @@
                     <input type="checkbox" id="select-all">
                 </th>
                 <th class="col-num">#</th>
-                <th>Código</th>
                 <th>Nombre</th>
                 <th>Contacto</th>
                 <th>Conversión</th>
-                <th>Edad</th>
-                <th>Notas</th>
+                {% if 'nuevo_creyente' not in MODULOS_ACTIVOS %}
+                <th>Padres espirituales</th>
+                {% endif %}
                 {% if 'nuevo_creyente' in MODULOS_ACTIVOS %}
                 <th class="col-estado">Estado</th>
-                  {% endif %}
+                {% endif %}
                 <th class="col-actions no-print">Acciones</th>
             </tr>
         </thead>
         <tbody>
             {% if miembros %}
                 {% for m in miembros %}
-                <tr onclick="window.location='{% url 'miembros_app:nuevo_creyente_detalle' m.pk %}'"
-    class="odoo-row-clickable">
-
+                <tr onclick="window.location='{% url 'miembros_app:nuevo_creyente_detalle' m.pk %}'" class="odoo-row-clickable">
                     <td class="col-check no-print" onclick="event.stopPropagation();">
                         <input type="checkbox" class="row-check" value="{{ m.pk }}">
                     </td>
-                        <td class="col-num">{{ forloop.counter }}</td>
+                    <td class="col-num">{{ forloop.counter }}</td>
 
-                        <td>
-                            {% if m.codigo_seguimiento %}
-                                <span class="odoo-badge odoo-badge-nc">
-                                    {{ m.codigo_seguimiento }}
-                                </span>
-                            {% else %}
-                                <span class="odoo-empty-cell">—</span>
-                            {% endif %}
-                        </td>
+                    <!-- Columna Nombre con código y edad -->
+                    <td>
+                        <div class="nc-nombre-cell">
+                            <div class="nc-nombre-principal">
+                                {{ m.nombres }} {{ m.apellidos }}
+                            </div>
+                            <div class="nc-nombre-meta">
+                                {% if m.codigo_seguimiento %}
+                                <span class="nc-codigo">{{ m.codigo_seguimiento }}</span>
+                                {% endif %}
+                                {% if m.calcular_edad %}
+                                <span class="nc-edad">{{ m.calcular_edad }} años</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
 
-                        <td>
-                            {{ m.nombres }} {{ m.apellidos }}
-                        </td>
-
-                        <td>
+                    <!-- Columna Contacto -->
+                    <td>
                         {% if m.telefono or m.email %}
                         <div class="odoo-contact-info">
                             {% if m.telefono %}
@@ -221,7 +223,7 @@
                             {% if m.email %}
                             <div class="odoo-contact-row odoo-contact-email">
                                 <span class="material-icons">mail</span>
-                                <span>{{ m.email }}</span>
+                                <span>{{ m.email|truncatechars:25 }}</span>
                             </div>
                             {% endif %}
                         </div>
@@ -229,6 +231,8 @@
                         <span class="odoo-empty-cell">Sin datos</span>
                         {% endif %}
                     </td>
+
+                    <!-- Columna Conversión -->
                     <td>
                         {% if m.fecha_conversion %}
                             {{ m.fecha_conversion|date:"d/m/Y" }}
@@ -236,94 +240,78 @@
                             <span class="odoo-empty-cell">—</span>
                         {% endif %}
                     </td>
-                    <td>
-                        {% if m.calcular_edad %}
-                            {{ m.calcular_edad }} años
+
+                    <!-- Columna Padres Espirituales (solo si módulo NC no está activo) -->
+                    {% if 'nuevo_creyente' not in MODULOS_ACTIVOS %}
+                    <td class="col-padres">
+                        {% with padres=m.padres_espirituales.all %}
+                        {% if padres %}
+                            <div class="padres-lista">
+                                {% for padre in padres %}
+                                <span class="padre-nombre">{{ padre.nombres }} {{ padre.apellidos }}</span>{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </div>
                         {% else %}
-                            <span class="odoo-empty-cell">—</span>
+                            <span class="odoo-empty-cell sin-padres">Sin asignar</span>
                         {% endif %}
+                        {% endwith %}
                     </td>
-                    <td>
-                        {% if m.notas %}
-                        <div class="odoo-notes-cell" title="{{ m.notas }}">
-                            {{ m.notas|truncatechars:50 }}
-                        </div>
-                        {% else %}
-                        <span class="odoo-empty-cell">Sin notas</span>
-                        {% endif %}
-                    </td>
-                        {% if 'nuevo_creyente' in MODULOS_ACTIVOS %}
-                        <td class="col-estado">
+                    {% endif %}
+
+                    <!-- Columna Estado (solo si módulo NC está activo) -->
+                    {% if 'nuevo_creyente' in MODULOS_ACTIVOS %}
+                    <td class="col-estado">
                         {% if m.nc_enviado %}
                             <span class="badge-estado badge-enviado">
-                            <span class="material-icons">check_circle</span>
-                            En seguimiento
+                                <span class="material-icons">check_circle</span>
+                                En seguimiento
                             </span>
                         {% else %}
                             <span class="badge-estado badge-pendiente">
-                            <span class="material-icons">schedule</span>
-                            Pendiente
+                                <span class="material-icons">schedule</span>
+                                Pendiente
                             </span>
                         {% endif %}
-                        </td>
-                        {% endif %}
+                    </td>
+                    {% endif %}
 
+                    <!-- Columna Acciones -->
+                    <td class="col-actions no-print" onclick="event.stopPropagation();">
+                        <div class="odoo-row-actions">
+                            <a href="{% url 'miembros_app:nuevo_creyente_editar' m.pk %}" class="odoo-action-btn" title="Editar">
+                                <span class="material-icons">edit</span>
+                            </a>
 
-<td class="col-actions no-print" onclick="event.stopPropagation();">
-  <div class="odoo-row-actions" style="display:flex; align-items:center; gap:8px;">
+                            <a href="{% url 'miembros_app:nuevo_creyente_detalle' m.pk %}" class="odoo-action-btn" title="Ver detalle">
+                                <span class="material-icons">visibility</span>
+                            </a>
 
-    <a href="{% url 'miembros_app:nuevo_creyente_editar' m.pk %}" class="odoo-action-btn" title="Editar">
-      <span class="material-icons">edit</span>
-    </a>
-
-   <a href="{% url 'miembros_app:nuevo_creyente_detalle' m.pk %}"
-   class="odoo-action-btn"
-   title="Ver detalle">
-
-      <span class="material-icons">visibility</span>
-    </a>
-
-{% if 'nuevo_creyente' in MODULOS_ACTIVOS %}
-
-  {% if not m.activo %}
-    <span class="odoo-action-btn"
-          title="Inactivo (ya fue dado de salida). No se puede enviar."
-          style="opacity:.35; cursor:not-allowed;">
-      <span class="material-icons">block</span>
-    </span>
-
-  {% elif m.nc_enviado %}
-    <span class="odoo-action-btn" title="Ya fue enviado" style="opacity:.35; cursor:not-allowed;">
-      <span class="material-icons">send</span>
-    </span>
-
-  {% else %}
-    <form method="post"
-          action="{% url 'miembros_app:enviar_a_nuevo_creyente' m.pk %}"
-          style="display:inline;"
-          onsubmit="return confirm('¿Enviar este nuevo creyente al módulo de Nuevo Creyente?');">
-      {% csrf_token %}
-      <input type="hidden" name="next" value="{{ request.get_full_path }}">
-      <button type="submit"
-              class="odoo-action-btn"
-              title="Enviar a seguimiento"
-              style="border:none; background:transparent; cursor:pointer;">
-        <span class="material-icons">send</span>
-      </button>
-    </form>
-  {% endif %}
-
-{% endif %}
-
-  </div>
-</td>
-
-</tr>
-
+                            {% if 'nuevo_creyente' in MODULOS_ACTIVOS %}
+                                {% if not m.activo %}
+                                <span class="odoo-action-btn" title="Inactivo (ya fue dado de salida). No se puede enviar." style="opacity:.35; cursor:not-allowed;">
+                                    <span class="material-icons">block</span>
+                                </span>
+                                {% elif m.nc_enviado %}
+                                <span class="odoo-action-btn" title="Ya fue enviado" style="opacity:.35; cursor:not-allowed;">
+                                    <span class="material-icons">send</span>
+                                </span>
+                                {% else %}
+                                <form method="post" action="{% url 'miembros_app:enviar_a_nuevo_creyente' m.pk %}" style="display:inline;" onsubmit="return confirm('¿Enviar este nuevo creyente al módulo de Nuevo Creyente?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="odoo-action-btn" title="Enviar a seguimiento" style="border:none; background:transparent; cursor:pointer;">
+                                        <span class="material-icons">send</span>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
                 {% endfor %}
             {% else %}
                 <tr>
-                    <td colspan="9" class="odoo-empty-table">
+                    <td colspan="7" class="odoo-empty-table">
                         <span class="material-icons">search_off</span>
                         <p>No hay nuevos creyentes registrados.</p>
                     </td>
@@ -331,10 +319,10 @@
             {% endif %}
         </tbody>
     </table>
- 
+
     {% if miembros %}
-    <div class="odoo-table-footer no-print">
-        <span>{{ miembros|length }} registro{{ miembros|length|pluralize:"s" }}</span>
+    <div class="odoo-table-footer">
+        Total: {{ miembros|length }} nuevo{{ miembros|length|pluralize:"s" }} creyente{{ miembros|length|pluralize:"s" }}
     </div>
     {% endif %}
 </div>
@@ -344,32 +332,25 @@
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
-   BARRA DE CONTROL
+   BARRA DE CONTROL SUPERIOR
    ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-control-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    background: #fff;
     padding: 8px 16px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid #e9ecef;
+    gap: 16px;
     position: sticky;
     top: 0;
     z-index: 100;
 }
 
-.odoo-control-left,
-.odoo-control-center,
-.odoo-control-right {
+.odoo-control-left {
     display: flex;
     align-items: center;
-    gap: 12px;
-}
-
-.odoo-control-center {
-    flex: 1;
-    justify-content: center;
+    gap: 16px;
 }
 
 .odoo-btn {
@@ -379,28 +360,24 @@
     padding: 6px 12px;
     font-size: 13px;
     font-weight: 500;
-    border: none;
     border-radius: 4px;
-    cursor: pointer;
     text-decoration: none;
-    transition: all 0.15s ease;
-}
-
-.odoo-btn .material-icons {
-    font-size: 18px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
 }
 
 .odoo-btn-primary {
-    background: #017e84;
-    color: white;
+    background: #0097a7;
+    color: #fff;
 }
 
 .odoo-btn-primary:hover {
-    background: #016166;
+    background: #00838f;
 }
 
 .odoo-btn-secondary {
-    background: white;
+    background: #f8f9fa;
     color: #495057;
     border: 1px solid #dee2e6;
 }
@@ -409,65 +386,73 @@
     background: #e9ecef;
 }
 
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
 .odoo-breadcrumb {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    font-size: 13px;
+    gap: 8px;
 }
 
 .odoo-breadcrumb-title {
-    font-weight: 500;
-    color: #495057;
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
 }
 
 .odoo-breadcrumb-settings {
-    font-size: 16px;
+    font-size: 18px;
     color: #6c757d;
+    cursor: pointer;
 }
 
-/* Search box */
+.odoo-control-center {
+    flex: 1;
+    max-width: 500px;
+}
+
 .odoo-search-form {
     display: flex;
     align-items: center;
     gap: 8px;
-    max-width: 500px;
-    width: 100%;
 }
 
 .odoo-search-box {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex: 1;
-    padding: 6px 12px;
-    background: white;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 4px;
+    padding: 4px 8px;
 }
 
-.odoo-search-box .material-icons {
-    font-size: 18px;
+.odoo-search-box > .material-icons {
     color: #6c757d;
+    font-size: 18px;
 }
 
 .odoo-search-box input {
     flex: 1;
     border: none;
-    outline: none;
+    background: none;
     font-size: 13px;
-    background: transparent;
+    padding: 4px;
     min-width: 100px;
+}
+
+.odoo-search-box input:focus {
+    outline: none;
 }
 
 .odoo-filter-chips {
     display: flex;
-    gap: 4px;
     flex-wrap: wrap;
+    gap: 4px;
 }
 
 .odoo-chip {
@@ -475,24 +460,20 @@
     align-items: center;
     gap: 4px;
     padding: 2px 8px;
-    background: #e9ecef;
+    background: #e3f2fd;
+    color: #1565c0;
     border-radius: 12px;
     font-size: 11px;
-    color: #495057;
 }
 
 .odoo-chip button {
     background: none;
     border: none;
+    color: inherit;
     cursor: pointer;
     padding: 0;
     font-size: 14px;
-    color: #6c757d;
     line-height: 1;
-}
-
-.odoo-chip button:hover {
-    color: #dc2626;
 }
 
 .odoo-filter-btn {
@@ -500,62 +481,56 @@
     align-items: center;
     gap: 4px;
     padding: 6px 12px;
-    background: white;
+    background: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 4px;
     font-size: 13px;
-    cursor: pointer;
     color: #495057;
+    cursor: pointer;
 }
 
 .odoo-filter-btn:hover {
     background: #e9ecef;
 }
 
-/* Right controls */
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
 .odoo-pagination-info {
-    font-size: 13px;
+    font-size: 12px;
     color: #6c757d;
 }
 
 .odoo-view-toggle {
     display: flex;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    overflow: hidden;
+    gap: 4px;
 }
 
 .odoo-view-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: white;
-    border: none;
+    padding: 4px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: #6c757d;
     cursor: pointer;
 }
 
-.odoo-view-btn:hover {
-    background: #e9ecef;
-}
-
+.odoo-view-btn:hover,
 .odoo-view-btn.active {
     background: #e9ecef;
-    color: #017e84;
+    color: #212529;
 }
 
 .odoo-btn-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
+    padding: 4px;
+    background: none;
+    border: none;
+    color: #6c757d;
     cursor: pointer;
-    color: #495057;
+    border-radius: 4px;
 }
 
 .odoo-btn-icon:hover {
@@ -567,17 +542,16 @@
 }
 
 .odoo-dropdown {
+    display: none;
     position: absolute;
     top: 100%;
     right: 0;
-    margin-top: 4px;
-    background: white;
+    background: #fff;
     border: 1px solid #dee2e6;
     border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    min-width: 180px;
-    z-index: 1000;
-    display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-width: 160px;
+    z-index: 200;
 }
 
 .odoo-dropdown.show {
@@ -594,10 +568,9 @@
     background: none;
     border: none;
     font-size: 13px;
-    color: #495057;
-    text-decoration: none;
+    color: #212529;
     cursor: pointer;
-    text-align: left;
+    text-decoration: none;
 }
 
 .odoo-dropdown button:hover,
@@ -605,18 +578,13 @@
     background: #f8f9fa;
 }
 
-.odoo-dropdown .material-icons {
-    font-size: 18px;
-    color: #6c757d;
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    PANEL DE FILTROS
    ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-filter-panel {
+    background: #f8f9fa;
     padding: 16px;
-    background: white;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid #e9ecef;
 }
 
 .odoo-filter-grid {
@@ -626,81 +594,76 @@
     margin-bottom: 16px;
 }
 
-.odoo-filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
 .odoo-filter-group label {
+    display: block;
     font-size: 12px;
     font-weight: 500;
     color: #495057;
+    margin-bottom: 4px;
 }
 
-.odoo-filter-group input,
-.odoo-filter-group select {
-    padding: 8px 10px;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
+.odoo-filter-group select,
+.odoo-filter-group input[type="date"] {
+    width: 100%;
+    padding: 6px 8px;
     font-size: 13px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: #fff;
 }
 
 .odoo-filter-checkbox label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     cursor: pointer;
-    padding-top: 20px;
-}
-
-.odoo-filter-checkbox input {
-    width: auto;
 }
 
 .odoo-filter-actions {
     display: flex;
-    justify-content: flex-end;
     gap: 8px;
+    justify-content: flex-end;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TABLA
    ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-table-container {
-    background: white;
+    background: #fff;
 }
 
 .odoo-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
 }
 
 .odoo-table thead {
     position: sticky;
-    top: 52px;
+    top: 49px;
     z-index: 50;
 }
 
 .odoo-table th {
     background: #f8f9fa;
     padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
     text-align: left;
-    font-weight: 500;
     color: #495057;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 2px solid #dee2e6;
     white-space: nowrap;
 }
 
 .odoo-table td {
     padding: 10px 12px;
+    font-size: 13px;
     border-bottom: 1px solid #e9ecef;
-    vertical-align: top;
+    vertical-align: middle;
 }
 
 .odoo-row-clickable {
     cursor: pointer;
+    transition: background 0.15s ease;
 }
 
 .odoo-row-clickable:hover {
@@ -713,33 +676,77 @@
 }
 
 .col-num {
-    width: 50px;
+    width: 40px;
+    text-align: center;
     color: #6c757d;
+}
+
+.col-estado {
+    width: 140px;
+    white-space: nowrap;
 }
 
 .col-actions {
-    width: 80px;
+    width: 100px;
 }
 
-.odoo-cell-main {
+.col-padres {
+    max-width: 200px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CELDAS ESPECIALES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Celda de nombre con metadata */
+.nc-nombre-cell {
+    line-height: 1.3;
+}
+
+.nc-nombre-principal {
     font-weight: 500;
+    color: #212529;
 }
 
-.odoo-name-link {
-    color: #017e84;
-    text-decoration: none;
-}
-
-.odoo-name-link:hover {
-    text-decoration: underline;
-}
-
-.odoo-cell-sub {
-    font-size: 11px;
-    color: #6c757d;
+.nc-nombre-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-top: 2px;
 }
 
+.nc-codigo {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #065f46;
+    background: #d1fae5;
+    border-radius: 10px;
+}
+
+.nc-edad {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+/* Padres espirituales */
+.padres-lista {
+    font-size: 12px;
+    color: #374151;
+    line-height: 1.4;
+}
+
+.padre-nombre {
+    color: #1f2937;
+}
+
+.sin-padres {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Contacto */
 .odoo-contact-info {
     display: flex;
     flex-direction: column;
@@ -751,6 +758,7 @@
     align-items: center;
     gap: 6px;
     font-size: 12px;
+    color: #495057;
 }
 
 .odoo-contact-row .material-icons {
@@ -758,54 +766,71 @@
     color: #6c757d;
 }
 
+.odoo-wa-link {
+    display: inline-flex;
+    margin-left: 4px;
+}
+
 .odoo-contact-email {
     font-size: 11px;
     color: #6c757d;
 }
 
-.odoo-wa-link {
-    display: flex;
-    align-items: center;
-}
-
 .odoo-empty-cell {
-    font-size: 11px;
-    color: #9ca3af;
+    color: #adb5bd;
+    font-size: 12px;
 }
 
-.odoo-notes-cell {
+/* Badges de estado */
+.badge-estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
     font-size: 11px;
-    color: #495057;
-    max-width: 200px;
+    font-weight: 600;
+    border: 1px solid #e5e7eb;
 }
 
+.badge-estado .material-icons {
+    font-size: 14px;
+}
+
+.badge-enviado {
+    background: #eef2ff;
+    color: #3730a3;
+    border-color: #c7d2fe;
+}
+
+.badge-pendiente {
+    background: #fff7ed;
+    color: #9a3412;
+    border-color: #fed7aa;
+}
+
+/* Acciones */
 .odoo-row-actions {
     display: flex;
+    align-items: center;
     gap: 4px;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-}
-
-.odoo-row-clickable:hover .odoo-row-actions {
-    opacity: 1;
 }
 
 .odoo-action-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 28px;
     height: 28px;
-    background: white;
-    border: 1px solid #dee2e6;
     border-radius: 4px;
-    color: #6c757d;
     text-decoration: none;
+    color: #495057;
+    transition: all 0.15s ease;
 }
 
 .odoo-action-btn:hover {
     background: #e9ecef;
-    color: #495057;
+    color: #212529;
 }
 
 .odoo-action-btn .material-icons {
@@ -906,65 +931,16 @@
     .odoo-filter-grid {
         grid-template-columns: 1fr;
     }
-   
-  /* ✅ evita que la tabla rompa el ancho: scroll horizontal controlado */
-  .odoo-table-container{
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
 
-  .odoo-table{
-    min-width: 980px; /* ajusta si quieres; fuerza que la tabla sea más ancha que el móvil */
-  }
+    .odoo-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .odoo-table {
+        min-width: 700px;
+    }
 }
-
-
-/* Badge NC (Nuevo Creyente) */
-.odoo-badge-nc {
-    display: inline-block;
-    padding: 2px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #065f46;
-    background: #d1fae5;
-    border-radius: 12px;
-    letter-spacing: 0.3px;
-}
-
-.col-estado{
-  width: 150px;
-  white-space: nowrap;
-}
-
-.badge-estado{
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid #e5e7eb;
-}
-
-.badge-estado .material-icons{
-  font-size: 16px;
-}
-
-/* En seguimiento */
-.badge-enviado{
-  background: #eef2ff;      /* suave */
-  color: #3730a3;           /* azul oscuro */
-  border-color: #c7d2fe;
-}
-
-/* Pendiente */
-.badge-pendiente{
-  background: #fff7ed;      /* suave */
-  color: #9a3412;           /* naranja oscuro */
-  border-color: #fed7aa;
-}
-
 </style>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
@@ -991,12 +967,10 @@ function removeFilter(filterName) {
             input.value = '';
         }
     }
-    // Remove hidden input if exists
     const hiddenInput = form.querySelector(`input[type="hidden"][name="${filterName}"]`);
     if (hiddenInput) {
         hiddenInput.remove();
     }
-    // Agregar filtros_abiertos antes de submit
     let hidden = form.querySelector('input[name="filtros_abiertos"]');
     if (!hidden) {
         hidden = document.createElement('input');
@@ -1008,7 +982,6 @@ function removeFilter(filterName) {
     form.submit();
 }
 
-// Close dropdown when clicking outside
 document.addEventListener('click', function(e) {
     const menu = document.querySelector('.odoo-actions-menu');
     const dropdown = document.getElementById('actions-dropdown');
@@ -1017,14 +990,13 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Mantener panel abierto si hay filtros activos en la URL
 document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('filtros_abiertos') === '1') {
         document.getElementById('filter-panel').style.display = 'block';
     }
 });
-// Select all checkbox
+
 document.getElementById('select-all')?.addEventListener('change', function() {
     const checkboxes = document.querySelectorAll('.row-check');
     checkboxes.forEach(cb => cb.checked = this.checked);
