@@ -30,11 +30,12 @@ DEBUG = os.environ.get("DEBUG", "0") == "1"
 
 # Render necesita un host válido — esto permite acceso desde cualquier dominio
 
+
 ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get("ALLOWED_HOSTS", "").split(",")
-    if h.strip()
-] or ["localhost", "127.0.0.1"]
+    "soid-tf-v2.onrender.com",
+    "127.0.0.1",
+    "localhost",
+]
 
 
 # Application definition
