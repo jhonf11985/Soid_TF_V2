@@ -18,16 +18,14 @@ urlpatterns = [
     # Ruta del módulo Miembros
     path("miembros/", include("miembros_app.urls")),
 
-    
+    path("notificaciones/", include("notificaciones_app.urls")),
+    path("votacion/", include("votacion_app.urls")),
 
-    path("notificaciones/", include("notificaciones_app.urls")),  # 👈 AÑADIDO
-    path("votacion/", include("votacion_app.urls")),  # 👈 FALTABA LA COMA AQUÍ
-
-    path("finanzas/", include("finanzas_app.urls")),  # 👈 NUEVA
+    path("finanzas/", include("finanzas_app.urls")),
     
     # 👇 API para búsqueda de miembros (usado por autocomplete)
     path("api/buscar-miembros/", ajax_views.buscar_miembros, name="buscar_miembros"),
-     path("estructura/", include("estructura_app.urls")),
+    path("estructura/", include("estructura_app.urls")),
 
     path("nuevo-creyente/", include("nuevo_creyente_app.urls")),
 
@@ -35,6 +33,7 @@ urlpatterns = [
         "actualizacion-datos/",
         include("actualizacion_datos_miembros.urls")
     ),
+    
     # ✅ Service Worker en raíz
     path(
         "sw.js",
@@ -44,7 +43,16 @@ urlpatterns = [
         ),
         name="sw",
     ),
-
+    
+    # ✅ Manifest en raíz (IMPORTANTE para PWA)
+    path(
+        "manifest.json",
+        TemplateView.as_view(
+            template_name="manifest.json",
+            content_type="application/manifest+json",
+        ),
+        name="manifest",
+    ),
 ]
 
 # Para servir archivos estáticos y media en desarrollo
