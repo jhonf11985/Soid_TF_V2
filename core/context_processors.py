@@ -1,3 +1,4 @@
+from django.conf import settings
 from .models import ConfiguracionSistema, Module
 
 def configuracion_global(request):
@@ -23,4 +24,6 @@ def configuracion_global(request):
         "TODOS_LOS_MODULOS": todos_los_modulos,
         "MODULOS_PRINCIPALES": modulos_principales,
         "MODULOS_EXTRAS": modulos_extras,
+        # Push notifications
+        "VAPID_PUBLIC_KEY": getattr(settings, 'VAPID_PUBLIC_KEY', ''),
     }
