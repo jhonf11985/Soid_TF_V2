@@ -394,35 +394,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <!-- Service Worker -->
 <script>
-  (function () {
-    if (!("serviceWorker" in navigator)) return;
+(function () {
+  if (!("serviceWorker" in navigator)) return;
 
-    const isDev =
-      location.hostname === "127.0.0.1" ||
-      location.hostname === "localhost" ||
-      location.hostname.endsWith(".local");
-
-    if (isDev) {
-      navigator.serviceWorker.getRegistrations().then((regs) => {
-        regs.forEach((reg) => reg.unregister());
+  window.addEventListener("load", function () {
+    navigator.serviceWorker
+      .register("/sw.js", { scope: "/" })
+      .then((reg) => {
+        console.log("✅ SW registrado con scope:", reg.scope);
+      })
+      .catch((err) => {
+        console.warn("❌ Error registrando SW:", err);
       });
-
-      if ("caches" in window) {
-        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
-      }
-
-      return;
-    }
-
-    window.addEventListener("load", function () {
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/" })
-        .catch(function (err) {
-          console.warn("SW NO registrado:", err);
-        });
-    });
-  })();
+  });
+})();
 </script>
+
 
 <!-- Bottom Nav "Más" menu -->
 <script>

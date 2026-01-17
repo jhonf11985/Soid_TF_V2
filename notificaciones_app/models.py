@@ -64,3 +64,32 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.titulo} → {self.usuario}"
+
+from django.conf import settings
+from django.db import models
+
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions"
+    )
+
+    endpoint = models.TextField(unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+
+    user_agent = models.CharField(max_length=255, blank=True, default="")
+    activo = models.BooleanField(default=True)
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "activo"]),
+        ]
+
+    def __str__(self):
+        return f"PushSubscription({self.user_id}, activo={self.activo})"

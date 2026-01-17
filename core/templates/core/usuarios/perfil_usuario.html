@@ -97,6 +97,34 @@ Mi perfil
                 {% endwith %}
             </div>
 
+            <div class="perfil-section" id="pushBox">
+    <h3>Notificaciones (Push)</h3>
+
+    <p class="perfil-texto-secundario" style="margin-top:6px;">
+        Actívalas para recibir avisos importantes del sistema incluso si no estás dentro de SOID.
+        Se activa solo para este dispositivo/navegador.
+    </p>
+
+    <dl class="perfil-lista" style="margin-top:10px;">
+        <div>
+            <dt>Estado en este dispositivo</dt>
+            <dd id="pushEstado">Comprobando…</dd>
+        </div>
+    </dl>
+
+    <div class="perfil-actions" style="margin-top:10px;">
+        <button type="button" class="btn btn-primary" id="btnPushActivar">
+            Activar notificaciones
+        </button>
+
+        <button type="button" class="btn btn-secondary" id="btnPushDesactivar" style="display:none;">
+            Desactivar
+        </button>
+    </div>
+
+    <p class="perfil-texto-secundario" id="pushMsg" style="margin-top:8px;"></p>
+</div>
+
             <div class="perfil-actions">
                 <!-- Usar el estilo global del sistema -->
                 <a href="{% url 'core:cambiar_contrasena' %}" class="btn btn-primary">
@@ -308,5 +336,141 @@ Mi perfil
         color: #1d4ed8;
     }
 </style>
+
+<script>
+  window.SOID_VAPID_PUBLIC_KEY = "{{ VAPID_PUBLIC_KEY|default:'' }}";
+</script>
+<script>
+(function () {
+    const estadoEl = document.getElementById("pushEstado");
+    const msgEl = document.getElementById("pushMsg");
+    const btnOn = document.getElementById("btnPushActivar");
+    const btnOff = document.getElementById("btnPushDesactivar");
+
+    if (!estadoEl || !btnOn || !btnOff) return;
+
+    const VAPID_PUBLIC_KEY = window.SOID_VAPID_PUBLIC_KEY || "";
+
+
+    function setUI(activo, textoExtra="") {
+        if (activo) {
+            estadoEl.textContent = "Activadas ✅";
+            btnOn.style.display = "none";
+            btnOff.style.display = "inline-flex";
+        } else {
+            estadoEl.textContent = "Desactivadas ❌";
+            btnOn.style.display = "inline-flex";
+            btnOff.style.display = "none";
+        }
+        msgEl.textContent = textoExtra || "";
+    }
+
+    function getCSRFToken() {
+        const m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? m[1] : "";
+    }
+
+    async function fetchStatus() {
+        const res = await fetch("{% url 'notificaciones_app:push_status' %}", { credentials: "same-origin" });
+        const data = await res.json();
+        setUI(!!data.activo);
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+        return outputArray;
+    }
+
+    async function activar() {
+        try {
+            msgEl.textContent = "";
+
+            if (!VAPID_PUBLIC_KEY) {
+                setUI(false, "Falta VAPID_PUBLIC_KEY en el servidor.");
+                return;
+            }
+
+            if (!("serviceWorker" in navigator)) {
+                setUI(false, "Este navegador no soporta notificaciones push.");
+                return;
+            }
+
+            const perm = await Notification.requestPermission();
+            if (perm !== "granted") {
+                setUI(false, "Permiso denegado. Puedes activarlo luego desde el navegador.");
+                return;
+            }
+
+            const reg = await navigator.serviceWorker.ready;
+
+            const sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+            });
+
+            const res = await fetch("{% url 'notificaciones_app:push_subscribe' %}", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken(),
+                },
+                body: JSON.stringify(sub),
+            });
+
+            const data = await res.json();
+            if (!data.ok) {
+                setUI(false, data.error || "No se pudo guardar la suscripción.");
+                return;
+            }
+
+            setUI(true, "Listo. Este dispositivo recibirá avisos importantes.");
+        } catch (e) {
+            setUI(false, e.message || "No se pudo activar.");
+        }
+    }
+
+    async function desactivar() {
+        try {
+            msgEl.textContent = "";
+
+            // 1) Desuscribir del navegador (si existe)
+            if ("serviceWorker" in navigator) {
+                const reg = await navigator.serviceWorker.ready;
+                const sub = await reg.pushManager.getSubscription();
+                if (sub) await sub.unsubscribe();
+            }
+
+            // 2) Marcar inactivo en backend
+            const res = await fetch("{% url 'notificaciones_app:push_unsubscribe' %}", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "X-CSRFToken": getCSRFToken(),
+                },
+            });
+
+            const data = await res.json();
+            if (data.ok) {
+                setUI(false, "Desactivado en este dispositivo.");
+            } else {
+                setUI(true, "No se pudo desactivar en el servidor.");
+            }
+        } catch (e) {
+            setUI(true, e.message || "No se pudo desactivar.");
+        }
+    }
+
+    btnOn.addEventListener("click", activar);
+    btnOff.addEventListener("click", desactivar);
+
+    fetchStatus();
+})();
+</script>
+
 
 {% endblock %}

@@ -21,13 +21,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-oocq3z)#kql+c%1ylhcqpi3v5vnh$1ltj_h7f(5*^#!0s@#&p)'
+SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret")
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "0") == "1"
+
 
 # Render necesita un host válido — esto permite acceso desde cualquier dominio
-ALLOWED_HOSTS = ["*"]
+
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("ALLOWED_HOSTS", "").split(",")
+    if h.strip()
+] or ["localhost", "127.0.0.1"]
 
 
 # Application definition
@@ -175,8 +182,11 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 
-EMAIL_HOST_USER = "soidtf01@gmail.com"
-EMAIL_HOST_PASSWORD = "qorp qkza rxid btoj"
+
+
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
@@ -202,3 +212,13 @@ if RUNNING_IN_RENDER:
 else:
     # Ruta estándar de Chrome en Windows
     CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+
+
+
+
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_CLAIMS_SUBJECT = os.environ.get(
+    "VAPID_CLAIMS_SUBJECT",
+    "mailto:soidtf01@gmail.com"
+)

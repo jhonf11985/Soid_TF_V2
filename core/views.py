@@ -723,10 +723,9 @@ def perfil_usuario(request):
     usuario = request.user
     context = {
         "usuario": usuario,
+        "VAPID_PUBLIC_KEY": settings.VAPID_PUBLIC_KEY,
     }
     return render(request, "core/usuarios/perfil_usuario.html", context)
-
-
 @login_required
 def cambiar_contrasena(request):
     """
