@@ -17,30 +17,35 @@ def push_status(request):
     activo = PushSubscription.objects.filter(user=request.user, activo=True).exists()
     return JsonResponse({"activo": activo})
 
-
 @login_required
 @require_POST
 def push_unsubscribe(request):
     """
-    Desactiva SOLO la suscripción del dispositivo actual.
+    Desactiva la suscripción del dispositivo actual.
+    Si no se envía endpoint, desactiva todas las del usuario.
     """
     try:
         data = json.loads(request.body.decode("utf-8"))
     except Exception:
-        return JsonResponse({"ok": False, "error": "JSON inválido."}, status=400)
+        data = {}
 
     endpoint = (data.get("endpoint") or "").strip()
-    if not endpoint:
-        return JsonResponse({"ok": False, "error": "Endpoint requerido."}, status=400)
-
-    PushSubscription.objects.filter(
-        user=request.user,
-        endpoint=endpoint,
-        activo=True
-    ).update(activo=False)
+    
+    if endpoint:
+        # Desactivar solo la suscripción específica
+        PushSubscription.objects.filter(
+            user=request.user,
+            endpoint=endpoint,
+            activo=True
+        ).update(activo=False)
+    else:
+        # Sin endpoint: desactivar todas las del usuario
+        PushSubscription.objects.filter(
+            user=request.user,
+            activo=True
+        ).update(activo=False)
 
     return JsonResponse({"ok": True})
-
 
 @login_required
 @require_POST
