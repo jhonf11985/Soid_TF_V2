@@ -94,7 +94,7 @@ def push_test(request):
                 },
                 data=payload,
                 vapid_private_key=settings.VAPID_PRIVATE_KEY,
-                vapid_claims=getattr(settings, "VAPID_CLAIMS", {"sub": "mailto:admin@soid.local"}),
+                vapid_claims={"sub": settings.VAPID_CLAIMS_SUBJECT},
             )
             enviados += 1
         except WebPushException:
