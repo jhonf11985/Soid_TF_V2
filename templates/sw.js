@@ -3,7 +3,8 @@
    Cache + Push + Badge + Click
    ===================================================== */
 
-const CACHE_NAME = "soid-tf-cache-v3"; // ← subimos versión
+const CACHE_NAME = "soid-tf-cache-v4";
+
 
 /* =====================
    INSTALL / ACTIVATE
@@ -111,6 +112,21 @@ self.addEventListener("push", (event) => {
         icon: "/static/core/icons/icon-192.png",
         badge: "/static/core/icons/icon-192.png",
       });
+      // Avisar a la app abierta para refrescar campanita
+      const clientsArr = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      for (const client of clientsArr) {
+        client.postMessage({
+          type: "PUSH_RECIBIDO",
+          badge_count: badgeCount,
+          url,
+          title,
+          body,
+        });
+      }
 
       // Badge del icono (Android/Chrome/Edge)
       if (self.registration.setAppBadge) {
