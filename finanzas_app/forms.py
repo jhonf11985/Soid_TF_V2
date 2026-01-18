@@ -1,9 +1,26 @@
 from django import forms
-from .models import MovimientoFinanciero, CategoriaMovimiento, CuentaFinanciera
+
 from miembros_app.models import Miembro  # 👈 IMPORTAMOS MIEMBRO
 from django.apps import apps
 from django.db.models import Q  # Añadir este import
+from .models import (
+    MovimientoFinanciero,
+    CategoriaMovimiento,
+    CuentaFinanciera,
+    ProveedorFinanciero,
+    CuentaPorPagar,
+)
+import re
+from django.core.exceptions import ValidationError
+
+
+
+
+
+
+
 def is_module_enabled(*codes: str) -> bool:
+
     """
     Verifica si existe un Module (normalmente core.Module) habilitado.
     - Soporta varios codes.
@@ -390,3 +407,139 @@ class TransferenciaForm(forms.Form):
         
         return cleaned_data
     
+# ==========================================================
+# CUENTAS POR PAGAR (CxP) – FORMS
+# ==========================================================
+class ProveedorFinancieroForm(forms.ModelForm):
+    class Meta:
+        model = ProveedorFinanciero
+        fields = [
+            "tipo",
+            "tipo_proveedor",
+            "nombre",
+            "miembro",
+            "tipo_documento",
+            "documento",
+            "telefono",
+            "email",
+            "direccion",
+            "plazo_dias_pago",
+            "metodo_pago_preferido",
+            "banco",
+            "tipo_cuenta",
+            "numero_cuenta",
+            "titular_cuenta",
+            "bloqueado",
+            "notas",
+            "activo",
+        ]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"placeholder": "Nombre del proveedor o beneficiario"}),
+            "documento": forms.TextInput(attrs={"placeholder": "RNC o Cédula (sin guiones)"}),
+            "telefono": forms.TextInput(attrs={"placeholder": "Teléfono (opcional)"}),
+            "email": forms.EmailInput(attrs={"placeholder": "Email (opcional)"}),
+            "direccion": forms.TextInput(attrs={"placeholder": "Dirección (opcional)"}),
+            "plazo_dias_pago": forms.NumberInput(attrs={"min": 0, "max": 365}),
+            "banco": forms.TextInput(attrs={"placeholder": "Banco (opcional)"}),
+            "numero_cuenta": forms.TextInput(attrs={"placeholder": "Número de cuenta (opcional)"}),
+            "titular_cuenta": forms.TextInput(attrs={"placeholder": "Titular (opcional)"}),
+            "notas": forms.Textarea(attrs={"rows": 2, "placeholder": "Notas (opcional)"}),
+        }
+
+    def clean_documento(self):
+        tipo_doc = (self.cleaned_data.get("tipo_documento") or "").strip()
+        doc = (self.cleaned_data.get("documento") or "").strip()
+
+        if not tipo_doc:
+            # Si no eligió tipo documento, permitimos vacío
+            return None if not doc else doc
+
+        if not doc:
+            return None
+
+        # Normalizar: quitar espacios y guiones
+        doc_norm = re.sub(r"[\s\-]+", "", doc)
+
+        # Validaciones RD (básicas y seguras)
+        if tipo_doc in ("cedula", "rnc"):
+            if not doc_norm.isdigit():
+                raise ValidationError("Este documento debe contener solo números (sin letras).")
+
+            if tipo_doc == "cedula" and len(doc_norm) != 11:
+                raise ValidationError("La cédula debe tener 11 dígitos.")
+
+            if tipo_doc == "rnc" and len(doc_norm) != 9:
+                raise ValidationError("El RNC debe tener 9 dígitos.")
+
+        # Pasaporte / otro: no imponemos longitud, solo limpiamos espacios
+        return doc_norm
+
+    def clean(self):
+        cleaned = super().clean()
+
+        metodo = cleaned.get("metodo_pago_preferido") or ""
+        banco = (cleaned.get("banco") or "").strip()
+        numero = (cleaned.get("numero_cuenta") or "").strip()
+        tipo_cuenta = cleaned.get("tipo_cuenta") or ""
+
+        # Si el método preferido es transferencia, pedir banco + cuenta (mínimo)
+        if metodo == "transferencia":
+            if not banco:
+                self.add_error("banco", "Si el método preferido es transferencia, indica el banco.")
+            if not numero:
+                self.add_error("numero_cuenta", "Si el método preferido es transferencia, indica el número de cuenta.")
+
+        # Si llenó banco o cuenta, que haya coherencia
+        if banco and not numero:
+            self.add_error("numero_cuenta", "Si indicas banco, completa también el número de cuenta.")
+        if numero and not banco:
+            self.add_error("banco", "Si indicas número de cuenta, completa también el banco.")
+
+        # Si puso tipo de cuenta, debe tener banco y número
+        if tipo_cuenta and (not banco or not numero):
+            self.add_error("tipo_cuenta", "Para definir tipo de cuenta, completa banco y número de cuenta.")
+
+        return cleaned
+
+
+class CuentaPorPagarForm(forms.ModelForm):
+    class Meta:
+        model = CuentaPorPagar
+        fields = [
+            "proveedor",
+            "fecha_emision",
+            "fecha_vencimiento",
+            "categoria",
+            "cuenta_sugerida",
+            "concepto",
+            "descripcion",
+            "referencia",
+            "monto_total",
+        ]
+        widgets = {
+            "fecha_emision": forms.DateInput(attrs={"type": "date"}),
+            "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}),
+            "concepto": forms.TextInput(attrs={"placeholder": "Ej: Pago de sonido, renta local, electricidad..."}),
+            "descripcion": forms.Textarea(attrs={"rows": 2, "placeholder": "Detalle (opcional)"}),
+            "referencia": forms.TextInput(attrs={"placeholder": "Factura / recibo / contrato (opcional)"}),
+            "monto_total": forms.NumberInput(attrs={"step": "0.01", "min": "0", "placeholder": "0.00"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Solo categorías de egreso activas
+        self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
+            tipo="egreso",
+            activo=True
+        ).order_by("nombre")
+
+        # Solo cuentas activas (para sugerida)
+        self.fields["cuenta_sugerida"].queryset = CuentaFinanciera.objects.filter(
+            esta_activa=True
+        ).order_by("nombre")
+
+        # Proveedores activos
+        self.fields["proveedor"].queryset = ProveedorFinanciero.objects.filter(
+            activo=True
+        ).order_by("nombre")

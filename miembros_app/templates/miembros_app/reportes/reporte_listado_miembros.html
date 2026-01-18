@@ -1,0 +1,459 @@
+{% extends 'core/reporte_base.html' %}
+
+{% block title %}Listado de Miembros · Reporte{% endblock %}
+
+{% block content %}
+
+<!-- Título del reporte -->
+<h2 class="report-title">Listado General de Miembros</h2>
+<p class="report-subtitle">Registro completo de la membresía</p>
+
+<!-- Metadatos del reporte -->
+<div class="report-meta">
+    <span><strong>Total:</strong> {{ miembros|length }} miembro{{ miembros|length|pluralize:"s" }}</span>
+    
+    {% if estado %}
+    <span><strong>Estado:</strong> {{ estado }}</span>
+    {% endif %}
+    
+    {% if genero_filtro %}
+    <span><strong>Género:</strong> {{ genero_filtro }}</span>
+    {% endif %}
+    
+    {% if categoria_edad_filtro %}
+    <span><strong>Categoría:</strong> {{ categoria_edad_filtro }}</span>
+    {% endif %}
+    
+    {% if bautizado == "1" %}
+    <span><strong>Bautismo:</strong> Solo bautizados</span>
+    {% elif bautizado == "0" %}
+    <span><strong>Bautismo:</strong> No bautizados</span>
+    {% endif %}
+</div>
+
+<!-- Botones de acción (solo en pantalla) -->
+<div class="report-actions only-screen no-print">
+    <button type="button" class="btn-secondary" onclick="window.print()">
+        <span class="material-icons">print</span>
+        Imprimir
+    </button>
+    
+    <a href="{% url 'miembros_app:exportar_miembros_excel' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+       class="btn-secondary">
+        <span class="material-icons">download</span>
+        Exportar Excel
+    </a>
+    
+    <a href="{% url 'miembros_app:lista' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+       class="btn-secondary">
+        <span class="material-icons">arrow_back</span>
+        Volver a la lista
+    </a>
+</div>
+
+<!-- Tabla de miembros -->
+<table class="report-table">
+    <thead>
+        <tr>
+            <th style="width: 40px;">#</th>
+            <th>Miembro</th>
+            <th>Contacto</th>
+            <th style="width: 120px;">Estado</th>
+            <th style="width: 80px; text-align: center;">Bautismo</th>
+            <th style="width: 90px;">Ingreso</th>
+        </tr>
+    </thead>
+    
+    <tbody>
+        {% if miembros %}
+            {% for m in miembros %}
+            <tr>
+                <!-- # -->
+                <td style="text-align: center; color: #6b7280; font-size: 11px;">
+                    {{ forloop.counter }}
+                </td>
+                
+                <!-- Miembro -->
+                <td>
+                    <div class="member-info">
+                        <div class="member-name">
+                            {{ m.nombres }} {{ m.apellidos }}
+                        </div>
+                        
+                        {% if m.profesion %}
+                        <div class="member-detail">
+                            {{ m.profesion }}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="member-detail">
+                            {% if m.calcular_edad %}
+                                {{ m.calcular_edad }} años
+                                {% if m.categoria_edad %}
+                                    · {{ m.get_categoria_edad_display }}
+                                {% endif %}
+                            {% elif m.categoria_edad %}
+                                {{ m.get_categoria_edad_display }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+                
+                <!-- Contacto -->
+                <td>
+                    {% if m.telefono %}
+                        <div class="contact-line">
+                            <span class="contact-icon">📞</span>
+                            {{ m.telefono }}
+                        </div>
+                    {% endif %}
+                    
+                    {% if m.email %}
+                        <div class="contact-line">
+                            <span class="contact-icon">✉</span>
+                            {{ m.email }}
+                        </div>
+                    {% endif %}
+                    
+                    {% if not m.telefono and not m.email %}
+                        <span class="text-muted">Sin contacto</span>
+                    {% endif %}
+                </td>
+                
+                <!-- Estado -->
+                <td>
+                    {% if not m.activo %}
+                        <span class="status-badge status-inactive">Inactivo</span>
+                        
+                        {% if m.razon_salida %}
+                        <div class="member-detail">
+                            {{ m.razon_salida }}
+                        </div>
+                        {% endif %}
+                        
+                        {% if m.fecha_salida %}
+                        <div class="member-detail">
+                            {{ m.fecha_salida|date:"d/m/Y" }}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        {% if m.estado_miembro %}
+                            <span class="status-badge status-active">
+                                {{ m.get_estado_miembro_display }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted">Sin estado</span>
+                        {% endif %}
+                    {% endif %}
+                </td>
+                
+                <!-- Bautismo -->
+                <td style="text-align: center;">
+                    {% if m.bautizado_confirmado %}
+                        <span class="status-badge status-success">Sí</span>
+                        {% if m.fecha_bautismo %}
+                        <div class="member-detail" style="text-align: center;">
+                            {{ m.fecha_bautismo|date:"d/m/Y" }}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <span class="status-badge status-muted">No</span>
+                    {% endif %}
+                </td>
+                
+                <!-- Ingreso -->
+                <td>
+                    {% if m.fecha_ingreso_iglesia %}
+                        {{ m.fecha_ingreso_iglesia|date:"d/m/Y" }}
+                    {% else %}
+                        <span class="text-muted">Sin fecha</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 32px; color: #9ca3af;">
+                    No se encontraron miembros con los criterios seleccionados.
+                </td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+<!-- Resumen final (solo impresión) -->
+<div class="report-summary only-print">
+    <div class="summary-row">
+        <span class="summary-label">Total de registros:</span>
+        <span class="summary-value">{{ miembros|length }}</span>
+    </div>
+    
+    {% if activos_count %}
+    <div class="summary-row">
+        <span class="summary-label">Miembros activos:</span>
+        <span class="summary-value">{{ activos_count }}</span>
+    </div>
+    {% endif %}
+    
+    {% if inactivos_count %}
+    <div class="summary-row">
+        <span class="summary-label">Miembros inactivos:</span>
+        <span class="summary-value">{{ inactivos_count }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+/* =====================================================
+   SOBRESCRIBIR ESTILOS DEL TEMPLATE BASE
+   ===================================================== */
+
+/* Quitar barra morada del header */
+.report-header,
+.report-header-bar,
+header,
+.header-bar {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-top: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+/* Por si la barra está en el body o wrapper */
+body::before,
+.report-wrapper::before,
+.report-container::before {
+    display: none !important;
+    background: none !important;
+}
+
+/* Asegurar que no haya color morado en ningún elemento del header */
+.report-header *,
+header * {
+    background-color: transparent !important;
+}
+
+/* Si el título tiene borde o fondo morado */
+.report-title,
+h1.report-title {
+    border: none !important;
+    border-left: none !important;
+    padding-left: 0 !important;
+    background: transparent !important;
+}
+
+/* =====================================================
+   ESTILOS ESPECÍFICOS DEL REPORTE DE MIEMBROS
+   ===================================================== */
+
+/* Botones de acción (pantalla) */
+.report-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.report-actions .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    color: #374151;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.report-actions .btn-secondary:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.report-actions .btn-secondary .material-icons {
+    font-size: 18px;
+}
+
+/* Información del miembro */
+.member-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.member-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: #111827;
+}
+
+.member-detail {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+/* Líneas de contacto */
+.contact-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.contact-icon {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* Badges de estado */
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.status-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-success {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-muted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Texto muted */
+.text-muted {
+    font-size: 11px;
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Resumen final */
+.report-summary {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 2px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+}
+
+.summary-label {
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.summary-value {
+    color: #111827;
+    font-weight: 700;
+}
+
+/* =====================================================
+   RESPONSIVE & PRINT
+   ===================================================== */
+
+@media (max-width: 768px) {
+    .report-actions {
+        flex-direction: column;
+    }
+    
+    .report-table {
+        font-size: 11px;
+    }
+    
+    .member-name {
+        font-size: 12px;
+    }
+    
+    .member-detail {
+        font-size: 10px;
+    }
+}
+
+@media print {
+    .report-actions {
+        display: none !important;
+    }
+    
+    .report-table {
+        font-size: 10px;
+    }
+    
+    .report-table th {
+        padding: 6px 8px;
+        background: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .report-table td {
+        padding: 6px 8px;
+    }
+    
+    .member-name {
+        font-size: 11px;
+    }
+    
+    .member-detail {
+        font-size: 9px;
+    }
+    
+    .contact-line {
+        font-size: 10px;
+    }
+    
+    .status-badge {
+        font-size: 9px;
+        padding: 2px 6px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .report-summary {
+        margin-top: 20px;
+        padding-top: 12px;
+    }
+    
+    .summary-row {
+        font-size: 11px;
+    }
+    
+    /* Evitar salto de página en medio de una fila */
+    tr {
+        page-break-inside: avoid;
+    }
+}
+</style>
+
+{% endblock %}

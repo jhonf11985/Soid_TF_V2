@@ -1442,15 +1442,76 @@ def reportes_miembros(request):
 # -------------------------------------
 # REPORTE: LISTADO GENERAL IMPRIMIBLE
 # -------------------------------------
+
+
 @login_required
 @require_GET
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def reporte_listado_miembros(request):
     """
-    Alias del listado principal para usarlo desde la sección de reportes.
+    Vista de reporte imprimible profesional con header institucional.
+    Aplica los mismos filtros que miembro_lista usando filtrar_miembros().
     """
-    return miembro_lista(request)
-
+    from core.models import ConfiguracionSistema
+    
+    # Obtener configuración institucional para el header
+    CFG = ConfiguracionSistema.load()
+    
+    # =========================================================================
+    # CRÍTICO: Usar la misma base que miembro_lista (excluir nuevos creyentes)
+    # =========================================================================
+    miembros_base = Miembro.objects.filter(nuevo_creyente=False)
+    
+    # Usar la función compartida para aplicar TODOS los filtros consistentemente
+    miembros, filtros_context = filtrar_miembros(request, miembros_base)
+    
+    # Contar activos e inactivos del resultado filtrado
+    if isinstance(miembros, list):
+        # Si filtrar_miembros devolvió una lista (por filtro de rango de edad)
+        activos_count = sum(1 for m in miembros if m.activo)
+        inactivos_count = sum(1 for m in miembros if not m.activo)
+    else:
+        # Si es un queryset
+        activos_count = miembros.filter(activo=True).count()
+        inactivos_count = miembros.filter(activo=False).count()
+    
+    # Obtener los valores crudos de los filtros para los enlaces
+    estado = request.GET.get("estado", "").strip()
+    genero_filtro = request.GET.get("genero", "").strip()
+    categoria_edad_filtro = request.GET.get("categoria_edad", "").strip()
+    bautizado = request.GET.get("bautizado", "").strip()
+    
+    # Obtener labels para mostrar en metadatos del reporte
+    estado_label = ""
+    if estado:
+        estado_dict = dict(Miembro.ESTADOS_MIEMBRO)
+        estado_label = estado_dict.get(estado, estado)
+    
+    genero_label = ""
+    if genero_filtro:
+        genero_dict = dict(Miembro.GENERO_CHOICES)
+        genero_label = genero_dict.get(genero_filtro, genero_filtro)
+    
+    categoria_label = ""
+    if categoria_edad_filtro:
+        categoria_dict = dict(Miembro.CATEGORIA_EDAD_CHOICES)
+        categoria_label = categoria_dict.get(categoria_edad_filtro, categoria_edad_filtro)
+    
+    context = {
+        "miembros": miembros,
+        "query": filtros_context.get("query", ""),
+        # Labels para mostrar en el reporte (texto legible)
+        "estado": estado_label,
+        "genero_filtro": genero_label,
+        "categoria_edad_filtro": categoria_label,
+        "bautizado": bautizado,
+        # Conteos
+        "activos_count": activos_count,
+        "inactivos_count": inactivos_count,
+        "CFG": CFG,
+    }
+    
+    return render(request, "miembros_app/reportes/reporte_listado_miembros.html", context)
 
 # -------------------------------------
 # REPORTE: FICHA PASTORAL DEL MIEMBRO

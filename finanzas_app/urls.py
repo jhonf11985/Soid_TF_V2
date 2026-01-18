@@ -71,4 +71,24 @@ path(
     name="reporte_transferencias",
 ),
  path("egresos/<int:pk>/recibo/", views.egreso_recibo, name="egreso_recibo"),
+     path(
+        "cuentas-por-pagar/",
+        views.cxp_list,
+        name="cxp_list",
+    ),
+    path(
+        "cuentas-por-pagar/nueva/",
+        views.cxp_create,
+        name="cxp_create",
+    ),
+    path(
+        "cuentas-por-pagar/<int:pk>/",
+        views.cxp_detail,
+        name="cxp_detail",
+    ),
+
+
+# Proveedores (CxP)
+path("proveedores/", views.proveedores_list, name="proveedores_list"),
+path("proveedores/nuevo/", views.proveedores_create, name="proveedores_create"),
 ]

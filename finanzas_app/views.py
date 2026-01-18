@@ -13,16 +13,32 @@ from django.shortcuts import get_object_or_404, render
 from core.utils_config import get_config
 from .models import MovimientoFinanciero
 from collections import defaultdict
-from .models import MovimientoFinanciero, CuentaFinanciera, CategoriaMovimiento
-from .forms import (
-    MovimientoFinancieroForm, 
-    MovimientoIngresoForm, 
-    CuentaFinancieraForm,
-    MovimientoEgresoForm, 
-    CategoriaMovimientoForm,
+from .models import (
+    MovimientoFinanciero,
+    CuentaFinanciera,
+    CategoriaMovimiento,
+    ProveedorFinanciero,
+    CuentaPorPagar,
 )
+
+from .forms import (
+    MovimientoFinancieroForm,
+    MovimientoIngresoForm,
+    CuentaFinancieraForm,
+    MovimientoEgresoForm,
+    CategoriaMovimientoForm,
+    ProveedorFinancieroForm,
+    CuentaPorPagarForm,
+)
+
+
 from django.db import transaction
 from django.utils import timezone
+
+
+
+
+
 
 # ============================================
 # DASHBOARD
@@ -1716,3 +1732,103 @@ def reporte_transferencias(request):
         "finanzas_app/reportes/transferencias.html",
         context
     )
+
+
+# ==========================================================
+# CUENTAS POR PAGAR (CxP) – CRUD BÁSICO (SIN PAGOS AÚN)
+# ==========================================================
+
+@login_required
+def cxp_list(request):
+    estado = (request.GET.get("estado") or "").strip()
+    q = (request.GET.get("q") or "").strip()
+
+    qs = CuentaPorPagar.objects.select_related(
+        "proveedor", "categoria", "cuenta_sugerida"
+    ).all()
+
+    if estado:
+        qs = qs.filter(estado=estado)
+
+    if q:
+        qs = qs.filter(
+            Q(concepto__icontains=q) |
+            Q(descripcion__icontains=q) |
+            Q(referencia__icontains=q) |
+            Q(proveedor__nombre__icontains=q)
+        )
+
+    qs = qs.order_by("-fecha_emision", "-creado_en")
+
+    context = {
+        "items": qs,
+        "estado": estado,
+        "q": q,
+        "ESTADOS": CuentaPorPagar.ESTADO_CHOICES,
+    }
+    return render(request, "finanzas_app/cxp/lista.html", context)
+
+
+@login_required
+def cxp_create(request):
+    if request.method == "POST":
+        form = CuentaPorPagarForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.creado_por = request.user
+            obj.estado = "pendiente"
+            obj.monto_pagado = obj.monto_pagado or 0
+            obj.save()
+
+            messages.success(request, "✅ Cuenta por pagar creada correctamente.")
+            return redirect("finanzas_app:cxp_detail", pk=obj.pk)
+    else:
+        form = CuentaPorPagarForm()
+
+    return render(request, "finanzas_app/cxp/crear.html", {"form": form})
+
+
+@login_required
+def cxp_detail(request, pk):
+    obj = get_object_or_404(
+        CuentaPorPagar.objects.select_related(
+            "proveedor", "categoria", "cuenta_sugerida"
+        ),
+        pk=pk
+    )
+
+    return render(request, "finanzas_app/cxp/detalle.html", {"obj": obj})
+
+
+# ----------------------------------------------------------
+# PROVEEDORES (mínimo para poder crear CxP sin fricción)
+# ----------------------------------------------------------
+
+@login_required
+def proveedores_list(request):
+    q = (request.GET.get("q") or "").strip()
+
+    qs = ProveedorFinanciero.objects.all()
+    if q:
+        qs = qs.filter(
+            Q(nombre__icontains=q) |
+            Q(telefono__icontains=q) |
+            Q(email__icontains=q)
+        )
+    qs = qs.order_by("nombre")
+
+    return render(request, "finanzas_app/cxp/proveedores_lista.html", {"items": qs, "q": q})
+
+
+@login_required
+def proveedores_create(request):
+    if request.method == "POST":
+        form = ProveedorFinancieroForm(request.POST)
+        if form.is_valid():
+            obj = form.save()
+            messages.success(request, "✅ Proveedor creado correctamente.")
+            return redirect("finanzas_app:proveedores_list")
+    else:
+        form = ProveedorFinancieroForm()
+
+    return render(request, "finanzas_app/cxp/proveedores_crear.html", {"form": form})

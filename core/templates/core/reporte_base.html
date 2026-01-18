@@ -12,121 +12,145 @@
     <link rel="stylesheet" href="{% static 'core/css/main.css' %}">
 
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         html, body {
             font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #f3f4f6;
             color: #111827;
+            line-height: 1.5;
         }
 
         .report-wrapper {
             max-width: 980px;
             margin: 16px auto 32px auto;
             background: #ffffff;
-            padding: 20px 24px;
+            padding: 24px 28px;
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(15,23,42,0.12);
             position: relative;
         }
 
-        /* Encabezado institucional (solo impresión) */
+        /* ========================================
+           ENCABEZADO INSTITUCIONAL
+           ======================================== */
         .report-header {
             display: flex;
             flex-direction: column;
-            align-items: center;   /* ✅ logo centrado real */
+            align-items: center;
             justify-content: center;
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e5e7eb;
             position: relative;
             z-index: 2;
         }
 
         .report-header-logo {
             display: block;
-            margin: 0 auto 8px auto;
+            margin: 0 auto 12px auto;
             max-height: 70px;
+            height: auto;
+            width: auto;
         }
 
         .report-header-title {
-            margin: 0;
-            font-size: 18px;
+            margin: 0 0 4px 0;
+            font-size: 20px;
             font-weight: 700;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.5px;
+            color: #111827;
         }
 
         .report-header-denom {
-            font-size: 12px;
+            font-size: 13px;
             color: #4b5563;
-            margin-top: 2px;
+            margin-top: 4px;
+            font-weight: 500;
         }
 
         .report-header-lema {
             font-size: 12px;
             color: #6b7280;
-            margin-top: 4px;
+            margin-top: 6px;
             font-style: italic;
         }
 
-        .report-header-direccion {
+        /* ========================================
+           CONTACTO INSTITUCIONAL
+           ======================================== */
+        .report-contact {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
             font-size: 11px;
-            color: #6b7280;
-            margin-top: 4px;
-        }
-
-        /* ✅ Contacto institucional (solo impresión) */
-.report-contact {
-    display: flex;
-    flex-direction: column;      /* 👈 fuerza centrado vertical real */
-    align-items: center;         /* 👈 centra cada línea */
-    gap: 2px;
-    font-size: 11px;
-    color: #374151;
-    margin-bottom: 6px;
-    position: relative;
-    z-index: 2;
-}
-.report-contact span {
-    display: block;
-    text-align: center;
-    white-space: nowrap;
-}
-
-
-     
-
-        .report-address {
-            text-align: center;
-            font-size: 11px;
-            color: #6b7280;
-            margin-bottom: 10px;
+            color: #374151;
+            margin: 12px 0;
             position: relative;
             z-index: 2;
         }
 
+        .report-contact span {
+            display: block;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        /* ========================================
+           DIRECCIÓN
+           ======================================== */
+        .report-address {
+            text-align: center;
+            font-size: 11px;
+            color: #6b7280;
+            margin: 8px 0 16px 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ========================================
+           TÍTULO Y METADATOS DEL REPORTE
+           ======================================== */
         .report-title {
-            margin-top: 12px;
-            margin-bottom: 4px;
-            font-size: 16px;
+            margin-top: 20px;
+            margin-bottom: 6px;
+            font-size: 18px;
             font-weight: 600;
             text-align: left;
+            color: #111827;
         }
 
         .report-subtitle {
-            margin: 0 0 12px 0;
-            font-size: 12px;
+            margin: 0 0 16px 0;
+            font-size: 13px;
             color: #6b7280;
+            font-weight: 400;
         }
 
         .report-meta {
-            font-size: 11px;
+            font-size: 12px;
             color: #6b7280;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border-left: 3px solid #714B67;
         }
 
         .report-meta span {
-            margin-right: 12px;
+            margin-right: 16px;
+            display: inline-block;
         }
 
-        /* Marca de agua usando la plantilla PDF si existe */
+        /* ========================================
+           MARCA DE AGUA
+           ======================================== */
         {% if CFG.plantilla_pdf_fondo %}
         .report-wrapper::before {
             content: "";
@@ -134,7 +158,7 @@
             inset: 10%;
             background: url('{{ CFG.plantilla_pdf_fondo.url }}') no-repeat center center;
             background-size: contain;
-            opacity: 0.08;
+            opacity: 0.06;
             pointer-events: none;
             z-index: 1;
         }
@@ -145,9 +169,67 @@
             z-index: 2;
         }
 
-        /* Utilidades para controlar lo que se ve en pantalla vs impresión */
+        /* ========================================
+           TABLA DE REPORTE
+           ======================================== */
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 12px;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .report-table thead {
+            background: linear-gradient(135deg, #714B67 0%, #5a3b52 100%);
+            color: #ffffff;
+        }
+
+        .report-table th {
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #ffffff;
+        }
+
+        .report-table tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+            transition: background-color 0.15s ease;
+        }
+
+        .report-table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+
+        .report-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .report-table td {
+            padding: 12px 10px;
+            vertical-align: top;
+            color: #374151;
+        }
+
+        .report-table tbody tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        /* ========================================
+           UTILIDADES DE VISIBILIDAD
+           ======================================== */
         .only-print {
             display: none;
+        }
+
+        .no-print {
+            display: block;
         }
 
         .no-print-inline {
@@ -156,9 +238,14 @@
             gap: 4px;
         }
 
+        /* ========================================
+           ESTILOS DE IMPRESIÓN
+           ======================================== */
         @media print {
             html, body {
                 background: #ffffff !important;
+                margin: 0;
+                padding: 0;
             }
 
             .report-wrapper {
@@ -166,7 +253,7 @@
                 max-width: 100%;
                 border-radius: 0;
                 box-shadow: none;
-                padding: 8mm 10mm;
+                padding: 10mm 12mm;
             }
 
             .no-print,
@@ -178,16 +265,105 @@
                 display: block !important;
             }
 
+            .report-header {
+                margin-bottom: 12px;
+                padding-bottom: 10px;
+            }
+
             .report-header-logo {
-                max-height: 55px;
+                max-height: 60px;
+            }
+
+            .report-header-title {
+                font-size: 18px;
             }
 
             .report-title {
-                font-size: 15px;
+                font-size: 16px;
+                margin-top: 16px;
             }
 
             .report-subtitle {
+                font-size: 12px;
+            }
+
+            .report-meta {
                 font-size: 11px;
+                padding: 8px 10px;
+            }
+
+            .report-table {
+                box-shadow: none;
+                font-size: 10px;
+            }
+
+            .report-table th {
+                padding: 8px 6px;
+                background: #714B67 !important;
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .report-table td {
+                padding: 8px 6px;
+            }
+
+            .report-table tbody tr:nth-child(even) {
+                background-color: #f9fafb !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Evitar saltos de página dentro de filas */
+            .report-table tr {
+                page-break-inside: avoid;
+            }
+
+            /* Repetir encabezado en cada página */
+            .report-table thead {
+                display: table-header-group;
+            }
+
+            .report-table tbody {
+                display: table-row-group;
+            }
+        }
+
+        /* ========================================
+           RESPONSIVE
+           ======================================== */
+        @media (max-width: 768px) {
+            .report-wrapper {
+                margin: 8px;
+                padding: 16px;
+                border-radius: 8px;
+            }
+
+            .report-header-title {
+                font-size: 16px;
+            }
+
+            .report-title {
+                font-size: 16px;
+            }
+
+            .report-meta {
+                font-size: 11px;
+            }
+
+            .report-meta span {
+                display: block;
+                margin-bottom: 4px;
+            }
+
+            .report-table {
+                font-size: 11px;
+            }
+
+            .report-table th,
+            .report-table td {
+                padding: 8px 6px;
             }
         }
     </style>
@@ -198,7 +374,7 @@
 
 <div class="report-wrapper">
 
-    <!-- 🔹 ENCABEZADO INSTITUCIONAL: solo se verá AL IMPRIMIR -->
+    <!-- ENCABEZADO INSTITUCIONAL: solo visible al imprimir -->
     <header class="report-header only-print">
         {% if CFG.logo %}
             <img src="{{ CFG.logo.url }}"
@@ -222,12 +398,12 @@
 
         {% if CFG.lema %}
             <div class="report-header-lema">
-                “{{ CFG.lema }}”
+                "{{ CFG.lema }}"
             </div>
         {% endif %}
     </header>
 
-    <!-- ✅ CONTACTO: solo impresión -->
+    <!-- CONTACTO: solo visible al imprimir -->
     {% if CFG.telefono_oficial or CFG.whatsapp_oficial or CFG.email_oficial or CFG.sitio_web %}
         <div class="report-contact only-print">
             {% if CFG.telefono_oficial %}
@@ -248,10 +424,10 @@
         </div>
     {% endif %}
 
-    <!-- ✅ DIRECCIÓN: controlada por bandera -->
+    <!-- DIRECCIÓN: controlada por bandera -->
     {% if CFG.mostrar_direccion_en_reportes and CFG.direccion %}
         <div class="report-address only-print">
-            {{ CFG.direccion }}
+            📍 {{ CFG.direccion }}
         </div>
     {% endif %}
 

@@ -1,0 +1,52 @@
+{% extends 'finanzas_app/base_finanzas.html' %}
+
+{% block finanzas_content %}
+
+<h1>Cuentas por pagar</h1>
+
+<form method="get" style="margin: 10px 0;">
+  <input type="text" name="q" value="{{ q }}" placeholder="Buscar (proveedor, concepto, referencia)" />
+  <select name="estado">
+    <option value="">-- Estado --</option>
+    {% for val, label in ESTADOS %}
+      <option value="{{ val }}" {% if estado == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Filtrar</button>
+  <a href="{% url 'finanzas_app:cxp_create' %}">➕ Nueva</a>
+</form>
+
+{% if items %}
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Proveedor</th>
+        <th>Concepto</th>
+        <th>Monto</th>
+        <th>Pagado</th>
+        <th>Saldo</th>
+        <th>Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in items %}
+      <tr>
+        <td>{{ i.fecha_emision }}</td>
+        <td>{{ i.proveedor.nombre }}</td>
+        <td>{{ i.concepto }}</td>
+        <td>{{ i.monto_total }}</td>
+        <td>{{ i.monto_pagado }}</td>
+        <td>{{ i.saldo_pendiente }}</td>
+        <td>{{ i.get_estado_display }}</td>
+        <td><a href="{% url 'finanzas_app:cxp_detail' i.pk %}">Ver</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No hay cuentas por pagar registradas.</p>
+{% endif %}
+
+{% endblock %}
