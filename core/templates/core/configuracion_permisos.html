@@ -5,11 +5,23 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
   .perm-wrap {
-    max-width: 1280px;
+    max-width: 100%;
+    width: 100%;
     margin: 0 auto;
     padding: 24px;
     font-family: 'Poppins', sans-serif;
+    padding-bottom: 100px; /* Espacio para botones flotantes en móvil */
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   /* Header */
@@ -41,6 +53,8 @@
     display: grid;
     grid-template-columns: 280px 1fr;
     gap: 24px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* Cards */
@@ -49,6 +63,7 @@
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
     overflow: hidden;
+    min-width: 0;
   }
   .card-header {
     padding: 16px 20px;
@@ -155,6 +170,8 @@
     display: grid;
     grid-template-columns: 1fr 340px;
     gap: 24px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* Módulos de permisos */
@@ -186,6 +203,8 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    flex: 1;
+    min-width: 0;
   }
   .perm-module-icon {
     width: 36px;
@@ -195,9 +214,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
   .perm-module-icon .material-icons {
     font-size: 20px;
+  }
+  .perm-module-text {
+    min-width: 0;
+    flex: 1;
   }
   .perm-module-name {
     font-weight: 600;
@@ -207,11 +231,15 @@
     font-size: 12px;
     opacity: 0.85;
     margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .perm-module-right {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
   }
   .perm-module-count {
     background: rgba(255,255,255,0.2);
@@ -244,7 +272,7 @@
     transform: rotate(-90deg);
   }
   .perm-module-content {
-    max-height: 1000px;
+    max-height: 2000px;
     overflow: hidden;
     transition: max-height 0.3s ease-out;
   }
@@ -261,6 +289,8 @@
     padding: 10px 14px;
     background: #f5f5f5;
     border-radius: 10px;
+    flex-wrap: wrap;
+    gap: 10px;
   }
   .module-controls-label {
     font-size: 13px;
@@ -270,6 +300,7 @@
   .module-controls-btns {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
   }
   .btn-mini {
     display: inline-flex;
@@ -279,157 +310,244 @@
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     background: #fff;
-    color: #616161;
     font-size: 12px;
     font-weight: 500;
-    font-family: 'Poppins', sans-serif;
+    color: #424242;
     cursor: pointer;
     transition: all 0.2s ease;
-  }
-  .btn-mini:hover {
-    background: #0097a7;
-    border-color: #0097a7;
-    color: #fff;
+    white-space: nowrap;
   }
   .btn-mini .material-icons {
     font-size: 16px;
+  }
+  .btn-mini:hover {
+    background: #f5f5f5;
+    border-color: #bdbdbd;
+  }
+  .btn-mini.btn-select-all {
+    background: #0097a7;
+    color: #fff;
+    border-color: #0097a7;
+  }
+  .btn-mini.btn-select-all:hover {
+    background: #00838f;
+    border-color: #00838f;
+  }
+  .btn-mini.btn-deselect-all {
+    background: #f5f5f5;
+    color: #616161;
+    border-color: #e0e0e0;
+  }
+  .btn-mini.btn-deselect-all:hover {
+    background: #eeeeee;
+    border-color: #bdbdbd;
+  }
+
+  /* Controles internos del módulo */
+  .module-inner-controls {
+    padding: 12px 16px;
+    background: #f9f9f9;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .module-inner-controls .btn-mini {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  .module-inner-controls .btn-mini .material-icons {
+    font-size: 14px;
   }
 
   /* Tabla de permisos */
   .perm-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
   }
-  .perm-table thead {
-    background: #f5f5f5;
+  .perm-table thead tr {
+    background: #fafafa;
+    border-bottom: 2px solid #e0e0e0;
   }
   .perm-table th {
-    text-align: left;
     padding: 10px 16px;
-    font-size: 11px;
+    text-align: left;
+    font-size: 12px;
     font-weight: 600;
-    color: #757575;
+    color: #616161;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
+  .perm-table th:nth-child(1) {
+    width: 70px;
+  }
+  .perm-table th:nth-child(3) {
+    width: 180px;
+  }
   .perm-table td {
     padding: 12px 16px;
-    font-size: 13px;
-    border-bottom: 1px solid #f0f0f0;
-    color: #424242;
+    border-bottom: 1px solid #f5f5f5;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .perm-table tbody tr:last-child td {
-    border-bottom: none;
-  }
-  .perm-table tbody tr:hover {
+  .perm-table tr:hover {
     background: #fafafa;
   }
   .perm-name {
-    font-weight: 500;
+    font-size: 13px;
     color: #212121;
+    font-weight: 500;
   }
   .perm-codename {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 12px;
-    color: #9e9e9e;
+    font-size: 11px;
+    color: #757575;
     background: #f5f5f5;
     padding: 2px 8px;
     border-radius: 4px;
+    font-family: 'Courier New', monospace;
   }
 
-  /* Checkbox personalizado */
+  /* Checkbox custom */
   .checkbox-custom {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
     position: relative;
-    width: 20px;
-    height: 20px;
   }
-  .checkbox-custom input {
+  .checkbox-custom input[type="checkbox"] {
     position: absolute;
     opacity: 0;
-    width: 100%;
-    height: 100%;
     cursor: pointer;
-    z-index: 2;
   }
-  .checkbox-custom .checkmark {
-    position: absolute;
-    top: 0;
-    left: 0;
+  .checkmark {
     width: 20px;
     height: 20px;
     background: #fff;
     border: 2px solid #bdbdbd;
     border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.2s ease;
   }
-  .checkbox-custom input:checked + .checkmark {
-    background: #0097a7;
-    border-color: #0097a7;
-  }
-  .checkbox-custom .checkmark:after {
+  .checkmark::after {
     content: '';
-    position: absolute;
-    display: none;
-    left: 6px;
-    top: 2px;
-    width: 5px;
+    width: 6px;
     height: 10px;
     border: solid #fff;
     border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
+    transform: rotate(45deg) scale(0);
+    transition: transform 0.2s ease;
   }
-  .checkbox-custom input:checked + .checkmark:after {
-    display: block;
+  .checkbox-custom input:checked ~ .checkmark {
+    background: #0097a7;
+    border-color: #0097a7;
   }
-  .checkbox-custom input:hover + .checkmark {
+  .checkbox-custom input:checked ~ .checkmark::after {
+    transform: rotate(45deg) scale(1);
+  }
+  .checkbox-custom:hover .checkmark {
     border-color: #0097a7;
   }
 
+  /* Cards de permisos para móvil */
+  .perm-cards {
+    display: none; /* Oculto por defecto, se muestra en móvil */
+  }
+  .perm-card-item {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f5f5f5;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: background 0.2s ease;
+  }
+  .perm-card-item:hover {
+    background: #fafafa;
+  }
+  .perm-card-item:last-child {
+    border-bottom: none;
+  }
+  .perm-card-check {
+    padding-top: 2px;
+  }
+  .perm-card-check .checkbox-custom .checkmark {
+    width: 24px;
+    height: 24px;
+  }
+  .perm-card-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .perm-card-name {
+    font-size: 14px;
+    color: #212121;
+    font-weight: 500;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+  .perm-card-code {
+    font-size: 11px;
+    color: #757575;
+    background: #f5f5f5;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* Estado vacío */
   .empty-perms {
-    padding: 20px;
+    padding: 40px 20px;
     text-align: center;
     color: #9e9e9e;
-    font-size: 13px;
   }
   .empty-perms .material-icons {
-    font-size: 32px;
-    margin-bottom: 8px;
-    opacity: 0.5;
+    font-size: 48px;
+    color: #e0e0e0;
+    margin-bottom: 12px;
+  }
+  .empty-perms div {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .empty-perms small {
+    font-size: 12px;
+    color: #bdbdbd;
   }
 
   /* Panel de usuarios */
   .users-panel {
     position: sticky;
     top: 24px;
-  }
-  .users-panel .card-body {
-    padding: 0;
+    min-width: 0;
   }
   .users-search {
-    padding: 12px 16px;
-    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 12px;
   }
   .users-search input {
     width: 100%;
-    padding: 10px 14px 10px 40px;
+    padding: 10px 14px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     font-size: 13px;
     font-family: 'Poppins', sans-serif;
-    background: #fafafa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%239e9e9e' viewBox='0 0 24 24'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E") 12px center no-repeat;
-    background-size: 18px;
     transition: all 0.2s ease;
   }
   .users-search input:focus {
     outline: none;
     border-color: #0097a7;
-    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(0,151,167,0.1);
   }
-
   .users-list {
     max-height: 400px;
     overflow-y: auto;
-    padding: 8px;
+    margin: 0 -20px;
+    padding: 0 20px;
   }
   .users-list::-webkit-scrollbar {
     width: 6px;
@@ -441,7 +559,6 @@
     background: #bdbdbd;
     border-radius: 3px;
   }
-
   .user-item {
     display: flex;
     align-items: center;
@@ -450,45 +567,54 @@
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s ease;
+    margin-bottom: 6px;
+    position: relative;
   }
   .user-item:hover {
     background: #f5f5f5;
   }
-  .user-item input {
-    display: none;
+  .user-item input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
   }
-  .user-item .user-check {
-    width: 20px;
-    height: 20px;
+  .user-check {
+    width: 22px;
+    height: 22px;
     border: 2px solid #bdbdbd;
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: #fff;
     transition: all 0.2s ease;
     flex-shrink: 0;
   }
-  .user-item .user-check .material-icons {
+  .user-check .material-icons {
     font-size: 16px;
     color: #fff;
-    display: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
   }
-  .user-item input:checked + .user-check {
+  .user-item input:checked ~ .user-check {
     background: #0097a7;
     border-color: #0097a7;
   }
-  .user-item input:checked + .user-check .material-icons {
-    display: block;
+  .user-item input:checked ~ .user-check .material-icons {
+    opacity: 1;
+  }
+  .user-item:hover .user-check {
+    border-color: #0097a7;
   }
   .user-avatar {
     width: 36px;
     height: 36px;
-    background: linear-gradient(135deg, #0097a7, #00838f);
     border-radius: 50%;
+    background: linear-gradient(135deg, #0097a7, #00bcd4);
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
     font-weight: 600;
     font-size: 14px;
     flex-shrink: 0;
@@ -498,43 +624,46 @@
     min-width: 0;
   }
   .user-name {
-    font-weight: 600;
     font-size: 13px;
+    font-weight: 500;
     color: #212121;
-    white-space: nowrap;
+    margin-bottom: 2px;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .user-meta {
-    font-size: 12px;
-    color: #9e9e9e;
-    margin-top: 2px;
+    font-size: 11px;
+    color: #757575;
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
   }
   .user-badge {
-    font-size: 10px;
+    display: inline-block;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: 3px;
+    font-size: 10px;
     font-weight: 600;
+    text-transform: uppercase;
   }
   .user-badge.superuser {
-    background: #fff3e0;
-    color: #e65100;
+    background: #ffebee;
+    color: #c62828;
   }
   .user-badge.staff {
     background: #e3f2fd;
     color: #1565c0;
   }
 
-  /* Botones */
+  /* Botones de acción */
   .btn-actions {
-    padding: 16px;
+    padding: 16px 20px;
     border-top: 1px solid #e0e0e0;
     display: flex;
+    gap: 12px;
     flex-direction: column;
-    gap: 10px;
   }
   .btn {
     display: flex;
@@ -543,26 +672,27 @@
     gap: 8px;
     padding: 12px 20px;
     border-radius: 8px;
-    font-family: 'Poppins', sans-serif;
     font-size: 14px;
     font-weight: 600;
+    font-family: 'Poppins', sans-serif;
     cursor: pointer;
     transition: all 0.2s ease;
-    text-decoration: none;
     border: none;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .btn .material-icons {
+    font-size: 18px;
   }
   .btn-primary {
-    background: linear-gradient(135deg, #0097a7, #00838f);
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
     color: #fff;
-    box-shadow: 0 2px 8px rgba(0,151,167,0.3);
   }
   .btn-primary:hover {
-    background: linear-gradient(135deg, #00838f, #006064);
-    box-shadow: 0 4px 12px rgba(0,151,167,0.4);
-    transform: translateY(-1px);
-  }
-  .btn-primary .material-icons {
-    font-size: 18px;
+    background: linear-gradient(135deg, #00838f 0%, #006064 100%);
+    box-shadow: 0 4px 12px rgba(0,151,167,0.3);
   }
   .btn-secondary {
     background: #fff;
@@ -574,7 +704,45 @@
     border-color: #bdbdbd;
   }
 
+  /* Botones flotantes para móvil */
+  .mobile-actions {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 2px solid #e0e0e0;
+    padding: 12px 16px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+    z-index: 1000;
+  }
+  .mobile-actions .btn {
+    width: 100%;
+    padding: 14px 20px;
+  }
+  .mobile-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
   /* Responsive */
+  @media (max-width: 1280px) {
+    .perm-wrap {
+      padding: 20px;
+      padding-bottom: 100px;
+    }
+    .perm-grid {
+      grid-template-columns: 260px 1fr;
+      gap: 20px;
+    }
+    .split-layout {
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+    }
+  }
+
   @media (max-width: 1024px) {
     .perm-grid {
       grid-template-columns: 1fr;
@@ -584,24 +752,122 @@
     }
     .users-panel {
       position: static;
+      margin-top: 24px;
     }
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     .perm-wrap {
       padding: 16px;
+      padding-bottom: 80px;
     }
+    
     .perm-header h1 {
       font-size: 20px;
     }
+    .perm-header h1 .material-icons {
+      font-size: 24px;
+    }
+    .perm-header p {
+      font-size: 13px;
+    }
+
+    /* Ocultar tabla, mostrar cards en móvil */
+    .perm-table {
+      display: none;
+    }
+    .perm-cards {
+      display: block;
+    }
+
+    /* Ajustes del header de módulo */
     .perm-module-header {
-      flex-direction: column;
-      align-items: flex-start;
+      padding: 14px;
+    }
+    .perm-module-info {
       gap: 10px;
     }
-    .perm-table th:nth-child(3),
-    .perm-table td:nth-child(3) {
+    .perm-module-icon {
+      width: 32px;
+      height: 32px;
+    }
+    .perm-module-icon .material-icons {
+      font-size: 18px;
+    }
+    .perm-module-name {
+      font-size: 13px;
+    }
+    .perm-module-code {
+      font-size: 11px;
+    }
+    .perm-module-count {
+      display: none; /* Ocultar en móvil para ahorrar espacio */
+    }
+
+    /* Controles de módulo en móvil */
+    .module-controls {
+      padding: 10px;
+    }
+    .module-controls-label {
+      width: 100%;
+      margin-bottom: 6px;
+    }
+    .module-controls-btns {
+      width: 100%;
+      justify-content: stretch;
+    }
+    .btn-mini {
+      flex: 1;
+      justify-content: center;
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+
+    /* Controles internos del módulo */
+    .module-inner-controls {
+      padding: 10px 14px;
+    }
+
+    /* Card de usuario más compacto */
+    .user-item {
+      padding: 8px 10px;
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      font-size: 13px;
+    }
+
+    /* Mostrar botones flotantes */
+    .mobile-actions {
+      display: block;
+    }
+    .btn-actions {
       display: none;
+    }
+
+    /* Panel de roles más compacto */
+    .role-item {
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .perm-wrap {
+      padding: 12px;
+    }
+
+    .card-body {
+      padding: 12px 14px;
+    }
+
+    .perm-module-code {
+      display: none; /* Ocultar código en pantallas muy pequeñas */
+    }
+
+    .mobile-actions-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
@@ -662,7 +928,7 @@
       </div>
 
       <div class="card-body">
-        <form method="post">
+        <form method="post" id="permissionsForm">
           {% csrf_token %}
           <input type="hidden" name="role_id" value="{{ role.id }}"/>
 
@@ -672,6 +938,14 @@
               <div class="module-controls">
                 <span class="module-controls-label">{{ mod_perms|length }} módulos</span>
                 <div class="module-controls-btns">
+                  <button type="button" class="btn-mini btn-select-all" onclick="selectAllPermissions()">
+                    <span class="material-icons">done_all</span>
+                    Todas
+                  </button>
+                  <button type="button" class="btn-mini btn-deselect-all" onclick="deselectAllPermissions()">
+                    <span class="material-icons">remove_done</span>
+                    Ninguna
+                  </button>
                   <button type="button" class="btn-mini" onclick="expandAll()">
                     <span class="material-icons">unfold_more</span>
                     Expandir
@@ -689,7 +963,7 @@
                       <div class="perm-module-icon">
                         <span class="material-icons">folder</span>
                       </div>
-                      <div>
+                      <div class="perm-module-text">
                         <div class="perm-module-name">{{ item.module.name }}</div>
                         <div class="perm-module-code">{{ item.module.code }}{% if item.module.description %} · {{ item.module.description }}{% endif %}</div>
                       </div>
@@ -706,6 +980,25 @@
 
                   <div class="perm-module-content">
                   {% if item.perms %}
+                    <!-- Controles internos del módulo -->
+                    <div class="module-inner-controls">
+                      <span style="font-size: 11px; color: #757575; font-weight: 500;">
+                        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">tune</span>
+                        Acciones rápidas
+                      </span>
+                      <div style="display: flex; gap: 6px;">
+                        <button type="button" class="btn-mini btn-select-all" onclick="selectModulePerms({{ forloop.counter }})">
+                          <span class="material-icons">done_all</span>
+                          Todas
+                        </button>
+                        <button type="button" class="btn-mini btn-deselect-all" onclick="deselectModulePerms({{ forloop.counter }})">
+                          <span class="material-icons">remove_done</span>
+                          Ninguna
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Tabla para desktop -->
                     <table class="perm-table">
                       <thead>
                         <tr>
@@ -722,6 +1015,7 @@
                                 <input type="checkbox"
                                        name="perm_ids"
                                        value="{{ p.id }}"
+                                       class="perm-checkbox module-{{ forloop.parentloop.counter }}-perm"
                                        {% if p.id in role_perm_ids %}checked{% endif %}>
                                 <span class="checkmark"></span>
                               </label>
@@ -732,6 +1026,28 @@
                         {% endfor %}
                       </tbody>
                     </table>
+
+                    <!-- Cards para móvil -->
+                    <div class="perm-cards">
+                      {% for p in item.perms %}
+                        <div class="perm-card-item">
+                          <div class="perm-card-check">
+                            <label class="checkbox-custom">
+                              <input type="checkbox"
+                                     name="perm_ids"
+                                     value="{{ p.id }}"
+                                     class="perm-checkbox module-{{ forloop.parentloop.counter }}-perm"
+                                     {% if p.id in role_perm_ids %}checked{% endif %}>
+                              <span class="checkmark"></span>
+                            </label>
+                          </div>
+                          <div class="perm-card-info">
+                            <div class="perm-card-name">{{ p.name }}</div>
+                            <code class="perm-card-code">{{ p.codename }}</code>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
                   {% else %}
                     <div class="empty-perms">
                       <span class="material-icons">search_off</span>
@@ -814,12 +1130,28 @@
   </div>
 </div>
 
+<!-- Botones flotantes para móvil -->
+<div class="mobile-actions">
+  <div class="mobile-actions-grid">
+    <button type="button" class="btn btn-primary" onclick="document.getElementById('permissionsForm').submit()">
+      <span class="material-icons">save</span>
+      Guardar
+    </button>
+    <a class="btn btn-secondary" href="{% url 'core:configuracion' %}">
+      <span class="material-icons">arrow_back</span>
+      Volver
+    </a>
+  </div>
+</div>
+
 <script>
+// Toggle de módulos
 function toggleModule(id) {
   const module = document.getElementById('module-' + id);
   module.classList.toggle('collapsed');
 }
 
+// Expandir/Colapsar todos
 function expandAll() {
   document.querySelectorAll('.perm-module').forEach(m => {
     m.classList.remove('collapsed');
@@ -832,6 +1164,39 @@ function collapseAll() {
   });
 }
 
+// Seleccionar TODOS los permisos (global)
+function selectAllPermissions() {
+  document.querySelectorAll('.perm-checkbox').forEach(checkbox => {
+    checkbox.checked = true;
+  });
+  showFeedback('Todos los permisos seleccionados');
+}
+
+// Deseleccionar TODOS los permisos (global)
+function deselectAllPermissions() {
+  document.querySelectorAll('.perm-checkbox').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  showFeedback('Todos los permisos deseleccionados');
+}
+
+// Seleccionar permisos de un módulo específico
+function selectModulePerms(moduleId) {
+  document.querySelectorAll('.module-' + moduleId + '-perm').forEach(checkbox => {
+    checkbox.checked = true;
+  });
+  showFeedback('Permisos del módulo seleccionados');
+}
+
+// Deseleccionar permisos de un módulo específico
+function deselectModulePerms(moduleId) {
+  document.querySelectorAll('.module-' + moduleId + '-perm').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  showFeedback('Permisos del módulo deseleccionados');
+}
+
+// Filtrar usuarios
 function filterUsers() {
   const input = document.getElementById('searchUsers');
   const filter = input.value.toLowerCase();
@@ -846,6 +1211,41 @@ function filterUsers() {
       item.style.display = 'none';
     }
   });
+}
+
+// Feedback visual (opcional)
+function showFeedback(message) {
+  // Crear un pequeño toast de feedback
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #212121;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  `;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => toast.style.opacity = '1', 10);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+
+// Evitar scroll cuando hay muchos módulos expandidos en móvil
+if (window.innerWidth <= 768) {
+  // Colapsar todos al cargar en móvil
+  collapseAll();
 }
 </script>
 {% endblock %}
