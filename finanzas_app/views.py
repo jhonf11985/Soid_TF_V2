@@ -1856,3 +1856,142 @@ def proveedores_editar(request, pk):
             "modo": "editar",
         },
     )
+
+@login_required
+def cxp_edit(request, pk):
+    """
+    Editar una Cuenta por Pagar existente.
+    No permite editar si está PAGADA.
+    """
+    cxp = get_object_or_404(CuentaPorPagar, pk=pk)
+
+    # Regla de negocio: no editar si ya está pagada
+    if cxp.estado == "pagada":
+        messages.warning(
+            request,
+            "Esta cuenta ya está pagada y no puede ser modificada."
+        )
+        return redirect("finanzas_app:cxp_detail", pk=cxp.pk)
+
+    if request.method == "POST":
+        form = CuentaPorPagarForm(request.POST, instance=cxp)
+        if form.is_valid():
+            form.save()
+            messages.success(
+                request,
+                "Cuenta por pagar actualizada correctamente."
+            )
+            return redirect("finanzas_app:cxp_detail", pk=cxp.pk)
+    else:
+        form = CuentaPorPagarForm(instance=cxp)
+
+    context = {
+        "form": form,
+        "obj": cxp,
+        "modo": "editar",
+    }
+
+    return render(
+        request,
+        "finanzas_app/cxp_form.html",
+        context
+    )
+
+@login_required
+@transaction.atomic
+def cxp_pagar(request, pk):
+    """
+    Registrar un pago (total o parcial) a una Cuenta por Pagar.
+    Crea un MovimientoFinanciero tipo egreso y actualiza la CxP.
+    """
+    cxp = get_object_or_404(CuentaPorPagar, pk=pk)
+
+    # No permitir pagar si ya está pagada o cancelada
+    if cxp.estado in ("pagada", "cancelada"):
+        messages.warning(request, "Esta cuenta ya está pagada o cancelada.")
+        return redirect("finanzas_app:cxp_detail", pk=cxp.pk)
+
+    # Cuentas activas para el select
+    cuentas = CuentaFinanciera.objects.filter(esta_activa=True).order_by("nombre")
+
+    if request.method == "POST":
+        # Obtener datos del form
+        monto_str = request.POST.get("monto", "").strip()
+        cuenta_id = request.POST.get("cuenta", "").strip()
+        fecha_str = request.POST.get("fecha", "").strip()
+        referencia = request.POST.get("referencia", "").strip()
+        descripcion = request.POST.get("descripcion", "").strip()
+        forma_pago = request.POST.get("forma_pago", "efectivo").strip()
+
+        errores = []
+
+        # Validar monto
+        try:
+            monto = Decimal(monto_str.replace(",", ""))
+            if monto <= 0:
+                errores.append("El monto debe ser mayor a cero.")
+            elif monto > cxp.saldo_pendiente:
+                errores.append(f"El monto no puede exceder el saldo pendiente (RD$ {cxp.saldo_pendiente}).")
+        except:
+            errores.append("Monto inválido.")
+            monto = None
+
+        # Validar cuenta
+        try:
+            cuenta = CuentaFinanciera.objects.get(pk=cuenta_id, esta_activa=True)
+        except CuentaFinanciera.DoesNotExist:
+            errores.append("Seleccione una cuenta válida.")
+            cuenta = None
+
+        # Validar fecha
+        try:
+            fecha = datetime.datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except:
+            errores.append("Fecha inválida.")
+            fecha = None
+
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+        else:
+            # Crear el movimiento de egreso
+            movimiento = MovimientoFinanciero.objects.create(
+                fecha=fecha,
+                tipo="egreso",
+                cuenta=cuenta,
+                categoria=cxp.categoria,
+                monto=monto,
+                descripcion=descripcion or f"Pago CxP #{cxp.pk} - {cxp.proveedor.nombre}",
+                referencia=referencia,
+                forma_pago=forma_pago,
+                estado="confirmado",
+                creado_por=request.user,
+            )
+
+            # Actualizar la CxP
+            cxp.monto_pagado = (cxp.monto_pagado or Decimal("0")) + monto
+            
+            if cxp.monto_pagado >= cxp.monto_total:
+                cxp.estado = "pagada"
+            else:
+                cxp.estado = "parcial"
+            
+            cxp.save()
+
+            messages.success(
+                request,
+                f"✅ Pago de RD$ {monto:,.2f} registrado correctamente."
+            )
+            return redirect("finanzas_app:cxp_detail", pk=cxp.pk)
+
+    # GET: valores por defecto
+    fecha_hoy = datetime.date.today()
+
+    context = {
+        "cxp": cxp,
+        "cuentas": cuentas,
+        "fecha_hoy": fecha_hoy,
+        "FORMA_PAGO_CHOICES": MovimientoFinanciero.FORMA_PAGO_CHOICES,
+    }
+
+    return render(request, "finanzas_app/cxp/pagar.html", context)
