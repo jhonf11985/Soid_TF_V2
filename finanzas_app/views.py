@@ -1856,3 +1856,43 @@ def proveedores_editar(request, pk):
             "modo": "editar",
         },
     )
+
+@login_required
+def cxp_edit(request, pk):
+    """
+    Editar una Cuenta por Pagar existente.
+    No permite editar si está PAGADA.
+    """
+    cxp = get_object_or_404(CuentaPorPagar, pk=pk)
+
+    # Regla de negocio: no editar si ya está pagada
+    if cxp.estado == "pagada":
+        messages.warning(
+            request,
+            "Esta cuenta ya está pagada y no puede ser modificada."
+        )
+        return redirect("finanzas_app:cxp_detail", pk=cxp.pk)
+
+    if request.method == "POST":
+        form = CuentaPorPagarForm(request.POST, instance=cxp)
+        if form.is_valid():
+            form.save()
+            messages.success(
+                request,
+                "Cuenta por pagar actualizada correctamente."
+            )
+            return redirect("finanzas_app:cxp_detail", pk=cxp.pk)
+    else:
+        form = CuentaPorPagarForm(instance=cxp)
+
+    context = {
+        "form": form,
+        "obj": cxp,
+        "modo": "editar",
+    }
+
+    return render(
+        request,
+        "finanzas_app/cxp_form.html",
+        context
+    )

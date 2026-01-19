@@ -92,5 +92,10 @@ path(
 path("proveedores/", views.proveedores_list, name="proveedores_list"),
 path("proveedores/nuevo/", views.proveedores_create, name="proveedores_create"),
 path("finanzas/proveedores/<int:pk>/editar/", views.proveedores_editar, name="proveedores_editar"),
+path(
+    "cuentas-por-pagar/<int:pk>/editar/",
+    views.cxp_edit,
+    name="cxp_edit",
+),
 
 ]

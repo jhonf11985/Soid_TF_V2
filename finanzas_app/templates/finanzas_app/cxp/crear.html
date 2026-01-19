@@ -1,166 +1,149 @@
-{% extends 'finanzas_app/base_finanzas.html' %}
+{% extends "core/base.html" %}
 {% load static %}
 
-{% block title %}Nueva cuenta por pagar · Soid_Tf_2{% endblock %}
+{% block title %}
+    {% if modo == "editar" %}
+        Editar Cuenta por Pagar
+    {% else %}
+        Nueva Cuenta por Pagar
+    {% endif %}
+{% endblock %}
 
-{% block finanzas_content %}
+{% block content %}
 
 <div class="odoo-page">
 
-    <!-- BARRA SUPERIOR -->
-    <div class="odoo-topbar">
-        <div class="odoo-topbar-left">
-            <a href="{% url 'finanzas_app:cxp_list' %}" class="odoo-back-link">
-                <span class="material-icons">arrow_back</span>
-            </a>
-            <div class="odoo-breadcrumb">
-                <span class="odoo-breadcrumb-parent">Cuentas por pagar</span>
-                <span class="odoo-breadcrumb-separator">/</span>
-                <span class="odoo-breadcrumb-current">Nueva</span>
-            </div>
+    <!-- Header -->
+    <div class="odoo-page-header">
+        <div class="odoo-page-title">
+            {% if modo == "editar" %}
+                Editar Cuenta por Pagar
+            {% else %}
+                Nueva Cuenta por Pagar
+            {% endif %}
         </div>
-        <div class="odoo-topbar-right">
-            <span class="odoo-record-count">Nuevo</span>
+
+        <div class="odoo-page-actions">
+            {% if obj %}
+                <a href="{% url 'finanzas_app:cxp_detail' obj.id %}" class="btn btn-secondary">
+                    Volver
+                </a>
+            {% else %}
+                <a href="{% url 'finanzas_app:cxp_list' %}" class="btn btn-secondary">
+                    Volver
+                </a>
+            {% endif %}
         </div>
     </div>
 
-    <!-- BARRA DE ACCIONES -->
-    <div class="odoo-actionbar">
-        <div class="odoo-actionbar-left">
-            <button type="submit" form="cxp-form" class="odoo-btn odoo-btn-primary">
-                Guardar
-            </button>
-            <a href="{% url 'finanzas_app:cxp_list' %}" class="odoo-btn odoo-btn-secondary">
-                Cancelar
-            </a>
-        </div>
-        <div class="odoo-actionbar-right">
-            <a href="{% url 'finanzas_app:proveedores_create' %}" class="odoo-btn odoo-btn-link">
-                <span class="material-icons">add</span>
-                Crear proveedor
-            </a>
-            <a href="{% url 'finanzas_app:proveedores_list' %}" class="odoo-btn odoo-btn-link">
-                <span class="material-icons">store</span>
-                Ver proveedores
-            </a>
-        </div>
-    </div>
-
-    <!-- FORMULARIO PRINCIPAL -->
-    <div class="odoo-form-sheet">
-        <form method="post" novalidate id="cxp-form">
+    <!-- Formulario -->
+    <div class="odoo-form-container">
+        <form method="post" novalidate>
             {% csrf_token %}
 
-{% if form.errors %}
-<div class="odoo-form-alert">
-    <span class="material-icons">error_outline</span>
-    <div>
-        <strong>No se pudo guardar.</strong><br>
-        Revisa los errores abajo.
-    </div>
-</div>
+            <!-- Datos principales -->
+            <div class="odoo-card">
+                <div class="odoo-card-header">
+                    Información general
+                </div>
 
-<div class="odoo-error-panel">
-    <strong>Errores detectados:</strong>
-    <ul>
-        {% for field in form %}
-            {% for error in field.errors %}
-                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-            {% endfor %}
-        {% endfor %}
-        {% for error in form.non_field_errors %}
-            <li><strong>General:</strong> {{ error }}</li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
-
-
-
-            <!-- CONTENIDO EN DOS COLUMNAS -->
-            <div class="odoo-form-content">
-                
-                <!-- COLUMNA IZQUIERDA -->
-                <div class="odoo-form-col">
-                    <div class="odoo-field-row">
+                <div class="odoo-card-body odoo-grid-2">
+                    <div class="odoo-field">
                         <label>Proveedor</label>
-                        <div class="odoo-field-value">
-                            {{ form.proveedor }}
-                            {% if form.proveedor.errors %}<span class="odoo-error">{{ form.proveedor.errors.0 }}</span>{% endif %}
-                        </div>
+                        {{ form.proveedor }}
                     </div>
 
-   <div class="odoo-field-row odoo-field-amount">
-    <label>Monto</label>
-    <div class="odoo-field-value odoo-amount-value">
-        <span class="odoo-currency">RD$</span>
-        {{ form.monto_total }}
-        {% if form.monto_total.errors %}<span class="odoo-error">{{ form.monto_total.errors.0 }}</span>{% endif %}
-    </div>
-</div>
-
-
-                    <div class="odoo-field-row">
-                        <label>Fecha emisión</label>
-                        <div class="odoo-field-value">
-                            {{ form.fecha_emision }}
-                            {% if form.fecha_emision.errors %}<span class="odoo-error">{{ form.fecha_emision.errors.0 }}</span>{% endif %}
-                        </div>
+                    <div class="odoo-field">
+                        <label>Categoría</label>
+                        {{ form.categoria }}
                     </div>
 
-                    <div class="odoo-field-row">
-                        <label>Fecha vencimiento</label>
-                        <div class="odoo-field-value">
-                            {{ form.fecha_vencimiento }}
-                            {% if form.fecha_vencimiento.errors %}<span class="odoo-error">{{ form.fecha_vencimiento.errors.0 }}</span>{% endif %}
-                        </div>
+                    <div class="odoo-field">
+                        <label>Concepto</label>
+                        {{ form.concepto }}
+                    </div>
+
+                    <div class="odoo-field">
+                        <label>Referencia</label>
+                        {{ form.referencia }}
+                    </div>
+
+                    <div class="odoo-field">
+                        <label>Fecha de emisión</label>
+                        {{ form.fecha_emision }}
+                    </div>
+
+                    <div class="odoo-field">
+                        <label>Fecha de vencimiento</label>
+                        {{ form.fecha_vencimiento }}
                     </div>
                 </div>
-
-                <!-- COLUMNA DERECHA -->
-   <div class="odoo-field-row">
-    <label>{{ form.categoria.label }}</label>
-    <div class="odoo-field-value">
-        {{ form.categoria }}
-        {% if form.categoria.errors %}<span class="odoo-error">{{ form.categoria.errors.0 }}</span>{% endif %}
-        <span class="odoo-field-hint">
-            No registra el gasto todavía. Sirve para clasificar la CxP y sugerir la categoría cuando se pague.
-        </span>
-    </div>
-</div>
-
-<div class="odoo-field-row">
-    <label>Referencia <span class="odoo-required">*</span></label>
-    <div class="odoo-field-value">
-        {{ form.referencia }}
-        {% if form.referencia.errors %}
-            <span class="odoo-error">{{ form.referencia.errors.0 }}</span>
-        {% endif %}
-        <span class="odoo-field-hint">Ej: CP001, CP002…</span>
-    </div>
-</div>
-
-
-                </div>
-
             </div>
 
-            <!-- DESCRIPCIÓN - ANCHO COMPLETO -->
-            <div class="odoo-form-full">
-                <div class="odoo-field-row">
-                    <label>Descripción</label>
-                    <div class="odoo-field-value">
-                        {{ form.descripcion }}
-                        {% if form.descripcion.errors %}<span class="odoo-error">{{ form.descripcion.errors.0 }}</span>{% endif %}
-                        <span class="odoo-field-hint">Opcional. Agrega detalles sobre esta cuenta por pagar.</span>
+            <!-- Montos -->
+            <div class="odoo-card">
+                <div class="odoo-card-header">
+                    Montos
+                </div>
+
+                <div class="odoo-card-body odoo-grid-3">
+                    <div class="odoo-field">
+                        <label>Monto total</label>
+                        {{ form.monto_total }}
+                    </div>
+
+                    <div class="odoo-field">
+                        <label>Monto pagado</label>
+                        {{ form.monto_pagado }}
+                    </div>
+
+                    <div class="odoo-field">
+                        <label>Cuenta sugerida</label>
+                        {{ form.cuenta_sugerida }}
                     </div>
                 </div>
+            </div>
+
+            <!-- Descripción -->
+            <div class="odoo-card">
+                <div class="odoo-card-header">
+                    Descripción
+                </div>
+
+                <div class="odoo-card-body">
+                    <div class="odoo-field">
+                        {{ form.descripcion }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="odoo-form-actions">
+                <button type="submit" class="btn btn-primary">
+                    {% if modo == "editar" %}
+                        Guardar cambios
+                    {% else %}
+                        Crear cuenta por pagar
+                    {% endif %}
+                </button>
+
+                {% if obj %}
+                    <a href="{% url 'finanzas_app:cxp_detail' obj.id %}" class="btn btn-secondary">
+                        Cancelar
+                    </a>
+                {% else %}
+                    <a href="{% url 'finanzas_app:cxp_list' %}" class="btn btn-secondary">
+                        Cancelar
+                    </a>
+                {% endif %}
             </div>
 
         </form>
     </div>
 
 </div>
+
+{% endblock %}
 
 <style>
 
