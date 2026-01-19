@@ -222,6 +222,67 @@
 
     </div>
 
+    <!-- HISTORIAL DE PAGOS -->
+    {% if pagos %}
+    <div class="odoo-payments-section">
+        <div class="odoo-payments-header">
+            <span class="material-icons">receipt_long</span>
+            <h3>Historial de pagos</h3>
+            <span class="odoo-payments-count">{{ pagos|length }} pago{{ pagos|length|pluralize }}</span>
+        </div>
+        <div class="odoo-payments-table-wrapper">
+            <table class="odoo-payments-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Monto</th>
+                        <th>Cuenta</th>
+                        <th>Forma de pago</th>
+                        <th>Referencia</th>
+                        <th>Registrado por</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pago in pagos %}
+                    <tr>
+                        <td>
+                            <span class="odoo-date">{{ pago.fecha|date:"d/m/Y" }}</span>
+                        </td>
+                        <td>
+                            <span class="odoo-amount">RD$ {{ pago.monto|floatformat:2 }}</span>
+                        </td>
+                        <td>
+                            <span class="odoo-account">{{ pago.cuenta.nombre }}</span>
+                        </td>
+                        <td>
+                            <span class="odoo-badge">{{ pago.get_forma_pago_display }}</span>
+                        </td>
+                        <td>
+                            {% if pago.referencia %}
+                            <code class="odoo-code">{{ pago.referencia }}</code>
+                            {% else %}
+                            <span class="odoo-text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="odoo-user">
+                                {{ pago.creado_por.get_full_name|default:pago.creado_por.username }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'finanzas_app:egreso_detalle' pago.id %}" class="odoo-table-action" title="Ver detalle">
+                                <span class="material-icons">visibility</span>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ZONA INFERIOR -->
     <div class="odoo-detail-footer">
         <span class="material-icons">attach_file</span>
@@ -693,6 +754,136 @@
 
     .odoo-detail-footer .material-icons {
         font-size: 20px;
+    }
+
+    /* HISTORIAL DE PAGOS */
+    .odoo-payments-section {
+        background: var(--odoo-bg);
+        max-width: 1200px;
+        margin: 0 auto 24px auto;
+        border: 1px solid var(--odoo-border);
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .odoo-payments-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--odoo-border);
+        background: var(--odoo-bg-gray);
+    }
+
+    .odoo-payments-header .material-icons {
+        font-size: 22px;
+        color: var(--odoo-success);
+    }
+
+    .odoo-payments-header h3 {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--odoo-text);
+        margin: 0;
+        flex: 1;
+    }
+
+    .odoo-payments-count {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--odoo-text-muted);
+        background: var(--odoo-bg);
+        padding: 4px 10px;
+        border-radius: 12px;
+    }
+
+    .odoo-payments-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .odoo-payments-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .odoo-payments-table thead {
+        background: var(--odoo-bg-gray);
+    }
+
+    .odoo-payments-table th {
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--odoo-text-muted);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-payments-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--odoo-border);
+        vertical-align: middle;
+    }
+
+    .odoo-payments-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .odoo-payments-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .odoo-date {
+        color: var(--odoo-text);
+        font-weight: 500;
+    }
+
+    .odoo-amount {
+        font-weight: 600;
+        color: var(--odoo-success);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .odoo-account {
+        color: var(--odoo-text);
+    }
+
+    .odoo-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        font-size: 11px;
+        font-weight: 500;
+        background: var(--odoo-purple-light);
+        color: var(--odoo-purple);
+        border-radius: 4px;
+    }
+
+    .odoo-user {
+        color: var(--odoo-text-muted);
+        font-size: 12px;
+    }
+
+    .odoo-table-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        color: var(--odoo-text-muted);
+        transition: all 0.15s;
+    }
+
+    .odoo-table-action:hover {
+        background: var(--odoo-bg-gray);
+        color: var(--odoo-purple);
+    }
+
+    .odoo-table-action .material-icons {
+        font-size: 18px;
     }
 
     @media (max-width: 900px) {

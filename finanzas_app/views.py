@@ -1738,10 +1738,15 @@ def reporte_transferencias(request):
 # CUENTAS POR PAGAR (CxP) – CRUD BÁSICO (SIN PAGOS AÚN)
 # ==========================================================
 
+# Reemplazar la vista cxp_list en views.py
+
 @login_required
 def cxp_list(request):
     estado = (request.GET.get("estado") or "").strip()
     q = (request.GET.get("q") or "").strip()
+    proveedor_id = (request.GET.get("proveedor") or "").strip()
+    fecha_desde = (request.GET.get("fecha_desde") or "").strip()
+    fecha_hasta = (request.GET.get("fecha_hasta") or "").strip()
 
     qs = CuentaPorPagar.objects.select_related(
         "proveedor", "categoria", "cuenta_sugerida"
@@ -1758,16 +1763,61 @@ def cxp_list(request):
             Q(proveedor__nombre__icontains=q)
         )
 
+    if proveedor_id:
+        qs = qs.filter(proveedor_id=proveedor_id)
+
+    if fecha_desde:
+        qs = qs.filter(fecha_emision__gte=fecha_desde)
+
+    if fecha_hasta:
+        qs = qs.filter(fecha_emision__lte=fecha_hasta)
+
     qs = qs.order_by("-fecha_emision", "-creado_en")
 
+    # Calcular totales
+    totales = qs.aggregate(
+        total_monto=Sum("monto_total"),
+        total_pagado=Sum("monto_pagado"),
+    )
+    
+    total_monto = totales.get("total_monto") or Decimal("0")
+    total_pagado = totales.get("total_pagado") or Decimal("0")
+    total_pendiente = total_monto - total_pagado
+
+    # Proveedores para el filtro
+    proveedores = ProveedorFinanciero.objects.filter(activo=True).order_by("nombre")
+
+    # Agregar propiedades de vencimiento a cada item
+    hoy = datetime.date.today()
+    items_con_vencimiento = []
+    for item in qs:
+        # Agregar propiedades calculadas
+        item.esta_vencida = (
+            item.fecha_vencimiento and 
+            item.fecha_vencimiento < hoy and 
+            item.estado not in ("pagada", "cancelada")
+        )
+        item.proxima_a_vencer = (
+            item.fecha_vencimiento and 
+            not item.esta_vencida and
+            item.fecha_vencimiento <= hoy + datetime.timedelta(days=7) and
+            item.estado not in ("pagada", "cancelada")
+        )
+        items_con_vencimiento.append(item)
+
     context = {
-        "items": qs,
+        "items": items_con_vencimiento,
         "estado": estado,
         "q": q,
+        "proveedor": proveedor_id,
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
         "ESTADOS": CuentaPorPagar.ESTADO_CHOICES,
+        "proveedores": proveedores,
+        "total_pendiente": total_pendiente,
+        "total_pagado": total_pagado,
     }
     return render(request, "finanzas_app/cxp/lista.html", context)
-
 
 @login_required
 def cxp_create(request):
@@ -1787,6 +1837,7 @@ def cxp_create(request):
 
     return render(request, "finanzas_app/cxp/crear.html", {"form": form})
 
+# Reemplazar la vista cxp_detail en views.py
 
 @login_required
 def cxp_detail(request, pk):
@@ -1797,7 +1848,15 @@ def cxp_detail(request, pk):
         pk=pk
     )
 
-    return render(request, "finanzas_app/cxp/detalle.html", {"obj": obj})
+    # Obtener historial de pagos vinculados a esta CxP
+    pagos = MovimientoFinanciero.objects.filter(
+        cuenta_por_pagar=obj
+    ).select_related("cuenta", "creado_por").order_by("-fecha", "-creado_en")
+
+    return render(request, "finanzas_app/cxp/detalle.html", {
+        "obj": obj,
+        "pagos": pagos,
+    })
 
 
 # ----------------------------------------------------------
@@ -1897,6 +1956,8 @@ def cxp_edit(request, pk):
         context
     )
 
+# Vista para agregar a finanzas_app/views.py
+
 @login_required
 @transaction.atomic
 def cxp_pagar(request, pk):
@@ -1916,7 +1977,7 @@ def cxp_pagar(request, pk):
 
     if request.method == "POST":
         # Obtener datos del form
-        monto_str = request.POST.get("monto", "").strip()
+        monto_str = request.POST.get("monto", "").strip().replace(",", "")
         cuenta_id = request.POST.get("cuenta", "").strip()
         fecha_str = request.POST.get("fecha", "").strip()
         referencia = request.POST.get("referencia", "").strip()
@@ -1927,11 +1988,11 @@ def cxp_pagar(request, pk):
 
         # Validar monto
         try:
-            monto = Decimal(monto_str.replace(",", ""))
+            monto = Decimal(monto_str)
             if monto <= 0:
                 errores.append("El monto debe ser mayor a cero.")
             elif monto > cxp.saldo_pendiente:
-                errores.append(f"El monto no puede exceder el saldo pendiente (RD$ {cxp.saldo_pendiente}).")
+                errores.append(f"El monto no puede exceder el saldo pendiente (RD$ {cxp.saldo_pendiente:,.2f}).")
         except:
             errores.append("Monto inválido.")
             monto = None
@@ -1954,7 +2015,7 @@ def cxp_pagar(request, pk):
             for e in errores:
                 messages.error(request, e)
         else:
-            # Crear el movimiento de egreso
+            # Crear el movimiento de egreso vinculado a la CxP
             movimiento = MovimientoFinanciero.objects.create(
                 fecha=fecha,
                 tipo="egreso",
@@ -1966,6 +2027,7 @@ def cxp_pagar(request, pk):
                 forma_pago=forma_pago,
                 estado="confirmado",
                 creado_por=request.user,
+                cuenta_por_pagar=cxp,  # 👈 Vinculamos el pago con la CxP
             )
 
             # Actualizar la CxP

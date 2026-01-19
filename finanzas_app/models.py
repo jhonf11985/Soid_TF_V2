@@ -128,6 +128,14 @@ class MovimientoFinanciero(models.Model):
         related_name="movimientos_financieros",
         help_text="Unidad de Estructura asociada (si el módulo Estructura está activo)."
     )
+    cuenta_por_pagar = models.ForeignKey(
+            "CuentaPorPagar",
+            on_delete=models.SET_NULL,
+            null=True,
+            blank=True,
+            related_name="pagos",
+            help_text="Si este egreso es un pago de CxP, referencia a la cuenta por pagar."
+        )
 
     ESTADO_MOVIMIENTO_CHOICES = [
         ("pendiente", "Pendiente"),
