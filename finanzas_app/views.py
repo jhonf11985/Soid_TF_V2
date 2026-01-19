@@ -1739,6 +1739,7 @@ def reporte_transferencias(request):
 # ==========================================================
 
 # Reemplazar la vista cxp_list en views.py
+# Reemplazar la vista cxp_list en views.py
 
 @login_required
 def cxp_list(request):
@@ -1956,6 +1957,7 @@ def cxp_edit(request, pk):
         context
     )
 
+# Vista para agregar a finanzas_app/views.py
 # Vista para agregar a finanzas_app/views.py
 
 @login_required
