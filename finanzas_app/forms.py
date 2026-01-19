@@ -12,6 +12,8 @@ from .models import (
 )
 import re
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.db.models import Max
 
 
 
@@ -447,23 +449,33 @@ class ProveedorFinancieroForm(forms.ModelForm):
         }
 
     def clean_documento(self):
-        tipo_doc = (self.cleaned_data.get("tipo_documento") or "").strip()
-        doc = (self.cleaned_data.get("documento") or "").strip()
+        cleaned = getattr(self, "cleaned_data", {})
 
-        if not tipo_doc:
-            # Si no eligió tipo documento, permitimos vacío
-            return None if not doc else doc
-
-        if not doc:
-            return None
+        tipo = (cleaned.get("tipo") or "").strip()          # persona / empresa
+        tipo_doc = (cleaned.get("tipo_documento") or "").strip()
+        doc = (cleaned.get("documento") or "").strip()
 
         # Normalizar: quitar espacios y guiones
-        doc_norm = re.sub(r"[\s\-]+", "", doc)
+        doc_norm = re.sub(r"[\s\-]+", "", doc) if doc else ""
 
-        # Validaciones RD (básicas y seguras)
+        # Si no hay documento, lo dejamos en None (permitido por tu modelo)
+        if not doc_norm:
+            return None
+
+        # ✅ Inferir tipo_documento según tipo si no viene
+        if not tipo_doc:
+            if tipo == "persona":
+                tipo_doc = "cedula"
+            elif tipo == "empresa":
+                tipo_doc = "rnc"
+
+            # Guardamos la inferencia en cleaned_data para coherencia del formulario
+            self.cleaned_data["tipo_documento"] = tipo_doc
+
+        # ✅ Validaciones estrictas para persona/empresa
         if tipo_doc in ("cedula", "rnc"):
             if not doc_norm.isdigit():
-                raise ValidationError("Este documento debe contener solo números (sin letras).")
+                raise ValidationError("El documento debe contener solo números (sin letras).")
 
             if tipo_doc == "cedula" and len(doc_norm) != 11:
                 raise ValidationError("La cédula debe tener 11 dígitos.")
@@ -471,8 +483,9 @@ class ProveedorFinancieroForm(forms.ModelForm):
             if tipo_doc == "rnc" and len(doc_norm) != 9:
                 raise ValidationError("El RNC debe tener 9 dígitos.")
 
-        # Pasaporte / otro: no imponemos longitud, solo limpiamos espacios
+        # Pasaporte / otro: se permite texto (pero tú realmente lo quieres forzar a cédula/rnc)
         return doc_norm
+
 
     def clean(self):
         cleaned = super().clean()
@@ -499,23 +512,31 @@ class ProveedorFinancieroForm(forms.ModelForm):
         if tipo_cuenta and (not banco or not numero):
             self.add_error("tipo_cuenta", "Para definir tipo de cuenta, completa banco y número de cuenta.")
 
+        tipo = cleaned.get("tipo") or ""
+        if tipo == "persona":
+            cleaned["tipo_documento"] = "cedula"
+        elif tipo == "empresa":
+            cleaned["tipo_documento"] = "rnc"
+
         return cleaned
 
 
 class CuentaPorPagarForm(forms.ModelForm):
     class Meta:
         model = CuentaPorPagar
+     
         fields = [
             "proveedor",
             "fecha_emision",
             "fecha_vencimiento",
             "categoria",
             "cuenta_sugerida",
-            "concepto",
-            "descripcion",
             "referencia",
+            "descripcion",
             "monto_total",
         ]
+
+
         widgets = {
             "fecha_emision": forms.DateInput(attrs={"type": "date"}),
             "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}),
@@ -527,6 +548,35 @@ class CuentaPorPagarForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Fechas por defecto: hoy (solo cuando el formulario NO está ligado a POST y NO es edición)
+        if not self.is_bound and not self.instance.pk:
+            hoy = timezone.localdate()
+            self.fields["fecha_emision"].initial = hoy
+            self.fields["fecha_vencimiento"].initial = hoy
+
+        # Referencia requerida
+        self.fields["referencia"].required = True
+        self.fields["referencia"].label = "Referencia"
+        self.fields["referencia"].help_text = "Número de la cuenta por pagar."
+
+        # Valor por defecto CP001, CP002...
+        if not self.is_bound and not self.instance.pk:
+            ultimo = (
+                CuentaPorPagar.objects
+                .filter(referencia__startswith="CP")
+                .aggregate(max_ref=Max("referencia"))
+                .get("max_ref")
+            )
+
+            if ultimo:
+                try:
+                    numero = int(ultimo.replace("CP", "")) + 1
+                except ValueError:
+                    numero = 1
+            else:
+                numero = 1
+
+            self.fields["referencia"].initial = f"CP{numero:03d}"
 
         # Solo categorías de egreso activas
         self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
@@ -543,3 +593,13 @@ class CuentaPorPagarForm(forms.ModelForm):
         self.fields["proveedor"].queryset = ProveedorFinanciero.objects.filter(
             activo=True
         ).order_by("nombre")
+
+                # Etiquetas claras (esto es B: sugerido, no contable aún)
+        self.fields["categoria"].label = "Categoría (sugerida)"
+        self.fields["categoria"].help_text = (
+            "No registra el gasto todavía. Sirve para clasificar la CxP y sugerir la categoría al pagar."
+        )
+
+        self.fields["cuenta_sugerida"].label = "Cuenta sugerida (opcional)"
+        self.fields["cuenta_sugerida"].help_text = "No mueve caja. Solo sugiere desde qué cuenta se pagará normalmente."
+

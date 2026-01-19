@@ -1832,3 +1832,27 @@ def proveedores_create(request):
         form = ProveedorFinancieroForm()
 
     return render(request, "finanzas_app/cxp/proveedores_crear.html", {"form": form})
+
+@login_required
+def proveedores_editar(request, pk):
+    proveedor = get_object_or_404(ProveedorFinanciero, pk=pk)
+
+    if request.method == "POST":
+        form = ProveedorFinancieroForm(request.POST, instance=proveedor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "✅ Proveedor actualizado correctamente.")
+            return redirect("finanzas_app:proveedores_list")
+    else:
+        form = ProveedorFinancieroForm(instance=proveedor)
+
+    # Reutilizamos EXACTAMENTE la misma plantilla del crear
+    return render(
+        request,
+        "finanzas_app/cxp/proveedores_crear.html",
+        {
+            "form": form,
+            "proveedor": proveedor,
+            "modo": "editar",
+        },
+    )

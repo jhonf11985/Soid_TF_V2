@@ -123,19 +123,19 @@
                     <div class="odoo-field-row">
                         <label>Tipo doc.</label>
                         <div class="odoo-field-value">
-                            {{ form.tipo_documento }}
+                           {{ form.tipo_documento.as_hidden }}
                             {% if form.tipo_documento.errors %}<span class="odoo-error">{{ form.tipo_documento.errors.0 }}</span>{% endif %}
                         </div>
                     </div>
+<div class="odoo-field-row">
+    <label>Documento</label>
+    <div class="odoo-field-value">
+        {{ form.documento }}
+        {% if form.documento.errors %}<span class="odoo-error">{{ form.documento.errors.0 }}</span>{% endif %}
+        <span class="odoo-field-hint" id="doc-hint">Sin guiones.</span>
+    </div>
+</div>
 
-                    <div class="odoo-field-row">
-                        <label>Documento</label>
-                        <div class="odoo-field-value">
-                            {{ form.documento }}
-                            {% if form.documento.errors %}<span class="odoo-error">{{ form.documento.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Sin guiones. Ej: 40212345678</span>
-                        </div>
-                    </div>
 
                     <div class="odoo-field-row">
                         <label>Tipo proveedor</label>
@@ -145,14 +145,6 @@
                         </div>
                     </div>
 
-                    <div class="odoo-field-row">
-                        <label>Miembro</label>
-                        <div class="odoo-field-value">
-                            {{ form.miembro }}
-                            {% if form.miembro.errors %}<span class="odoo-error">{{ form.miembro.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Si el proveedor es miembro de la iglesia</span>
-                        </div>
-                    </div>
 
                 </div>
 
@@ -914,10 +906,11 @@
         }
     }
 </style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Sistema de tabs
+    // ================================
+    // TABS
+    // ================================
     const tabs = document.querySelectorAll('.odoo-tab');
     const contents = document.querySelectorAll('.odoo-tab-content');
 
@@ -931,31 +924,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Activar seleccionado
             this.classList.add('active');
-            document.querySelector(`.odoo-tab-content[data-tab="${targetTab}"]`).classList.add('active');
+            const targetContent = document.querySelector(`.odoo-tab-content[data-tab="${targetTab}"]`);
+            if (targetContent) targetContent.classList.add('active');
         });
     });
 
-    // Cambiar avatar según tipo
+    // ================================
+    // AVATAR SEGÚN TIPO (persona/empresa)
+    // ================================
     const tipoRadios = document.querySelectorAll('input[name="tipo"]');
     const avatarIcon = document.querySelector('.odoo-avatar .material-icons');
 
-    tipoRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (this.value === 'persona') {
-                avatarIcon.textContent = 'person';
-            } else {
-                avatarIcon.textContent = 'store';
-            }
-        });
-    });
-
-    // Inicializar icono
-    const checkedRadio = document.querySelector('input[name="tipo"]:checked');
-    if (checkedRadio && avatarIcon) {
+    function actualizarAvatar() {
+        const checkedRadio = document.querySelector('input[name="tipo"]:checked');
+        if (!checkedRadio || !avatarIcon) return;
         avatarIcon.textContent = checkedRadio.value === 'persona' ? 'person' : 'store';
     }
 
-    // Toggle campos de banco según método de pago
+    tipoRadios.forEach(radio => {
+        radio.addEventListener('change', actualizarAvatar);
+    });
+
+    // Inicializar icono
+    actualizarAvatar();
+
+    // ================================
+    // BANCO TAB "apagado" si no es transferencia
+    // ================================
     const metodo = document.getElementById('id_metodo_pago_preferido');
     const bancoTab = document.querySelector('.odoo-tab[data-tab="banco"]');
 
@@ -970,6 +965,69 @@ document.addEventListener('DOMContentLoaded', function() {
         metodo.addEventListener('change', updateBancoTab);
         updateBancoTab();
     }
+
+    // ================================
+    // DOCUMENTO: persona -> Cédula (11) / empresa -> RNC (9)
+    // ================================
+    const docInput = document.getElementById('id_documento');
+    const tipoDocHidden = document.getElementById('id_tipo_documento'); // si lo pusiste como hidden
+    const docHint = document.getElementById('doc-hint');
+
+    // (Opcional) Si quieres que el label cambie a "Cédula" o "RNC"
+    // Para que funcione, ponle id al label en el HTML: <label id="doc-label">Documento</label>
+    const docLabel = document.getElementById('doc-label');
+
+    function getTipoSeleccionado() {
+        const checkedRadio = document.querySelector('input[name="tipo"]:checked');
+        return checkedRadio ? checkedRadio.value : 'persona';
+    }
+
+    function limpiarANumeros(valor) {
+        return (valor || '').replace(/\D/g, '');
+    }
+
+    function aplicarReglaDocumento() {
+        if (!docInput) return;
+
+        const tipo = getTipoSeleccionado();
+
+        if (tipo === 'empresa') {
+            if (tipoDocHidden) tipoDocHidden.value = 'rnc';
+            docInput.maxLength = 9;
+            docInput.setAttribute('inputmode', 'numeric');
+            docInput.setAttribute('autocomplete', 'off');
+            docInput.placeholder = 'RNC (9 dígitos, sin guiones)';
+            if (docHint) docHint.textContent = 'RNC: 9 dígitos, solo números, sin guiones.';
+            if (docLabel) docLabel.textContent = 'RNC';
+        } else {
+            if (tipoDocHidden) tipoDocHidden.value = 'cedula';
+            docInput.maxLength = 11;
+            docInput.setAttribute('inputmode', 'numeric');
+            docInput.setAttribute('autocomplete', 'off');
+            docInput.placeholder = 'Cédula (11 dígitos, sin guiones)';
+            if (docHint) docHint.textContent = 'Cédula: 11 dígitos, solo números, sin guiones.';
+            if (docLabel) docLabel.textContent = 'Cédula';
+        }
+
+        // recortar si se pasó
+        docInput.value = limpiarANumeros(docInput.value).slice(0, docInput.maxLength);
+    }
+
+    // Forzar solo números siempre
+    if (docInput) {
+        docInput.addEventListener('input', function() {
+            const max = this.maxLength || 25;
+            this.value = limpiarANumeros(this.value).slice(0, max);
+        });
+    }
+
+    // Cuando cambie persona/empresa
+    tipoRadios.forEach(radio => {
+        radio.addEventListener('change', aplicarReglaDocumento);
+    });
+
+    // Inicializar regla documento al cargar
+    aplicarReglaDocumento();
 });
 </script>
 
