@@ -1,0 +1,502 @@
+{% extends 'inventario_app/base_inventario.html' %}
+{% load static %}
+
+{% block title %}
+{% if modo == "editar" %}Editar ubicación · Soid_Tf_2{% else %}Nueva ubicación · Soid_Tf_2{% endif %}
+{% endblock %}
+
+{% block inventario_content %}
+
+<div class="odoo-page">
+
+    <!-- BARRA SUPERIOR -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a href="{% url 'inventario:ubicaciones_lista' %}" class="odoo-back-link">
+                <span class="material-icons">arrow_back</span>
+            </a>
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-parent">Ubicaciones</span>
+                <span class="odoo-breadcrumb-separator">/</span>
+                <span class="odoo-breadcrumb-current">
+                    {% if modo == "editar" %}Editar{% else %}Nueva{% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="odoo-topbar-right">
+            <span class="odoo-record-count">
+                {% if modo == "editar" %}Editando{% else %}Nuevo{% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- BARRA DE ACCIONES -->
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            <button type="submit" form="ubicacion-form" class="odoo-btn odoo-btn-primary">
+                Guardar
+            </button>
+
+            {% if modo == "editar" %}
+            <a href="{% url 'inventario:ubicaciones_lista' %}" class="odoo-btn odoo-btn-secondary">
+                Cancelar
+            </a>
+            {% else %}
+            <a href="{% url 'inventario:ubicaciones_lista' %}" class="odoo-btn odoo-btn-secondary">
+                Cancelar
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="odoo-actionbar-right">
+            <a href="{% url 'inventario:recursos_lista' %}" class="odoo-btn odoo-btn-link">
+                <span class="material-icons">inventory_2</span>
+                Ver recursos
+            </a>
+        </div>
+    </div>
+
+    <!-- FORMULARIO PRINCIPAL -->
+    <div class="odoo-form-sheet">
+        <form method="post" novalidate id="ubicacion-form">
+            {% csrf_token %}
+
+{% if form.errors %}
+<div class="odoo-form-alert">
+    <span class="material-icons">error_outline</span>
+    <div>
+        <strong>No se pudo guardar.</strong><br>
+        Revisa los errores abajo.
+    </div>
+</div>
+
+<div class="odoo-error-panel">
+    <strong>Errores detectados:</strong>
+    <ul>
+        {% for field in form %}
+            {% for error in field.errors %}
+                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <li><strong>General:</strong> {{ error }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+            <!-- CONTENIDO -->
+            <div class="odoo-form-content">
+                
+                <!-- COLUMNA ÚNICA CENTRADA -->
+                <div class="odoo-form-col">
+                    
+                    <div class="odoo-field-row">
+                        <label>Nombre <span class="odoo-required">*</span></label>
+                        <div class="odoo-field-value">
+                            {{ form.nombre }}
+                            {% if form.nombre.errors %}<span class="odoo-error">{{ form.nombre.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Ej: Salón principal, Bodega, Oficina pastoral…</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- DESCRIPCIÓN - ANCHO COMPLETO -->
+            <div class="odoo-form-full">
+                <div class="odoo-field-row">
+                    <label>Descripción</label>
+                    <div class="odoo-field-value">
+                        {{ form.descripcion }}
+                        {% if form.descripcion.errors %}<span class="odoo-error">{{ form.descripcion.errors.0 }}</span>{% endif %}
+                        <span class="odoo-field-hint">Opcional. Detalles sobre esta ubicación.</span>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+<style>
+    .odoo-form-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+        padding: 12px 16px;
+        border-radius: 4px;
+        margin: 16px 24px;
+        font-size: 13px;
+    }
+
+    .odoo-required {
+        color: var(--odoo-error);
+        font-weight: 600;
+        margin-left: 2px;
+    }
+
+    .odoo-form-alert .material-icons {
+        font-size: 20px;
+    }
+
+    .odoo-error-panel {
+        background: #fff5f5;
+        border: 1px solid #fecaca;
+        padding: 12px 16px;
+        margin: 0 24px 16px;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+
+    .odoo-error-panel ul {
+        margin: 8px 0 0 20px;
+        padding: 0;
+    }
+
+    .odoo-error-panel li {
+        margin-bottom: 4px;
+    }
+
+    /* =====================================
+       VARIABLES
+       ===================================== */
+    :root {
+        --odoo-purple: #714B67;
+        --odoo-purple-light: #8f6b84;
+        --odoo-bg: #ffffff;
+        --odoo-bg-gray: #f8f9fa;
+        --odoo-border: #dee2e6;
+        --odoo-text: #212529;
+        --odoo-text-muted: #6c757d;
+        --odoo-error: #dc3545;
+        --odoo-success: #28a745;
+    }
+
+    /* =====================================
+       PÁGINA GENERAL
+       ===================================== */
+    .odoo-page {
+        background: var(--odoo-bg-gray);
+        min-height: 100vh;
+        padding-bottom: 40px;
+    }
+
+    /* =====================================
+       BARRA SUPERIOR (TOPBAR)
+       ===================================== */
+    .odoo-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 24px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .odoo-topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .odoo-back-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        color: var(--odoo-text-muted);
+        transition: all 0.15s;
+    }
+
+    .odoo-back-link:hover {
+        background: var(--odoo-bg-gray);
+        color: var(--odoo-text);
+    }
+
+    .odoo-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+    }
+
+    .odoo-breadcrumb-parent {
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-breadcrumb-separator {
+        color: var(--odoo-border);
+    }
+
+    .odoo-breadcrumb-current {
+        color: var(--odoo-text);
+        font-weight: 500;
+    }
+
+    .odoo-topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .odoo-record-count {
+        font-size: 13px;
+        color: var(--odoo-text-muted);
+        background: var(--odoo-bg-gray);
+        padding: 4px 12px;
+        border-radius: 4px;
+    }
+
+    /* =====================================
+       BARRA DE ACCIONES
+       ===================================== */
+    .odoo-actionbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 24px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-actionbar-left,
+    .odoo-actionbar-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .odoo-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: 4px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+        font-family: inherit;
+    }
+
+    .odoo-btn-primary {
+        background: var(--odoo-purple);
+        color: white;
+        border-color: var(--odoo-purple);
+    }
+
+    .odoo-btn-primary:hover {
+        background: var(--odoo-purple-light);
+        border-color: var(--odoo-purple-light);
+    }
+
+    .odoo-btn-secondary {
+        background: var(--odoo-bg);
+        color: var(--odoo-text);
+        border-color: var(--odoo-border);
+    }
+
+    .odoo-btn-secondary:hover {
+        background: var(--odoo-bg-gray);
+    }
+
+    .odoo-btn-link {
+        background: transparent;
+        color: var(--odoo-text-muted);
+        padding: 8px 12px;
+    }
+
+    .odoo-btn-link:hover {
+        color: var(--odoo-purple);
+        background: rgba(113, 75, 103, 0.05);
+    }
+
+    .odoo-btn-link .material-icons {
+        font-size: 18px;
+    }
+
+    /* =====================================
+       HOJA DEL FORMULARIO
+       ===================================== */
+    .odoo-form-sheet {
+        background: var(--odoo-bg);
+        max-width: 700px;
+        margin: 24px auto;
+        border: 1px solid var(--odoo-border);
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    /* =====================================
+       CONTENIDO DEL FORMULARIO
+       ===================================== */
+    .odoo-form-content {
+        padding: 20px 24px;
+    }
+
+    .odoo-form-col {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    /* =====================================
+       FILAS DE CAMPOS
+       ===================================== */
+    .odoo-field-row {
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        gap: 12px;
+        align-items: baseline;
+        min-height: 32px;
+        padding: 4px 0;
+    }
+
+    .odoo-field-row label {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--odoo-text);
+        text-align: right;
+    }
+
+    .odoo-field-value {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    /* =====================================
+       INPUTS
+       ===================================== */
+    .odoo-form-sheet input,
+    .odoo-form-sheet select,
+    .odoo-form-sheet textarea {
+        width: 100%;
+        border: none;
+        border-bottom: 1px solid transparent;
+        background: transparent;
+        padding: 4px 0;
+        font-size: 13px;
+        color: var(--odoo-text);
+        font-family: inherit;
+        transition: border-color 0.15s;
+    }
+
+    .odoo-form-sheet input:hover,
+    .odoo-form-sheet select:hover,
+    .odoo-form-sheet textarea:hover {
+        border-bottom-color: var(--odoo-border);
+    }
+
+    .odoo-form-sheet input:focus,
+    .odoo-form-sheet select:focus,
+    .odoo-form-sheet textarea:focus {
+        outline: none;
+        border-bottom-color: var(--odoo-purple);
+        border-bottom-width: 2px;
+        padding-bottom: 3px;
+    }
+
+    .odoo-form-sheet textarea {
+        min-height: 80px;
+        resize: vertical;
+        line-height: 1.5;
+    }
+
+    /* =====================================
+       CAMPOS DE ANCHO COMPLETO
+       ===================================== */
+    .odoo-form-full {
+        padding: 0 24px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .odoo-form-full .odoo-field-row {
+        grid-template-columns: 100px 1fr;
+    }
+
+    /* =====================================
+       ERRORES Y HINTS
+       ===================================== */
+    .odoo-error {
+        font-size: 11px;
+        color: var(--odoo-error);
+        margin-top: 2px;
+    }
+
+    .odoo-field-hint {
+        font-size: 11px;
+        color: var(--odoo-text-muted);
+        font-style: italic;
+        margin-top: 4px;
+    }
+
+    /* =====================================
+       RESPONSIVE
+       ===================================== */
+    @media (max-width: 600px) {
+        .odoo-topbar,
+        .odoo-actionbar {
+            padding: 12px 16px;
+        }
+
+        .odoo-form-sheet {
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .odoo-form-content {
+            padding: 16px;
+        }
+
+        .odoo-form-full {
+            padding: 0 16px 16px;
+        }
+
+        .odoo-field-row {
+            grid-template-columns: 1fr;
+            gap: 4px;
+        }
+
+        .odoo-field-row label {
+            text-align: left;
+            font-size: 11px;
+            color: var(--odoo-text-muted);
+        }
+
+        .odoo-actionbar {
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .odoo-actionbar-left {
+            flex-wrap: wrap;
+        }
+
+        .odoo-breadcrumb-parent {
+            display: none;
+        }
+
+        .odoo-breadcrumb-separator {
+            display: none;
+        }
+    }
+</style>
+
+{% endblock %}

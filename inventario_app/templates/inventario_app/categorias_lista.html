@@ -1,0 +1,618 @@
+{% extends 'inventario_app/base_inventario.html' %}
+{% load static %}
+
+{% block title %}Categorías · Soid_Tf_2{% endblock %}
+
+{% block inventario_content %}
+
+<div class="categorias-content">
+
+    <!-- ENCABEZADO -->
+    <div class="page-header-flex">
+        <div>
+            <h1 class="page-title">Categorías</h1>
+            <p class="page-subtitle">{{ categorias|length }} registro{{ categorias|length|pluralize:"s" }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="/inventario/categorias/nueva/" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons">add</span>
+                Nueva categoría
+            </a>
+        </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="summary-row">
+        <div class="summary-item summary-active">
+            <span class="summary-label">Activas</span>
+            <span class="summary-value">{{ total_activas|default:"0" }}</span>
+        </div>
+        <div class="summary-item summary-inactive">
+            <span class="summary-label">Inactivas</span>
+            <span class="summary-value">{{ total_inactivas|default:"0" }}</span>
+        </div>
+        <button type="button" class="btn-filter" id="toggle-filters">
+            <span class="material-icons">filter_list</span>
+            Filtros
+        </button>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="filters-panel" id="filters-panel">
+        <form method="get" class="filters-form">
+            <div class="filters-grid">
+                <div class="filter-field">
+                    <label for="id_q">Buscar</label>
+                    <input type="text" id="id_q" name="q" value="{{ q }}" placeholder="Nombre o descripción...">
+                </div>
+
+                <div class="filter-field">
+                    <label for="id_estado">Estado</label>
+                    <select id="id_estado" name="estado">
+                        <option value="">Todos</option>
+                        <option value="activo" {% if estado == 'activo' %}selected{% endif %}>Activas</option>
+                        <option value="inactivo" {% if estado == 'inactivo' %}selected{% endif %}>Inactivas</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filters-actions">
+                <button type="submit" class="btn-primary btn-sm">Aplicar</button>
+                <a href="/inventario/categorias/" class="btn-secondary btn-sm">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th class="text-center">Recursos</th>
+                    <th class="text-center">Estado</th>
+                    <th class="col-actions"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if categorias %}
+                    {% for c in categorias %}
+                        <tr class="row-clickable" data-href="/inventario/categorias/{{ c.pk }}/editar/">
+                            <td>
+                                <div class="item-name">
+                                    <span class="material-icons item-icon">folder</span>
+                                    <strong>{{ c.nombre }}</strong>
+                                </div>
+                            </td>
+                            <td>
+                                {% if c.descripcion %}
+                                    {{ c.descripcion|truncatewords:10 }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="count-badge">{{ c.total_recursos|default:"0" }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if c.activo %}
+                                    <span class="badge badge-success">Activa</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">Inactiva</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-actions">
+                                <div class="row-actions">
+                                    <a href="/inventario/categorias/{{ c.pk }}/editar/" class="action-btn" title="Editar">
+                                        <span class="material-icons">edit</span>
+                                    </a>
+                                    {% if c.activo %}
+                                    <a href="/inventario/categorias/{{ c.pk }}/desactivar/" class="action-btn action-warning" title="Desactivar">
+                                        <span class="material-icons">visibility_off</span>
+                                    </a>
+                                    {% else %}
+                                    <a href="/inventario/categorias/{{ c.pk }}/activar/" class="action-btn action-success" title="Activar">
+                                        <span class="material-icons">visibility</span>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="empty-row">
+                            <span class="material-icons">folder_off</span>
+                            <p>No hay categorías{% if q %} para "{{ q }}"{% endif %}</p>
+                            <a href="/inventario/categorias/nueva/" class="btn-primary btn-sm" style="margin-top: 12px; display: inline-flex;">
+                                Crear primera categoría
+                            </a>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<style>
+/* =====================================
+   BOTONES ESTILO ODOO
+   ===================================== */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all .15s;
+    text-decoration: none;
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.odoo-btn-primary {
+    background: #714B67;
+    color: #fff;
+    border-color: #714B67;
+}
+.odoo-btn-primary:hover {
+    background: #5d3d54;
+    border-color: #5d3d54;
+}
+
+.odoo-btn-secondary {
+    background: #fff;
+    color: #495057;
+}
+.odoo-btn-secondary:hover {
+    background: #f8f9fa;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+/* =====================================
+   ENCABEZADO
+   ===================================== */
+.categorias-content {
+    padding: 0;
+}
+
+.page-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 4px 0 0 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* =====================================
+   RESUMEN
+   ===================================== */
+.summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 20px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    min-width: 100px;
+}
+
+.summary-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+}
+
+.summary-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.summary-active {
+    border-left: 3px solid #059669;
+}
+
+.summary-inactive {
+    border-left: 3px solid #9ca3af;
+}
+
+.btn-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: auto;
+}
+
+.btn-filter:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.btn-filter .material-icons {
+    font-size: 18px;
+    color: #6b7280;
+}
+
+/* =====================================
+   FILTROS
+   ===================================== */
+.filters-panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: none;
+}
+
+.filters-panel.active {
+    display: block;
+}
+
+.filters-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.filter-field input,
+.filter-field select {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.filters-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: #714B67;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+}
+
+.btn-primary:hover {
+    background: #5d3d54;
+}
+
+.btn-secondary {
+    background: #fff;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-secondary:hover {
+    background: #f9fafb;
+}
+
+.btn-sm {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+}
+
+/* =====================================
+   TABLA
+   ===================================== */
+.table-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table thead {
+    background: #f9fafb;
+}
+
+.data-table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #111827;
+}
+
+.data-table tbody tr:hover {
+    background: #f8f4f7;
+}
+
+.row-clickable {
+    cursor: pointer;
+}
+
+/* Item nombre con icono */
+.item-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.item-icon {
+    font-size: 20px;
+    color: #714B67;
+    opacity: 0.7;
+}
+
+/* Count badge */
+.count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* =====================================
+   BADGES
+   ===================================== */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-secondary {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+/* =====================================
+   UTILIDADES
+   ===================================== */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-muted { color: #9ca3af; }
+
+.col-actions {
+    width: 80px;
+    text-align: center;
+}
+
+.row-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+tr:hover .row-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    color: #6b7280;
+    transition: all 0.15s;
+    text-decoration: none;
+}
+
+.action-btn:hover {
+    background: #f3f4f6;
+    color: #714B67;
+}
+
+.action-btn .material-icons {
+    font-size: 18px;
+}
+
+.action-success:hover {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.action-warning:hover {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.action-danger:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.empty-row {
+    text-align: center;
+    padding: 40px 20px !important;
+    color: #9ca3af;
+}
+
+.empty-row .material-icons {
+    font-size: 40px;
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.empty-row p {
+    margin: 0;
+}
+
+/* =====================================
+   RESPONSIVE
+   ===================================== */
+@media (max-width: 768px) {
+    .page-header-flex {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .header-actions {
+        justify-content: flex-start;
+    }
+    
+    .summary-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .summary-item {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .btn-filter {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .table-card {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        min-width: 500px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggle-filters');
+    const filtersPanel = document.getElementById('filters-panel');
+    
+    if (toggleBtn && filtersPanel) {
+        // Mostrar filtros si hay alguno activo
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasFilters = urlParams.has('q') || urlParams.has('estado');
+        
+        if (hasFilters) {
+            filtersPanel.classList.add('active');
+        }
+
+        toggleBtn.addEventListener('click', function() {
+            filtersPanel.classList.toggle('active');
+        });
+    }
+
+    // Filas clickeables
+    document.querySelectorAll('.row-clickable').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('.row-actions')) return;
+            const href = this.dataset.href;
+            if (href) window.location.href = href;
+        });
+    });
+});
+</script>
+
+{% endblock %}

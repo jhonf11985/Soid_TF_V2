@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}
-Nuevo recurso · Soid_Tf_2
+{% if modo == "editar" %}Editar recurso · Soid_Tf_2{% else %}Nuevo recurso · Soid_Tf_2{% endif %}
 {% endblock %}
 
 {% block inventario_content %}
@@ -16,14 +16,17 @@ Nuevo recurso · Soid_Tf_2
                 <span class="material-icons">arrow_back</span>
             </a>
             <div class="odoo-breadcrumb">
-                <span class="odoo-breadcrumb-parent">Inventario</span>
+                <span class="odoo-breadcrumb-parent">Recursos</span>
                 <span class="odoo-breadcrumb-separator">/</span>
-                <span class="odoo-breadcrumb-current">Nuevo recurso</span>
+                <span class="odoo-breadcrumb-current">
+                    {% if modo == "editar" %}Editar{% else %}Nuevo{% endif %}
+                </span>
             </div>
         </div>
-
         <div class="odoo-topbar-right">
-            <span class="odoo-record-count">Nuevo</span>
+            <span class="odoo-record-count">
+                {% if modo == "editar" %}Editando{% else %}Nuevo{% endif %}
+            </span>
         </div>
     </div>
 
@@ -33,12 +36,16 @@ Nuevo recurso · Soid_Tf_2
             <button type="submit" form="recurso-form" class="odoo-btn odoo-btn-primary">
                 Guardar
             </button>
-
+            {% if modo == "editar" %}
+            <a href="/inventario/recursos/{{ obj.id }}/" class="odoo-btn odoo-btn-secondary">
+                Cancelar
+            </a>
+            {% else %}
             <a href="/inventario/recursos/" class="odoo-btn odoo-btn-secondary">
                 Cancelar
             </a>
+            {% endif %}
         </div>
-
         <div class="odoo-actionbar-right">
             <a href="/inventario/categorias/" class="odoo-btn odoo-btn-link">
                 <span class="material-icons">category</span>
@@ -56,59 +63,83 @@ Nuevo recurso · Soid_Tf_2
         <form method="post" enctype="multipart/form-data" novalidate id="recurso-form">
             {% csrf_token %}
 
-{% if form.errors %}
-<div class="odoo-form-alert">
-    <span class="material-icons">error_outline</span>
-    <div>
-        <strong>No se pudo guardar.</strong><br>
-        Revisa los errores abajo.
-    </div>
-</div>
+            <!-- ERRORES GENERALES -->
+            {% if form.non_field_errors %}
+                <div class="odoo-form-errors">
+                    {% for err in form.non_field_errors %}
+                        <div class="odoo-error">{{ err }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
 
-<div class="odoo-error-panel">
-    <strong>Errores detectados:</strong>
-    <ul>
-        {% for field in form %}
-            {% for error in field.errors %}
-                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-            {% endfor %}
-        {% endfor %}
-        {% for error in form.non_field_errors %}
-            <li><strong>General:</strong> {{ error }}</li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
+            <!-- ========================================
+                 HEADER: AVATAR + NOMBRE + INFO RÁPIDA
+                 ======================================== -->
+            <div class="odoo-form-header">
+                
+                <!-- Avatar / Foto -->
+                <div class="odoo-avatar" id="avatar-container">
+                    {% if obj and obj.foto %}
+                        <img src="{{ obj.foto.url }}" alt="Foto del recurso" class="odoo-avatar-img">
+                    {% else %}
+                        <span class="material-icons">inventory_2</span>
+                    {% endif %}
+                </div>
 
-            <!-- CONTENIDO EN DOS COLUMNAS -->
-            <div class="odoo-form-content">
+                <!-- Info principal -->
+                <div class="odoo-header-info">
+                    
+                    <!-- Estado badge -->
+                    <div class="odoo-estado-group">
+                        {{ form.estado }}
+                        {% if form.estado.errors %}<span class="odoo-error">{{ form.estado.errors.0 }}</span>{% endif %}
+                    </div>
 
-                <!-- COLUMNA IZQUIERDA -->
-                <div class="odoo-form-col">
+                    <!-- Nombre grande -->
+                    <div class="odoo-header-name">
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}<span class="odoo-error">{{ form.nombre.errors.0 }}</span>{% endif %}
+                    </div>
 
-                    <div class="odoo-field-row">
-                        <label>Código</label>
-                        <div class="odoo-field-value">
+                    <!-- Info rápida -->
+                    <div class="odoo-header-contact">
+                        <div class="odoo-contact-item">
+                            <span class="material-icons">qr_code</span>
                             {{ form.codigo }}
                             {% if form.codigo.errors %}<span class="odoo-error">{{ form.codigo.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Ej: INV-0001, AUD-MIC-01…</span>
+                        </div>
+                        <div class="odoo-contact-item">
+                            <span class="material-icons">numbers</span>
+                            {{ form.cantidad_total }}
+                            <span class="odoo-inline-hint">unidades</span>
                         </div>
                     </div>
 
-                    <div class="odoo-field-row">
-                        <label>Nombre</label>
-                        <div class="odoo-field-value">
-                            {{ form.nombre }}
-                            {% if form.nombre.errors %}<span class="odoo-error">{{ form.nombre.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Ej: Micrófono inalámbrico, Silla plegable, Proyector…</span>
-                        </div>
-                    </div>
+                </div>
 
+            </div>
+
+            <!-- ========================================
+                 CAMPOS PRINCIPALES (2 columnas)
+                 ======================================== -->
+            <div class="odoo-form-content">
+                
+                <!-- COLUMNA IZQUIERDA -->
+                <div class="odoo-form-col">
+                    
                     <div class="odoo-field-row">
-                        <label>{{ form.categoria.label }}</label>
+                        <label>Categoría</label>
                         <div class="odoo-field-value">
                             {{ form.categoria }}
                             {% if form.categoria.errors %}<span class="odoo-error">{{ form.categoria.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Ubicación</label>
+                        <div class="odoo-field-value">
+                            {{ form.ubicacion }}
+                            {% if form.ubicacion.errors %}<span class="odoo-error">{{ form.ubicacion.errors.0 }}</span>{% endif %}
                         </div>
                     </div>
 
@@ -118,37 +149,11 @@ Nuevo recurso · Soid_Tf_2
                 <div class="odoo-form-col">
 
                     <div class="odoo-field-row">
-                        <label>{{ form.ubicacion.label }}</label>
-                        <div class="odoo-field-value">
-                            {{ form.ubicacion }}
-                            {% if form.ubicacion.errors %}<span class="odoo-error">{{ form.ubicacion.errors.0 }}</span>{% endif %}
-                        </div>
-                    </div>
-
-                    <div class="odoo-field-row">
-                        <label>{{ form.estado.label }}</label>
-                        <div class="odoo-field-value">
-                            {{ form.estado }}
-                            {% if form.estado.errors %}<span class="odoo-error">{{ form.estado.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Define si está disponible, prestado o en reparación.</span>
-                        </div>
-                    </div>
-
-                    <div class="odoo-field-row">
-                        <label>Cantidad</label>
-                        <div class="odoo-field-value">
-                            {{ form.cantidad_total }}
-                            {% if form.cantidad_total.errors %}<span class="odoo-error">{{ form.cantidad_total.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Si es un recurso por unidad, deja 1.</span>
-                        </div>
-                    </div>
-
-                    <div class="odoo-field-row">
                         <label>Foto</label>
                         <div class="odoo-field-value">
                             {{ form.foto }}
                             {% if form.foto.errors %}<span class="odoo-error">{{ form.foto.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Opcional. Útil para identificar rápido en móvil.</span>
+                            <span class="odoo-field-hint">Opcional. Útil para identificar rápido.</span>
                         </div>
                     </div>
 
@@ -156,16 +161,97 @@ Nuevo recurso · Soid_Tf_2
 
             </div>
 
-            <!-- DESCRIPCIÓN - ANCHO COMPLETO -->
-            <div class="odoo-form-full">
-                <div class="odoo-field-row">
-                    <label>Descripción</label>
-                    <div class="odoo-field-value">
-                        {{ form.descripcion }}
-                        {% if form.descripcion.errors %}<span class="odoo-error">{{ form.descripcion.errors.0 }}</span>{% endif %}
-                        <span class="odoo-field-hint">Opcional. Notas como marca, modelo, estado físico, detalles de uso, etc.</span>
+            <!-- ========================================
+                 PESTAÑAS (TABS)
+                 ======================================== -->
+            <div class="odoo-tabs">
+                <div class="odoo-tabs-nav">
+                    <button type="button" class="odoo-tab active" data-tab="descripcion">Descripción</button>
+                    <button type="button" class="odoo-tab" data-tab="detalles">Detalles</button>
+                </div>
+
+                <!-- TAB: Descripción -->
+                <div class="odoo-tab-content active" data-tab="descripcion">
+                    <div class="odoo-tab-full">
+                        <div class="odoo-field-row odoo-field-full">
+                            <label>Notas</label>
+                            <div class="odoo-field-value">
+                                {{ form.descripcion }}
+                                {% if form.descripcion.errors %}<span class="odoo-error">{{ form.descripcion.errors.0 }}</span>{% endif %}
+                                <span class="odoo-field-hint">Marca, modelo, estado físico, detalles de uso, etc.</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- TAB: Detalles -->
+                <div class="odoo-tab-content" data-tab="detalles">
+                    <div class="odoo-tab-grid">
+                        
+                        <div class="odoo-tab-col">
+                            <div class="odoo-section-title">INFORMACIÓN</div>
+                            
+                            <div class="odoo-field-row">
+                                <label>Código</label>
+                                <div class="odoo-field-value odoo-readonly">
+                                    {{ form.codigo.value|default:"-" }}
+                                </div>
+                            </div>
+
+                            <div class="odoo-field-row">
+                                <label>Estado</label>
+                                <div class="odoo-field-value odoo-readonly">
+                                    {{ obj.get_estado_display|default:"-" }}
+                                </div>
+                            </div>
+
+                            {% if obj %}
+                            <div class="odoo-field-row">
+                                <label>Creado</label>
+                                <div class="odoo-field-value odoo-readonly">
+                                    {{ obj.created_at|date:"d/m/Y H:i"|default:"-" }}
+                                </div>
+                            </div>
+
+                            <div class="odoo-field-row">
+                                <label>Actualizado</label>
+                                <div class="odoo-field-value odoo-readonly">
+                                    {{ obj.updated_at|date:"d/m/Y H:i"|default:"-" }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="odoo-tab-col">
+                            <div class="odoo-section-title">STOCK</div>
+
+                            <div class="odoo-field-row">
+                                <label>Cantidad total</label>
+                                <div class="odoo-field-value odoo-readonly">
+                                    {{ form.cantidad_total.value|default:"1" }} unidades
+                                </div>
+                            </div>
+
+                            {% if obj %}
+                            <div class="odoo-field-row">
+                                <label>Disponible</label>
+                                <div class="odoo-field-value odoo-readonly">
+                                    {{ obj.cantidad_disponible|default:"0" }} unidades
+                                </div>
+                            </div>
+
+                            <div class="odoo-field-row">
+                                <label>Prestados</label>
+                                <div class="odoo-field-value odoo-readonly">
+                                    {{ obj.cantidad_prestada|default:"0" }} unidades
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
 
         </form>
@@ -174,29 +260,9 @@ Nuevo recurso · Soid_Tf_2
 </div>
 
 <style>
-    .odoo-form-alert {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        background: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeeba;
-        padding: 12px 16px;
-        border-radius: 4px;
-        margin: 16px 24px;
-        font-size: 13px;
-    }
-
-    .odoo-required {
-        color: var(--odoo-error);
-        font-weight: 600;
-        margin-left: 2px;
-    }
-
-    .odoo-form-alert .material-icons {
-        font-size: 20px;
-    }
-
+    /* =====================================
+       VARIABLES
+       ===================================== */
     :root {
         --odoo-purple: #714B67;
         --odoo-purple-light: #8f6b84;
@@ -207,14 +273,21 @@ Nuevo recurso · Soid_Tf_2
         --odoo-text-muted: #6c757d;
         --odoo-error: #dc3545;
         --odoo-success: #28a745;
+        --odoo-link: #017e84;
     }
 
+    /* =====================================
+       PÁGINA GENERAL
+       ===================================== */
     .odoo-page {
         background: var(--odoo-bg-gray);
         min-height: 100vh;
         padding-bottom: 40px;
     }
 
+    /* =====================================
+       BARRA SUPERIOR
+       ===================================== */
     .odoo-topbar {
         display: flex;
         justify-content: space-between;
@@ -256,24 +329,9 @@ Nuevo recurso · Soid_Tf_2
         font-size: 14px;
     }
 
-    .odoo-breadcrumb-parent {
-        color: var(--odoo-text-muted);
-    }
-
-    .odoo-breadcrumb-separator {
-        color: var(--odoo-border);
-    }
-
-    .odoo-breadcrumb-current {
-        color: var(--odoo-text);
-        font-weight: 500;
-    }
-
-    .odoo-topbar-right {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
+    .odoo-breadcrumb-parent { color: var(--odoo-text-muted); }
+    .odoo-breadcrumb-separator { color: var(--odoo-border); }
+    .odoo-breadcrumb-current { color: var(--odoo-text); font-weight: 500; }
 
     .odoo-record-count {
         font-size: 13px;
@@ -283,6 +341,9 @@ Nuevo recurso · Soid_Tf_2
         border-radius: 4px;
     }
 
+    /* =====================================
+       BARRA DE ACCIONES
+       ===================================== */
     .odoo-actionbar {
         display: flex;
         justify-content: space-between;
@@ -322,7 +383,6 @@ Nuevo recurso · Soid_Tf_2
 
     .odoo-btn-primary:hover {
         background: var(--odoo-purple-light);
-        border-color: var(--odoo-purple-light);
     }
 
     .odoo-btn-secondary {
@@ -350,6 +410,9 @@ Nuevo recurso · Soid_Tf_2
         font-size: 18px;
     }
 
+    /* =====================================
+       HOJA DEL FORMULARIO
+       ===================================== */
     .odoo-form-sheet {
         background: var(--odoo-bg);
         max-width: 1200px;
@@ -359,11 +422,165 @@ Nuevo recurso · Soid_Tf_2
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
 
+    .odoo-form-errors {
+        padding: 12px 24px;
+        background: #fff5f5;
+        border-bottom: 1px solid #fecaca;
+    }
+
+    /* =====================================
+       HEADER: AVATAR + INFO
+       ===================================== */
+    .odoo-form-header {
+        display: flex;
+        gap: 24px;
+        padding: 24px;
+        border-bottom: 1px solid var(--odoo-border);
+        align-items: flex-start;
+    }
+
+    .odoo-avatar {
+        width: 110px;
+        height: 110px;
+        min-width: 110px;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #90caf9;
+        overflow: hidden;
+    }
+
+    .odoo-avatar .material-icons {
+        font-size: 48px;
+        color: #1565c0;
+        opacity: 0.6;
+    }
+
+    .odoo-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .odoo-header-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* Estado badge/select */
+    .odoo-estado-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+
+    .odoo-estado-group select {
+        padding: 4px 24px 4px 10px;
+        font-size: 12px;
+        font-weight: 500;
+        border-radius: 12px;
+        border: 1px solid var(--odoo-border);
+        background-color: var(--odoo-bg-gray);
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 6px center;
+        background-size: 14px;
+    }
+
+    /* Nombre grande */
+    .odoo-header-name {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .odoo-header-name input {
+        font-size: 28px !important;
+        font-weight: 400;
+        color: var(--odoo-text-muted);
+        border: none;
+        border-bottom: 1px solid transparent;
+        padding: 4px 0;
+        background: transparent;
+        width: 100%;
+        transition: all 0.15s;
+    }
+
+    .odoo-header-name input::placeholder {
+        color: #adb5bd;
+    }
+
+    .odoo-header-name input:hover {
+        border-bottom-color: var(--odoo-border);
+    }
+
+    .odoo-header-name input:focus {
+        outline: none;
+        border-bottom-color: var(--odoo-purple);
+        color: var(--odoo-text);
+    }
+
+    /* Info rápida */
+    .odoo-header-contact {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .odoo-contact-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-contact-item .material-icons {
+        font-size: 18px;
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-contact-item input {
+        border: none;
+        border-bottom: 1px solid transparent;
+        padding: 2px 0;
+        font-size: 13px;
+        color: var(--odoo-text);
+        background: transparent;
+        flex: 1;
+        max-width: 280px;
+    }
+
+    .odoo-contact-item input:hover {
+        border-bottom-color: var(--odoo-border);
+    }
+
+    .odoo-contact-item input:focus {
+        outline: none;
+        border-bottom-color: var(--odoo-purple);
+    }
+
+    .odoo-inline-hint {
+        font-size: 12px;
+        color: var(--odoo-text-muted);
+    }
+
+    /* =====================================
+       CONTENIDO DEL FORMULARIO
+       ===================================== */
     .odoo-form-content {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 40px;
         padding: 20px 24px;
+        border-bottom: 1px solid var(--odoo-border);
     }
 
     .odoo-form-col {
@@ -372,9 +589,12 @@ Nuevo recurso · Soid_Tf_2
         gap: 4px;
     }
 
+    /* =====================================
+       FILAS DE CAMPOS
+       ===================================== */
     .odoo-field-row {
         display: grid;
-        grid-template-columns: 140px 1fr;
+        grid-template-columns: 120px 1fr;
         gap: 12px;
         align-items: baseline;
         min-height: 32px;
@@ -383,7 +603,7 @@ Nuevo recurso · Soid_Tf_2
 
     .odoo-field-row label {
         font-size: 13px;
-        font-weight: 500;
+        font-weight: 400;
         color: var(--odoo-text);
         text-align: right;
     }
@@ -391,10 +611,17 @@ Nuevo recurso · Soid_Tf_2
     .odoo-field-value {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
     }
 
-    .odoo-form-sheet input,
+    .odoo-readonly {
+        font-size: 13px;
+        color: var(--odoo-text-muted);
+        padding: 4px 0;
+    }
+
+    /* Inputs */
+    .odoo-form-sheet input:not([type="radio"]):not([type="checkbox"]):not([type="file"]),
     .odoo-form-sheet select,
     .odoo-form-sheet textarea {
         width: 100%;
@@ -408,13 +635,13 @@ Nuevo recurso · Soid_Tf_2
         transition: border-color 0.15s;
     }
 
-    .odoo-form-sheet input:hover,
+    .odoo-form-sheet input:not([type="radio"]):not([type="checkbox"]):not([type="file"]):hover,
     .odoo-form-sheet select:hover,
     .odoo-form-sheet textarea:hover {
         border-bottom-color: var(--odoo-border);
     }
 
-    .odoo-form-sheet input:focus,
+    .odoo-form-sheet input:not([type="radio"]):not([type="checkbox"]):not([type="file"]):focus,
     .odoo-form-sheet select:focus,
     .odoo-form-sheet textarea:focus {
         outline: none;
@@ -434,22 +661,29 @@ Nuevo recurso · Soid_Tf_2
     }
 
     .odoo-form-sheet textarea {
-        min-height: 60px;
+        min-height: 100px;
         resize: vertical;
         line-height: 1.5;
     }
 
-    .odoo-form-full {
-        padding: 0 24px 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+    .odoo-form-sheet input[type="file"] {
+        font-size: 13px;
+        color: var(--odoo-text-muted);
     }
 
-    .odoo-form-full .odoo-field-row {
-        grid-template-columns: 140px 1fr;
+    .odoo-form-sheet input[type="number"] {
+        -moz-appearance: textfield;
     }
 
+    .odoo-form-sheet input[type="number"]::-webkit-outer-spin-button,
+    .odoo-form-sheet input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    /* =====================================
+       ERRORES Y HINTS
+       ===================================== */
     .odoo-error {
         font-size: 11px;
         color: var(--odoo-error);
@@ -460,28 +694,105 @@ Nuevo recurso · Soid_Tf_2
         font-size: 11px;
         color: var(--odoo-text-muted);
         font-style: italic;
-        margin-top: 4px;
     }
 
-    .odoo-form-sheet input[type="number"] {
-        font-variant-numeric: tabular-nums;
-        -moz-appearance: textfield;
+    /* =====================================
+       PESTAÑAS (TABS)
+       ===================================== */
+    .odoo-tabs {
+        border-top: none;
     }
 
-    .odoo-form-sheet input[type="number"]::-webkit-outer-spin-button,
-    .odoo-form-sheet input[type="number"]::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
+    .odoo-tabs-nav {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid var(--odoo-border);
+        padding: 0 24px;
+        background: var(--odoo-bg);
     }
 
+    .odoo-tab {
+        padding: 12px 20px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--odoo-text-muted);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        position: relative;
+        transition: color 0.15s;
+    }
+
+    .odoo-tab:hover {
+        color: var(--odoo-text);
+    }
+
+    .odoo-tab.active {
+        color: var(--odoo-text);
+    }
+
+    .odoo-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--odoo-text);
+    }
+
+    .odoo-tab-content {
+        display: none;
+        padding: 20px 24px;
+    }
+
+    .odoo-tab-content.active {
+        display: block;
+    }
+
+    .odoo-tab-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+    }
+
+    .odoo-tab-col {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .odoo-tab-full {
+        width: 100%;
+    }
+
+    .odoo-section-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--odoo-text);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-field-full {
+        grid-template-columns: 100px 1fr;
+    }
+
+    .odoo-field-full label {
+        text-align: left;
+    }
+
+    /* =====================================
+       RESPONSIVE
+       ===================================== */
     @media (max-width: 900px) {
-        .odoo-form-content {
+        .odoo-form-content,
+        .odoo-tab-grid {
             grid-template-columns: 1fr;
-            gap: 16px;
-        }
-
-        .odoo-field-row {
-            grid-template-columns: 120px 1fr;
+            gap: 20px;
         }
 
         .odoo-actionbar {
@@ -503,16 +814,62 @@ Nuevo recurso · Soid_Tf_2
         }
 
         .odoo-form-sheet {
-            margin: 16px;
-            border-radius: 8px;
+            margin: 0;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
         }
 
+        /* Header móvil */
+        .odoo-form-header {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 20px 16px;
+            gap: 16px;
+        }
+
+        .odoo-avatar {
+            width: 80px;
+            height: 80px;
+            min-width: 80px;
+        }
+
+        .odoo-avatar .material-icons {
+            font-size: 36px;
+        }
+
+        .odoo-header-info {
+            width: 100%;
+            align-items: center;
+        }
+
+        .odoo-estado-group {
+            justify-content: center;
+        }
+
+        .odoo-header-name input {
+            font-size: 22px !important;
+            text-align: center;
+        }
+
+        .odoo-header-contact {
+            width: 100%;
+            align-items: stretch;
+        }
+
+        .odoo-contact-item {
+            justify-content: flex-start;
+        }
+
+        .odoo-contact-item input {
+            max-width: none;
+            flex: 1;
+        }
+
+        /* Contenido móvil */
         .odoo-form-content {
             padding: 16px;
-        }
-
-        .odoo-form-full {
-            padding: 0 16px 16px;
         }
 
         .odoo-field-row {
@@ -523,21 +880,90 @@ Nuevo recurso · Soid_Tf_2
         .odoo-field-row label {
             text-align: left;
             font-size: 11px;
+            font-weight: 500;
             color: var(--odoo-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* Tabs móvil */
+        .odoo-tabs-nav {
+            padding: 0 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .odoo-tab {
+            padding: 12px 14px;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        .odoo-tab-content {
+            padding: 16px;
+        }
+
+        .odoo-tab-grid {
+            gap: 24px;
+        }
+
+        .odoo-field-full {
+            grid-template-columns: 1fr;
+        }
+
+        /* Breadcrumb móvil */
+        .odoo-breadcrumb-parent,
+        .odoo-breadcrumb-separator {
+            display: none;
         }
 
         .odoo-actionbar-left {
             flex-wrap: wrap;
         }
-
-        .odoo-breadcrumb-parent {
-            display: none;
-        }
-
-        .odoo-breadcrumb-separator {
-            display: none;
-        }
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ================================
+    // TABS
+    // ================================
+    const tabs = document.querySelectorAll('.odoo-tab');
+    const contents = document.querySelectorAll('.odoo-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetTab = this.dataset.tab;
+
+            // Desactivar todos
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            // Activar seleccionado
+            this.classList.add('active');
+            const targetContent = document.querySelector(`.odoo-tab-content[data-tab="${targetTab}"]`);
+            if (targetContent) targetContent.classList.add('active');
+        });
+    });
+
+    // ================================
+    // PREVIEW DE IMAGEN
+    // ================================
+    const fotoInput = document.getElementById('id_foto');
+    const avatarContainer = document.getElementById('avatar-container');
+
+    if (fotoInput && avatarContainer) {
+        fotoInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    avatarContainer.innerHTML = `<img src="${e.target.result}" alt="Preview" class="odoo-avatar-img">`;
+                };
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+    }
+});
+</script>
 
 {% endblock %}

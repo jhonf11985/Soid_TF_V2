@@ -6,6 +6,7 @@ from django.utils import timezone
 class CategoriaRecurso(models.Model):
     nombre = models.CharField(max_length=120, unique=True)
     descripcion = models.CharField(max_length=255, blank=True)
+    activo = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "Categoría de recurso"

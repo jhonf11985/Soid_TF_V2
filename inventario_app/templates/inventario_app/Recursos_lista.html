@@ -1,0 +1,693 @@
+{% extends 'inventario_app/base_inventario.html' %}
+{% load static %}
+
+{% block title %}Recursos · Soid_Tf_2{% endblock %}
+
+{% block inventario_content %}
+
+<div class="recursos-content">
+
+    <!-- ENCABEZADO -->
+    <div class="page-header-flex">
+        <div>
+            <h1 class="page-title">Recursos</h1>
+            <p class="page-subtitle">{{ recursos|length }} registro{{ recursos|length|pluralize:"s" }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'inventario:recurso_nuevo' %}" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons">add</span>
+                Nuevo recurso
+            </a>
+        </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="summary-row">
+        <div class="summary-item summary-disponible">
+            <span class="summary-label">Disponibles</span>
+            <span class="summary-value">{{ total_disponibles|default:"0" }}</span>
+        </div>
+        <div class="summary-item summary-en-uso">
+            <span class="summary-label">En uso</span>
+            <span class="summary-value">{{ total_en_uso|default:"0" }}</span>
+        </div>
+        <div class="summary-item summary-prestado">
+            <span class="summary-label">Prestados</span>
+            <span class="summary-value">{{ total_prestados|default:"0" }}</span>
+        </div>
+        <div class="summary-item summary-reparacion">
+            <span class="summary-label">En reparación</span>
+            <span class="summary-value">{{ total_reparacion|default:"0" }}</span>
+        </div>
+        <button type="button" class="btn-filter" id="toggle-filters">
+            <span class="material-icons">filter_list</span>
+            Filtros
+        </button>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="filters-panel" id="filters-panel">
+        <form method="get" class="filters-form">
+            <div class="filters-grid">
+                <div class="filter-field">
+                    <label for="id_q">Buscar</label>
+                    <input type="text" id="id_q" name="q" value="{{ q }}" placeholder="Código, nombre...">
+                </div>
+
+                <div class="filter-field">
+                    <label for="id_estado">Estado</label>
+                    <select id="id_estado" name="estado">
+                        <option value="">Todos</option>
+                        {% for val, label in ESTADOS %}
+                            <option value="{{ val }}" {% if estado == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label for="id_categoria">Categoría</label>
+                    <select id="id_categoria" name="categoria">
+                        <option value="">Todas</option>
+                        {% for cat in categorias %}
+                            <option value="{{ cat.id }}" {% if categoria == cat.id|stringformat:"s" %}selected{% endif %}>
+                                {{ cat.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label for="id_ubicacion">Ubicación</label>
+                    <select id="id_ubicacion" name="ubicacion">
+                        <option value="">Todas</option>
+                        {% for ubi in ubicaciones %}
+                            <option value="{{ ubi.id }}" {% if ubicacion == ubi.id|stringformat:"s" %}selected{% endif %}>
+                                {{ ubi.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="filters-actions">
+                <button type="submit" class="btn-primary btn-sm">Aplicar</button>
+                <a href="{% url 'inventario:recursos_lista' %}" class="btn-secondary btn-sm">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Categoría</th>
+                    <th>Ubicación</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-center">Estado</th>
+                    <th class="col-actions"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if recursos %}
+                    {% for r in recursos %}
+                        <tr class="row-clickable" data-href="{% url 'inventario:recurso_detalle' r.pk %}">
+                            <td>
+                                <span class="codigo-badge">{{ r.codigo }}</span>
+                            </td>
+                            <td>
+                                <div class="item-name">
+                                    {% if r.foto %}
+                                        <img src="{{ r.foto.url }}" alt="" class="item-thumb">
+                                    {% else %}
+                                        <span class="material-icons item-icon">inventory_2</span>
+                                    {% endif %}
+                                    <strong>{{ r.nombre }}</strong>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="text-muted-dark">{{ r.categoria.nombre }}</span>
+                            </td>
+                            <td>
+                                <span class="text-muted-dark">{{ r.ubicacion.nombre }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="count-badge">{{ r.cantidad_total }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if r.estado == 'DISPONIBLE' %}
+                                    <span class="badge badge-success">Disponible</span>
+                                {% elif r.estado == 'EN_USO' %}
+                                    <span class="badge badge-info">En uso</span>
+                                {% elif r.estado == 'PRESTADO' %}
+                                    <span class="badge badge-warning">Prestado</span>
+                                {% elif r.estado == 'EN_REPARACION' %}
+                                    <span class="badge badge-danger">En reparación</span>
+                                {% elif r.estado == 'DANADO' %}
+                                    <span class="badge badge-dark">Dañado</span>
+                                {% elif r.estado == 'BAJA' %}
+                                    <span class="badge badge-secondary">Baja</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">{{ r.get_estado_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-actions">
+                                <div class="row-actions">
+                                    <a href="{% url 'inventario:recurso_detalle' r.pk %}" class="action-btn" title="Ver detalle">
+                                        <span class="material-icons">visibility</span>
+                                    </a>
+                                    <a href="{% url 'inventario:recurso_editar' r.pk %}" class="action-btn" title="Editar">
+                                        <span class="material-icons">edit</span>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="empty-row">
+                            <span class="material-icons">inventory_2</span>
+                            <p>No hay recursos{% if q %} para "{{ q }}"{% endif %}{% if estado %} con estado "{{ estado }}"{% endif %}</p>
+                            <a href="{% url 'inventario:recurso_nuevo' %}" class="btn-primary btn-sm" style="margin-top: 12px; display: inline-flex;">
+                                Crear primer recurso
+                            </a>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<style>
+/* =====================================
+   BOTONES ESTILO ODOO
+   ===================================== */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all .15s;
+    text-decoration: none;
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.odoo-btn-primary {
+    background: #714B67;
+    color: #fff;
+    border-color: #714B67;
+}
+.odoo-btn-primary:hover {
+    background: #5d3d54;
+    border-color: #5d3d54;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+/* =====================================
+   ENCABEZADO
+   ===================================== */
+.recursos-content {
+    padding: 0;
+}
+
+.page-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 4px 0 0 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* =====================================
+   RESUMEN
+   ===================================== */
+.summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 20px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    min-width: 110px;
+}
+
+.summary-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+}
+
+.summary-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.summary-disponible {
+    border-left: 3px solid #059669;
+}
+
+.summary-en-uso {
+    border-left: 3px solid #3b82f6;
+}
+
+.summary-prestado {
+    border-left: 3px solid #f59e0b;
+}
+
+.summary-reparacion {
+    border-left: 3px solid #ef4444;
+}
+
+.btn-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: auto;
+}
+
+.btn-filter:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.btn-filter .material-icons {
+    font-size: 18px;
+    color: #6b7280;
+}
+
+/* =====================================
+   FILTROS
+   ===================================== */
+.filters-panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: none;
+}
+
+.filters-panel.active {
+    display: block;
+}
+
+.filters-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.filter-field input,
+.filter-field select {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.filters-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: #714B67;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+}
+
+.btn-primary:hover {
+    background: #5d3d54;
+}
+
+.btn-secondary {
+    background: #fff;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-secondary:hover {
+    background: #f9fafb;
+}
+
+.btn-sm {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+}
+
+/* =====================================
+   TABLA
+   ===================================== */
+.table-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table thead {
+    background: #f9fafb;
+}
+
+.data-table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #111827;
+}
+
+.data-table tbody tr:hover {
+    background: #f8f4f7;
+}
+
+.row-clickable {
+    cursor: pointer;
+}
+
+/* Código badge */
+.codigo-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: monospace;
+}
+
+/* Item nombre con icono/thumb */
+.item-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.item-icon {
+    font-size: 24px;
+    color: #714B67;
+    opacity: 0.6;
+}
+
+.item-thumb {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid #e5e7eb;
+}
+
+.text-muted-dark {
+    color: #6b7280;
+}
+
+/* Count badge */
+.count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* =====================================
+   BADGES
+   ===================================== */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-dark {
+    background: #374151;
+    color: #f9fafb;
+}
+
+.badge-secondary {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+/* =====================================
+   UTILIDADES
+   ===================================== */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-muted { color: #9ca3af; }
+
+.col-actions {
+    width: 80px;
+    text-align: center;
+}
+
+.row-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+tr:hover .row-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    color: #6b7280;
+    transition: all 0.15s;
+    text-decoration: none;
+}
+
+.action-btn:hover {
+    background: #f3f4f6;
+    color: #714B67;
+}
+
+.action-btn .material-icons {
+    font-size: 18px;
+}
+
+.empty-row {
+    text-align: center;
+    padding: 40px 20px !important;
+    color: #9ca3af;
+}
+
+.empty-row .material-icons {
+    font-size: 40px;
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.empty-row p {
+    margin: 0;
+}
+
+/* =====================================
+   RESPONSIVE
+   ===================================== */
+@media (max-width: 768px) {
+    .page-header-flex {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .header-actions {
+        justify-content: flex-start;
+    }
+    
+    .summary-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .summary-item {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .btn-filter {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .table-card {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        min-width: 700px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggle-filters');
+    const filtersPanel = document.getElementById('filters-panel');
+    
+    if (toggleBtn && filtersPanel) {
+        // Mostrar filtros si hay alguno activo
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasFilters = urlParams.has('q') || urlParams.has('estado') || 
+                          urlParams.has('categoria') || urlParams.has('ubicacion');
+        
+        if (hasFilters) {
+            filtersPanel.classList.add('active');
+        }
+
+        toggleBtn.addEventListener('click', function() {
+            filtersPanel.classList.toggle('active');
+        });
+    }
+
+    // Filas clickeables
+    document.querySelectorAll('.row-clickable').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('.row-actions')) return;
+            const href = this.dataset.href;
+            if (href) window.location.href = href;
+        });
+    });
+});
+</script>
+
+{% endblock %}
