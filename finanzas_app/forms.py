@@ -1,4 +1,5 @@
 from django import forms
+from decimal import Decimal, InvalidOperation
 
 from miembros_app.models import Miembro  # 👈 IMPORTAMOS MIEMBRO
 from django.apps import apps
@@ -14,6 +15,79 @@ import re
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db.models import Max
+
+
+# ============================================
+# WIDGET Y FIELD DE MONEDA CON PUNTO DECIMAL
+# ============================================
+
+class MonedaInput(forms.TextInput):
+    """
+    Widget de input para campos de moneda.
+    Muestra el valor con formato de moneda (punto como decimal).
+    """
+    def __init__(self, attrs=None):
+        default_attrs = {
+            'class': 'moneda-input',
+            'inputmode': 'decimal',
+            'placeholder': '0.00',
+            'autocomplete': 'off',
+        }
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(attrs=default_attrs)
+
+    def format_value(self, value):
+        """Formatea el valor para mostrar con punto decimal."""
+        if value is None or value == '':
+            return ''
+        try:
+            # Convertir a Decimal y formatear con 2 decimales
+            decimal_value = Decimal(str(value))
+            return f"{decimal_value:,.2f}".replace(',', 'X').replace('.', '.').replace('X', ',')
+        except (InvalidOperation, ValueError):
+            return str(value)
+
+
+class MonedaField(forms.DecimalField):
+    """
+    Campo de formulario para moneda.
+    Acepta entrada con comas como separador de miles y punto como decimal.
+    """
+    widget = MonedaInput
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('max_digits', 12)
+        kwargs.setdefault('decimal_places', 2)
+        kwargs.setdefault('min_value', Decimal('0'))
+        super().__init__(*args, **kwargs)
+
+    def to_python(self, value):
+        """Convierte el valor de entrada a Decimal."""
+        if value in self.empty_values:
+            return None
+        
+        # Limpiar el valor: quitar espacios y comas de miles
+        value = str(value).strip()
+        value = value.replace(',', '')  # Quitar comas de miles
+        value = value.replace('$', '')  # Quitar símbolo de moneda si existe
+        value = value.replace(' ', '')  # Quitar espacios
+        
+        try:
+            return Decimal(value)
+        except InvalidOperation:
+            raise ValidationError('Ingrese un monto válido.')
+
+    def prepare_value(self, value):
+        """Prepara el valor para mostrar en el formulario."""
+        if value is None or value == '':
+            return ''
+        try:
+            decimal_value = Decimal(str(value))
+            # Formato con comas como separador de miles y punto decimal
+            return f"{decimal_value:,.2f}".replace(',', 'X').replace('.', '.').replace('X', ',')
+        except (InvalidOperation, ValueError):
+            return str(value)
 
 
 
@@ -65,6 +139,13 @@ def is_module_enabled(*codes: str) -> bool:
 # ============================================
 
 class CuentaFinancieraForm(forms.ModelForm):
+    # Campo de moneda con formato
+    saldo_inicial = MonedaField(
+        label="Saldo inicial",
+        required=False,
+        help_text="Saldo inicial de la cuenta."
+    )
+
     class Meta:
         model = CuentaFinanciera
         fields = [
@@ -82,11 +163,6 @@ class CuentaFinancieraForm(forms.ModelForm):
             "descripcion": forms.Textarea(attrs={
                 "rows": 2,
                 "placeholder": "Descripción opcional de la cuenta...",
-            }),
-            "saldo_inicial": forms.NumberInput(attrs={
-                "step": "0.01",
-                "min": "0",
-                "placeholder": "0.00",
             }),
         }
 
@@ -126,6 +202,12 @@ class CategoriaMovimientoForm(forms.ModelForm):
 # ============================================
 
 class MovimientoFinancieroForm(forms.ModelForm):
+    # Campo de moneda con formato
+    monto = MonedaField(
+        label="Monto",
+        help_text="Monto del movimiento."
+    )
+
     class Meta:
         model = MovimientoFinanciero
         fields = [
@@ -167,6 +249,11 @@ class MovimientoIngresoForm(forms.ModelForm):
     Formulario especializado solo para INGRESOS.
     No muestra el campo 'tipo' y filtra las categorías a solo ingresos.
     """
+    # Campo de moneda con formato
+    monto = MonedaField(
+        label="Monto",
+        help_text="Monto del ingreso."
+    )
 
     class Meta:
         model = MovimientoFinanciero
@@ -265,6 +352,12 @@ class MovimientoEgresoForm(forms.ModelForm):
     Formulario especializado solo para EGRESOS.
     Igual al de ingresos, pero filtrando categorías tipo egreso.
     """
+    # Campo de moneda con formato
+    monto = MonedaField(
+        label="Monto",
+        help_text="Monto del egreso."
+    )
+
     class Meta:
         model = MovimientoFinanciero
         fields = [
@@ -354,16 +447,10 @@ class TransferenciaForm(forms.Form):
         help_text="Cuenta donde entra el dinero"
     )
     
-    monto = forms.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        min_value=0.01,
+    monto = MonedaField(
         label="Monto",
-        widget=forms.NumberInput(attrs={
-            "step": "0.01",
-            "min": "0.01",
-            "placeholder": "0.00"
-        })
+        min_value=Decimal('0.01'),
+        help_text="Monto a transferir"
     )
     
     descripcion = forms.CharField(
@@ -522,6 +609,12 @@ class ProveedorFinancieroForm(forms.ModelForm):
 
 
 class CuentaPorPagarForm(forms.ModelForm):
+    # Campo de moneda con formato
+    monto_total = MonedaField(
+        label="Monto total",
+        help_text="Monto total de la cuenta por pagar."
+    )
+
     class Meta:
         model = CuentaPorPagar
      
@@ -543,7 +636,6 @@ class CuentaPorPagarForm(forms.ModelForm):
             "concepto": forms.TextInput(attrs={"placeholder": "Ej: Pago de sonido, renta local, electricidad..."}),
             "descripcion": forms.Textarea(attrs={"rows": 2, "placeholder": "Detalle (opcional)"}),
             "referencia": forms.TextInput(attrs={"placeholder": "Factura / recibo / contrato (opcional)"}),
-            "monto_total": forms.NumberInput(attrs={"step": "0.01", "min": "0", "placeholder": "0.00"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -602,4 +694,3 @@ class CuentaPorPagarForm(forms.ModelForm):
 
         self.fields["cuenta_sugerida"].label = "Cuenta sugerida (opcional)"
         self.fields["cuenta_sugerida"].help_text = "No mueve caja. Solo sugiere desde qué cuenta se pagará normalmente."
-

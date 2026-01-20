@@ -79,7 +79,7 @@
                                 type="text" 
                                 id="monto" 
                                 name="monto" 
-                                class="odoo-input odoo-input-number"
+                                class="odoo-input odoo-input-number moneda-input"
                                 value="{{ cxp.saldo_pendiente|floatformat:2 }}"
                                 required
                                 inputmode="decimal"
@@ -574,5 +574,52 @@
         }
     }
 </style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const monedaInputs = document.querySelectorAll('.moneda-input');
+    
+    monedaInputs.forEach(function(input) {
+        if (input.value) {
+            input.value = formatearMoneda(input.value);
+        }
+        
+        input.addEventListener('blur', function() {
+            if (this.value) {
+                this.value = formatearMoneda(this.value);
+            }
+        });
+        
+        input.addEventListener('focus', function() {
+            if (this.value) {
+                this.value = this.value.replace(/,/g, '');
+            }
+            this.select();
+        });
+        
+        input.addEventListener('keypress', function(e) {
+            const char = String.fromCharCode(e.which);
+            if (!/[\d.,]/.test(char) && e.which !== 8 && e.which !== 46 && e.which !== 9 && e.which !== 27 && e.which !== 13) {
+                e.preventDefault();
+            }
+            if (char === '.' && this.value.includes('.')) {
+                e.preventDefault();
+            }
+        });
+    });
+});
 
+function formatearMoneda(valor) {
+    let limpio = String(valor).replace(/[^0-9.]/g, '');
+    const partes = limpio.split('.');
+    if (partes.length > 2) {
+        limpio = partes[0] + '.' + partes.slice(1).join('');
+    }
+    let numero = parseFloat(limpio);
+    if (isNaN(numero)) return '';
+    return numero.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+</script>
 {% endblock finanzas_content %}

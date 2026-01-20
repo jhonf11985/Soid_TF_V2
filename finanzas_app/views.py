@@ -674,9 +674,13 @@ def movimiento_editar(request, pk):
     }
     return render(request, template_name, context)
 
-
 @login_required
+@transaction.atomic
 def movimiento_anular(request, pk):
+    """
+    Anular un movimiento financiero.
+    Si es un egreso vinculado a una CxP, revierte el pago automáticamente.
+    """
     movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
 
     if movimiento.estado == "anulado":
@@ -689,30 +693,55 @@ def movimiento_anular(request, pk):
             messages.error(request, "Debes indicar el motivo de la anulación.")
             return redirect("finanzas_app:movimiento_anular", pk=movimiento.pk)
 
+        # ====================================================
+        # NUEVO: Revertir pago si está vinculado a una CxP
+        # ====================================================
+        cxp = getattr(movimiento, 'cuenta_por_pagar', None)
+        
+        if cxp and movimiento.tipo == "egreso":
+            # Restar el monto pagado de la CxP
+            monto_a_revertir = movimiento.monto
+            cxp.monto_pagado = max(
+                Decimal("0"), 
+                (cxp.monto_pagado or Decimal("0")) - monto_a_revertir
+            )
+            
+            # Recalcular el estado de la CxP
+            if cxp.monto_pagado <= Decimal("0"):
+                cxp.estado = "pendiente"
+            elif cxp.monto_pagado < cxp.monto_total:
+                cxp.estado = "parcial"
+            else:
+                cxp.estado = "pagada"
+            
+            cxp.save()
+            
+            messages.info(
+                request, 
+                f"Se revirtió el pago de RD$ {monto_a_revertir:,.2f} de la cuenta por pagar #{cxp.pk}."
+            )
+        # ====================================================
+
+        # Anular el movimiento
         movimiento.estado = "anulado"
         movimiento.motivo_anulacion = motivo
         movimiento.anulado_por = request.user
         movimiento.anulado_en = timezone.now()
         movimiento.save()
 
-        messages.warning(request, f"Movimiento #{movimiento.pk} anulado.")
+        messages.warning(request, f"Movimiento #{movimiento.pk} anulado correctamente.")
         return redirect("finanzas_app:movimientos_listado")
 
+    # GET: mostrar formulario de confirmación
     context = {
         "modo": "movimiento",
         "movimiento": movimiento,
         "back_url": request.META.get("HTTP_REFERER") or reverse("finanzas_app:movimientos_listado"),
+        # Indicar si tiene CxP vinculada para mostrar advertencia en el template
+        "tiene_cxp": bool(getattr(movimiento, 'cuenta_por_pagar', None)),
     }
 
-
-    messages.success(
-        request,
-        f"El {movimiento.tipo} fue anulado correctamente."
-    )
-
-
     return render(request, "finanzas_app/anulacion_confirmar.html", context)
-
 
 @login_required
 def ingreso_detalle(request, pk):

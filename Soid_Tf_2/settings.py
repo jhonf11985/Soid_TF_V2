@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'estructura_app',
     'nuevo_creyente_app',
     'actualizacion_datos_miembros',
+    'django.contrib.humanize'
 ]
 
 MIDDLEWARE = [
@@ -112,10 +113,12 @@ AUTH_PASSWORD_VALIDATORS = [
 # INTERNACIONALIZACIÓN
 # =============================================================================
 
-LANGUAGE_CODE = 'es-do'  # Español República Dominicana
+LANGUAGE_CODE = 'en-us'  # Inglés para formato numérico con punto decimal
 TIME_ZONE = 'America/Santo_Domingo'
 USE_I18N = True
 USE_TZ = True
+USE_L10N = True
+USE_THOUSAND_SEPARATOR = True
 
 # =============================================================================
 # CONFIGURACIÓN ESPECÍFICA DE LA APP
