@@ -30,6 +30,12 @@ class RecursoForm(forms.ModelForm):
             "proveedor",
             "costo_unitario",
             "garantia_hasta",
+            # Depreciación
+            "deprecia",
+            "metodo_depreciacion",
+            "vida_util_anios",
+            "valor_residual_unitario",
+            "fecha_inicio_depreciacion",
 
             # Notas
             "descripcion",
@@ -38,6 +44,8 @@ class RecursoForm(forms.ModelForm):
             "descripcion": forms.Textarea(attrs={"rows": 3}),
             "fecha_compra": forms.DateInput(attrs={"type": "date"}),
             "garantia_hasta": forms.DateInput(attrs={"type": "date"}),
+            "fecha_inicio_depreciacion": forms.DateInput(attrs={"type": "date"}),
+
         }
 
     def __init__(self, *args, **kwargs):
