@@ -1,11 +1,12 @@
 from django import forms
-from .models import Recurso,Ubicacion
+from .models import Recurso, CategoriaRecurso, Ubicacion
 
 
 class RecursoForm(forms.ModelForm):
     class Meta:
         model = Recurso
         fields = [
+            # Básico
             "codigo",
             "nombre",
             "categoria",
@@ -13,10 +14,30 @@ class RecursoForm(forms.ModelForm):
             "estado",
             "cantidad_total",
             "foto",
+
+            # Prioridad 1
+            "marca",
+            "modelo",
+            "numero_serie",
+
+            # Prioridad 2
+            "condicion_fisica",
+            "es_consumible",
+            "requiere_mantenimiento",
+
+            # Prioridad 3
+            "fecha_compra",
+            "proveedor",
+            "costo_unitario",
+            "garantia_hasta",
+
+            # Notas
             "descripcion",
         ]
         widgets = {
             "descripcion": forms.Textarea(attrs={"rows": 3}),
+            "fecha_compra": forms.DateInput(attrs={"type": "date"}),
+            "garantia_hasta": forms.DateInput(attrs={"type": "date"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -26,56 +47,19 @@ class RecursoForm(forms.ModelForm):
         for name, field in self.fields.items():
             widget = field.widget
             classes = widget.attrs.get("class", "")
-            if isinstance(widget, (forms.TextInput, forms.NumberInput, forms.Select, forms.ClearableFileInput, forms.Textarea)):
+            if isinstance(widget, (forms.TextInput, forms.NumberInput, forms.Select, forms.ClearableFileInput, forms.Textarea, forms.DateInput)):
                 widget.attrs["class"] = (classes + " odoo-input").strip()
 
         # Placeholders útiles
-        if "codigo" in self.fields:
-            self.fields["codigo"].widget.attrs.setdefault("placeholder", "INV-0001")
-        if "nombre" in self.fields:
-            self.fields["nombre"].widget.attrs.setdefault("placeholder", "Ej: Micrófono inalámbrico Shure")
-        if "cantidad_total" in self.fields:
-            self.fields["cantidad_total"].widget.attrs.setdefault("min", 1)
+        self.fields["codigo"].widget.attrs.setdefault("placeholder", "INV-0001")
+        self.fields["nombre"].widget.attrs.setdefault("placeholder", "Ej: Micrófono inalámbrico Shure")
+        self.fields["marca"].widget.attrs.setdefault("placeholder", "Ej: Shure, Yamaha, JBL…")
+        self.fields["modelo"].widget.attrs.setdefault("placeholder", "Ej: SM58, MG10XU…")
+        self.fields["numero_serie"].widget.attrs.setdefault("placeholder", "Ej: SN-123456")
+        self.fields["proveedor"].widget.attrs.setdefault("placeholder", "Ej: Tienda X / Donación / Ferretería…")
 
+        self.fields["cantidad_total"].widget.attrs.setdefault("min", 1)
 
-from django import forms
-from .models import Recurso, CategoriaRecurso
-
-
-class RecursoForm(forms.ModelForm):
-    class Meta:
-        model = Recurso
-        fields = [
-            "codigo",
-            "nombre",
-            "categoria",
-            "ubicacion",
-            "estado",
-            "cantidad_total",
-            "foto",
-            "descripcion",
-        ]
-        widgets = {
-            "descripcion": forms.Textarea(attrs={"rows": 3}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Clases mínimas (sin tocar tu CSS global)
-        for name, field in self.fields.items():
-            widget = field.widget
-            classes = widget.attrs.get("class", "")
-            if isinstance(widget, (forms.TextInput, forms.NumberInput, forms.Select, forms.ClearableFileInput, forms.Textarea)):
-                widget.attrs["class"] = (classes + " odoo-input").strip()
-
-        # Placeholders útiles
-        if "codigo" in self.fields:
-            self.fields["codigo"].widget.attrs.setdefault("placeholder", "INV-0001")
-        if "nombre" in self.fields:
-            self.fields["nombre"].widget.attrs.setdefault("placeholder", "Ej: Micrófono inalámbrico Shure")
-        if "cantidad_total" in self.fields:
-            self.fields["cantidad_total"].widget.attrs.setdefault("min", 1)
 
 class CategoriaRecursoForm(forms.ModelForm):
     class Meta:
@@ -91,14 +75,10 @@ class CategoriaRecursoForm(forms.ModelForm):
         for name, field in self.fields.items():
             widget = field.widget
             classes = widget.attrs.get("class", "")
-
             if name != "activo":
                 widget.attrs["class"] = (classes + " odoo-input").strip()
 
-        self.fields["nombre"].widget.attrs.setdefault(
-            "placeholder", "Ej: Audio y sonido"
-        )
-
+        self.fields["nombre"].widget.attrs.setdefault("placeholder", "Ej: Audio y sonido")
 
 
 class UbicacionForm(forms.ModelForm):
@@ -117,7 +97,4 @@ class UbicacionForm(forms.ModelForm):
             classes = widget.attrs.get("class", "")
             widget.attrs["class"] = (classes + " odoo-input").strip()
 
-        self.fields["nombre"].widget.attrs.setdefault(
-            "placeholder", "Ej: Salón principal, Bodega, Oficina pastoral"
-        )
-
+        self.fields["nombre"].widget.attrs.setdefault("placeholder", "Ej: Salón principal, Bodega, Oficina pastoral")

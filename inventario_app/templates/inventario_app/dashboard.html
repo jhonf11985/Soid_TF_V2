@@ -1,124 +1,766 @@
 {% extends "inventario_app/base_inventario.html" %}
 
 {% block inventario_content %}
-<div class="odoo-page">
-    <div class="odoo-page-header">
-        <h1>Dashboard de Inventario</h1>
-        <p class="muted">Estado general de los recursos físicos.</p>
-    </div>
-
-    <div class="odoo-grid-4">
-        <div class="odoo-kpi-card">
-            <div class="kpi-title">Total</div>
-            <div class="kpi-value">{{ stats.total|default:"0" }}</div>
-            <div class="kpi-sub">Recursos registrados</div>
+<div class="dashboard-page">
+    
+    <!-- HEADER -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1>Dashboard de Inventario</h1>
+            <p>Estado general de los recursos físicos</p>
         </div>
-
-        <div class="odoo-kpi-card">
-            <div class="kpi-title">Disponibles</div>
-            <div class="kpi-value">{{ stats.disponibles|default:"0" }}</div>
-            <div class="kpi-sub">Listos para uso</div>
-        </div>
-
-        <div class="odoo-kpi-card">
-            <div class="kpi-title">En uso</div>
-            <div class="kpi-value">{{ stats.en_uso|default:"0" }}</div>
-            <div class="kpi-sub">Actualmente utilizados</div>
-        </div>
-
-        <div class="odoo-kpi-card">
-            <div class="kpi-title">En reparación</div>
-            <div class="kpi-value">{{ stats.en_reparacion|default:"0" }}</div>
-            <div class="kpi-sub">Pendientes de arreglo</div>
+        <div class="header-actions">
+            <a href="/inventario/recursos/nuevo/" class="btn-primary">
+                <span class="material-icons">add</span>
+                Nuevo recurso
+            </a>
         </div>
     </div>
 
-    <div class="odoo-grid-3 mt-3">
-        <div class="odoo-kpi-card">
-            <div class="kpi-title">Prestados</div>
-            <div class="kpi-value">{{ stats.prestados|default:"0" }}</div>
-            <div class="kpi-sub">Fuera de control directo</div>
-        </div>
-
-        <div class="odoo-kpi-card">
-            <div class="kpi-title">Dañados</div>
-            <div class="kpi-value">{{ stats.danados|default:"0" }}</div>
-            <div class="kpi-sub">Requieren revisión</div>
-        </div>
-
-        <div class="odoo-kpi-card">
-            <div class="kpi-title">Baja</div>
-            <div class="kpi-value">{{ stats.baja|default:"0" }}</div>
-            <div class="kpi-sub">Fuera de servicio</div>
-        </div>
-    </div>
-
-    <div class="odoo-card mt-3">
-        <div class="odoo-card-header">
-            <h3>Últimos movimientos</h3>
-            <div class="odoo-card-actions">
-                <a class="btn btn-primary" href="/inventario/movimientos/nuevo/">Registrar movimiento</a>
-                <a class="btn btn-secondary" href="/inventario/movimientos/">Ver historial</a>
+    <!-- KPIs PRINCIPALES -->
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-total">
+            <div class="kpi-icon">
+                <span class="material-icons">inventory_2</span>
+            </div>
+            <div class="kpi-content">
+                <span class="kpi-value">{{ stats.total|default:"0" }}</span>
+                <span class="kpi-label">Total recursos</span>
             </div>
         </div>
 
-        <div class="odoo-card-body">
-            {% if ultimos_movimientos %}
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Tipo</th>
-                                <th>Recurso</th>
-                                <th>Cant.</th>
-                                <th>Origen</th>
-                                <th>Destino</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for m in ultimos_movimientos %}
-                            <tr>
-                                <td>{{ m.fecha|date:"Y-m-d H:i" }}</td>
-                                <td>{{ m.get_tipo_display }}</td>
-                                <td>{{ m.recurso }}</td>
-                                <td>{{ m.cantidad }}</td>
-                                <td>{{ m.ubicacion_origen|default:"-" }}</td>
-                                <td>{{ m.ubicacion_destino|default:"-" }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        <div class="kpi-card kpi-disponible">
+            <div class="kpi-icon">
+                <span class="material-icons">check_circle</span>
+            </div>
+            <div class="kpi-content">
+                <span class="kpi-value">{{ stats.disponibles|default:"0" }}</span>
+                <span class="kpi-label">Disponibles</span>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-en-uso">
+            <div class="kpi-icon">
+                <span class="material-icons">pending</span>
+            </div>
+            <div class="kpi-content">
+                <span class="kpi-value">{{ stats.en_uso|default:"0" }}</span>
+                <span class="kpi-label">En uso</span>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-prestado">
+            <div class="kpi-icon">
+                <span class="material-icons">swap_horiz</span>
+            </div>
+            <div class="kpi-content">
+                <span class="kpi-value">{{ stats.prestados|default:"0" }}</span>
+                <span class="kpi-label">Prestados</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs SECUNDARIOS -->
+    <div class="kpi-grid-secondary">
+        <div class="kpi-card-sm kpi-reparacion">
+            <span class="material-icons">build</span>
+            <div class="kpi-sm-content">
+                <span class="kpi-sm-value">{{ stats.en_reparacion|default:"0" }}</span>
+                <span class="kpi-sm-label">En reparación</span>
+            </div>
+        </div>
+
+        <div class="kpi-card-sm kpi-danado">
+            <span class="material-icons">warning</span>
+            <div class="kpi-sm-content">
+                <span class="kpi-sm-value">{{ stats.danados|default:"0" }}</span>
+                <span class="kpi-sm-label">Dañados</span>
+            </div>
+        </div>
+
+        <div class="kpi-card-sm kpi-baja">
+            <span class="material-icons">block</span>
+            <div class="kpi-sm-content">
+                <span class="kpi-sm-value">{{ stats.baja|default:"0" }}</span>
+                <span class="kpi-sm-label">Baja</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENIDO EN DOS COLUMNAS -->
+    <div class="dashboard-grid">
+        
+        <!-- ÚLTIMOS MOVIMIENTOS -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons">history</span>
+                    <h3>Últimos movimientos</h3>
                 </div>
-            {% else %}
-                <p class="muted">Aún no hay movimientos registrados.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="odoo-card mt-3">
-        <div class="odoo-card-header">
-            <h3>Acciones rápidas</h3>
-        </div>
-        <div class="odoo-card-body">
-            <div class="odoo-actions-grid">
-                <a class="odoo-action-tile" href="/inventario/recursos/nuevo/">
-                    <div class="tile-title">Crear recurso</div>
-                    <div class="tile-sub">Registrar un recurso nuevo</div>
-                </a>
-
-                <a class="odoo-action-tile" href="/inventario/categorias/">
-                    <div class="tile-title">Categorías</div>
-                    <div class="tile-sub">Organizar el inventario</div>
-                </a>
-
-                <a class="odoo-action-tile" href="/inventario/ubicaciones/">
-                    <div class="tile-title">Ubicaciones</div>
-                    <div class="tile-sub">Dónde está cada cosa</div>
+                <a href="/inventario/movimientos/" class="card-link">
+                    Ver todos
+                    <span class="material-icons">arrow_forward</span>
                 </a>
             </div>
+
+            <div class="card-body">
+                {% if ultimos_movimientos %}
+                    <div class="movimientos-list">
+                        {% for m in ultimos_movimientos %}
+                        <div class="movimiento-item">
+                            <div class="mov-icon 
+                                {% if m.tipo == 'ENTRADA' %}mov-entrada
+                                {% elif m.tipo == 'SALIDA' %}mov-salida
+                                {% elif m.tipo == 'TRASLADO' %}mov-traslado
+                                {% elif m.tipo == 'REPARACION' %}mov-reparacion
+                                {% else %}mov-baja{% endif %}">
+                                {% if m.tipo == 'ENTRADA' %}
+                                    <span class="material-icons">add_circle</span>
+                                {% elif m.tipo == 'SALIDA' %}
+                                    <span class="material-icons">remove_circle</span>
+                                {% elif m.tipo == 'TRASLADO' %}
+                                    <span class="material-icons">swap_horiz</span>
+                                {% elif m.tipo == 'REPARACION' %}
+                                    <span class="material-icons">build</span>
+                                {% else %}
+                                    <span class="material-icons">delete</span>
+                                {% endif %}
+                            </div>
+                            <div class="mov-content">
+                                <div class="mov-header">
+                                    <span class="mov-tipo">{{ m.get_tipo_display }}</span>
+                                    <span class="mov-fecha">{{ m.fecha|date:"d/m/Y H:i" }}</span>
+                                </div>
+                                <div class="mov-recurso">{{ m.recurso.nombre }}</div>
+                                <div class="mov-detail">
+                                    <span class="mov-cantidad">{{ m.cantidad }} unid.</span>
+                                    {% if m.ubicacion_origen and m.ubicacion_destino %}
+                                        <span class="mov-ubicacion">
+                                            {{ m.ubicacion_origen.nombre }}
+                                            <span class="material-icons">arrow_forward</span>
+                                            {{ m.ubicacion_destino.nombre }}
+                                        </span>
+                                    {% elif m.ubicacion_destino %}
+                                        <span class="mov-ubicacion">→ {{ m.ubicacion_destino.nombre }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <span class="material-icons">history</span>
+                        <p>Aún no hay movimientos registrados</p>
+                        <a href="/inventario/movimientos/nuevo/" class="btn-sm btn-primary">
+                            Registrar movimiento
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
         </div>
+
+        <!-- ACCIONES RÁPIDAS -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons">flash_on</span>
+                    <h3>Acciones rápidas</h3>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="actions-grid">
+                    <a href="/inventario/recursos/nuevo/" class="action-tile">
+                        <div class="tile-icon tile-purple">
+                            <span class="material-icons">add_box</span>
+                        </div>
+                        <div class="tile-content">
+                            <span class="tile-title">Crear recurso</span>
+                            <span class="tile-desc">Registrar nuevo equipo</span>
+                        </div>
+                        <span class="material-icons tile-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="/inventario/movimientos/nuevo/" class="action-tile">
+                        <div class="tile-icon tile-blue">
+                            <span class="material-icons">swap_horiz</span>
+                        </div>
+                        <div class="tile-content">
+                            <span class="tile-title">Registrar movimiento</span>
+                            <span class="tile-desc">Entrada, salida, traslado</span>
+                        </div>
+                        <span class="material-icons tile-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="/inventario/categorias/" class="action-tile">
+                        <div class="tile-icon tile-green">
+                            <span class="material-icons">category</span>
+                        </div>
+                        <div class="tile-content">
+                            <span class="tile-title">Categorías</span>
+                            <span class="tile-desc">Organizar inventario</span>
+                        </div>
+                        <span class="material-icons tile-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="/inventario/ubicaciones/" class="action-tile">
+                        <div class="tile-icon tile-orange">
+                            <span class="material-icons">place</span>
+                        </div>
+                        <div class="tile-content">
+                            <span class="tile-title">Ubicaciones</span>
+                            <span class="tile-desc">Gestionar espacios</span>
+                        </div>
+                        <span class="material-icons tile-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="/inventario/recursos/" class="action-tile">
+                        <div class="tile-icon tile-teal">
+                            <span class="material-icons">inventory</span>
+                        </div>
+                        <div class="tile-content">
+                            <span class="tile-title">Ver recursos</span>
+                            <span class="tile-desc">Lista completa</span>
+                        </div>
+                        <span class="material-icons tile-arrow">chevron_right</span>
+                    </a>
+
+                    <a href="/inventario/reportes/" class="action-tile">
+                        <div class="tile-icon tile-gray">
+                            <span class="material-icons">assessment</span>
+                        </div>
+                        <div class="tile-content">
+                            <span class="tile-title">Reportes</span>
+                            <span class="tile-desc">Estadísticas y análisis</span>
+                        </div>
+                        <span class="material-icons tile-arrow">chevron_right</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
     </div>
 
 </div>
+
+<style>
+/* =====================================
+   VARIABLES
+   ===================================== */
+:root {
+    --dash-purple: #714B67;
+    --dash-purple-light: #8f6b84;
+    --dash-green: #059669;
+    --dash-blue: #0284c7;
+    --dash-orange: #d97706;
+    --dash-red: #dc2626;
+    --dash-gray: #6b7280;
+    --dash-teal: #0d9488;
+    --dash-bg: #f8f9fa;
+    --dash-card: #ffffff;
+    --dash-border: #e5e7eb;
+    --dash-text: #111827;
+    --dash-text-muted: #6b7280;
+}
+
+/* =====================================
+   PAGE
+   ===================================== */
+.dashboard-page {
+    padding: 0;
+}
+
+/* =====================================
+   HEADER
+   ===================================== */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.header-content h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--dash-text);
+    margin: 0;
+}
+
+.header-content p {
+    font-size: 14px;
+    color: var(--dash-text-muted);
+    margin: 4px 0 0 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: var(--dash-purple);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background: var(--dash-purple-light);
+}
+
+.btn-primary .material-icons {
+    font-size: 20px;
+}
+
+.btn-sm {
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+/* =====================================
+   KPI CARDS - PRINCIPALES
+   ===================================== */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.kpi-card {
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.2s;
+}
+
+.kpi-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.kpi-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.kpi-icon .material-icons {
+    font-size: 28px;
+}
+
+.kpi-total .kpi-icon { background: #f3e8ef; color: var(--dash-purple); }
+.kpi-disponible .kpi-icon { background: #d1fae5; color: var(--dash-green); }
+.kpi-en-uso .kpi-icon { background: #dbeafe; color: var(--dash-blue); }
+.kpi-prestado .kpi-icon { background: #fef3c7; color: var(--dash-orange); }
+
+.kpi-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--dash-text);
+    line-height: 1;
+}
+
+.kpi-label {
+    font-size: 13px;
+    color: var(--dash-text-muted);
+    margin-top: 4px;
+}
+
+/* =====================================
+   KPI CARDS - SECUNDARIOS
+   ===================================== */
+.kpi-grid-secondary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.kpi-card-sm {
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.kpi-card-sm > .material-icons {
+    font-size: 24px;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.kpi-reparacion > .material-icons { background: #fee2e2; color: var(--dash-red); }
+.kpi-danado > .material-icons { background: #fef3c7; color: #b45309; }
+.kpi-baja > .material-icons { background: #f3f4f6; color: var(--dash-gray); }
+
+.kpi-sm-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-sm-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--dash-text);
+    line-height: 1;
+}
+
+.kpi-sm-label {
+    font-size: 12px;
+    color: var(--dash-text-muted);
+    margin-top: 2px;
+}
+
+/* =====================================
+   DASHBOARD GRID
+   ===================================== */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+/* =====================================
+   CARDS
+   ===================================== */
+.dashboard-card {
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--dash-border);
+    background: #fafafa;
+}
+
+.card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-title .material-icons {
+    font-size: 22px;
+    color: var(--dash-purple);
+}
+
+.card-title h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dash-text);
+    margin: 0;
+}
+
+.card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--dash-purple);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.card-link:hover {
+    text-decoration: underline;
+}
+
+.card-link .material-icons {
+    font-size: 16px;
+}
+
+.card-body {
+    padding: 16px 20px;
+}
+
+/* =====================================
+   MOVIMIENTOS LIST
+   ===================================== */
+.movimientos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.movimiento-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.movimiento-item:last-child {
+    border-bottom: none;
+}
+
+.mov-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mov-icon .material-icons {
+    font-size: 18px;
+}
+
+.mov-entrada { background: #d1fae5; color: #065f46; }
+.mov-salida { background: #fee2e2; color: #991b1b; }
+.mov-traslado { background: #dbeafe; color: #1e40af; }
+.mov-reparacion { background: #fef3c7; color: #92400e; }
+.mov-baja { background: #f3f4f6; color: #374151; }
+
+.mov-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.mov-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.mov-tipo {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dash-text);
+}
+
+.mov-fecha {
+    font-size: 11px;
+    color: var(--dash-text-muted);
+}
+
+.mov-recurso {
+    font-size: 13px;
+    color: var(--dash-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mov-detail {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--dash-text-muted);
+}
+
+.mov-ubicacion {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mov-ubicacion .material-icons {
+    font-size: 12px;
+}
+
+/* =====================================
+   ACTIONS GRID
+   ===================================== */
+.actions-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.action-tile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: #fafafa;
+    border: 1px solid var(--dash-border);
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.15s;
+}
+
+.action-tile:hover {
+    background: #f3f4f6;
+    border-color: var(--dash-purple);
+}
+
+.tile-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tile-icon .material-icons {
+    font-size: 22px;
+}
+
+.tile-purple { background: #f3e8ef; color: var(--dash-purple); }
+.tile-blue { background: #dbeafe; color: var(--dash-blue); }
+.tile-green { background: #d1fae5; color: var(--dash-green); }
+.tile-orange { background: #fef3c7; color: var(--dash-orange); }
+.tile-teal { background: #ccfbf1; color: var(--dash-teal); }
+.tile-gray { background: #f3f4f6; color: var(--dash-gray); }
+
+.tile-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.tile-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dash-text);
+}
+
+.tile-desc {
+    font-size: 12px;
+    color: var(--dash-text-muted);
+}
+
+.tile-arrow {
+    font-size: 20px;
+    color: #d1d5db;
+    transition: all 0.15s;
+}
+
+.action-tile:hover .tile-arrow {
+    color: var(--dash-purple);
+    transform: translateX(4px);
+}
+
+/* =====================================
+   EMPTY STATE
+   ===================================== */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--dash-text-muted);
+}
+
+.empty-state .material-icons {
+    font-size: 48px;
+    opacity: 0.3;
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    margin: 0 0 16px 0;
+}
+
+/* =====================================
+   RESPONSIVE
+   ===================================== */
+@media (max-width: 1200px) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .kpi-grid-secondary {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .header-actions {
+        justify-content: stretch;
+    }
+
+    .header-actions .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .kpi-card {
+        padding: 16px;
+    }
+
+    .kpi-icon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .kpi-icon .material-icons {
+        font-size: 24px;
+    }
+
+    .kpi-value {
+        font-size: 28px;
+    }
+
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .action-tile {
+        padding: 12px 14px;
+    }
+
+    .tile-icon {
+        width: 38px;
+        height: 38px;
+    }
+}
+</style>
 {% endblock %}

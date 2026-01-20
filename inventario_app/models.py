@@ -1,4 +1,3 @@
-
 from django.db import models
 from django.utils import timezone
 
@@ -39,12 +38,41 @@ class Recurso(models.Model):
         DANADO = "DANADO", "Dañado"
         BAJA = "BAJA", "Baja"
 
+    class Condiciones(models.TextChoices):
+        NUEVO = "NUEVO", "Nuevo"
+        BUENO = "BUENO", "Bueno"
+        REGULAR = "REGULAR", "Regular"
+        MALO = "MALO", "Malo"
+
+    # Básico
     codigo = models.CharField(max_length=30, unique=True)
     nombre = models.CharField(max_length=150)
     categoria = models.ForeignKey(CategoriaRecurso, on_delete=models.PROTECT, related_name="recursos")
     ubicacion = models.ForeignKey(Ubicacion, on_delete=models.PROTECT, related_name="recursos")
     cantidad_total = models.PositiveIntegerField(default=1)
     estado = models.CharField(max_length=20, choices=Estados.choices, default=Estados.DISPONIBLE)
+
+    # Prioridad 1: Ficha técnica
+    marca = models.CharField(max_length=120, blank=True)
+    modelo = models.CharField(max_length=120, blank=True)
+    numero_serie = models.CharField(max_length=120, blank=True)
+
+    # Prioridad 2: Operación / condición
+    condicion_fisica = models.CharField(
+        max_length=20,
+        choices=Condiciones.choices,
+        default=Condiciones.BUENO
+    )
+    es_consumible = models.BooleanField(default=False)
+    requiere_mantenimiento = models.BooleanField(default=False)
+
+    # Prioridad 3: Compra / garantía
+    fecha_compra = models.DateField(null=True, blank=True)
+    proveedor = models.CharField(max_length=150, blank=True)
+    costo_unitario = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    garantia_hasta = models.DateField(null=True, blank=True)
+
+    # Otros
     descripcion = models.TextField(blank=True)
     foto = models.ImageField(upload_to="inventario/recursos/", blank=True, null=True)
 
@@ -58,6 +86,8 @@ class Recurso(models.Model):
         indexes = [
             models.Index(fields=["codigo"]),
             models.Index(fields=["estado"]),
+            models.Index(fields=["numero_serie"]),
+            models.Index(fields=["condicion_fisica"]),
         ]
 
     def __str__(self):
@@ -90,5 +120,3 @@ class MovimientoRecurso(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} | {self.recurso.codigo} | {self.cantidad}"
-
-

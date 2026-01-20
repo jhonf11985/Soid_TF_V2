@@ -51,7 +51,7 @@
             <div class="filters-grid">
                 <div class="filter-field">
                     <label for="id_q">Buscar</label>
-                    <input type="text" id="id_q" name="q" value="{{ q }}" placeholder="Código, nombre...">
+                    <input type="text" id="id_q" name="q" value="{{ q }}" placeholder="Código, nombre, marca...">
                 </div>
 
                 <div class="filter-field">
@@ -87,6 +87,16 @@
                         {% endfor %}
                     </select>
                 </div>
+
+                <div class="filter-field">
+                    <label for="id_condicion">Condición</label>
+                    <select id="id_condicion" name="condicion">
+                        <option value="">Todas</option>
+                        {% for val, label in CONDICIONES %}
+                            <option value="{{ val }}" {% if condicion == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
 
             <div class="filters-actions">
@@ -101,11 +111,11 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Código</th>
-                    <th>Nombre</th>
-                    <th>Categoría</th>
+                    <th class="col-foto"></th>
+                    <th>Recurso</th>
                     <th>Ubicación</th>
-                    <th class="text-center">Cantidad</th>
+                    <th class="text-center">Cant.</th>
+                    <th class="text-center">Condición</th>
                     <th class="text-center">Estado</th>
                     <th class="col-actions"></th>
                 </tr>
@@ -114,45 +124,103 @@
                 {% if recursos %}
                     {% for r in recursos %}
                         <tr class="row-clickable" data-href="{% url 'inventario:recurso_detalle' r.pk %}">
-                            <td>
-                                <span class="codigo-badge">{{ r.codigo }}</span>
-                            </td>
-                            <td>
-                                <div class="item-name">
+                            <!-- FOTO -->
+                            <td class="col-foto">
+                                <div class="recurso-foto">
                                     {% if r.foto %}
-                                        <img src="{{ r.foto.url }}" alt="" class="item-thumb">
+                                        <img src="{{ r.foto.url }}" alt="{{ r.nombre }}">
                                     {% else %}
-                                        <span class="material-icons item-icon">inventory_2</span>
+                                        <span class="material-icons">inventory_2</span>
                                     {% endif %}
-                                    <strong>{{ r.nombre }}</strong>
                                 </div>
                             </td>
+
+                            <!-- INFO PRINCIPAL -->
                             <td>
-                                <span class="text-muted-dark">{{ r.categoria.nombre }}</span>
+                                <div class="recurso-info">
+                                    <span class="recurso-codigo">{{ r.codigo }}</span>
+                                    <strong class="recurso-nombre">{{ r.nombre }}</strong>
+                                    <div class="recurso-meta">
+                                        <span class="meta-item">
+                                            <span class="material-icons">category</span>
+                                            {{ r.categoria.nombre }}
+                                        </span>
+                                        {% if r.marca %}
+                                        <span class="meta-item">
+                                            <span class="material-icons">verified</span>
+                                            {{ r.marca }}{% if r.modelo %} {{ r.modelo }}{% endif %}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </td>
+
+                            <!-- UBICACIÓN -->
                             <td>
-                                <span class="text-muted-dark">{{ r.ubicacion.nombre }}</span>
+                                <div class="ubicacion-cell">
+                                    <span class="material-icons">place</span>
+                                    {{ r.ubicacion.nombre }}
+                                </div>
                             </td>
+
+                            <!-- CANTIDAD -->
                             <td class="text-center">
                                 <span class="count-badge">{{ r.cantidad_total }}</span>
                             </td>
+
+                            <!-- CONDICIÓN -->
+                            <td class="text-center">
+                                {% if r.condicion_fisica == 'NUEVO' %}
+                                    <span class="condicion-badge condicion-nuevo">Nuevo</span>
+                                {% elif r.condicion_fisica == 'BUENO' %}
+                                    <span class="condicion-badge condicion-bueno">Bueno</span>
+                                {% elif r.condicion_fisica == 'REGULAR' %}
+                                    <span class="condicion-badge condicion-regular">Regular</span>
+                                {% elif r.condicion_fisica == 'MALO' %}
+                                    <span class="condicion-badge condicion-malo">Malo</span>
+                                {% else %}
+                                    <span class="condicion-badge">{{ r.get_condicion_fisica_display }}</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- ESTADO -->
                             <td class="text-center">
                                 {% if r.estado == 'DISPONIBLE' %}
-                                    <span class="badge badge-success">Disponible</span>
+                                    <span class="badge badge-success">
+                                        <span class="material-icons">check_circle</span>
+                                        Disponible
+                                    </span>
                                 {% elif r.estado == 'EN_USO' %}
-                                    <span class="badge badge-info">En uso</span>
+                                    <span class="badge badge-info">
+                                        <span class="material-icons">pending</span>
+                                        En uso
+                                    </span>
                                 {% elif r.estado == 'PRESTADO' %}
-                                    <span class="badge badge-warning">Prestado</span>
+                                    <span class="badge badge-warning">
+                                        <span class="material-icons">swap_horiz</span>
+                                        Prestado
+                                    </span>
                                 {% elif r.estado == 'EN_REPARACION' %}
-                                    <span class="badge badge-danger">En reparación</span>
+                                    <span class="badge badge-danger">
+                                        <span class="material-icons">build</span>
+                                        Reparación
+                                    </span>
                                 {% elif r.estado == 'DANADO' %}
-                                    <span class="badge badge-dark">Dañado</span>
+                                    <span class="badge badge-dark">
+                                        <span class="material-icons">warning</span>
+                                        Dañado
+                                    </span>
                                 {% elif r.estado == 'BAJA' %}
-                                    <span class="badge badge-secondary">Baja</span>
+                                    <span class="badge badge-secondary">
+                                        <span class="material-icons">block</span>
+                                        Baja
+                                    </span>
                                 {% else %}
                                     <span class="badge badge-secondary">{{ r.get_estado_display }}</span>
                                 {% endif %}
                             </td>
+
+                            <!-- ACCIONES -->
                             <td class="col-actions">
                                 <div class="row-actions">
                                     <a href="{% url 'inventario:recurso_detalle' r.pk %}" class="action-btn" title="Ver detalle">
@@ -453,6 +521,7 @@
     padding: 12px 14px;
     border-bottom: 1px solid #f3f4f6;
     color: #111827;
+    vertical-align: middle;
 }
 
 .data-table tbody tr:hover {
@@ -463,44 +532,105 @@
     cursor: pointer;
 }
 
-/* Código badge */
-.codigo-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    background: #f3f4f6;
-    color: #374151;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: monospace;
+/* =====================================
+   COLUMNA FOTO
+   ===================================== */
+.col-foto {
+    width: 70px;
+    padding: 8px 14px !important;
 }
 
-/* Item nombre con icono/thumb */
-.item-name {
+.recurso-foto {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f3e8ef 0%, #e8d5e0 100%);
     display: flex;
     align-items: center;
-    gap: 10px;
-}
-
-.item-icon {
-    font-size: 24px;
-    color: #714B67;
-    opacity: 0.6;
-}
-
-.item-thumb {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    object-fit: cover;
+    justify-content: center;
     border: 1px solid #e5e7eb;
 }
 
-.text-muted-dark {
+.recurso-foto img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.recurso-foto .material-icons {
+    font-size: 28px;
+    color: #714B67;
+    opacity: 0.5;
+}
+
+/* =====================================
+   INFO DEL RECURSO
+   ===================================== */
+.recurso-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.recurso-codigo {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: monospace;
+    width: fit-content;
+}
+
+.recurso-nombre {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    margin-top: 2px;
+}
+
+.recurso-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
     color: #6b7280;
 }
 
-/* Count badge */
+.meta-item .material-icons {
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+/* =====================================
+   UBICACIÓN
+   ===================================== */
+.ubicacion-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #4b5563;
+    font-size: 13px;
+}
+
+.ubicacion-cell .material-icons {
+    font-size: 16px;
+    color: #9ca3af;
+}
+
+/* =====================================
+   COUNT BADGE
+   ===================================== */
 .count-badge {
     display: inline-flex;
     align-items: center;
@@ -516,16 +646,53 @@
 }
 
 /* =====================================
-   BADGES
+   CONDICIÓN BADGES
+   ===================================== */
+.condicion-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.condicion-nuevo {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.condicion-bueno {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.condicion-regular {
+    background: #fffbeb;
+    color: #b45309;
+}
+
+.condicion-malo {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+/* =====================================
+   ESTADO BADGES
    ===================================== */
 .badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 3px 10px;
+    padding: 4px 10px;
     border-radius: 999px;
     font-size: 11px;
     font-weight: 600;
+}
+
+.badge .material-icons {
+    font-size: 14px;
 }
 
 .badge-success {
@@ -623,6 +790,13 @@ tr:hover .row-actions {
 /* =====================================
    RESPONSIVE
    ===================================== */
+@media (max-width: 992px) {
+    .data-table th:nth-child(5),
+    .data-table td:nth-child(5) {
+        display: none; /* Ocultar condición en tablets */
+    }
+}
+
 @media (max-width: 768px) {
     .page-header-flex {
         flex-direction: column;
@@ -650,11 +824,101 @@ tr:hover .row-actions {
     }
 
     .table-card {
-        overflow-x: auto;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        margin: 0 -16px;
     }
 
-    .data-table {
-        min-width: 700px;
+    /* Vista móvil: cards en lugar de tabla */
+    .data-table thead {
+        display: none;
+    }
+
+    .data-table tbody tr {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .data-table td {
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .col-foto {
+        width: auto;
+    }
+
+    .recurso-foto {
+        width: 48px;
+        height: 48px;
+    }
+
+    .recurso-foto .material-icons {
+        font-size: 24px;
+    }
+
+    .data-table td:nth-child(2) {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .recurso-nombre {
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .recurso-meta {
+        display: none;
+    }
+
+    /* Ocultar ubicación en móvil */
+    .data-table td:nth-child(3) {
+        display: none;
+    }
+
+    /* Cantidad */
+    .data-table td:nth-child(4) {
+        order: 10;
+    }
+
+    /* Condición - ya oculta */
+    .data-table td:nth-child(5) {
+        display: none;
+    }
+
+    /* Estado */
+    .data-table td:nth-child(6) {
+        order: 5;
+    }
+
+    .badge {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+
+    .badge .material-icons {
+        font-size: 12px;
+    }
+
+    /* Acciones */
+    .col-actions {
+        width: auto;
+        order: 20;
+    }
+
+    .row-actions {
+        opacity: 1;
+    }
+
+    .empty-row {
+        display: block !important;
     }
 }
 </style>
@@ -668,7 +932,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Mostrar filtros si hay alguno activo
         const urlParams = new URLSearchParams(window.location.search);
         const hasFilters = urlParams.has('q') || urlParams.has('estado') || 
-                          urlParams.has('categoria') || urlParams.has('ubicacion');
+                          urlParams.has('categoria') || urlParams.has('ubicacion') ||
+                          urlParams.has('condicion');
         
         if (hasFilters) {
             filtersPanel.classList.add('active');

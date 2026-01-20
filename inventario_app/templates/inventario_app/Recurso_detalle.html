@@ -1,0 +1,1194 @@
+{% extends 'inventario_app/base_inventario.html' %}
+{% load static %}
+
+{% block title %}{{ recurso.codigo }} · Soid_Tf_2{% endblock %}
+
+{% block inventario_content %}
+
+<div class="odoo-page">
+
+    <!-- BARRA SUPERIOR -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a href="{% url 'inventario:recursos_lista' %}" class="odoo-back-link">
+                <span class="material-icons">arrow_back</span>
+            </a>
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-parent">Recursos</span>
+                <span class="odoo-breadcrumb-separator">/</span>
+                <span class="odoo-breadcrumb-current">{{ recurso.codigo }}</span>
+            </div>
+        </div>
+        <div class="odoo-topbar-right">
+            <span class="odoo-record-id">#{{ recurso.pk }}</span>
+        </div>
+    </div>
+
+    <!-- BARRA DE ACCIONES -->
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            <a href="{% url 'inventario:recurso_editar' recurso.pk %}" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons">edit</span>
+                Editar
+            </a>
+            <a href="{% url 'inventario:movimiento_nuevo' %}" class="odoo-btn odoo-btn-secondary">
+                <span class="material-icons">swap_horiz</span>
+                Registrar movimiento
+            </a>
+        </div>
+        <div class="odoo-actionbar-right">
+            <button type="button" class="odoo-btn odoo-btn-icon" title="Imprimir" onclick="window.print()">
+                <span class="material-icons">print</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="odoo-form-sheet">
+
+        <!-- HEADER: FOTO + INFO PRINCIPAL -->
+        <div class="odoo-detail-header">
+            
+            <!-- Foto grande -->
+            <div class="detail-photo">
+                {% if recurso.foto %}
+                    <img src="{{ recurso.foto.url }}" alt="{{ recurso.nombre }}">
+                {% else %}
+                    <div class="photo-placeholder">
+                        <span class="material-icons">inventory_2</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Info principal -->
+            <div class="detail-main-info">
+                
+                <!-- Estado badge -->
+                <div class="detail-status">
+                    {% if recurso.estado == 'DISPONIBLE' %}
+                        <span class="status-badge status-disponible">
+                            <span class="material-icons">check_circle</span>
+                            Disponible
+                        </span>
+                    {% elif recurso.estado == 'EN_USO' %}
+                        <span class="status-badge status-en-uso">
+                            <span class="material-icons">pending</span>
+                            En uso
+                        </span>
+                    {% elif recurso.estado == 'PRESTADO' %}
+                        <span class="status-badge status-prestado">
+                            <span class="material-icons">swap_horiz</span>
+                            Prestado
+                        </span>
+                    {% elif recurso.estado == 'EN_REPARACION' %}
+                        <span class="status-badge status-reparacion">
+                            <span class="material-icons">build</span>
+                            En reparación
+                        </span>
+                    {% elif recurso.estado == 'DANADO' %}
+                        <span class="status-badge status-danado">
+                            <span class="material-icons">warning</span>
+                            Dañado
+                        </span>
+                    {% elif recurso.estado == 'BAJA' %}
+                        <span class="status-badge status-baja">
+                            <span class="material-icons">block</span>
+                            Baja
+                        </span>
+                    {% endif %}
+
+                    <!-- Condición -->
+                    {% if recurso.condicion_fisica == 'NUEVO' %}
+                        <span class="condicion-badge condicion-nuevo">Nuevo</span>
+                    {% elif recurso.condicion_fisica == 'BUENO' %}
+                        <span class="condicion-badge condicion-bueno">Bueno</span>
+                    {% elif recurso.condicion_fisica == 'REGULAR' %}
+                        <span class="condicion-badge condicion-regular">Regular</span>
+                    {% elif recurso.condicion_fisica == 'MALO' %}
+                        <span class="condicion-badge condicion-malo">Malo</span>
+                    {% endif %}
+                </div>
+
+                <!-- Nombre -->
+                <h1 class="detail-title">{{ recurso.nombre }}</h1>
+
+                <!-- Código -->
+                <div class="detail-code">
+                    <span class="material-icons">qr_code</span>
+                    <span>{{ recurso.codigo }}</span>
+                </div>
+
+                <!-- Info rápida -->
+                <div class="detail-quick-info">
+                    <div class="quick-item">
+                        <span class="material-icons">category</span>
+                        <span>{{ recurso.categoria.nombre }}</span>
+                    </div>
+                    <div class="quick-item">
+                        <span class="material-icons">place</span>
+                        <span>{{ recurso.ubicacion.nombre }}</span>
+                    </div>
+                    <div class="quick-item">
+                        <span class="material-icons">inventory</span>
+                        <span>{{ recurso.cantidad_total }} unidad{{ recurso.cantidad_total|pluralize:"es" }}</span>
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                <div class="detail-tags">
+                    {% if recurso.es_consumible %}
+                        <span class="tag tag-info">
+                            <span class="material-icons">local_drink</span>
+                            Consumible
+                        </span>
+                    {% endif %}
+                    {% if recurso.requiere_mantenimiento %}
+                        <span class="tag tag-warning">
+                            <span class="material-icons">engineering</span>
+                            Requiere mantenimiento
+                        </span>
+                    {% endif %}
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- TABS -->
+        <div class="odoo-tabs">
+            <div class="odoo-tabs-nav">
+                <button type="button" class="odoo-tab active" data-tab="general">Información</button>
+                <button type="button" class="odoo-tab" data-tab="tecnica">Ficha técnica</button>
+                <button type="button" class="odoo-tab" data-tab="compra">Compra / Garantía</button>
+                <button type="button" class="odoo-tab" data-tab="movimientos">
+                    Movimientos
+                    {% if movimientos %}
+                        <span class="tab-count">{{ movimientos|length }}</span>
+                    {% endif %}
+                </button>
+            </div>
+
+            <!-- TAB: Información General -->
+            <div class="odoo-tab-content active" data-tab="general">
+                <div class="detail-grid">
+                    
+                    <div class="detail-section">
+                        <h3 class="section-title">Clasificación</h3>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Categoría</span>
+                            <span class="detail-value">{{ recurso.categoria.nombre }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Ubicación</span>
+                            <span class="detail-value">{{ recurso.ubicacion.nombre }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Estado</span>
+                            <span class="detail-value">{{ recurso.get_estado_display }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Condición física</span>
+                            <span class="detail-value">{{ recurso.get_condicion_fisica_display }}</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3 class="section-title">Inventario</h3>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Cantidad total</span>
+                            <span class="detail-value">{{ recurso.cantidad_total }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Es consumible</span>
+                            <span class="detail-value">
+                                {% if recurso.es_consumible %}
+                                    <span class="text-success">Sí</span>
+                                {% else %}
+                                    <span class="text-muted">No</span>
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Requiere mantenimiento</span>
+                            <span class="detail-value">
+                                {% if recurso.requiere_mantenimiento %}
+                                    <span class="text-warning">Sí</span>
+                                {% else %}
+                                    <span class="text-muted">No</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+                {% if recurso.descripcion %}
+                <div class="detail-section detail-section-full">
+                    <h3 class="section-title">Notas / Descripción</h3>
+                    <p class="detail-description">{{ recurso.descripcion|linebreaks }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- TAB: Ficha Técnica -->
+            <div class="odoo-tab-content" data-tab="tecnica">
+                <div class="detail-grid">
+                    
+                    <div class="detail-section">
+                        <h3 class="section-title">Identificación</h3>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Marca</span>
+                            <span class="detail-value">{{ recurso.marca|default:"—" }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Modelo</span>
+                            <span class="detail-value">{{ recurso.modelo|default:"—" }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Número de serie</span>
+                            <span class="detail-value {% if recurso.numero_serie %}font-mono{% endif %}">
+                                {{ recurso.numero_serie|default:"—" }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3 class="section-title">Registro</h3>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Código interno</span>
+                            <span class="detail-value font-mono">{{ recurso.codigo }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Creado</span>
+                            <span class="detail-value">{{ recurso.creado_en|date:"d/m/Y H:i" }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Última actualización</span>
+                            <span class="detail-value">{{ recurso.actualizado_en|date:"d/m/Y H:i" }}</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- TAB: Compra / Garantía -->
+            <div class="odoo-tab-content" data-tab="compra">
+                <div class="detail-grid">
+                    
+                    <div class="detail-section">
+                        <h3 class="section-title">Datos de compra</h3>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Fecha de compra</span>
+                            <span class="detail-value">
+                                {{ recurso.fecha_compra|date:"d/m/Y"|default:"—" }}
+                            </span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Proveedor</span>
+                            <span class="detail-value">{{ recurso.proveedor|default:"—" }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Costo unitario</span>
+                            <span class="detail-value">
+                                {% if recurso.costo_unitario %}
+                                    <span class="text-money">RD$ {{ recurso.costo_unitario|floatformat:2 }}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        {% if recurso.costo_unitario and recurso.cantidad_total > 1 %}
+                        <div class="detail-row">
+                            <span class="detail-label">Costo total</span>
+                            <span class="detail-value">
+                                <span class="text-money">RD$ {% widthratio recurso.costo_unitario 1 recurso.cantidad_total as total_cost %}{{ total_cost|floatformat:2 }}</span>
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="detail-section">
+                        <h3 class="section-title">Garantía</h3>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Garantía hasta</span>
+                            <span class="detail-value">
+                                {{ recurso.garantia_hasta|date:"d/m/Y"|default:"—" }}
+                            </span>
+                        </div>
+
+                        {% if recurso.garantia_hasta %}
+                        <div class="detail-row">
+                            <span class="detail-label">Estado</span>
+                            <span class="detail-value">
+                                {% now "Y-m-d" as today %}
+                                {% if recurso.garantia_hasta|date:"Y-m-d" >= today %}
+                                    <span class="warranty-badge warranty-active">
+                                        <span class="material-icons">verified</span>
+                                        En garantía
+                                    </span>
+                                {% else %}
+                                    <span class="warranty-badge warranty-expired">
+                                        <span class="material-icons">event_busy</span>
+                                        Garantía vencida
+                                    </span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- TAB: Movimientos -->
+            <div class="odoo-tab-content" data-tab="movimientos">
+                {% if movimientos %}
+                <div class="movimientos-timeline">
+                    {% for mov in movimientos %}
+                    <div class="timeline-item">
+                        <div class="timeline-icon 
+                            {% if mov.tipo == 'ENTRADA' %}timeline-entrada
+                            {% elif mov.tipo == 'SALIDA' %}timeline-salida
+                            {% elif mov.tipo == 'TRASLADO' %}timeline-traslado
+                            {% elif mov.tipo == 'REPARACION' %}timeline-reparacion
+                            {% elif mov.tipo == 'BAJA' %}timeline-baja
+                            {% endif %}">
+                            {% if mov.tipo == 'ENTRADA' %}
+                                <span class="material-icons">add_circle</span>
+                            {% elif mov.tipo == 'SALIDA' %}
+                                <span class="material-icons">remove_circle</span>
+                            {% elif mov.tipo == 'TRASLADO' %}
+                                <span class="material-icons">swap_horiz</span>
+                            {% elif mov.tipo == 'REPARACION' %}
+                                <span class="material-icons">build</span>
+                            {% elif mov.tipo == 'BAJA' %}
+                                <span class="material-icons">delete</span>
+                            {% endif %}
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-tipo">{{ mov.get_tipo_display }}</span>
+                                <span class="timeline-fecha">{{ mov.fecha|date:"d/m/Y H:i" }}</span>
+                            </div>
+                            <div class="timeline-detail">
+                                <span class="timeline-cantidad">{{ mov.cantidad }} unidad{{ mov.cantidad|pluralize:"es" }}</span>
+                                {% if mov.ubicacion_origen and mov.ubicacion_destino %}
+                                    <span class="timeline-ubicaciones">
+                                        {{ mov.ubicacion_origen.nombre }}
+                                        <span class="material-icons">arrow_forward</span>
+                                        {{ mov.ubicacion_destino.nombre }}
+                                    </span>
+                                {% elif mov.ubicacion_destino %}
+                                    <span class="timeline-ubicaciones">
+                                        → {{ mov.ubicacion_destino.nombre }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            {% if mov.motivo %}
+                            <div class="timeline-motivo">{{ mov.motivo }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="movimientos-footer">
+                    <a href="{% url 'inventario:movimientos_lista' %}?recurso={{ recurso.pk }}" class="odoo-btn odoo-btn-link">
+                        Ver todos los movimientos
+                        <span class="material-icons">arrow_forward</span>
+                    </a>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <span class="material-icons">history</span>
+                    <p>No hay movimientos registrados</p>
+                    <a href="{% url 'inventario:movimiento_nuevo' %}" class="odoo-btn odoo-btn-primary btn-sm">
+                        Registrar movimiento
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+/* =====================================
+   VARIABLES
+   ===================================== */
+:root {
+    --odoo-purple: #714B67;
+    --odoo-purple-light: #8f6b84;
+    --odoo-bg: #ffffff;
+    --odoo-bg-gray: #f8f9fa;
+    --odoo-border: #dee2e6;
+    --odoo-text: #212529;
+    --odoo-text-muted: #6c757d;
+    --odoo-success: #059669;
+    --odoo-warning: #d97706;
+    --odoo-danger: #dc2626;
+    --odoo-info: #0284c7;
+}
+
+/* =====================================
+   PÁGINA
+   ===================================== */
+.odoo-page {
+    background: var(--odoo-bg-gray);
+    min-height: 100vh;
+    padding-bottom: 40px;
+}
+
+/* =====================================
+   BARRA SUPERIOR
+   ===================================== */
+.odoo-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: var(--odoo-bg);
+    border-bottom: 1px solid var(--odoo-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.odoo-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.odoo-back-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    color: var(--odoo-text-muted);
+    transition: all 0.15s;
+}
+
+.odoo-back-link:hover {
+    background: var(--odoo-bg-gray);
+    color: var(--odoo-text);
+}
+
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.odoo-breadcrumb-parent { color: var(--odoo-text-muted); }
+.odoo-breadcrumb-separator { color: var(--odoo-border); }
+.odoo-breadcrumb-current { color: var(--odoo-text); font-weight: 500; }
+
+.odoo-record-id {
+    font-size: 12px;
+    color: var(--odoo-text-muted);
+    background: var(--odoo-bg-gray);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+/* =====================================
+   BARRA DE ACCIONES
+   ===================================== */
+.odoo-actionbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: var(--odoo-bg);
+    border-bottom: 1px solid var(--odoo-border);
+}
+
+.odoo-actionbar-left,
+.odoo-actionbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    font-family: inherit;
+}
+
+.odoo-btn-primary {
+    background: var(--odoo-purple);
+    color: white;
+    border-color: var(--odoo-purple);
+}
+
+.odoo-btn-primary:hover {
+    background: var(--odoo-purple-light);
+}
+
+.odoo-btn-secondary {
+    background: var(--odoo-bg);
+    color: var(--odoo-text);
+    border-color: var(--odoo-border);
+}
+
+.odoo-btn-secondary:hover {
+    background: var(--odoo-bg-gray);
+}
+
+.odoo-btn-link {
+    background: transparent;
+    color: var(--odoo-text-muted);
+    padding: 8px 12px;
+}
+
+.odoo-btn-link:hover {
+    color: var(--odoo-purple);
+}
+
+.odoo-btn-icon {
+    background: transparent;
+    color: var(--odoo-text-muted);
+    padding: 8px;
+    border: 1px solid var(--odoo-border);
+}
+
+.odoo-btn-icon:hover {
+    background: var(--odoo-bg-gray);
+    color: var(--odoo-text);
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* =====================================
+   FORM SHEET
+   ===================================== */
+.odoo-form-sheet {
+    background: var(--odoo-bg);
+    max-width: 1200px;
+    margin: 24px auto;
+    border: 1px solid var(--odoo-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* =====================================
+   HEADER DETALLE
+   ===================================== */
+.odoo-detail-header {
+    display: flex;
+    gap: 32px;
+    padding: 32px;
+    border-bottom: 1px solid var(--odoo-border);
+    background: linear-gradient(180deg, #fafafa 0%, #ffffff 100%);
+}
+
+.detail-photo {
+    width: 180px;
+    height: 180px;
+    min-width: 180px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--odoo-border);
+    background: #fff;
+}
+
+.detail-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f3e8ef 0%, #e8d5e0 100%);
+}
+
+.photo-placeholder .material-icons {
+    font-size: 64px;
+    color: var(--odoo-purple);
+    opacity: 0.4;
+}
+
+.detail-main-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.detail-status {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.status-badge .material-icons {
+    font-size: 16px;
+}
+
+.status-disponible { background: #d1fae5; color: #065f46; }
+.status-en-uso { background: #dbeafe; color: #1e40af; }
+.status-prestado { background: #fef3c7; color: #92400e; }
+.status-reparacion { background: #fee2e2; color: #991b1b; }
+.status-danado { background: #374151; color: #f9fafb; }
+.status-baja { background: #e5e7eb; color: #374151; }
+
+.condicion-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.condicion-nuevo { background: #ecfdf5; color: #047857; }
+.condicion-bueno { background: #eff6ff; color: #1d4ed8; }
+.condicion-regular { background: #fffbeb; color: #b45309; }
+.condicion-malo { background: #fef2f2; color: #b91c1c; }
+
+.detail-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--odoo-text);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.detail-code {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--odoo-text-muted);
+    font-size: 14px;
+    font-family: monospace;
+}
+
+.detail-code .material-icons {
+    font-size: 18px;
+}
+
+.detail-quick-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 8px;
+}
+
+.quick-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--odoo-text);
+    font-size: 14px;
+}
+
+.quick-item .material-icons {
+    font-size: 18px;
+    color: var(--odoo-text-muted);
+}
+
+.detail-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.tag .material-icons {
+    font-size: 14px;
+}
+
+.tag-info { background: #dbeafe; color: #1e40af; }
+.tag-warning { background: #fef3c7; color: #92400e; }
+
+/* =====================================
+   TABS
+   ===================================== */
+.odoo-tabs-nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--odoo-border);
+    padding: 0 24px;
+    background: var(--odoo-bg-gray);
+}
+
+.odoo-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--odoo-text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s;
+}
+
+.odoo-tab:hover {
+    color: var(--odoo-text);
+}
+
+.odoo-tab.active {
+    color: var(--odoo-text);
+    background: var(--odoo-bg);
+}
+
+.odoo-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--odoo-purple);
+}
+
+.tab-count {
+    background: var(--odoo-purple);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.odoo-tab-content {
+    display: none;
+    padding: 24px;
+}
+
+.odoo-tab-content.active {
+    display: block;
+}
+
+/* =====================================
+   DETAIL GRID
+   ===================================== */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+}
+
+.detail-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.detail-section-full {
+    grid-column: 1 / -1;
+}
+
+.section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--odoo-text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--odoo-border);
+    margin: 0;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.detail-label {
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+}
+
+.detail-value {
+    font-size: 13px;
+    color: var(--odoo-text);
+    font-weight: 500;
+    text-align: right;
+}
+
+.detail-description {
+    font-size: 14px;
+    color: var(--odoo-text);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.font-mono {
+    font-family: monospace;
+}
+
+.text-success { color: var(--odoo-success); }
+.text-warning { color: var(--odoo-warning); }
+.text-muted { color: var(--odoo-text-muted); }
+.text-money { font-weight: 600; color: var(--odoo-success); }
+
+/* Warranty badges */
+.warranty-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.warranty-badge .material-icons {
+    font-size: 14px;
+}
+
+.warranty-active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.warranty-expired {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* =====================================
+   TIMELINE MOVIMIENTOS
+   ===================================== */
+.movimientos-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.timeline-item {
+    display: flex;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.timeline-item:last-child {
+    border-bottom: none;
+}
+
+.timeline-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-icon .material-icons {
+    font-size: 20px;
+}
+
+.timeline-entrada { background: #d1fae5; color: #065f46; }
+.timeline-salida { background: #fee2e2; color: #991b1b; }
+.timeline-traslado { background: #dbeafe; color: #1e40af; }
+.timeline-reparacion { background: #fef3c7; color: #92400e; }
+.timeline-baja { background: #e5e7eb; color: #374151; }
+
+.timeline-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.timeline-tipo {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--odoo-text);
+}
+
+.timeline-fecha {
+    font-size: 12px;
+    color: var(--odoo-text-muted);
+}
+
+.timeline-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+}
+
+.timeline-ubicaciones {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.timeline-ubicaciones .material-icons {
+    font-size: 14px;
+}
+
+.timeline-motivo {
+    font-size: 13px;
+    color: var(--odoo-text);
+    font-style: italic;
+}
+
+.movimientos-footer {
+    padding-top: 16px;
+    border-top: 1px solid var(--odoo-border);
+    margin-top: 16px;
+}
+
+/* =====================================
+   EMPTY STATE
+   ===================================== */
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--odoo-text-muted);
+}
+
+.empty-state .material-icons {
+    font-size: 48px;
+    opacity: 0.3;
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    margin: 0 0 16px 0;
+}
+
+/* =====================================
+   RESPONSIVE
+   ===================================== */
+@media (max-width: 900px) {
+    .detail-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .odoo-actionbar {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    .odoo-actionbar-left,
+    .odoo-actionbar-right {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 600px) {
+    .odoo-topbar,
+    .odoo-actionbar {
+        padding: 12px 16px;
+    }
+
+    .odoo-form-sheet {
+        margin: 0;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .odoo-detail-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 24px 16px;
+        gap: 20px;
+    }
+
+    .detail-photo {
+        width: 140px;
+        height: 140px;
+        min-width: 140px;
+    }
+
+    .photo-placeholder .material-icons {
+        font-size: 48px;
+    }
+
+    .detail-main-info {
+        align-items: center;
+    }
+
+    .detail-status {
+        justify-content: center;
+    }
+
+    .detail-title {
+        font-size: 22px;
+    }
+
+    .detail-quick-info {
+        justify-content: center;
+    }
+
+    .detail-tags {
+        justify-content: center;
+    }
+
+    .odoo-tabs-nav {
+        padding: 0 8px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .odoo-tab {
+        padding: 12px 14px;
+        white-space: nowrap;
+        font-size: 12px;
+    }
+
+    .odoo-tab-content {
+        padding: 16px;
+    }
+
+    .detail-row {
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
+    }
+
+    .detail-value {
+        text-align: left;
+    }
+
+    .odoo-breadcrumb-parent,
+    .odoo-breadcrumb-separator {
+        display: none;
+    }
+
+    .timeline-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
+/* =====================================
+   PRINT
+   ===================================== */
+@media print {
+    .odoo-topbar,
+    .odoo-actionbar,
+    .odoo-tabs-nav {
+        display: none !important;
+    }
+
+    .odoo-form-sheet {
+        margin: 0;
+        border: none;
+        box-shadow: none;
+    }
+
+    .odoo-tab-content {
+        display: block !important;
+        page-break-inside: avoid;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tabs
+    const tabs = document.querySelectorAll('.odoo-tab');
+    const contents = document.querySelectorAll('.odoo-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetTab = this.dataset.tab;
+
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            this.classList.add('active');
+            const targetContent = document.querySelector(`.odoo-tab-content[data-tab="${targetTab}"]`);
+            if (targetContent) targetContent.classList.add('active');
+        });
+    });
+});
+</script>
+
+{% endblock %}
