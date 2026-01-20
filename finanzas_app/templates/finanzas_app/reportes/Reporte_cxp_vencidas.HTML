@@ -1,0 +1,437 @@
+{% extends "finanzas_app/base_finanzas.html" %}
+{% load humanize %}
+
+{% block title %}CxP Vencidas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(211, 47, 47, 0.3);
+    }
+    .report-header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    .report-header .subtitle {
+        opacity: 0.9;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+    
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .summary-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-left: 4px solid #d32f2f;
+    }
+    .summary-card.warning { border-left-color: #f57c00; }
+    
+    .summary-card .label {
+        font-size: 0.8rem;
+        color: #666;
+        text-transform: uppercase;
+    }
+    .summary-card .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #d32f2f;
+        margin-top: 0.25rem;
+    }
+    .summary-card.warning .value { color: #f57c00; }
+    
+    .filters-section {
+        background: white;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .filters-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: end;
+    }
+    .filter-group label {
+        display: block;
+        font-size: 0.75rem;
+        color: #666;
+        margin-bottom: 0.35rem;
+        font-weight: 500;
+    }
+    .filter-group select,
+    .filter-group input {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.875rem;
+    }
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: #0097a7;
+    }
+    
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+    }
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #0097a7;
+    }
+    .checkbox-group label {
+        margin: 0;
+        font-size: 0.875rem;
+    }
+    
+    .btn-filter {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+    }
+    .btn-filter.primary {
+        background: #0097a7;
+        color: white;
+    }
+    .btn-filter.secondary {
+        background: #f5f5f5;
+        color: #666;
+    }
+    
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+        margin: 1.5rem 0 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #eee;
+    }
+    .section-title .material-icons {
+        font-size: 1.25rem;
+    }
+    .section-title.danger { color: #d32f2f; border-bottom-color: #ffcdd2; }
+    .section-title.warning { color: #f57c00; border-bottom-color: #ffe0b2; }
+    
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+    .table-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .table-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .table-header.danger { background: #ffebee; }
+    .table-header.warning { background: #fff3e0; }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .data-table th {
+        background: #f8f9fa;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        border-bottom: 2px solid #eee;
+    }
+    .data-table td {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.875rem;
+    }
+    .data-table tr:hover {
+        background: #f8f9fa;
+    }
+    .data-table tfoot td {
+        background: #f8f9fa;
+        font-weight: 700;
+        border-top: 2px solid #eee;
+    }
+    
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    
+    .amount {
+        font-family: 'Roboto Mono', monospace;
+        font-weight: 500;
+    }
+    .negative { color: #d32f2f; }
+    
+    .dias-mora {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background: #ffebee;
+        color: #c62828;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .dias-mora.warning {
+        background: #fff3e0;
+        color: #e65100;
+    }
+    
+    .btn-print {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        color: #666;
+        cursor: pointer;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+    }
+    
+    .alert-box {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    .alert-box.danger {
+        background: #ffebee;
+        border: 1px solid #ffcdd2;
+        color: #c62828;
+    }
+    .alert-box .material-icons {
+        font-size: 1.5rem;
+    }
+    
+    @media print {
+        .filters-section, .btn-print, .no-print { display: none !important; }
+        .report-header { 
+            background: #d32f2f !important;
+            -webkit-print-color-adjust: exact;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-header">
+    <h1><span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">warning</span>Cuentas por Pagar Vencidas</h1>
+    <div class="subtitle">Reporte al {{ fecha_hoy|date:"d/m/Y" }}</div>
+</div>
+
+{% if total_vencidas > 0 %}
+<div class="alert-box danger">
+    <span class="material-icons">error_outline</span>
+    <div>
+        <strong>¡Atención!</strong> Tienes {{ total_vencidas }} cuenta{{ total_vencidas|pluralize:"s" }} por pagar vencida{{ total_vencidas|pluralize:"s" }} por un total de <strong>RD$ {{ total_vencidas_pendiente|intcomma }}</strong>
+    </div>
+</div>
+{% endif %}
+
+<div class="summary-cards">
+    <div class="summary-card">
+        <div class="label">CxP Vencidas</div>
+        <div class="value">{{ total_vencidas }}</div>
+    </div>
+    <div class="summary-card">
+        <div class="label">Monto Vencido</div>
+        <div class="value">RD$ {{ total_vencidas_pendiente|intcomma }}</div>
+    </div>
+    {% if incluir_proximas %}
+    <div class="summary-card warning">
+        <div class="label">Próximas a Vencer</div>
+        <div class="value">{{ total_proximas }}</div>
+    </div>
+    <div class="summary-card warning">
+        <div class="label">Monto Próx. Vencer</div>
+        <div class="value">RD$ {{ total_proximas_pendiente|intcomma }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="filters-section no-print">
+    <form method="get">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label>Proveedor</label>
+                <select name="proveedor">
+                    <option value="">Todos</option>
+                    {% for p in proveedores %}
+                    <option value="{{ p.id }}" {% if proveedor_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Días de alerta</label>
+                <input type="number" name="dias_alerta" value="{{ dias_alerta }}" min="1" max="90" style="width: 80px;">
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" name="incluir_proximas" id="incluir_proximas" value="1" {% if incluir_proximas %}checked{% endif %}>
+                <label for="incluir_proximas">Incluir próximas a vencer</label>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn-filter primary">Filtrar</button>
+                <a href="{% url 'finanzas_app:reporte_cxp_vencidas' %}" class="btn-filter secondary">Limpiar</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- VENCIDAS -->
+<div class="table-container">
+    <div class="table-header danger">
+        <h3><span class="material-icons" style="vertical-align: middle; color: #d32f2f;">error</span> CxP Vencidas ({{ total_vencidas }})</h3>
+        <button class="btn-print no-print" onclick="window.print()">
+            <span class="material-icons">print</span>
+            Imprimir
+        </button>
+    </div>
+    
+    {% if vencidas %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Vencimiento</th>
+                <th>Proveedor</th>
+                <th>Concepto</th>
+                <th class="text-center">Días Mora</th>
+                <th class="text-right">Monto</th>
+                <th class="text-right">Pendiente</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in vencidas %}
+            <tr>
+                <td>{{ item.obj.fecha_vencimiento|date:"d/m/Y" }}</td>
+                <td><strong>{{ item.obj.proveedor.nombre }}</strong></td>
+                <td>{{ item.obj.concepto|truncatechars:35 }}</td>
+                <td class="text-center">
+                    <span class="dias-mora">
+                        <span class="material-icons" style="font-size: 0.875rem;">schedule</span>
+                        {{ item.dias_mora }} días
+                    </span>
+                </td>
+                <td class="text-right amount">{{ item.obj.monto_total|intcomma }}</td>
+                <td class="text-right amount negative">{{ item.saldo_pendiente|intcomma }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4"><strong>TOTAL VENCIDO</strong></td>
+                <td class="text-right amount">RD$ {{ total_vencidas_monto|intcomma }}</td>
+                <td class="text-right amount negative">RD$ {{ total_vencidas_pendiente|intcomma }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <span class="material-icons" style="font-size: 2rem; color: #4caf50;">check_circle</span>
+        <p>No hay cuentas por pagar vencidas. ¡Excelente!</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- PRÓXIMAS A VENCER -->
+{% if incluir_proximas %}
+<div class="table-container">
+    <div class="table-header warning">
+        <h3><span class="material-icons" style="vertical-align: middle; color: #f57c00;">schedule</span> Próximas a Vencer ({{ total_proximas }}) - Próximos {{ dias_alerta }} días</h3>
+    </div>
+    
+    {% if proximas %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Vencimiento</th>
+                <th>Proveedor</th>
+                <th>Concepto</th>
+                <th class="text-center">Días para Vencer</th>
+                <th class="text-right">Monto</th>
+                <th class="text-right">Pendiente</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in proximas %}
+            <tr>
+                <td>{{ item.obj.fecha_vencimiento|date:"d/m/Y" }}</td>
+                <td><strong>{{ item.obj.proveedor.nombre }}</strong></td>
+                <td>{{ item.obj.concepto|truncatechars:35 }}</td>
+                <td class="text-center">
+                    <span class="dias-mora warning">
+                        <span class="material-icons" style="font-size: 0.875rem;">hourglass_empty</span>
+                        {{ item.dias_para_vencer }} días
+                    </span>
+                </td>
+                <td class="text-right amount">{{ item.obj.monto_total|intcomma }}</td>
+                <td class="text-right amount">{{ item.saldo_pendiente|intcomma }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4"><strong>TOTAL PRÓXIMO A VENCER</strong></td>
+                <td class="text-right amount">RD$ {{ total_proximas_monto|intcomma }}</td>
+                <td class="text-right amount">RD$ {{ total_proximas_pendiente|intcomma }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>No hay cuentas próximas a vencer en los próximos {{ dias_alerta }} días.</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if auto_print %}
+<script>
+    window.onload = function() {
+        setTimeout(function() { window.print(); }, 500);
+    };
+</script>
+{% endif %}
+{% endblock %}

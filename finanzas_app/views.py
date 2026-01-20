@@ -20,6 +20,7 @@ from .models import (
     ProveedorFinanciero,
     CuentaPorPagar,
 )
+from django.db.models import Count
 
 from .forms import (
     MovimientoFinancieroForm,
@@ -2088,3 +2089,567 @@ def cxp_pagar(request, pk):
     }
 
     return render(request, "finanzas_app/cxp/pagar.html", context)
+
+
+# ============================================
+# REPORTES DE CUENTAS POR PAGAR (CxP)
+# ============================================
+
+
+
+# ----------------------------------------------------------
+# REPORTE: RESUMEN GENERAL DE CxP
+# ----------------------------------------------------------
+@login_required
+def reporte_cxp(request):
+    """
+    Reporte general de Cuentas por Pagar con filtros.
+    Filtros:
+      - estado (pendiente, parcial, pagada, vencida, cancelada)
+      - proveedor
+      - categoria
+      - fecha_desde, fecha_hasta (fecha_emision)
+      - print=1 (modo impresión)
+    """
+    hoy = timezone.now().date()
+    
+    # Parámetros de filtro
+    estado = (request.GET.get("estado") or "").strip()
+    proveedor_id = (request.GET.get("proveedor") or "").strip()
+    categoria_id = (request.GET.get("categoria") or "").strip()
+    fecha_desde = (request.GET.get("fecha_desde") or "").strip()
+    fecha_hasta = (request.GET.get("fecha_hasta") or "").strip()
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+    
+    # QuerySet base
+    qs = CuentaPorPagar.objects.select_related(
+        "proveedor", "categoria"
+    ).all()
+    
+    # Aplicar filtros
+    if estado:
+        qs = qs.filter(estado=estado)
+    
+    if proveedor_id:
+        qs = qs.filter(proveedor_id=proveedor_id)
+    
+    if categoria_id:
+        qs = qs.filter(categoria_id=categoria_id)
+    
+    if fecha_desde:
+        qs = qs.filter(fecha_emision__gte=fecha_desde)
+    
+    if fecha_hasta:
+        qs = qs.filter(fecha_emision__lte=fecha_hasta)
+    
+    qs = qs.order_by("-fecha_emision", "-creado_en")
+    
+    # Calcular totales
+    totales = qs.aggregate(
+        total_monto=Sum("monto_total"),
+        total_pagado=Sum("monto_pagado"),
+        cantidad=Count("id"),
+    )
+    
+    total_monto = totales.get("total_monto") or Decimal("0")
+    total_pagado = totales.get("total_pagado") or Decimal("0")
+    total_pendiente = total_monto - total_pagado
+    cantidad = totales.get("cantidad") or 0
+    
+    # Resumen por estado
+    resumen_estados = qs.values("estado").annotate(
+        cantidad=Count("id"),
+        monto=Sum("monto_total"),
+        pagado=Sum("monto_pagado"),
+    ).order_by("estado")
+    
+    # Agregar propiedades de vencimiento a cada item
+    items = []
+    for item in qs:
+        item.esta_vencida = (
+            item.fecha_vencimiento and 
+            item.fecha_vencimiento < hoy and 
+            item.estado not in ("pagada", "cancelada")
+        )
+        item.dias_vencida = 0
+        if item.esta_vencida:
+            item.dias_vencida = (hoy - item.fecha_vencimiento).days
+        
+        item.proxima_a_vencer = (
+            item.fecha_vencimiento and 
+            not item.esta_vencida and
+            item.fecha_vencimiento <= hoy + datetime.timedelta(days=7) and
+            item.estado not in ("pagada", "cancelada")
+        )
+        items.append(item)
+    
+    # Listas para filtros
+    proveedores = ProveedorFinanciero.objects.filter(activo=True).order_by("nombre")
+    categorias = CategoriaMovimiento.objects.filter(tipo="egreso", activo=True).order_by("nombre")
+    
+    CFG = get_config()
+    
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+        
+        # Filtros actuales
+        "estado": estado,
+        "proveedor_id": proveedor_id,
+        "categoria_id": categoria_id,
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        
+        # Datos
+        "items": items,
+        "total_monto": total_monto,
+        "total_pagado": total_pagado,
+        "total_pendiente": total_pendiente,
+        "cantidad": cantidad,
+        "resumen_estados": resumen_estados,
+        
+        # Listas para selects
+        "proveedores": proveedores,
+        "categorias": categorias,
+        "ESTADOS": CuentaPorPagar.ESTADO_CHOICES,
+    }
+    return render(request, "finanzas_app/reportes/reporte_cxp.html", context)
+
+
+# ----------------------------------------------------------
+# REPORTE: CxP POR PROVEEDOR
+# ----------------------------------------------------------
+@login_required
+def reporte_cxp_por_proveedor(request):
+    """
+    Reporte de CxP agrupado por proveedor.
+    Muestra deuda total, pagado y pendiente por cada proveedor.
+    Filtros:
+      - solo_con_saldo=1 (solo proveedores con saldo pendiente)
+      - fecha_desde, fecha_hasta
+      - print=1
+    """
+    hoy = timezone.now().date()
+    
+    solo_con_saldo = request.GET.get("solo_con_saldo") in ("1", "true", "True", "on")
+    fecha_desde = (request.GET.get("fecha_desde") or "").strip()
+    fecha_hasta = (request.GET.get("fecha_hasta") or "").strip()
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+    
+    # QuerySet base - excluir canceladas
+    qs = CuentaPorPagar.objects.exclude(estado="cancelada")
+    
+    if fecha_desde:
+        qs = qs.filter(fecha_emision__gte=fecha_desde)
+    
+    if fecha_hasta:
+        qs = qs.filter(fecha_emision__lte=fecha_hasta)
+    
+    # Agrupar por proveedor
+    filas = (
+        qs.values("proveedor_id", "proveedor__nombre")
+        .annotate(
+            cantidad=Count("id"),
+            monto_total=Sum("monto_total"),
+            monto_pagado=Sum("monto_pagado"),
+        )
+        .order_by("proveedor__nombre")
+    )
+    
+    data = []
+    total_monto = Decimal("0")
+    total_pagado = Decimal("0")
+    
+    for f in filas:
+        monto = f["monto_total"] or Decimal("0")
+        pagado = f["monto_pagado"] or Decimal("0")
+        pendiente = monto - pagado
+        
+        # Si solo_con_saldo, omitir proveedores sin pendiente
+        if solo_con_saldo and pendiente <= 0:
+            continue
+        
+        total_monto += monto
+        total_pagado += pagado
+        
+        data.append({
+            "proveedor_id": f["proveedor_id"],
+            "proveedor": f["proveedor__nombre"] or "Sin proveedor",
+            "cantidad": f["cantidad"],
+            "monto_total": monto,
+            "monto_pagado": pagado,
+            "saldo_pendiente": pendiente,
+        })
+    
+    total_pendiente = total_monto - total_pagado
+    
+    CFG = get_config()
+    
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+        
+        # Filtros
+        "solo_con_saldo": solo_con_saldo,
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        
+        # Datos
+        "data": data,
+        "total_monto": total_monto,
+        "total_pagado": total_pagado,
+        "total_pendiente": total_pendiente,
+    }
+    return render(request, "finanzas_app/reportes/reporte_cxp_por_proveedor.html", context)
+
+
+# ----------------------------------------------------------
+# REPORTE: CxP VENCIDAS Y PRÓXIMAS A VENCER
+# ----------------------------------------------------------
+@login_required
+def reporte_cxp_vencidas(request):
+    """
+    Reporte de CxP vencidas y próximas a vencer.
+    Filtros:
+      - dias_alerta (default 7): días para considerar "próxima a vencer"
+      - incluir_proximas=1: incluir próximas a vencer
+      - proveedor
+      - print=1
+    """
+    hoy = timezone.now().date()
+    
+    dias_alerta = request.GET.get("dias_alerta", "7")
+    incluir_proximas = request.GET.get("incluir_proximas") in ("1", "true", "True", "on")
+    proveedor_id = (request.GET.get("proveedor") or "").strip()
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+    
+    try:
+        dias_alerta = int(dias_alerta)
+        if dias_alerta < 1:
+            dias_alerta = 7
+    except:
+        dias_alerta = 7
+    
+    fecha_limite = hoy + datetime.timedelta(days=dias_alerta)
+    
+    # CxP vencidas (fecha_vencimiento < hoy y no pagadas/canceladas)
+    qs_vencidas = CuentaPorPagar.objects.filter(
+        fecha_vencimiento__lt=hoy
+    ).exclude(
+        estado__in=["pagada", "cancelada"]
+    ).select_related("proveedor", "categoria")
+    
+    # CxP próximas a vencer
+    qs_proximas = CuentaPorPagar.objects.filter(
+        fecha_vencimiento__gte=hoy,
+        fecha_vencimiento__lte=fecha_limite
+    ).exclude(
+        estado__in=["pagada", "cancelada"]
+    ).select_related("proveedor", "categoria")
+    
+    if proveedor_id:
+        qs_vencidas = qs_vencidas.filter(proveedor_id=proveedor_id)
+        qs_proximas = qs_proximas.filter(proveedor_id=proveedor_id)
+    
+    # Procesar vencidas
+    vencidas = []
+    total_vencidas_monto = Decimal("0")
+    total_vencidas_pendiente = Decimal("0")
+    
+    for item in qs_vencidas.order_by("fecha_vencimiento"):
+        dias_mora = (hoy - item.fecha_vencimiento).days
+        pendiente = item.saldo_pendiente
+        
+        total_vencidas_monto += item.monto_total
+        total_vencidas_pendiente += pendiente
+        
+        vencidas.append({
+            "obj": item,
+            "dias_mora": dias_mora,
+            "saldo_pendiente": pendiente,
+        })
+    
+    # Procesar próximas a vencer
+    proximas = []
+    total_proximas_monto = Decimal("0")
+    total_proximas_pendiente = Decimal("0")
+    
+    if incluir_proximas:
+        for item in qs_proximas.order_by("fecha_vencimiento"):
+            dias_para_vencer = (item.fecha_vencimiento - hoy).days
+            pendiente = item.saldo_pendiente
+            
+            total_proximas_monto += item.monto_total
+            total_proximas_pendiente += pendiente
+            
+            proximas.append({
+                "obj": item,
+                "dias_para_vencer": dias_para_vencer,
+                "saldo_pendiente": pendiente,
+            })
+    
+    proveedores = ProveedorFinanciero.objects.filter(activo=True).order_by("nombre")
+    CFG = get_config()
+    
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+        
+        # Filtros
+        "dias_alerta": dias_alerta,
+        "incluir_proximas": incluir_proximas,
+        "proveedor_id": proveedor_id,
+        
+        # Datos vencidas
+        "vencidas": vencidas,
+        "total_vencidas": len(vencidas),
+        "total_vencidas_monto": total_vencidas_monto,
+        "total_vencidas_pendiente": total_vencidas_pendiente,
+        
+        # Datos próximas
+        "proximas": proximas,
+        "total_proximas": len(proximas),
+        "total_proximas_monto": total_proximas_monto,
+        "total_proximas_pendiente": total_proximas_pendiente,
+        
+        # Selects
+        "proveedores": proveedores,
+    }
+    return render(request, "finanzas_app/reportes/reporte_cxp_vencidas.html", context)
+
+
+# ----------------------------------------------------------
+# REPORTE: ANTIGÜEDAD DE SALDOS (AGING)
+# ----------------------------------------------------------
+@login_required
+def reporte_antiguedad_cxp(request):
+    """
+    Reporte de antigüedad de saldos de CxP.
+    Clasifica por rangos: 0-30, 31-60, 61-90, +90 días.
+    Filtros:
+      - proveedor
+      - print=1
+    """
+    hoy = timezone.now().date()
+    
+    proveedor_id = (request.GET.get("proveedor") or "").strip()
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+    
+    # CxP con saldo pendiente (no pagadas ni canceladas)
+    qs = CuentaPorPagar.objects.exclude(
+        estado__in=["pagada", "cancelada"]
+    ).select_related("proveedor", "categoria")
+    
+    if proveedor_id:
+        qs = qs.filter(proveedor_id=proveedor_id)
+    
+    # Rangos de antigüedad (días desde fecha_vencimiento o fecha_emision)
+    rangos = {
+        "corriente": {"label": "Corriente (no vencido)", "min": None, "max": 0, "items": [], "total": Decimal("0")},
+        "0_30": {"label": "1-30 días", "min": 1, "max": 30, "items": [], "total": Decimal("0")},
+        "31_60": {"label": "31-60 días", "min": 31, "max": 60, "items": [], "total": Decimal("0")},
+        "61_90": {"label": "61-90 días", "min": 61, "max": 90, "items": [], "total": Decimal("0")},
+        "mas_90": {"label": "Más de 90 días", "min": 91, "max": None, "items": [], "total": Decimal("0")},
+    }
+    
+    total_general = Decimal("0")
+    
+    for item in qs:
+        pendiente = item.saldo_pendiente
+        if pendiente <= 0:
+            continue
+        
+        # Calcular días de mora basado en fecha_vencimiento
+        fecha_ref = item.fecha_vencimiento or item.fecha_emision
+        dias = (hoy - fecha_ref).days if fecha_ref else 0
+        
+        total_general += pendiente
+        
+        # Clasificar en rango
+        if dias <= 0:
+            rangos["corriente"]["items"].append(item)
+            rangos["corriente"]["total"] += pendiente
+        elif dias <= 30:
+            rangos["0_30"]["items"].append(item)
+            rangos["0_30"]["total"] += pendiente
+        elif dias <= 60:
+            rangos["31_60"]["items"].append(item)
+            rangos["31_60"]["total"] += pendiente
+        elif dias <= 90:
+            rangos["61_90"]["items"].append(item)
+            rangos["61_90"]["total"] += pendiente
+        else:
+            rangos["mas_90"]["items"].append(item)
+            rangos["mas_90"]["total"] += pendiente
+    
+    # Calcular porcentajes
+    for key in rangos:
+        if total_general > 0:
+            rangos[key]["porcentaje"] = (rangos[key]["total"] / total_general * 100)
+        else:
+            rangos[key]["porcentaje"] = Decimal("0")
+        rangos[key]["cantidad"] = len(rangos[key]["items"])
+    
+    # Resumen por proveedor con aging
+    proveedores_aging = defaultdict(lambda: {
+        "nombre": "",
+        "corriente": Decimal("0"),
+        "0_30": Decimal("0"),
+        "31_60": Decimal("0"),
+        "61_90": Decimal("0"),
+        "mas_90": Decimal("0"),
+        "total": Decimal("0"),
+    })
+    
+    for item in qs:
+        pendiente = item.saldo_pendiente
+        if pendiente <= 0:
+            continue
+        
+        prov_id = item.proveedor_id
+        prov_nombre = item.proveedor.nombre if item.proveedor else "Sin proveedor"
+        
+        proveedores_aging[prov_id]["nombre"] = prov_nombre
+        proveedores_aging[prov_id]["total"] += pendiente
+        
+        fecha_ref = item.fecha_vencimiento or item.fecha_emision
+        dias = (hoy - fecha_ref).days if fecha_ref else 0
+        
+        if dias <= 0:
+            proveedores_aging[prov_id]["corriente"] += pendiente
+        elif dias <= 30:
+            proveedores_aging[prov_id]["0_30"] += pendiente
+        elif dias <= 60:
+            proveedores_aging[prov_id]["31_60"] += pendiente
+        elif dias <= 90:
+            proveedores_aging[prov_id]["61_90"] += pendiente
+        else:
+            proveedores_aging[prov_id]["mas_90"] += pendiente
+    
+    # Convertir a lista ordenada
+    proveedores_lista = sorted(
+        proveedores_aging.values(),
+        key=lambda x: x["total"],
+        reverse=True
+    )
+    
+    proveedores = ProveedorFinanciero.objects.filter(activo=True).order_by("nombre")
+    CFG = get_config()
+    
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+        
+        # Filtros
+        "proveedor_id": proveedor_id,
+        
+        # Datos
+        "rangos": rangos,
+        "total_general": total_general,
+        "proveedores_aging": proveedores_lista,
+        
+        # Selects
+        "proveedores": proveedores,
+    }
+    return render(request, "finanzas_app/reportes/reporte_antiguedad_cxp.html", context)
+
+
+# ----------------------------------------------------------
+# REPORTE: HISTORIAL DE PAGOS DE CxP
+# ----------------------------------------------------------
+@login_required
+def reporte_pagos_cxp(request):
+    """
+    Reporte de pagos realizados a CxP en un período.
+    Filtros:
+      - year, month
+      - proveedor
+      - print=1
+    """
+    from .models import MovimientoFinanciero
+    
+    hoy = timezone.now().date()
+    
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    proveedor_id = (request.GET.get("proveedor") or "").strip()
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+    
+    try:
+        year = int(year) if year else hoy.year
+        month = int(month) if month else hoy.month
+        if month < 1 or month > 12:
+            raise ValueError
+    except:
+        year = hoy.year
+        month = hoy.month
+    
+    # Pagos vinculados a CxP (movimientos con cuenta_por_pagar)
+    qs = MovimientoFinanciero.objects.filter(
+        cuenta_por_pagar__isnull=False,
+        fecha__year=year,
+        fecha__month=month,
+        tipo="egreso",
+    ).exclude(estado="anulado").select_related(
+        "cuenta", "cuenta_por_pagar", "cuenta_por_pagar__proveedor", "creado_por"
+    )
+    
+    if proveedor_id:
+        qs = qs.filter(cuenta_por_pagar__proveedor_id=proveedor_id)
+    
+    qs = qs.order_by("-fecha", "-creado_en")
+    
+    # Totales
+    totales = qs.aggregate(
+        total_pagado=Sum("monto"),
+        cantidad=Count("id"),
+    )
+    
+    total_pagado = totales.get("total_pagado") or Decimal("0")
+    cantidad = totales.get("cantidad") or 0
+    
+    # Resumen por proveedor
+    por_proveedor = (
+        qs.values("cuenta_por_pagar__proveedor__nombre")
+        .annotate(
+            monto=Sum("monto"),
+            cantidad=Count("id"),
+        )
+        .order_by("-monto")
+    )
+    
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    mes_label = f"{NOMBRES_MESES[month]} {year}"
+    
+    proveedores = ProveedorFinanciero.objects.filter(activo=True).order_by("nombre")
+    CFG = get_config()
+    
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+        
+        # Filtros
+        "year": year,
+        "month": month,
+        "mes_label": mes_label,
+        "proveedor_id": proveedor_id,
+        "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
+        
+        # Datos
+        "items": qs,
+        "total_pagado": total_pagado,
+        "cantidad": cantidad,
+        "por_proveedor": por_proveedor,
+        
+        # Selects
+        "proveedores": proveedores,
+    }
+    return render(request, "finanzas_app/reportes/reporte_pagos_cxp.html", context)

@@ -1,0 +1,351 @@
+{% extends "finanzas_app/base_finanzas.html" %}
+{% load humanize %}
+
+{% block title %}CxP por Proveedor{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #0097a7 0%, #00796b 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0, 151, 167, 0.3);
+    }
+    .report-header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    .report-header .subtitle {
+        opacity: 0.9;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+    
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .summary-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-left: 4px solid #0097a7;
+    }
+    .summary-card.danger { border-left-color: #d32f2f; }
+    .summary-card.success { border-left-color: #388e3c; }
+    
+    .summary-card .label {
+        font-size: 0.8rem;
+        color: #666;
+        text-transform: uppercase;
+    }
+    .summary-card .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #333;
+        margin-top: 0.25rem;
+    }
+    .summary-card.danger .value { color: #d32f2f; }
+    .summary-card.success .value { color: #388e3c; }
+    
+    .filters-section {
+        background: white;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .filters-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: end;
+    }
+    .filter-group label {
+        display: block;
+        font-size: 0.75rem;
+        color: #666;
+        margin-bottom: 0.35rem;
+        font-weight: 500;
+    }
+    .filter-group input {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.875rem;
+    }
+    .filter-group input:focus {
+        outline: none;
+        border-color: #0097a7;
+    }
+    
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+    }
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #0097a7;
+    }
+    .checkbox-group label {
+        margin: 0;
+        font-size: 0.875rem;
+        color: #333;
+    }
+    
+    .btn-filter {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+    }
+    .btn-filter.primary {
+        background: #0097a7;
+        color: white;
+    }
+    .btn-filter.primary:hover {
+        background: #00838f;
+    }
+    .btn-filter.secondary {
+        background: #f5f5f5;
+        color: #666;
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    .table-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .table-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .data-table th {
+        background: #f8f9fa;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        border-bottom: 2px solid #eee;
+    }
+    .data-table td {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.875rem;
+    }
+    .data-table tr:hover {
+        background: #f8f9fa;
+    }
+    .data-table tfoot td {
+        background: #f8f9fa;
+        font-weight: 700;
+        border-top: 2px solid #eee;
+    }
+    
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    
+    .amount {
+        font-family: 'Roboto Mono', monospace;
+        font-weight: 500;
+    }
+    .positive { color: #388e3c; }
+    .negative { color: #d32f2f; }
+    
+    /* Barra de progreso */
+    .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: #e0e0e0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+    .progress-bar .fill {
+        height: 100%;
+        background: #0097a7;
+        border-radius: 3px;
+        transition: width 0.3s;
+    }
+    
+    .btn-print {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        color: #666;
+        cursor: pointer;
+    }
+    .btn-print:hover {
+        background: #e0e0e0;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #999;
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    @media print {
+        .filters-section, .btn-print, .no-print { display: none !important; }
+        .report-header { 
+            background: #0097a7 !important;
+            -webkit-print-color-adjust: exact;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-header">
+    <h1><span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">people</span>Cuentas por Pagar por Proveedor</h1>
+    <div class="subtitle">Generado el {{ fecha_hoy|date:"d/m/Y" }}</div>
+</div>
+
+<div class="summary-cards">
+    <div class="summary-card">
+        <div class="label">Proveedores</div>
+        <div class="value">{{ data|length }}</div>
+    </div>
+    <div class="summary-card">
+        <div class="label">Deuda Total</div>
+        <div class="value">RD$ {{ total_monto|intcomma }}</div>
+    </div>
+    <div class="summary-card success">
+        <div class="label">Total Pagado</div>
+        <div class="value">RD$ {{ total_pagado|intcomma }}</div>
+    </div>
+    <div class="summary-card danger">
+        <div class="label">Saldo Pendiente</div>
+        <div class="value">RD$ {{ total_pendiente|intcomma }}</div>
+    </div>
+</div>
+
+<div class="filters-section no-print">
+    <form method="get">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label>Desde</label>
+                <input type="date" name="fecha_desde" value="{{ fecha_desde }}">
+            </div>
+            <div class="filter-group">
+                <label>Hasta</label>
+                <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}">
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" name="solo_con_saldo" id="solo_con_saldo" value="1" {% if solo_con_saldo %}checked{% endif %}>
+                <label for="solo_con_saldo">Solo con saldo pendiente</label>
+            </div>
+            <div class="filter-actions" style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn-filter primary">Filtrar</button>
+                <a href="{% url 'finanzas_app:reporte_cxp_por_proveedor' %}" class="btn-filter secondary">Limpiar</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h3>Resumen por Proveedor</h3>
+        <button class="btn-print no-print" onclick="window.print()">
+            <span class="material-icons">print</span>
+            Imprimir
+        </button>
+    </div>
+    
+    {% if data %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Proveedor</th>
+                <th class="text-center">CxP</th>
+                <th class="text-right">Monto Total</th>
+                <th class="text-right">Pagado</th>
+                <th class="text-right">Pendiente</th>
+                <th style="width: 120px;">% Pagado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                <td>
+                    <strong>{{ row.proveedor }}</strong>
+                </td>
+                <td class="text-center">{{ row.cantidad }}</td>
+                <td class="text-right amount">{{ row.monto_total|intcomma }}</td>
+                <td class="text-right amount positive">{{ row.monto_pagado|intcomma }}</td>
+                <td class="text-right amount negative">{{ row.saldo_pendiente|intcomma }}</td>
+                <td>
+                    {% widthratio row.monto_pagado row.monto_total 100 as pct %}
+                    <small>{{ pct|default:"0" }}%</small>
+                    <div class="progress-bar">
+                        <div class="fill" style="width: {{ pct|default:"0" }}%;"></div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td><strong>TOTAL</strong></td>
+                <td class="text-center">—</td>
+                <td class="text-right amount">RD$ {{ total_monto|intcomma }}</td>
+                <td class="text-right amount positive">RD$ {{ total_pagado|intcomma }}</td>
+                <td class="text-right amount negative">RD$ {{ total_pendiente|intcomma }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <span class="material-icons">inbox</span>
+        <p>No se encontraron proveedores con cuentas por pagar.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if auto_print %}
+<script>
+    window.onload = function() {
+        setTimeout(function() { window.print(); }, 500);
+    };
+</script>
+{% endif %}
+{% endblock %}

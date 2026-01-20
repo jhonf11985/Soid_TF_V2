@@ -1,0 +1,293 @@
+{% extends "finanzas_app/base_finanzas.html" %}
+{% load humanize %}
+
+{% block title %}Antigüedad de Saldos CxP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #5c6bc0 0%, #3949ab 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(92, 107, 192, 0.3);
+    }
+    .report-header h1 { margin: 0; font-size: 1.5rem; font-weight: 600; }
+    .report-header .subtitle { opacity: 0.9; font-size: 0.9rem; margin-top: 0.25rem; }
+    
+    .aging-summary {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 768px) {
+        .aging-summary { grid-template-columns: repeat(2, 1fr); }
+    }
+    
+    .aging-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    .aging-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+    }
+    .aging-card.corriente::before { background: #4caf50; }
+    .aging-card.dias-30::before { background: #8bc34a; }
+    .aging-card.dias-60::before { background: #ffc107; }
+    .aging-card.dias-90::before { background: #ff9800; }
+    .aging-card.dias-mas::before { background: #f44336; }
+    
+    .aging-card .label { font-size: 0.7rem; color: #666; text-transform: uppercase; }
+    .aging-card .count { font-size: 1.75rem; font-weight: 700; margin: 0.25rem 0; }
+    .aging-card.corriente .count { color: #4caf50; }
+    .aging-card.dias-30 .count { color: #8bc34a; }
+    .aging-card.dias-60 .count { color: #ffc107; }
+    .aging-card.dias-90 .count { color: #ff9800; }
+    .aging-card.dias-mas .count { color: #f44336; }
+    .aging-card .amount { font-size: 0.875rem; font-weight: 600; color: #333; }
+    .aging-card .percentage { font-size: 0.75rem; color: #999; margin-top: 0.25rem; }
+    
+    .total-general {
+        background: white;
+        border-radius: 10px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .total-general .label { font-size: 1rem; color: #666; }
+    .total-general .value { font-size: 1.75rem; font-weight: 700; color: #333; }
+    
+    .filters-section {
+        background: white;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .filters-grid { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; }
+    .filter-group label { display: block; font-size: 0.75rem; color: #666; margin-bottom: 0.35rem; }
+    .filter-group select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        min-width: 200px;
+    }
+    .filter-group select:focus { outline: none; border-color: #0097a7; }
+    
+    .btn-filter {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+    }
+    .btn-filter.primary { background: #0097a7; color: white; }
+    .btn-filter.secondary { background: #f5f5f5; color: #666; }
+    
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    .table-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .table-header h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+    
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+        background: #f8f9fa;
+        padding: 0.75rem 0.625rem;
+        text-align: left;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        border-bottom: 2px solid #eee;
+    }
+    .data-table td {
+        padding: 0.75rem 0.625rem;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.8rem;
+    }
+    .data-table tr:hover { background: #f8f9fa; }
+    .data-table tfoot td {
+        background: #f8f9fa;
+        font-weight: 700;
+        border-top: 2px solid #eee;
+    }
+    
+    .text-right { text-align: right; }
+    .amount { font-family: 'Roboto Mono', monospace; font-weight: 500; }
+    
+    .col-corriente { color: #4caf50; }
+    .col-30 { color: #8bc34a; }
+    .col-60 { color: #ffc107; }
+    .col-90 { color: #ff9800; }
+    .col-mas { color: #f44336; }
+    
+    .btn-print {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        color: #666;
+        cursor: pointer;
+    }
+    
+    .empty-state { text-align: center; padding: 2rem; color: #999; }
+    
+    @media print {
+        .filters-section, .btn-print, .no-print { display: none !important; }
+        .report-header { background: #5c6bc0 !important; -webkit-print-color-adjust: exact; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-header">
+    <h1><span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">analytics</span>Antigüedad de Saldos (Aging)</h1>
+    <div class="subtitle">Análisis de vencimiento al {{ fecha_hoy|date:"d/m/Y" }}</div>
+</div>
+
+<div class="aging-summary">
+    <div class="aging-card corriente">
+        <div class="label">Corriente</div>
+        <div class="count">{{ rangos.corriente.cantidad }}</div>
+        <div class="amount">RD$ {{ rangos.corriente.total|intcomma }}</div>
+        <div class="percentage">{{ rangos.corriente.porcentaje|floatformat:1 }}%</div>
+    </div>
+    <div class="aging-card dias-30">
+        <div class="label">1-30 días</div>
+        <div class="count">{{ rangos.0_30.cantidad }}</div>
+        <div class="amount">RD$ {{ rangos.0_30.total|intcomma }}</div>
+        <div class="percentage">{{ rangos.0_30.porcentaje|floatformat:1 }}%</div>
+    </div>
+    <div class="aging-card dias-60">
+        <div class="label">31-60 días</div>
+        <div class="count">{{ rangos.31_60.cantidad }}</div>
+        <div class="amount">RD$ {{ rangos.31_60.total|intcomma }}</div>
+        <div class="percentage">{{ rangos.31_60.porcentaje|floatformat:1 }}%</div>
+    </div>
+    <div class="aging-card dias-90">
+        <div class="label">61-90 días</div>
+        <div class="count">{{ rangos.61_90.cantidad }}</div>
+        <div class="amount">RD$ {{ rangos.61_90.total|intcomma }}</div>
+        <div class="percentage">{{ rangos.61_90.porcentaje|floatformat:1 }}%</div>
+    </div>
+    <div class="aging-card dias-mas">
+        <div class="label">+90 días</div>
+        <div class="count">{{ rangos.mas_90.cantidad }}</div>
+        <div class="amount">RD$ {{ rangos.mas_90.total|intcomma }}</div>
+        <div class="percentage">{{ rangos.mas_90.porcentaje|floatformat:1 }}%</div>
+    </div>
+</div>
+
+<div class="total-general">
+    <div class="label">Saldo Total Pendiente</div>
+    <div class="value">RD$ {{ total_general|intcomma }}</div>
+</div>
+
+<div class="filters-section no-print">
+    <form method="get">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label>Proveedor</label>
+                <select name="proveedor" onchange="this.form.submit()">
+                    <option value="">Todos los proveedores</option>
+                    {% for p in proveedores %}
+                    <option value="{{ p.id }}" {% if proveedor_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn-filter primary">Filtrar</button>
+                <a href="{% url 'finanzas_app:reporte_antiguedad_cxp' %}" class="btn-filter secondary">Limpiar</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h3>Detalle por Proveedor</h3>
+        <button class="btn-print no-print" onclick="window.print()">
+            <span class="material-icons">print</span>
+            Imprimir
+        </button>
+    </div>
+    
+    {% if proveedores_aging %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Proveedor</th>
+                <th class="text-right">Corriente</th>
+                <th class="text-right">1-30 días</th>
+                <th class="text-right">31-60 días</th>
+                <th class="text-right">61-90 días</th>
+                <th class="text-right">+90 días</th>
+                <th class="text-right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in proveedores_aging %}
+            <tr>
+                <td><strong>{{ row.nombre }}</strong></td>
+                <td class="text-right amount col-corriente">{% if row.corriente > 0 %}{{ row.corriente|intcomma }}{% else %}—{% endif %}</td>
+                <td class="text-right amount col-30">{% if row.0_30 > 0 %}{{ row.0_30|intcomma }}{% else %}—{% endif %}</td>
+                <td class="text-right amount col-60">{% if row.31_60 > 0 %}{{ row.31_60|intcomma }}{% else %}—{% endif %}</td>
+                <td class="text-right amount col-90">{% if row.61_90 > 0 %}{{ row.61_90|intcomma }}{% else %}—{% endif %}</td>
+                <td class="text-right amount col-mas">{% if row.mas_90 > 0 %}{{ row.mas_90|intcomma }}{% else %}—{% endif %}</td>
+                <td class="text-right amount" style="font-weight: 700;">{{ row.total|intcomma }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td><strong>TOTAL</strong></td>
+                <td class="text-right amount col-corriente">{{ rangos.corriente.total|intcomma }}</td>
+                <td class="text-right amount col-30">{{ rangos.0_30.total|intcomma }}</td>
+                <td class="text-right amount col-60">{{ rangos.31_60.total|intcomma }}</td>
+                <td class="text-right amount col-90">{{ rangos.61_90.total|intcomma }}</td>
+                <td class="text-right amount col-mas">{{ rangos.mas_90.total|intcomma }}</td>
+                <td class="text-right amount" style="font-size: 1rem;">RD$ {{ total_general|intcomma }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <span class="material-icons" style="font-size: 2rem; color: #4caf50;">check_circle</span>
+        <p>No hay cuentas por pagar pendientes.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if auto_print %}
+<script>window.onload = function() { setTimeout(function() { window.print(); }, 500); };</script>
+{% endif %}
+{% endblock %}
