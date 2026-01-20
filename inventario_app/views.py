@@ -324,3 +324,10 @@ def reportes(request):
         "titulo": "Reportes",
         "mensaje": "Reportes en construcción.",
     })
+
+
+
+
+@login_required
+def ayuda_depreciacion(request):
+    return render(request, "inventario_app/ayuda_depreciacion.html")

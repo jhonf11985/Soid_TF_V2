@@ -68,7 +68,10 @@ class RecursoForm(forms.ModelForm):
 
         self.fields["cantidad_total"].widget.attrs.setdefault("min", 1)
 
-
+ # ✅ método por defecto: línea recta, y no requerido en el form
+        self.fields["metodo_depreciacion"].required = False
+        self.fields["metodo_depreciacion"].initial = Recurso.MetodosDepreciacion.LINEA_RECTA 
+                  
 class CategoriaRecursoForm(forms.ModelForm):
     class Meta:
         model = CategoriaRecurso

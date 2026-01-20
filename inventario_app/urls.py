@@ -29,4 +29,8 @@ urlpatterns = [
 
     # Reportes
     path("reportes/", views.reportes, name="reportes"),
+    # Ayuda / Guías
+
+    path("ayuda/depreciacion/", views.ayuda_depreciacion, name="ayuda_depreciacion"),
+
 ]
