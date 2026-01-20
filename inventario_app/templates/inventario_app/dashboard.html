@@ -1,0 +1,124 @@
+{% extends "inventario_app/base_inventario.html" %}
+
+{% block inventario_content %}
+<div class="odoo-page">
+    <div class="odoo-page-header">
+        <h1>Dashboard de Inventario</h1>
+        <p class="muted">Estado general de los recursos físicos.</p>
+    </div>
+
+    <div class="odoo-grid-4">
+        <div class="odoo-kpi-card">
+            <div class="kpi-title">Total</div>
+            <div class="kpi-value">{{ stats.total|default:"0" }}</div>
+            <div class="kpi-sub">Recursos registrados</div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="kpi-title">Disponibles</div>
+            <div class="kpi-value">{{ stats.disponibles|default:"0" }}</div>
+            <div class="kpi-sub">Listos para uso</div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="kpi-title">En uso</div>
+            <div class="kpi-value">{{ stats.en_uso|default:"0" }}</div>
+            <div class="kpi-sub">Actualmente utilizados</div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="kpi-title">En reparación</div>
+            <div class="kpi-value">{{ stats.en_reparacion|default:"0" }}</div>
+            <div class="kpi-sub">Pendientes de arreglo</div>
+        </div>
+    </div>
+
+    <div class="odoo-grid-3 mt-3">
+        <div class="odoo-kpi-card">
+            <div class="kpi-title">Prestados</div>
+            <div class="kpi-value">{{ stats.prestados|default:"0" }}</div>
+            <div class="kpi-sub">Fuera de control directo</div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="kpi-title">Dañados</div>
+            <div class="kpi-value">{{ stats.danados|default:"0" }}</div>
+            <div class="kpi-sub">Requieren revisión</div>
+        </div>
+
+        <div class="odoo-kpi-card">
+            <div class="kpi-title">Baja</div>
+            <div class="kpi-value">{{ stats.baja|default:"0" }}</div>
+            <div class="kpi-sub">Fuera de servicio</div>
+        </div>
+    </div>
+
+    <div class="odoo-card mt-3">
+        <div class="odoo-card-header">
+            <h3>Últimos movimientos</h3>
+            <div class="odoo-card-actions">
+                <a class="btn btn-primary" href="/inventario/movimientos/nuevo/">Registrar movimiento</a>
+                <a class="btn btn-secondary" href="/inventario/movimientos/">Ver historial</a>
+            </div>
+        </div>
+
+        <div class="odoo-card-body">
+            {% if ultimos_movimientos %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Recurso</th>
+                                <th>Cant.</th>
+                                <th>Origen</th>
+                                <th>Destino</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in ultimos_movimientos %}
+                            <tr>
+                                <td>{{ m.fecha|date:"Y-m-d H:i" }}</td>
+                                <td>{{ m.get_tipo_display }}</td>
+                                <td>{{ m.recurso }}</td>
+                                <td>{{ m.cantidad }}</td>
+                                <td>{{ m.ubicacion_origen|default:"-" }}</td>
+                                <td>{{ m.ubicacion_destino|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="muted">Aún no hay movimientos registrados.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="odoo-card mt-3">
+        <div class="odoo-card-header">
+            <h3>Acciones rápidas</h3>
+        </div>
+        <div class="odoo-card-body">
+            <div class="odoo-actions-grid">
+                <a class="odoo-action-tile" href="/inventario/recursos/nuevo/">
+                    <div class="tile-title">Crear recurso</div>
+                    <div class="tile-sub">Registrar un recurso nuevo</div>
+                </a>
+
+                <a class="odoo-action-tile" href="/inventario/categorias/">
+                    <div class="tile-title">Categorías</div>
+                    <div class="tile-sub">Organizar el inventario</div>
+                </a>
+
+                <a class="odoo-action-tile" href="/inventario/ubicaciones/">
+                    <div class="tile-title">Ubicaciones</div>
+                    <div class="tile-sub">Dónde está cada cosa</div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -53,6 +53,9 @@ urlpatterns = [
         ),
         name="manifest",
     ),
+
+    path("inventario/", include("inventario_app.urls")),
+
 ]
 
 # Para servir archivos estáticos y media en desarrollo

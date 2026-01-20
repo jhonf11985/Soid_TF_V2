@@ -51,7 +51,9 @@ INSTALLED_APPS = [
     'estructura_app',
     'nuevo_creyente_app',
     'actualizacion_datos_miembros',
-    'django.contrib.humanize'
+    'django.contrib.humanize',
+    
+    'inventario_app'
 ]
 
 MIDDLEWARE = [

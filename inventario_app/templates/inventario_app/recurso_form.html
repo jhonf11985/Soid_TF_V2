@@ -1,0 +1,543 @@
+{% extends 'inventario_app/base_inventario.html' %}
+{% load static %}
+
+{% block title %}
+Nuevo recurso · Soid_Tf_2
+{% endblock %}
+
+{% block inventario_content %}
+
+<div class="odoo-page">
+
+    <!-- BARRA SUPERIOR -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a href="/inventario/recursos/" class="odoo-back-link">
+                <span class="material-icons">arrow_back</span>
+            </a>
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-parent">Inventario</span>
+                <span class="odoo-breadcrumb-separator">/</span>
+                <span class="odoo-breadcrumb-current">Nuevo recurso</span>
+            </div>
+        </div>
+
+        <div class="odoo-topbar-right">
+            <span class="odoo-record-count">Nuevo</span>
+        </div>
+    </div>
+
+    <!-- BARRA DE ACCIONES -->
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            <button type="submit" form="recurso-form" class="odoo-btn odoo-btn-primary">
+                Guardar
+            </button>
+
+            <a href="/inventario/recursos/" class="odoo-btn odoo-btn-secondary">
+                Cancelar
+            </a>
+        </div>
+
+        <div class="odoo-actionbar-right">
+            <a href="/inventario/categorias/" class="odoo-btn odoo-btn-link">
+                <span class="material-icons">category</span>
+                Ver categorías
+            </a>
+            <a href="/inventario/ubicaciones/" class="odoo-btn odoo-btn-link">
+                <span class="material-icons">warehouse</span>
+                Ver ubicaciones
+            </a>
+        </div>
+    </div>
+
+    <!-- FORMULARIO PRINCIPAL -->
+    <div class="odoo-form-sheet">
+        <form method="post" enctype="multipart/form-data" novalidate id="recurso-form">
+            {% csrf_token %}
+
+{% if form.errors %}
+<div class="odoo-form-alert">
+    <span class="material-icons">error_outline</span>
+    <div>
+        <strong>No se pudo guardar.</strong><br>
+        Revisa los errores abajo.
+    </div>
+</div>
+
+<div class="odoo-error-panel">
+    <strong>Errores detectados:</strong>
+    <ul>
+        {% for field in form %}
+            {% for error in field.errors %}
+                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <li><strong>General:</strong> {{ error }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+            <!-- CONTENIDO EN DOS COLUMNAS -->
+            <div class="odoo-form-content">
+
+                <!-- COLUMNA IZQUIERDA -->
+                <div class="odoo-form-col">
+
+                    <div class="odoo-field-row">
+                        <label>Código</label>
+                        <div class="odoo-field-value">
+                            {{ form.codigo }}
+                            {% if form.codigo.errors %}<span class="odoo-error">{{ form.codigo.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Ej: INV-0001, AUD-MIC-01…</span>
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Nombre</label>
+                        <div class="odoo-field-value">
+                            {{ form.nombre }}
+                            {% if form.nombre.errors %}<span class="odoo-error">{{ form.nombre.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Ej: Micrófono inalámbrico, Silla plegable, Proyector…</span>
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>{{ form.categoria.label }}</label>
+                        <div class="odoo-field-value">
+                            {{ form.categoria }}
+                            {% if form.categoria.errors %}<span class="odoo-error">{{ form.categoria.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- COLUMNA DERECHA -->
+                <div class="odoo-form-col">
+
+                    <div class="odoo-field-row">
+                        <label>{{ form.ubicacion.label }}</label>
+                        <div class="odoo-field-value">
+                            {{ form.ubicacion }}
+                            {% if form.ubicacion.errors %}<span class="odoo-error">{{ form.ubicacion.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>{{ form.estado.label }}</label>
+                        <div class="odoo-field-value">
+                            {{ form.estado }}
+                            {% if form.estado.errors %}<span class="odoo-error">{{ form.estado.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Define si está disponible, prestado o en reparación.</span>
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Cantidad</label>
+                        <div class="odoo-field-value">
+                            {{ form.cantidad_total }}
+                            {% if form.cantidad_total.errors %}<span class="odoo-error">{{ form.cantidad_total.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Si es un recurso por unidad, deja 1.</span>
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Foto</label>
+                        <div class="odoo-field-value">
+                            {{ form.foto }}
+                            {% if form.foto.errors %}<span class="odoo-error">{{ form.foto.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Opcional. Útil para identificar rápido en móvil.</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- DESCRIPCIÓN - ANCHO COMPLETO -->
+            <div class="odoo-form-full">
+                <div class="odoo-field-row">
+                    <label>Descripción</label>
+                    <div class="odoo-field-value">
+                        {{ form.descripcion }}
+                        {% if form.descripcion.errors %}<span class="odoo-error">{{ form.descripcion.errors.0 }}</span>{% endif %}
+                        <span class="odoo-field-hint">Opcional. Notas como marca, modelo, estado físico, detalles de uso, etc.</span>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+<style>
+    .odoo-form-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+        padding: 12px 16px;
+        border-radius: 4px;
+        margin: 16px 24px;
+        font-size: 13px;
+    }
+
+    .odoo-required {
+        color: var(--odoo-error);
+        font-weight: 600;
+        margin-left: 2px;
+    }
+
+    .odoo-form-alert .material-icons {
+        font-size: 20px;
+    }
+
+    :root {
+        --odoo-purple: #714B67;
+        --odoo-purple-light: #8f6b84;
+        --odoo-bg: #ffffff;
+        --odoo-bg-gray: #f8f9fa;
+        --odoo-border: #dee2e6;
+        --odoo-text: #212529;
+        --odoo-text-muted: #6c757d;
+        --odoo-error: #dc3545;
+        --odoo-success: #28a745;
+    }
+
+    .odoo-page {
+        background: var(--odoo-bg-gray);
+        min-height: 100vh;
+        padding-bottom: 40px;
+    }
+
+    .odoo-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 24px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .odoo-topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .odoo-back-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        color: var(--odoo-text-muted);
+        transition: all 0.15s;
+    }
+
+    .odoo-back-link:hover {
+        background: var(--odoo-bg-gray);
+        color: var(--odoo-text);
+    }
+
+    .odoo-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+    }
+
+    .odoo-breadcrumb-parent {
+        color: var(--odoo-text-muted);
+    }
+
+    .odoo-breadcrumb-separator {
+        color: var(--odoo-border);
+    }
+
+    .odoo-breadcrumb-current {
+        color: var(--odoo-text);
+        font-weight: 500;
+    }
+
+    .odoo-topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .odoo-record-count {
+        font-size: 13px;
+        color: var(--odoo-text-muted);
+        background: var(--odoo-bg-gray);
+        padding: 4px 12px;
+        border-radius: 4px;
+    }
+
+    .odoo-actionbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 24px;
+        background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-actionbar-left,
+    .odoo-actionbar-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .odoo-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: 4px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+        font-family: inherit;
+    }
+
+    .odoo-btn-primary {
+        background: var(--odoo-purple);
+        color: white;
+        border-color: var(--odoo-purple);
+    }
+
+    .odoo-btn-primary:hover {
+        background: var(--odoo-purple-light);
+        border-color: var(--odoo-purple-light);
+    }
+
+    .odoo-btn-secondary {
+        background: var(--odoo-bg);
+        color: var(--odoo-text);
+        border-color: var(--odoo-border);
+    }
+
+    .odoo-btn-secondary:hover {
+        background: var(--odoo-bg-gray);
+    }
+
+    .odoo-btn-link {
+        background: transparent;
+        color: var(--odoo-text-muted);
+        padding: 8px 12px;
+    }
+
+    .odoo-btn-link:hover {
+        color: var(--odoo-purple);
+        background: rgba(113, 75, 103, 0.05);
+    }
+
+    .odoo-btn-link .material-icons {
+        font-size: 18px;
+    }
+
+    .odoo-form-sheet {
+        background: var(--odoo-bg);
+        max-width: 1200px;
+        margin: 24px auto;
+        border: 1px solid var(--odoo-border);
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .odoo-form-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        padding: 20px 24px;
+    }
+
+    .odoo-form-col {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .odoo-field-row {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 12px;
+        align-items: baseline;
+        min-height: 32px;
+        padding: 4px 0;
+    }
+
+    .odoo-field-row label {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--odoo-text);
+        text-align: right;
+    }
+
+    .odoo-field-value {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .odoo-form-sheet input,
+    .odoo-form-sheet select,
+    .odoo-form-sheet textarea {
+        width: 100%;
+        border: none;
+        border-bottom: 1px solid transparent;
+        background: transparent;
+        padding: 4px 0;
+        font-size: 13px;
+        color: var(--odoo-text);
+        font-family: inherit;
+        transition: border-color 0.15s;
+    }
+
+    .odoo-form-sheet input:hover,
+    .odoo-form-sheet select:hover,
+    .odoo-form-sheet textarea:hover {
+        border-bottom-color: var(--odoo-border);
+    }
+
+    .odoo-form-sheet input:focus,
+    .odoo-form-sheet select:focus,
+    .odoo-form-sheet textarea:focus {
+        outline: none;
+        border-bottom-color: var(--odoo-purple);
+        border-bottom-width: 2px;
+        padding-bottom: 3px;
+    }
+
+    .odoo-form-sheet select {
+        appearance: none;
+        cursor: pointer;
+        padding-right: 20px;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0 center;
+        background-size: 16px;
+    }
+
+    .odoo-form-sheet textarea {
+        min-height: 60px;
+        resize: vertical;
+        line-height: 1.5;
+    }
+
+    .odoo-form-full {
+        padding: 0 24px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .odoo-form-full .odoo-field-row {
+        grid-template-columns: 140px 1fr;
+    }
+
+    .odoo-error {
+        font-size: 11px;
+        color: var(--odoo-error);
+        margin-top: 2px;
+    }
+
+    .odoo-field-hint {
+        font-size: 11px;
+        color: var(--odoo-text-muted);
+        font-style: italic;
+        margin-top: 4px;
+    }
+
+    .odoo-form-sheet input[type="number"] {
+        font-variant-numeric: tabular-nums;
+        -moz-appearance: textfield;
+    }
+
+    .odoo-form-sheet input[type="number"]::-webkit-outer-spin-button,
+    .odoo-form-sheet input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    @media (max-width: 900px) {
+        .odoo-form-content {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .odoo-field-row {
+            grid-template-columns: 120px 1fr;
+        }
+
+        .odoo-actionbar {
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .odoo-actionbar-right {
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .odoo-topbar,
+        .odoo-actionbar {
+            padding: 12px 16px;
+        }
+
+        .odoo-form-sheet {
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .odoo-form-content {
+            padding: 16px;
+        }
+
+        .odoo-form-full {
+            padding: 0 16px 16px;
+        }
+
+        .odoo-field-row {
+            grid-template-columns: 1fr;
+            gap: 4px;
+        }
+
+        .odoo-field-row label {
+            text-align: left;
+            font-size: 11px;
+            color: var(--odoo-text-muted);
+        }
+
+        .odoo-actionbar-left {
+            flex-wrap: wrap;
+        }
+
+        .odoo-breadcrumb-parent {
+            display: none;
+        }
+
+        .odoo-breadcrumb-separator {
+            display: none;
+        }
+    }
+</style>
+
+{% endblock %}
