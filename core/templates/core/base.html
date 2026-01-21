@@ -183,7 +183,8 @@
         <div class="main-nav__left">
             <a href="/" class="main-nav__link">
                 <span class="material-icons main-nav__icon">home</span>
-                <span>Inicio</span>
+                <span id="navSaludo">Inicio</span>
+
             </a>
 
             
@@ -481,12 +482,62 @@ document.addEventListener('DOMContentLoaded', function() {
     }, { passive: true });
 });
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const el = document.getElementById("navSaludo");
+  if (!el) return;
+
+  const nombre = "{{ user.first_name|default:user.username|escapejs }}";
+  const hoy = new Date();
+  const fechaHoy = hoy.toISOString().slice(0, 10);
+
+  const mensajes = [
+    `¡Hola, ${nombre}! 🙏`,
+    `${nombre}, seguimos firmes 💪`,
+    `${nombre}, Dios es fiel ✨`,
+    `Vamos con fe, ${nombre} 🙌`,
+    `${nombre}, a servir con alegría 😄`,
+    `${nombre}, un paso más 👣`,
+    `Dios va contigo, ${nombre} 🤍`,
+    `${nombre}, confía 🧭`,
+    `Seguimos adelante, ${nombre} 🚀`,
+    `${nombre}, gracias por estar ❤️`,
+    `¡Ánimo, ${nombre}! 😊`,
+    `${nombre}, Dios te acompaña 🌿`,
+  ];
+
+  const keyFecha = "pwa_saludo_fecha";
+  const keyMsg = "pwa_saludo_msg";
+
+  let mensaje = localStorage.getItem(keyMsg);
+  const fechaGuardada = localStorage.getItem(keyFecha);
+
+  if (!mensaje || fechaGuardada !== fechaHoy) {
+    mensaje = mensajes[Math.floor(Math.random() * mensajes.length)];
+    localStorage.setItem(keyFecha, fechaHoy);
+    localStorage.setItem(keyMsg, mensaje);
+  }
+
+  el.textContent = mensaje;
+});
+</script>
 
 {% block extra_js %}{% endblock %}
 </body>
 </html>
 
 <style>
+
+    #navSaludo {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
     .welcome-modal-backdrop {
         position: fixed;
         inset: 0;

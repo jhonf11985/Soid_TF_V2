@@ -6,9 +6,9 @@
 <!-- ========== VISTA MÓVIL (estilo Android Launcher) ========== -->
 <div class="home-mobile">
     <!-- Saludo personalizado -->
-    <div class="home-mobile-greeting">
-        <h1>¡Hola {{ user.first_name|default:user.username }}!</h1>
-    </div>
+<div class="home-mobile-greeting">
+    <h1 id="saludoPWA"></h1>
+</div>
 
     <!-- Grid de módulos circulares -->
     <div class="home-mobile-grid">
@@ -37,6 +37,7 @@
 <!-- ========== VISTA ESCRITORIO (estilo Odoo original) ========== -->
 <div class="home-desktop">
     <div class="app-container">
+
         <div class="app-grid">
             {% for module in modules %}
             <a href="{% url module.url_name %}" class="odoo-app">
@@ -81,6 +82,44 @@
         </a>
     </div>
 </div>
+
+<script>
+(function () {
+  const nombre = "{{ user.first_name|default:user.username|escapejs }}";
+  const hoy = new Date();
+  const fechaHoy = hoy.toISOString().slice(0, 10);
+
+const mensajes = [
+  `¡Hola, ${nombre}! Dios va contigo 🙏`,
+  `${nombre}, seguimos firmes 💪`,
+  `Bienvenido, ${nombre}. Sirve con amor ❤️`,
+  `${nombre}, gracias por estar 🤍`,
+  `¡Vamos, ${nombre}! Dios es fiel ✨`,
+  `${nombre}, un paso más en fe 👣`,
+  `¡Ey, ${nombre}! A servir con alegría 😄`,
+  `${nombre}, hoy Dios te acompaña 🌿`,
+  `Seguimos adelante, ${nombre} 🚀`,
+  `${nombre}, confía. Él sostiene 🙌`,
+  `Buen día, ${nombre}. Dios guía 🧭`,
+  `${nombre}, lo estás haciendo bien 👍`,
+];
+
+  const keyFecha = "pwa_saludo_fecha";
+  const keyMsg = "pwa_saludo_msg";
+
+  let mensaje = localStorage.getItem(keyMsg);
+  const fechaGuardada = localStorage.getItem(keyFecha);
+
+  if (!mensaje || fechaGuardada !== fechaHoy) {
+    mensaje = mensajes[Math.floor(Math.random() * mensajes.length)];
+    localStorage.setItem(keyFecha, fechaHoy);
+    localStorage.setItem(keyMsg, mensaje);
+  }
+
+  const el = document.getElementById("saludoPWA");
+  if (el) el.textContent = mensaje;
+})();
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

@@ -82,6 +82,67 @@ def dashboard(request):
         .annotate(total=Count("unidades"))
         .order_by("orden", "nombre")
     )
+    # ============================================================
+    # KPI: Miembros sirviendo (rol TIPO_TRABAJO)
+    # Referencia: membresía oficial
+    # ============================================================
+
+    # Total de miembros oficiales
+    total_miembros_oficiales = Miembro.objects.filter(
+        activo=True,
+        nuevo_creyente=False
+    ).count()
+
+    # Miembros sirviendo (TRABAJO) – personas únicas
+    miembros_sirviendo = (
+        UnidadMembresia.objects.filter(
+            activo=True,
+            rol__tipo=RolUnidad.TIPO_TRABAJO,
+            miembo_fk__activo=True,
+            miembo_fk__nuevo_creyente=False,
+        )
+        .values_list("miembo_fk_id", flat=True)
+        .distinct()
+        .count()
+    )
+
+    # Porcentaje
+    porcentaje_sirviendo = (
+        round((miembros_sirviendo * 100) / total_miembros_oficiales, 1)
+        if total_miembros_oficiales > 0
+        else 0
+    )
+    # Miembros oficiales NO sirviendo (complemento)
+    miembros_no_sirviendo = max(total_miembros_oficiales - miembros_sirviendo, 0)
+
+    porcentaje_no_sirviendo = (
+        round((miembros_no_sirviendo * 100) / total_miembros_oficiales, 1)
+        if total_miembros_oficiales > 0
+        else 0
+    )
+
+    # ============================================================
+    # KPI: Líderes vigentes (porcentaje sobre membresía oficial)
+    # ============================================================
+
+    lideres_vigentes_personas = (
+        UnidadCargo.objects.filter(
+            vigente=True,
+            rol__tipo=RolUnidad.TIPO_LIDERAZGO,
+            miembo_fk__activo=True,
+            miembo_fk__nuevo_creyente=False,
+        )
+        .values_list("miembo_fk_id", flat=True)
+        .distinct()
+        .count()
+    )
+
+    porcentaje_lideres = (
+        round((lideres_vigentes_personas * 100) / total_miembros_oficiales, 1)
+        if total_miembros_oficiales > 0
+        else 0
+    )
+
 
     context = {
         "total_unidades": total_unidades,
@@ -93,6 +154,13 @@ def dashboard(request):
         "unidades_sin_lider": unidades_sin_lider,
         "top_unidades": top_unidades,
         "distribucion_por_tipo": distribucion_por_tipo,
+            "miembros_sirviendo": miembros_sirviendo,
+        "total_miembros_oficiales": total_miembros_oficiales,
+        "porcentaje_sirviendo": porcentaje_sirviendo,
+            "miembros_no_sirviendo": miembros_no_sirviendo,
+    "porcentaje_no_sirviendo": porcentaje_no_sirviendo,
+        "lideres_vigentes": lideres_vigentes_personas,
+    "porcentaje_lideres": porcentaje_lideres,
     }
     return render(request, "estructura_app/dashboard.html", context)
 
