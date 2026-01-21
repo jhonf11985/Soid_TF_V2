@@ -8,6 +8,52 @@ from django.conf import settings
 from django.utils import timezone
 import re
 
+# ==========================
+# FORMACIÓN MINISTERIAL (CHOICES)
+# ==========================
+
+ROL_MINISTERIAL_CHOICES = [
+    ("", "—"),
+    ("pastor", "Pastor"),
+    ("evangelista", "Evangelista"),
+    ("misionero", "Misionero"),
+    ("obrero", "Obrero"),
+    ("diacono", "Diácono"),
+    ("lider", "Líder"),
+]
+
+ESTADO_MINISTERIAL_CHOICES = [
+    ("", "—"),
+    ("activo", "Activo"),
+    ("pausa", "En pausa"),
+    ("retirado", "Retirado"),
+]
+
+NIVEL_FORMACION_CHOICES = [
+    ("", "—"),
+    ("basica", "Básica"),
+    ("tecnica", "Técnica"),
+    ("diplomado", "Diplomado"),
+    ("licenciatura", "Licenciatura"),
+    ("otro", "Otro"),
+]
+
+AREA_FORMACION_CHOICES = [
+    ("", "—"),
+    ("pastoral", "Pastoral"),
+    ("biblica", "Bíblica"),
+    ("misionologia", "Misionología"),
+    ("consejeria", "Consejería"),
+    ("educacion_cristiana", "Educación Cristiana"),
+    ("otra", "Otra"),
+]
+
+TIPO_MISION_CHOICES = [
+    ("", "—"),
+    ("permanente", "Permanente"),
+    ("temporal", "Temporal"),
+    ("viajes", "Viajes misioneros"),
+]
 
 CIUDAD_CHOICES = [
     ("Higuey", "Higüey"),
@@ -248,6 +294,152 @@ class Miembro(models.Model):
     )
 
     codigo_postal = models.CharField(max_length=20, blank=True)
+    # ------------------------------------------------------------------
+    # FORMACIÓN MINISTERIAL (Pastores / Evangelistas / Misioneros, etc.)
+    # ------------------------------------------------------------------
+
+    ROL_MINISTERIAL_CHOICES = [
+        ("", "—"),
+        ("pastor", "Pastor"),
+        ("evangelista", "Evangelista"),
+        ("misionero", "Misionero"),
+        ("obrero", "Obrero"),
+    ]
+
+    rol_ministerial = models.CharField(
+        max_length=20,
+        choices=ROL_MINISTERIAL_CHOICES,
+        blank=True,
+        default="",
+        help_text="Rol ministerial (si aplica).",
+    )
+
+    tiene_credenciales = models.BooleanField(
+        default=False,
+        help_text="Indica si posee credenciales ministeriales.",
+    )
+
+    donde_estudio_teologia = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Institución / lugar donde estudió teología (si aplica).",
+    )
+
+    preparacion_teologica = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Resumen breve de la preparación teológica (si aplica).",
+    )
+
+    obrero_ordenado = models.BooleanField(
+        default=False,
+        help_text="Indica si es obrero ordenado.",
+    )
+
+    bautizado_espiritu_santo = models.BooleanField(
+        default=False,
+        help_text="Indica si está bautizado en el Espíritu Santo.",
+    )
+
+    # -------------------------
+    # Datos de misión (si aplica)
+    # -------------------------
+    misionero_activo = models.BooleanField(
+        default=False,
+        help_text="Marca si actualmente está activo como misionero.",
+    )
+
+    mision_pais = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="País donde sirve como misionero (si aplica).",
+    )
+
+    mision_ciudad = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Ciudad donde sirve como misionero (si aplica).",
+    )
+    # -------------------------
+    # Credenciales (detalle)
+    # -------------------------
+    numero_credencial = models.CharField(
+        max_length=60,
+        blank=True,
+        help_text="Número o código de la credencial ministerial.",
+    )
+
+    credencial_fecha_emision = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha de emisión de la credencial.",
+    )
+
+    credencial_fecha_vencimiento = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha de vencimiento de la credencial (si aplica).",
+    )
+
+    # -------------------------
+    # Estado y formación ministerial
+    # -------------------------
+    estado_ministerial = models.CharField(
+        max_length=20,
+        choices=ESTADO_MINISTERIAL_CHOICES,
+        blank=True,
+        default="",
+        help_text="Estado actual en el ministerio.",
+    )
+
+    nivel_formacion = models.CharField(
+        max_length=20,
+        choices=NIVEL_FORMACION_CHOICES,
+        blank=True,
+        default="",
+        help_text="Nivel de formación teológica.",
+    )
+
+    area_formacion = models.CharField(
+        max_length=30,
+        choices=AREA_FORMACION_CHOICES,
+        blank=True,
+        default="",
+        help_text="Área principal de formación.",
+    )
+
+    cursos_certificaciones = models.TextField(
+        blank=True,
+        help_text="Cursos, diplomados o certificaciones relevantes.",
+    )
+
+    # -------------------------
+    # Detalle de misión
+    # -------------------------
+    mision_tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_MISION_CHOICES,
+        blank=True,
+        default="",
+        help_text="Tipo de misión realizada.",
+    )
+
+    mision_fecha_inicio = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha de inicio de la misión.",
+    )
+
+    mision_fecha_fin = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha de fin de la misión (si aplica).",
+    )
+
 
     # --- Contacto de emergencia y salud ---
     contacto_emergencia_nombre = models.CharField(max_length=150, blank=True)

@@ -55,6 +55,12 @@ class MiembroAdmin(admin.ModelAdmin):
         "genero",
         "estado_civil",
         "nivel_educativo",
+       "rol_ministerial",
+        "tiene_credenciales",
+        "obrero_ordenado",
+        "bautizado_espiritu_santo",
+        "misionero_activo",
+
     )
 
     search_fields = (
@@ -63,6 +69,11 @@ class MiembroAdmin(admin.ModelAdmin):
         "telefono",
         "email",
         "iglesia_anterior",
+                "donde_estudio_teologia",
+        "preparacion_teologica",
+        "mision_pais",
+        "mision_ciudad",
+
     )
 
     ordering = ("nombres", "apellidos")

@@ -213,6 +213,20 @@ class MiembroForm(forms.ModelForm):
             "mentor": "Mentor",
             "lider_celula": "Líder de célula",
 
+                        # FORMACIÓN MINISTERIAL
+            "rol_ministerial": "Rol ministerial",
+            "tiene_credenciales": "Tiene credenciales",
+            "donde_estudio_teologia": "Dónde estudió teología",
+            "preparacion_teologica": "Preparación teológica",
+            "obrero_ordenado": "Obrero ordenado",
+            "bautizado_espiritu_santo": "Bautizado en el Espíritu Santo",
+
+            # MISIÓN
+            "misionero_activo": "Misionero activo",
+            "mision_pais": "País (misión)",
+            "mision_ciudad": "Ciudad (misión)",
+
+
             "intereses": "Intereses",
             "habilidades": "Habilidades",
             "otros_intereses": "Otros intereses",
@@ -322,6 +336,15 @@ class MiembroForm(forms.ModelForm):
                     "max": date.today().isoformat(),
                 }
             ),
+            
+            # FORMACIÓN MINISTERIAL
+            "rol_ministerial": forms.Select(attrs={"class": "odoo-input", "style": "width:100%;"}),
+            "donde_estudio_teologia": forms.TextInput(attrs={"placeholder": "Ej: Seminario / Instituto / Universidad"}),
+            "preparacion_teologica": forms.TextInput(attrs={"placeholder": "Ej: Teología pastoral, bíblica, etc."}),
+
+            # MISIÓN
+            "mision_pais": forms.TextInput(attrs={"placeholder": "Ej: República Dominicana"}),
+            "mision_ciudad": forms.TextInput(attrs={"placeholder": "Ej: Higüey / Punta Cana / etc."}),
 
             "intereses": forms.Textarea(attrs={"rows": 2, "placeholder": "Áreas de interés"}),
             "otros_intereses": forms.Textarea(attrs={"rows": 2, "placeholder": "Otros intereses"}),
