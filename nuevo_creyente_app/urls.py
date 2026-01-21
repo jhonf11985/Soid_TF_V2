@@ -47,6 +47,10 @@ path(
         views.seguimiento_cerrar,
         name="seguimiento_cerrar",
     ),
+ path("seguimiento/inbox/", views.seguimiento_inbox, name="seguimiento_inbox"),
+ path("seguimiento/<int:miembro_id>/accion/", views.seguimiento_accion, name="seguimiento_accion"),
+path("seguimiento/<int:miembro_id>/accion/guardar/", views.seguimiento_accion_guardar, name="seguimiento_accion_guardar"),
+
 
 ]
 

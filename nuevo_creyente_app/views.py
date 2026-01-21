@@ -672,3 +672,186 @@ def seguimiento_cerrar(request, miembro_id):
 
     messages.success(request, "Seguimiento cerrado correctamente.")
     return redirect("nuevo_creyente_app:seguimiento_detalle", miembro_id=miembro.id)
+
+from django.utils import timezone
+from datetime import timedelta
+from django.db.models import Q
+
+@login_required
+def seguimiento_inbox(request):
+    """
+    Bandeja CRM para seguimiento de nuevos creyentes:
+    - Atrasados
+    - Para hoy
+    - Sin próximo contacto
+    """
+    hoy = timezone.localdate()
+    manana = hoy + timedelta(days=1)
+
+    # Expedientes en seguimiento
+    qs = (
+        NuevoCreyenteExpediente.objects
+        .select_related("miembro", "responsable")
+        .prefetch_related("padres_espirituales")
+        .filter(estado=NuevoCreyenteExpediente.Estados.EN_SEGUIMIENTO)
+    )
+
+    # Opcional: búsqueda rápida por nombre/teléfono/código
+    query = (request.GET.get("q") or "").strip()
+    if query:
+        qs = qs.filter(
+            Q(miembro__nombres__icontains=query)
+            | Q(miembro__apellidos__icontains=query)
+            | Q(miembro__telefono__icontains=query)
+            | Q(miembro__telefono_secundario__icontains=query)
+            | Q(miembro__whatsapp__icontains=query)
+            | Q(miembro__email__icontains=query)
+            | Q(miembro__codigo_seguimiento__icontains=query)
+        )
+
+    con_proximo = qs.filter(proximo_contacto__isnull=False)
+
+    atrasados = con_proximo.filter(proximo_contacto__lt=hoy).order_by("proximo_contacto", "-fecha_envio")
+    para_hoy = con_proximo.filter(proximo_contacto=hoy).order_by("-fecha_envio")
+    para_manana = con_proximo.filter(proximo_contacto=manana).order_by("-fecha_envio")
+
+    sin_proximo = qs.filter(proximo_contacto__isnull=True).order_by("-fecha_envio")
+
+    # Contadores (para chips/estadísticas)
+    context = {
+        "hoy": hoy,
+        "query": query,
+
+        "cnt_atrasados": atrasados.count(),
+        "cnt_hoy": para_hoy.count(),
+        "cnt_manana": para_manana.count(),
+        "cnt_sin_proximo": sin_proximo.count(),
+
+        # listas (limitadas para no hacer la página pesada)
+        "atrasados": atrasados[:25],
+        "para_hoy": para_hoy[:25],
+        "para_manana": para_manana[:12],
+        "sin_proximo": sin_proximo[:25],
+    }
+    return render(request, "nuevo_creyente_app/seguimiento_inbox.html", context)
+
+
+from datetime import date, timedelta
+from django.views.decorators.http import require_http_methods
+
+@login_required
+def seguimiento_accion(request, miembro_id):
+    """
+    Pantalla CRM de Acción Rápida.
+    - No es el expediente completo.
+    - Es la pantalla diaria para registrar acciones en 10-15 segundos.
+    """
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    # Sugerencia por defecto: +7 días
+    hoy = timezone.localdate()
+    sugerido = hoy + timedelta(days=7)
+
+    context = {
+        "miembro": miembro,
+        "expediente": expediente,
+        "hoy": hoy,
+        "sugerido_proximo": sugerido,
+    }
+    return render(request, "nuevo_creyente_app/seguimiento_accion.html", context)
+
+
+@require_POST
+@login_required
+def seguimiento_accion_guardar(request, miembro_id):
+    """
+    Guarda una acción rápida:
+    - tipo_accion: llamada / whatsapp / reunion / no_responde / nota
+    - resultado: (texto corto)
+    - nota: (texto)
+    - proximo_contacto: YYYY-MM-DD (opcional)
+    - auto-etapa: (opcional) si quieres automatizar avances
+    """
+    miembro = get_object_or_404(
+        Miembro.objects.select_related("expediente_nuevo_creyente"),
+        pk=miembro_id,
+        expediente_nuevo_creyente__isnull=False,
+    )
+    expediente = miembro.expediente_nuevo_creyente
+
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.error(request, "Este expediente está cerrado. No se pueden registrar acciones.")
+        return redirect("nuevo_creyente_app:seguimiento_accion", miembro_id=miembro.id)
+
+    tipo_accion = (request.POST.get("tipo_accion") or "").strip()
+    resultado = (request.POST.get("resultado") or "").strip()
+    nota = (request.POST.get("nota") or "").strip()
+    prox_str = (request.POST.get("proximo_contacto") or "").strip()
+
+    if tipo_accion not in ["llamada", "whatsapp", "reunion", "no_responde", "nota"]:
+        messages.error(request, "Acción inválida.")
+        return redirect("nuevo_creyente_app:seguimiento_accion", miembro_id=miembro.id)
+
+    # Reglas mínimas
+    if tipo_accion != "nota" and not resultado:
+        messages.error(request, "Selecciona un resultado.")
+        return redirect("nuevo_creyente_app:seguimiento_accion", miembro_id=miembro.id)
+
+    if not nota and tipo_accion in ["llamada", "whatsapp", "reunion", "no_responde"]:
+        # Nota obligatoria para acciones de contacto (para que no sea “vacío”)
+        messages.error(request, "Escribe una nota corta (qué pasó / qué acordaron).")
+        return redirect("nuevo_creyente_app:seguimiento_accion", miembro_id=miembro.id)
+
+    # Parse próximo contacto
+    proximo_contacto = None
+    if prox_str:
+        try:
+            proximo_contacto = date.fromisoformat(prox_str)
+        except ValueError:
+            messages.error(request, "La fecha del próximo contacto no es válida.")
+            return redirect("nuevo_creyente_app:seguimiento_accion", miembro_id=miembro.id)
+
+    # Título bonito para timeline/bitácora
+    TITULOS = {
+        "llamada": "Llamada registrada",
+        "whatsapp": "Mensaje WhatsApp registrado",
+        "reunion": "Reunión registrada",
+        "no_responde": "Intento sin respuesta",
+        "nota": "Nota rápida",
+    }
+    titulo = TITULOS.get(tipo_accion, "Acción registrada")
+
+    # Guardar en bitácora usando tu mismo patrón (log_event) :contentReference[oaicite:2]{index=2}
+    # Reusamos:
+    # - canal = tipo_accion (o un canal humano)
+    # - resultado_contacto = resultado
+    expediente.log_event(
+        tipo="accion",
+        titulo=titulo,
+        detalle=nota or resultado,
+        user=request.user,
+        canal=tipo_accion,
+        resultado_contacto=resultado,
+    )
+
+    # Actualizar próximo contacto si viene
+    if proximo_contacto:
+        expediente.proximo_contacto = proximo_contacto
+
+    # (Opcional) Automatizar etapa sin preguntarle al usuario (CRM-style)
+    # Solo una regla simple: si estaba INICIO y registró llamada/whatsapp/reunion, pasar a PRIMER_CONTACTO
+    if expediente.etapa == "INICIO" and tipo_accion in ["llamada", "whatsapp", "reunion"]:
+        etapa_from = expediente.etapa
+        expediente.etapa = "PRIMER_CONTACTO"
+        expediente.save(update_fields=["etapa", "proximo_contacto", "fecha_actualizacion"])
+        expediente.log_cambio_etapa(etapa_from=etapa_from, etapa_to="PRIMER_CONTACTO", user=request.user)
+    else:
+        expediente.save(update_fields=["proximo_contacto", "fecha_actualizacion"])
+
+    messages.success(request, "Acción guardada. ✅")
+    return redirect("nuevo_creyente_app:seguimiento_inbox")

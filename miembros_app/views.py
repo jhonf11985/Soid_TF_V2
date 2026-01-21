@@ -3361,6 +3361,8 @@ def nuevo_creyente_detalle(request, pk):
         .first()
     )
     modulo_nuevo_creyente_activo = _modulo_nuevo_creyente_activo()
+    estado_exp = (getattr(expediente, "estado", "") or "").strip().lower()
+    expediente_abierto = bool(expediente and estado_exp == "abierto")
 
     expediente_abierto = bool(expediente and getattr(expediente, "estado", None) == "abierto")
 
@@ -3370,6 +3372,8 @@ def nuevo_creyente_detalle(request, pk):
         "expediente_abierto": expediente_abierto,
         "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
          "modulo_nuevo_creyente_activo": modulo_nuevo_creyente_activo,
+             "expediente": expediente,
+        "expediente_abierto": expediente_abierto,
     }
 
     # ✅ Ajusta este nombre si tu plantilla se llama distinto
@@ -3517,6 +3521,24 @@ def reincorporar_miembro(request, pk):
 @require_http_methods(["GET", "POST"])
 def salida_form(request, pk):
     miembro = get_object_or_404(Miembro, pk=pk)
+
+    from nuevo_creyente_app.models import NuevoCreyenteExpediente
+
+    # Bloqueo: no permitir salida si tiene expediente abierto
+    tiene_expediente_abierto = NuevoCreyenteExpediente.objects.filter(
+        miembro=miembro,
+        estado__iexact="abierto"
+    ).exists()
+
+    if tiene_expediente_abierto:
+        messages.error(
+            request,
+            "No se puede dar salida a este nuevo creyente porque "
+            "tiene un expediente de seguimiento ABIERTO. "
+            "Cierra primero el expediente."
+        )
+        return redirect("miembros_app:nuevo_creyente_detalle", pk=miembro.pk)
+
     estado_antes = getattr(miembro, "estado_miembro", "") or ""
     etapa_antes = getattr(miembro, "etapa_actual", "") or ""
 
@@ -3533,13 +3555,18 @@ def salida_form(request, pk):
     # ✅ Regla: si es nuevo creyente y tiene expediente ABIERTO, no permitir salida
     es_nuevo_creyente = bool(getattr(miembro, "nuevo_creyente", False))
     if es_nuevo_creyente:
-        expediente_abierto = NuevoCreyenteExpediente.objects.filter(miembro=miembro, estado="abierto").first()
+        expediente_abierto = NuevoCreyenteExpediente.objects.filter(
+            miembro=miembro
+        ).exclude(estado="cerrado").first()
         if expediente_abierto:
             messages.error(
                 request,
                 "Este nuevo creyente está en seguimiento. Primero debes cerrar el expediente desde el módulo Nuevo Creyente."
             )
-            return redirect("miembros_app:detalle", pk=miembro.pk)
+            referer = request.META.get('HTTP_REFERER')
+            if referer:
+                return redirect(referer)
+            return redirect("miembros_app:nuevo_creyente_detalle", pk=miembro.pk)
 
     if request.method == "POST":
         form = MiembroSalidaForm(request.POST, instance=miembro)
@@ -3590,6 +3617,47 @@ def salida_form(request, pk):
     )
 
 # Agregar esta vista a views.py de miembros_app
+
+@login_required
+@require_POST
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+def miembro_bitacora_add(request, pk):
+    """
+    Agregar una entrada manual a la bitácora del miembro.
+    """
+    from .models import MiembroBitacora
+    
+    miembro = get_object_or_404(Miembro, pk=pk)
+    
+    tipo = request.POST.get("tipo", "sistema")
+    texto = request.POST.get("texto", "").strip()
+    
+    if texto:
+        # Determinar título según tipo
+        if tipo == "nota":
+            titulo = "Nota registrada"
+        else:
+            titulo = "Mensaje"
+        
+        MiembroBitacora.objects.create(
+            miembro=miembro,
+            tipo=tipo,
+            titulo=titulo,
+            detalle=texto,
+            creado_por=request.user,
+        )
+        
+        messages.success(request, "Entrada agregada a la bitácora.")
+    else:
+        messages.error(request, "El texto no puede estar vacío.")
+    
+    return redirect("miembros_app:detalle", pk=miembro.pk)
+
+
+# ============================================
+# Agregar esta URL en urls.py de miembros_app:
+# ============================================
+# path('miembros/<int:pk>/bitacora/add/', views.miembro_bitacora_add, name='bitacora_add'),
 
 @login_required
 @require_POST

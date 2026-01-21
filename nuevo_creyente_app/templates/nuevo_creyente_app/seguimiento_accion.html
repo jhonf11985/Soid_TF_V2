@@ -1,0 +1,255 @@
+{% extends "core/base_sidebar.html" %}
+{% load static %}
+
+{% block title %}Nuevo Creyente | Acción{% endblock %}
+
+{% block sidebar_icon %}group_add{% endblock %}
+{% block sidebar_role_label %}Nuevo Creyente{% endblock %}
+
+{% block sidebar_menu %}
+<a class="sidebar-link" href="{% url 'nuevo_creyente_app:seguimiento_inbox' %}">
+  <span class="material-icons">inbox</span>
+  <span>Bandeja</span>
+</a>
+
+<a class="sidebar-link" href="{% url 'nuevo_creyente_app:seguimiento_lista' %}">
+  <span class="material-icons">list</span>
+  <span>Listado</span>
+</a>
+
+<a class="sidebar-link" href="{% url 'nuevo_creyente_app:seguimiento_detalle' miembro.id %}">
+  <span class="material-icons">folder</span>
+  <span>Expediente</span>
+</a>
+
+<a class="sidebar-link" href="{% url 'nuevo_creyente_app:nuevo_creyente' %}">
+  <span class="material-icons">dashboard</span>
+  <span>Dashboard</span>
+</a>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="qa-wrap">
+
+  <!-- Header -->
+  <div class="qa-header">
+    <div class="qa-title">
+      <div class="qa-name">{{ miembro.nombres }} {{ miembro.apellidos }}</div>
+      <div class="qa-sub">
+        {% if miembro.codigo_seguimiento %}<span class="qa-pill">{{ miembro.codigo_seguimiento }}</span>{% endif %}
+        {% if expediente.proximo_contacto %}
+          <span class="qa-chip">
+            <span class="material-icons">event</span>
+            Próximo: {{ expediente.proximo_contacto|date:"d/m/Y" }}
+          </span>
+        {% else %}
+          <span class="qa-chip warn">
+            <span class="material-icons">help_outline</span>
+            Sin próximo contacto
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="qa-actions">
+      {% with numero=miembro.whatsapp|default:miembro.telefono %}
+        {% if numero %}
+          <a class="qa-btn" target="_blank" href="https://wa.me/{{ numero|cut:' '|cut:'-' }}">
+            <span class="material-icons">chat</span>
+            WhatsApp
+          </a>
+        {% endif %}
+      {% endwith %}
+
+      {% if miembro.telefono %}
+        <a class="qa-btn" href="tel:{{ miembro.telefono }}">
+          <span class="material-icons">call</span>
+          Llamar
+        </a>
+      {% endif %}
+
+      <a class="qa-btn secondary" href="{% url 'nuevo_creyente_app:seguimiento_inbox' %}">
+        <span class="material-icons">arrow_back</span>
+        Volver a bandeja
+      </a>
+    </div>
+  </div>
+
+  {% if expediente.estado == "CERRADO" %}
+    <div class="qa-closed">
+      <span class="material-icons">lock</span>
+      Expediente cerrado. No se pueden registrar acciones.
+      <a class="qa-link" href="{% url 'nuevo_creyente_app:seguimiento_detalle' miembro.id %}">Ver expediente</a>
+    </div>
+  {% else %}
+
+  <!-- Botones CRM -->
+  <div class="qa-card">
+    <div class="qa-card-title">¿Qué hiciste hoy?</div>
+    <div class="qa-grid">
+      <button type="button" class="qa-big" onclick="openQA('llamada')">
+        <span class="material-icons">call</span>
+        Llamé
+      </button>
+
+      <button type="button" class="qa-big" onclick="openQA('whatsapp')">
+        <span class="material-icons">chat</span>
+        WhatsApp
+      </button>
+
+      <button type="button" class="qa-big" onclick="openQA('reunion')">
+        <span class="material-icons">handshake</span>
+        Reunión
+      </button>
+
+      <button type="button" class="qa-big warn" onclick="openQA('no_responde')">
+        <span class="material-icons">phone_disabled</span>
+        No respondió
+      </button>
+
+      <button type="button" class="qa-big secondary" onclick="openQA('nota')">
+        <span class="material-icons">note_add</span>
+        Nota rápida
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel / Modal Acción -->
+  <div class="qa-modal" id="qaModal" style="display:none;">
+    <div class="qa-modal-backdrop" onclick="closeQA()"></div>
+
+    <div class="qa-modal-panel">
+      <div class="qa-modal-head">
+        <div class="qa-modal-title" id="qaModalTitle">Acción</div>
+        <button type="button" class="qa-x" onclick="closeQA()">×</button>
+      </div>
+
+      <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_accion_guardar' miembro.id %}" class="qa-form">
+        {% csrf_token %}
+        <input type="hidden" name="tipo_accion" id="tipo_accion" value="">
+
+        <div class="qa-row" id="rowResultado">
+          <label>Resultado</label>
+          <select name="resultado" id="resultado">
+            <option value="">— Selecciona —</option>
+            <option value="respondio">Respondió</option>
+            <option value="no_respondio">No respondió</option>
+            <option value="numero_incorrecto">Número incorrecto</option>
+            <option value="se_agendo">Se agendó visita</option>
+            <option value="vendrá_domingo">Vendrá el domingo</option>
+            <option value="necesita_oracion">Necesita oración</option>
+          </select>
+        </div>
+
+        <div class="qa-row">
+          <label>Nota corta</label>
+          <textarea name="nota" id="nota" rows="3" placeholder="Ej: Hablamos 3 min. Está animado. Le escribo el viernes."></textarea>
+        </div>
+
+        <div class="qa-row">
+          <label>Próximo contacto (sugerido)</label>
+          <input type="date" name="proximo_contacto" id="proximo_contacto" value="{{ sugerido_proximo|date:'Y-m-d' }}">
+          <div class="qa-hint">Puedes cambiarlo o dejarlo vacío si aún no se define.</div>
+        </div>
+
+        <div class="qa-footer">
+          <button type="button" class="qa-btn secondary" onclick="closeQA()">Cancelar</button>
+          <button type="submit" class="qa-btn primary">
+            <span class="material-icons">check</span>
+            Guardar y volver a bandeja
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% endif %}
+
+</div>
+
+<style>
+  .qa-wrap{padding:16px}
+  .qa-header{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
+  .qa-name{font-size:18px;font-weight:900;color:#111827}
+  .qa-sub{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .qa-pill{font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;background:#eef2ff;color:#3730a3}
+  .qa-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;background:#f3f4f6;color:#111827}
+  .qa-chip .material-icons{font-size:16px;color:#6b7280}
+  .qa-chip.warn{background:#ffedd5;color:#7c2d12}
+  .qa-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  .qa-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;color:#111827;text-decoration:none;font-weight:800;font-size:13px;cursor:pointer}
+  .qa-btn .material-icons{font-size:18px;color:#6b7280}
+  .qa-btn:hover{box-shadow:0 6px 18px rgba(0,0,0,.08);transform:translateY(-1px)}
+  .qa-btn.primary{background:#111827;color:#fff;border-color:#111827}
+  .qa-btn.primary .material-icons{color:#fff}
+  .qa-btn.secondary{background:#f9fafb}
+
+  .qa-card{border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:14px}
+  .qa-card-title{font-weight:900;color:#111827;margin-bottom:10px}
+  .qa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .qa-big{display:flex;align-items:center;gap:10px;justify-content:flex-start;padding:14px 14px;border-radius:16px;border:1px solid #e5e7eb;background:#fff;font-weight:900;cursor:pointer}
+  .qa-big .material-icons{font-size:22px;color:#6b7280}
+  .qa-big:hover{box-shadow:0 6px 18px rgba(0,0,0,.08);transform:translateY(-1px)}
+  .qa-big.warn{border-color:#fed7aa;background:#fffaf3}
+  .qa-big.secondary{background:#f9fafb}
+
+  .qa-closed{border:1px dashed #e5e7eb;background:#fafafa;border-radius:16px;padding:12px;display:flex;gap:10px;align-items:center;color:#6b7280}
+  .qa-link{margin-left:8px;font-weight:900;color:#111827}
+
+  /* Modal */
+  .qa-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center}
+  .qa-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+  .qa-modal-panel{position:relative;width:min(720px,100%);background:#fff;border-radius:18px 18px 0 0;border:1px solid #e5e7eb;box-shadow:0 -10px 40px rgba(0,0,0,.18);padding:14px}
+  .qa-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .qa-modal-title{font-weight:900;color:#111827}
+  .qa-x{width:36px;height:36px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-size:18px}
+  .qa-form{display:flex;flex-direction:column;gap:12px}
+  .qa-row label{font-size:12px;font-weight:900;color:#111827;display:block;margin-bottom:6px}
+  .qa-row select,.qa-row input,.qa-row textarea{width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;outline:none}
+  .qa-row textarea{resize:vertical}
+  .qa-hint{margin-top:6px;font-size:12px;color:#6b7280}
+  .qa-footer{display:flex;justify-content:flex-end;gap:10px;padding-top:6px}
+
+  @media (max-width: 680px){
+    .qa-grid{grid-template-columns:1fr}
+    .qa-modal-panel{border-radius:18px; margin:10px}
+    .qa-modal{align-items:center}
+  }
+</style>
+
+<script>
+  const TIT = {
+    llamada: "Llamada",
+    whatsapp: "WhatsApp",
+    reunion: "Reunión",
+    no_responde: "No respondió",
+    nota: "Nota rápida"
+  };
+
+  function openQA(tipo){
+    document.getElementById("qaModal").style.display = "flex";
+    document.getElementById("tipo_accion").value = tipo;
+    document.getElementById("qaModalTitle").textContent = TIT[tipo] || "Acción";
+
+    // Resultado: si es nota rápida, lo ocultamos
+    const rowResultado = document.getElementById("rowResultado");
+    const resultado = document.getElementById("resultado");
+    if(tipo === "nota"){
+      rowResultado.style.display = "none";
+      resultado.value = "";
+    }else{
+      rowResultado.style.display = "block";
+    }
+
+    // Limpieza suave
+    document.getElementById("nota").focus();
+  }
+
+  function closeQA(){
+    document.getElementById("qaModal").style.display = "none";
+  }
+</script>
+
+{% endblock %}

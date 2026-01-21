@@ -1,0 +1,915 @@
+{% extends "core/base_sidebar.html" %}
+{% load static %}
+
+{% block title %}Nuevo Creyente | Bandeja{% endblock %}
+
+{% block sidebar_icon %}group_add{% endblock %}
+{% block sidebar_role_label %}Nuevo Creyente{% endblock %}
+
+{% block sidebar_menu %}
+<a class="sidebar-link active" href="{% url 'nuevo_creyente_app:seguimiento_inbox' %}">
+  <span class="material-icons">inbox</span>
+  <span>Bandeja</span>
+</a>
+<a class="sidebar-link" href="{% url 'nuevo_creyente_app:seguimiento_lista' %}">
+  <span class="material-icons">list</span>
+  <span>Listado</span>
+</a>
+<a class="sidebar-link" href="{% url 'nuevo_creyente_app:nuevo_creyente' %}">
+  <span class="material-icons">dashboard</span>
+  <span>Dashboard</span>
+</a>
+{% endblock %}
+
+{% block page_content %}
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+  <div class="odoo-control-left">
+    <a href="{% url 'nuevo_creyente_app:seguimiento_lista' %}" class="odoo-btn odoo-btn-secondary">
+      <span class="material-icons">list</span>
+      <span class="hide-mobile">Ver lista</span>
+    </a>
+    <div class="odoo-breadcrumb">
+      <span class="odoo-breadcrumb-title">Bandeja CRM</span>
+      <span class="material-icons odoo-breadcrumb-icon">inbox</span>
+    </div>
+  </div>
+  <div class="odoo-control-right">
+    <div class="odoo-chip">
+      <span class="material-icons">today</span>
+      <span>{{ hoy|date:"d/m/Y" }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     CRM LAYOUT: DOS COLUMNAS
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="crm-container">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PANEL IZQUIERDO: LISTA DE CONTACTOS
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <aside class="crm-list-panel">
+    
+    <!-- Búsqueda -->
+    <div class="crm-search-box">
+      <form method="get" class="crm-search">
+        <span class="material-icons">search</span>
+        <input type="text" name="q" value="{{ query }}" placeholder="Buscar..." autocomplete="off" />
+        {% if query %}
+          <a class="crm-clear" href="{{ request.path }}"><span class="material-icons">close</span></a>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- KPIs compactos -->
+    <div class="crm-kpis">
+      <a href="#sec-atrasados" class="crm-kpi crm-kpi--danger {% if not cnt_atrasados %}crm-kpi--zero{% endif %}" data-section="atrasados">
+        <span class="crm-kpi-num">{{ cnt_atrasados }}</span>
+        <span class="crm-kpi-label">Atrasados</span>
+      </a>
+      <a href="#sec-hoy" class="crm-kpi crm-kpi--warn {% if not cnt_hoy %}crm-kpi--zero{% endif %}" data-section="hoy">
+        <span class="crm-kpi-num">{{ cnt_hoy }}</span>
+        <span class="crm-kpi-label">Hoy</span>
+      </a>
+      <a href="#sec-sinproximo" class="crm-kpi crm-kpi--info {% if not cnt_sin_proximo %}crm-kpi--zero{% endif %}" data-section="sinproximo">
+        <span class="crm-kpi-num">{{ cnt_sin_proximo }}</span>
+        <span class="crm-kpi-label">Sin fecha</span>
+      </a>
+      <a href="#sec-manana" class="crm-kpi crm-kpi--neutral {% if not cnt_manana %}crm-kpi--zero{% endif %}" data-section="manana">
+        <span class="crm-kpi-num">{{ cnt_manana }}</span>
+        <span class="crm-kpi-label">Mañana</span>
+      </a>
+    </div>
+
+    <!-- Lista scrolleable -->
+    <div class="crm-list-scroll">
+
+      <!-- Grupo: Atrasados -->
+      {% if atrasados %}
+      <div class="crm-group" id="sec-atrasados">
+        <div class="crm-group-header crm-group-header--danger">
+          <span class="material-icons">priority_high</span>
+          <span>Atrasados</span>
+          <span class="crm-group-count">{{ atrasados|length }}</span>
+        </div>
+        {% for exp in atrasados %}
+          {% with m=exp.miembro %}
+          <div class="crm-item crm-item--danger" data-id="{{ m.id }}" data-nombre="{{ m.nombres }} {{ m.apellidos }}" data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}" data-whatsapp="{{ m.whatsapp|default:'' }}" data-codigo="{{ m.codigo_seguimiento|default:'' }}" data-fecha="{{ exp.proximo_contacto|date:'d/m/Y'|default:'Sin fecha' }}" data-estado="atrasado" data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
+            <div class="crm-item-avatar">{{ m.nombres|slice:":1"|upper }}</div>
+            <div class="crm-item-info">
+              <div class="crm-item-name">{{ m.nombres }} {{ m.apellidos }}</div>
+              <div class="crm-item-meta">
+                <span class="crm-item-date"><span class="material-icons">event</span>{{ exp.proximo_contacto|date:"d M" }}</span>
+                {% if m.codigo_seguimiento %}<span class="crm-item-tag">{{ m.codigo_seguimiento }}</span>{% endif %}
+              </div>
+            </div>
+            <span class="crm-item-badge crm-badge--danger">!</span>
+          </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Grupo: Hoy -->
+      {% if para_hoy %}
+      <div class="crm-group" id="sec-hoy">
+        <div class="crm-group-header crm-group-header--warn">
+          <span class="material-icons">today</span>
+          <span>Para hoy</span>
+          <span class="crm-group-count">{{ para_hoy|length }}</span>
+        </div>
+        {% for exp in para_hoy %}
+          {% with m=exp.miembro %}
+          <div class="crm-item crm-item--warn" data-id="{{ m.id }}" data-nombre="{{ m.nombres }} {{ m.apellidos }}" data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}" data-whatsapp="{{ m.whatsapp|default:'' }}" data-codigo="{{ m.codigo_seguimiento|default:'' }}" data-fecha="Hoy" data-estado="hoy" data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
+            <div class="crm-item-avatar">{{ m.nombres|slice:":1"|upper }}</div>
+            <div class="crm-item-info">
+              <div class="crm-item-name">{{ m.nombres }} {{ m.apellidos }}</div>
+              <div class="crm-item-meta">
+                <span class="crm-item-date"><span class="material-icons">schedule</span>Hoy</span>
+                {% if m.codigo_seguimiento %}<span class="crm-item-tag">{{ m.codigo_seguimiento }}</span>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Grupo: Sin próximo -->
+      {% if sin_proximo %}
+      <div class="crm-group" id="sec-sinproximo">
+        <div class="crm-group-header crm-group-header--info">
+          <span class="material-icons">help_outline</span>
+          <span>Sin próximo contacto</span>
+          <span class="crm-group-count">{{ sin_proximo|length }}</span>
+        </div>
+        {% for exp in sin_proximo %}
+          {% with m=exp.miembro %}
+          <div class="crm-item crm-item--info" data-id="{{ m.id }}" data-nombre="{{ m.nombres }} {{ m.apellidos }}" data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}" data-whatsapp="{{ m.whatsapp|default:'' }}" data-codigo="{{ m.codigo_seguimiento|default:'' }}" data-fecha="Sin fecha" data-estado="pendiente" data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
+            <div class="crm-item-avatar">{{ m.nombres|slice:":1"|upper }}</div>
+            <div class="crm-item-info">
+              <div class="crm-item-name">{{ m.nombres }} {{ m.apellidos }}</div>
+              <div class="crm-item-meta">
+                <span class="crm-item-date crm-item-date--muted"><span class="material-icons">event_busy</span>Sin fecha</span>
+                {% if m.codigo_seguimiento %}<span class="crm-item-tag">{{ m.codigo_seguimiento }}</span>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Grupo: Mañana -->
+      {% if para_manana %}
+      <div class="crm-group" id="sec-manana">
+        <div class="crm-group-header crm-group-header--neutral">
+          <span class="material-icons">date_range</span>
+          <span>Mañana</span>
+          <span class="crm-group-count">{{ para_manana|length }}</span>
+        </div>
+        {% for exp in para_manana %}
+          {% with m=exp.miembro %}
+          <div class="crm-item" data-id="{{ m.id }}" data-nombre="{{ m.nombres }} {{ m.apellidos }}" data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}" data-whatsapp="{{ m.whatsapp|default:'' }}" data-codigo="{{ m.codigo_seguimiento|default:'' }}" data-fecha="Mañana" data-estado="mañana" data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
+            <div class="crm-item-avatar">{{ m.nombres|slice:":1"|upper }}</div>
+            <div class="crm-item-info">
+              <div class="crm-item-name">{{ m.nombres }} {{ m.apellidos }}</div>
+              <div class="crm-item-meta">
+                <span class="crm-item-date"><span class="material-icons">event</span>Mañana</span>
+              </div>
+            </div>
+          </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Empty state -->
+      {% if not atrasados and not para_hoy and not sin_proximo and not para_manana %}
+      <div class="crm-empty-list">
+        <span class="material-icons">inbox</span>
+        <div>
+          <strong>Bandeja vacía</strong>
+          <p>No hay contactos pendientes</p>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PANEL DERECHO: DETALLE DEL CONTACTO
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <main class="crm-detail-panel">
+    
+    <!-- Estado inicial: ningún contacto seleccionado -->
+    <div class="crm-detail-empty" id="detailEmpty">
+      <div class="crm-detail-empty-icon">
+        <span class="material-icons">touch_app</span>
+      </div>
+      <h3>Selecciona un contacto</h3>
+      <p>Haz clic en un contacto de la lista para ver sus detalles y tomar acción.</p>
+    </div>
+
+    <!-- Detalle del contacto (oculto inicialmente) -->
+    <div class="crm-detail-content" id="detailContent" style="display:none;">
+      
+      <!-- Header del contacto -->
+      <div class="crm-detail-header">
+        <div class="crm-detail-avatar" id="detailAvatar">J</div>
+        <div class="crm-detail-title">
+          <h2 id="detailName">Nombre del Contacto</h2>
+          <div class="crm-detail-badges">
+            <span class="crm-detail-status" id="detailStatus">Estado</span>
+            <span class="crm-detail-code" id="detailCode">Código</span>
+          </div>
+        </div>
+        <button class="crm-detail-close" id="detailClose" title="Cerrar">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <!-- Info rápida -->
+      <div class="crm-detail-info">
+        <div class="crm-info-row">
+          <span class="material-icons">event</span>
+          <span class="crm-info-label">Próximo contacto:</span>
+          <span class="crm-info-value" id="detailFecha">--</span>
+        </div>
+        <div class="crm-info-row" id="detailTelefonoRow">
+          <span class="material-icons">phone</span>
+          <span class="crm-info-label">Teléfono:</span>
+          <span class="crm-info-value" id="detailTelefono">--</span>
+        </div>
+        <div class="crm-info-row" id="detailWhatsappRow">
+          <span class="material-icons">chat</span>
+          <span class="crm-info-label">WhatsApp:</span>
+          <span class="crm-info-value" id="detailWhatsapp">--</span>
+        </div>
+      </div>
+
+      <!-- Acciones rápidas -->
+      <div class="crm-detail-actions">
+        <a href="#" class="crm-action crm-action--primary" id="actionCall">
+          <span class="material-icons">phone</span>
+          <span>Llamar</span>
+        </a>
+        <a href="#" class="crm-action crm-action--success" id="actionWhatsapp" target="_blank">
+          <span class="material-icons">chat</span>
+          <span>WhatsApp</span>
+        </a>
+        <a href="#" class="crm-action crm-action--secondary" id="actionDetail">
+          <span class="material-icons">open_in_new</span>
+          <span>Ver ficha</span>
+        </a>
+      </div>
+
+      <!-- Acciones de seguimiento -->
+      <div class="crm-detail-section">
+        <h4>Acciones de seguimiento</h4>
+        <div class="crm-action-buttons">
+          <a href="#" class="crm-btn crm-btn--block" id="actionRegistrar">
+            <span class="material-icons">edit_note</span>
+            Registrar contacto
+          </a>
+          <a href="#" class="crm-btn crm-btn--outline" id="actionAgendar">
+            <span class="material-icons">event</span>
+            Agendar próximo
+          </a>
+        </div>
+      </div>
+
+      <!-- Notas rápidas -->
+      <div class="crm-detail-section">
+        <h4>Nota rápida</h4>
+        <form class="crm-quick-note">
+          <textarea placeholder="Escribe una nota sobre este contacto..." rows="3"></textarea>
+          <button type="button" class="crm-btn crm-btn--sm">
+            <span class="material-icons">save</span>
+            Guardar
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* Barra control Odoo */
+.odoo-control-bar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 16px; background:#f8f9fa; border-bottom:1px solid #dee2e6;
+  flex-wrap:wrap; gap:10px;
+}
+.odoo-control-left,.odoo-control-right{display:flex; align-items:center; gap:12px;}
+.odoo-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px; font-size:13px; font-weight:500;
+  border:none; border-radius:6px; cursor:pointer; text-decoration:none;
+  transition:all .15s ease;
+}
+.odoo-btn .material-icons{font-size:18px;}
+.odoo-btn-primary{background:#017e84; color:#fff;}
+.odoo-btn-primary:hover{background:#016166;}
+.odoo-btn-secondary{background:#fff; color:#495057; border:1px solid #dee2e6;}
+.odoo-btn-secondary:hover{background:#e9ecef;}
+.odoo-breadcrumb{
+  display:flex; align-items:center; gap:6px; padding:4px 10px;
+  background:#fff; border:1px solid #dee2e6; border-radius:6px; font-size:13px;
+}
+.odoo-breadcrumb-title{font-weight:600; color:#495057;}
+.odoo-breadcrumb-icon{font-size:16px; color:#6c757d;}
+.odoo-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border:1px solid #dee2e6; background:#fff;
+  border-radius:999px; font-size:12px; color:#495057;
+}
+.odoo-chip .material-icons{font-size:16px; color:#017e84;}
+.hide-mobile{display:inline;}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CRM LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+.crm-container{
+  display:grid;
+  grid-template-columns:380px 1fr;
+  height:calc(100vh - 53px);
+  background:#f8f9fa;
+}
+
+/* Panel izquierdo */
+.crm-list-panel{
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+  border-right:1px solid #dee2e6;
+  overflow:hidden;
+}
+
+/* Búsqueda */
+.crm-search-box{
+  padding:12px;
+  border-bottom:1px solid #e9ecef;
+}
+.crm-search{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:#f8f9fa;
+  border:1px solid #e9ecef;
+  border-radius:8px;
+  padding:8px 12px;
+  transition:all .2s ease;
+}
+.crm-search:focus-within{
+  background:#fff;
+  border-color:#017e84;
+  box-shadow:0 0 0 3px rgba(1,126,132,.1);
+}
+.crm-search .material-icons{font-size:20px; color:#6c757d;}
+.crm-search input{
+  flex:1; border:none; outline:none; background:transparent;
+  font-size:14px; color:#212529;
+}
+.crm-search input::placeholder{color:#adb5bd;}
+.crm-clear{
+  display:flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:50%;
+  background:#e9ecef; color:#6c757d; text-decoration:none;
+}
+.crm-clear:hover{background:#dee2e6;}
+.crm-clear .material-icons{font-size:14px;}
+
+/* KPIs */
+.crm-kpis{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  padding:12px;
+  border-bottom:1px solid #e9ecef;
+}
+.crm-kpi{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:10px 6px;
+  border-radius:8px;
+  text-decoration:none;
+  transition:all .15s ease;
+  border:1px solid transparent;
+}
+.crm-kpi:hover{background:#f8f9fa;}
+.crm-kpi-num{font-size:18px; font-weight:800; line-height:1;}
+.crm-kpi-label{font-size:10px; font-weight:600; color:#6c757d; margin-top:4px; text-transform:uppercase;}
+
+.crm-kpi--danger .crm-kpi-num{color:#dc2626;}
+.crm-kpi--danger:hover{background:#fef2f2; border-color:#fecaca;}
+.crm-kpi--warn .crm-kpi-num{color:#d97706;}
+.crm-kpi--warn:hover{background:#fffbeb; border-color:#fde68a;}
+.crm-kpi--info .crm-kpi-num{color:#0284c7;}
+.crm-kpi--info:hover{background:#f0f9ff; border-color:#bae6fd;}
+.crm-kpi--neutral .crm-kpi-num{color:#6c757d;}
+.crm-kpi--zero{opacity:.4;}
+
+/* Lista scroll */
+.crm-list-scroll{
+  flex:1;
+  overflow-y:auto;
+  padding:8px 0;
+}
+
+/* Grupos */
+.crm-group{margin-bottom:8px;}
+.crm-group-header{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 16px;
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  color:#6c757d;
+  background:#f8f9fa;
+  position:sticky;
+  top:0;
+  z-index:1;
+}
+.crm-group-header .material-icons{font-size:16px;}
+.crm-group-count{
+  margin-left:auto;
+  background:#e9ecef;
+  padding:2px 8px;
+  border-radius:999px;
+  font-size:10px;
+}
+
+.crm-group-header--danger{color:#991b1b; background:#fef2f2;}
+.crm-group-header--danger .crm-group-count{background:#fecaca; color:#991b1b;}
+.crm-group-header--warn{color:#92400e; background:#fffbeb;}
+.crm-group-header--warn .crm-group-count{background:#fde68a; color:#92400e;}
+.crm-group-header--info{color:#075985; background:#f0f9ff;}
+.crm-group-header--info .crm-group-count{background:#bae6fd; color:#075985;}
+.crm-group-header--neutral{color:#6c757d; background:#f8f9fa;}
+
+/* Items */
+.crm-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 16px;
+  cursor:pointer;
+  transition:all .15s ease;
+  border-left:3px solid transparent;
+}
+.crm-item:hover{background:#f8f9fa;}
+.crm-item.active{background:#e7f5f5; border-left-color:#017e84;}
+
+.crm-item--danger{border-left-color:#dc2626;}
+.crm-item--warn{border-left-color:#d97706;}
+.crm-item--info{border-left-color:#0284c7;}
+
+.crm-item-avatar{
+  width:40px; height:40px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:#e0f2fe; color:#0284c7;
+  font-size:16px; font-weight:700;
+  flex-shrink:0;
+}
+.crm-item-info{flex:1; min-width:0;}
+.crm-item-name{
+  font-size:14px; font-weight:700; color:#212529;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.crm-item-meta{
+  display:flex; align-items:center; gap:8px; margin-top:4px;
+}
+.crm-item-date{
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:11px; color:#6c757d;
+}
+.crm-item-date .material-icons{font-size:14px;}
+.crm-item-date--muted{color:#adb5bd;}
+.crm-item-tag{
+  font-size:10px; font-weight:700;
+  padding:2px 6px; border-radius:4px;
+  background:#e0f2fe; color:#0284c7;
+}
+.crm-item-badge{
+  width:24px; height:24px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  font-size:12px; font-weight:900;
+}
+.crm-badge--danger{background:#fee2e2; color:#dc2626;}
+
+/* Empty list */
+.crm-empty-list{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 20px;
+  text-align:center;
+  color:#6c757d;
+}
+.crm-empty-list .material-icons{font-size:48px; color:#dee2e6; margin-bottom:12px;}
+.crm-empty-list strong{font-size:14px; color:#495057;}
+.crm-empty-list p{font-size:12px; margin:4px 0 0;}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL DERECHO: DETALLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.crm-detail-panel{
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  background:#f8f9fa;
+}
+
+/* Empty state */
+.crm-detail-empty{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:40px;
+  color:#6c757d;
+}
+.crm-detail-empty-icon{
+  width:80px; height:80px;
+  display:flex; align-items:center; justify-content:center;
+  background:#e9ecef; border-radius:50%;
+  margin-bottom:20px;
+}
+.crm-detail-empty-icon .material-icons{font-size:36px; color:#adb5bd;}
+.crm-detail-empty h3{font-size:18px; font-weight:700; color:#495057; margin:0 0 8px;}
+.crm-detail-empty p{font-size:14px; margin:0; max-width:280px;}
+
+/* Content */
+.crm-detail-content{
+  padding:20px;
+}
+
+/* Header */
+.crm-detail-header{
+  display:flex;
+  align-items:flex-start;
+  gap:16px;
+  padding:20px;
+  background:#fff;
+  border-radius:12px;
+  border:1px solid #e9ecef;
+  margin-bottom:16px;
+}
+.crm-detail-avatar{
+  width:56px; height:56px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:linear-gradient(135deg, #017e84, #0ea5e9);
+  color:#fff;
+  font-size:22px; font-weight:700;
+  flex-shrink:0;
+}
+.crm-detail-title{flex:1; min-width:0;}
+.crm-detail-title h2{
+  font-size:18px; font-weight:800; color:#212529; margin:0 0 8px;
+}
+.crm-detail-badges{display:flex; gap:8px; flex-wrap:wrap;}
+.crm-detail-status{
+  font-size:11px; font-weight:700;
+  padding:4px 10px; border-radius:999px;
+  background:#fee2e2; color:#991b1b;
+  text-transform:uppercase;
+}
+.crm-detail-status.status-hoy{background:#fef3c7; color:#92400e;}
+.crm-detail-status.status-pendiente{background:#e0f2fe; color:#075985;}
+.crm-detail-status.status-manana{background:#f3f4f6; color:#495057;}
+.crm-detail-code{
+  font-size:11px; font-weight:700;
+  padding:4px 10px; border-radius:999px;
+  background:#e0f2fe; color:#0284c7;
+}
+.crm-detail-close{
+  width:32px; height:32px;
+  display:flex; align-items:center; justify-content:center;
+  border:none; background:#f3f4f6; border-radius:8px;
+  cursor:pointer; color:#6c757d;
+  transition:all .15s ease;
+}
+.crm-detail-close:hover{background:#e9ecef; color:#212529;}
+
+/* Info rows */
+.crm-detail-info{
+  background:#fff;
+  border-radius:12px;
+  border:1px solid #e9ecef;
+  padding:16px;
+  margin-bottom:16px;
+}
+.crm-info-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 0;
+  border-bottom:1px solid #f3f4f6;
+}
+.crm-info-row:last-child{border-bottom:none; padding-bottom:0;}
+.crm-info-row:first-child{padding-top:0;}
+.crm-info-row .material-icons{font-size:20px; color:#017e84;}
+.crm-info-label{font-size:13px; color:#6c757d;}
+.crm-info-value{font-size:13px; font-weight:700; color:#212529; margin-left:auto;}
+
+/* Actions */
+.crm-detail-actions{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-bottom:16px;
+}
+.crm-action{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  padding:16px 12px;
+  background:#fff;
+  border:1px solid #e9ecef;
+  border-radius:12px;
+  text-decoration:none;
+  transition:all .15s ease;
+}
+.crm-action:hover{border-color:#dee2e6; box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.crm-action .material-icons{font-size:24px;}
+.crm-action span:last-child{font-size:12px; font-weight:600;}
+
+.crm-action--primary{background:#017e84; border-color:#017e84; color:#fff;}
+.crm-action--primary:hover{background:#016166; border-color:#016166;}
+.crm-action--success{background:#059669; border-color:#059669; color:#fff;}
+.crm-action--success:hover{background:#047857; border-color:#047857;}
+.crm-action--secondary{color:#495057;}
+.crm-action--secondary .material-icons{color:#017e84;}
+
+/* Sections */
+.crm-detail-section{
+  background:#fff;
+  border-radius:12px;
+  border:1px solid #e9ecef;
+  padding:16px;
+  margin-bottom:16px;
+}
+.crm-detail-section h4{
+  font-size:13px; font-weight:700; color:#495057;
+  margin:0 0 12px; text-transform:uppercase; letter-spacing:.3px;
+}
+
+/* Buttons */
+.crm-action-buttons{display:flex; flex-direction:column; gap:8px;}
+.crm-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:12px 16px;
+  font-size:14px;
+  font-weight:600;
+  border-radius:8px;
+  text-decoration:none;
+  cursor:pointer;
+  border:none;
+  transition:all .15s ease;
+}
+.crm-btn .material-icons{font-size:20px;}
+.crm-btn--block{background:#017e84; color:#fff;}
+.crm-btn--block:hover{background:#016166;}
+.crm-btn--outline{background:#fff; color:#017e84; border:1px solid #017e84;}
+.crm-btn--outline:hover{background:#e7f5f5;}
+.crm-btn--sm{padding:8px 12px; font-size:12px;}
+.crm-btn--sm .material-icons{font-size:16px;}
+
+/* Quick note */
+.crm-quick-note textarea{
+  width:100%;
+  padding:12px;
+  border:1px solid #e9ecef;
+  border-radius:8px;
+  font-size:13px;
+  resize:vertical;
+  margin-bottom:10px;
+  font-family:inherit;
+}
+.crm-quick-note textarea:focus{
+  outline:none;
+  border-color:#017e84;
+  box-shadow:0 0 0 3px rgba(1,126,132,.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px){
+  .crm-container{
+    grid-template-columns:1fr;
+    height:auto;
+    min-height:calc(100vh - 53px);
+  }
+  .crm-list-panel{
+    border-right:none;
+    border-bottom:1px solid #dee2e6;
+    max-height:50vh;
+  }
+  .crm-detail-panel{
+    min-height:50vh;
+  }
+  .crm-detail-empty{
+    padding:30px 20px;
+  }
+  .crm-detail-empty-icon{
+    width:60px; height:60px;
+  }
+  .crm-detail-empty-icon .material-icons{font-size:28px;}
+  .crm-detail-empty h3{font-size:16px;}
+  .crm-detail-empty p{font-size:13px;}
+}
+
+@media (max-width: 600px){
+  .odoo-breadcrumb{display:none;}
+  .hide-mobile{display:none;}
+  
+  .crm-kpis{
+    grid-template-columns:repeat(4,1fr);
+    gap:6px;
+    padding:10px;
+  }
+  .crm-kpi{padding:8px 4px;}
+  .crm-kpi-num{font-size:16px;}
+  .crm-kpi-label{font-size:9px;}
+  
+  .crm-item{padding:10px 12px;}
+  .crm-item-avatar{width:36px; height:36px; font-size:14px;}
+  .crm-item-name{font-size:13px;}
+  
+  .crm-detail-content{padding:12px;}
+  .crm-detail-header{padding:16px; gap:12px;}
+  .crm-detail-avatar{width:48px; height:48px; font-size:18px;}
+  .crm-detail-title h2{font-size:16px;}
+  
+  .crm-detail-actions{
+    grid-template-columns:1fr 1fr 1fr;
+    gap:8px;
+  }
+  .crm-action{padding:12px 8px;}
+  .crm-action .material-icons{font-size:22px;}
+  .crm-action span:last-child{font-size:11px;}
+}
+</style>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const items = document.querySelectorAll('.crm-item');
+  const detailEmpty = document.getElementById('detailEmpty');
+  const detailContent = document.getElementById('detailContent');
+  const detailClose = document.getElementById('detailClose');
+  
+  // Elementos del detalle
+  const detailAvatar = document.getElementById('detailAvatar');
+  const detailName = document.getElementById('detailName');
+  const detailStatus = document.getElementById('detailStatus');
+  const detailCode = document.getElementById('detailCode');
+  const detailFecha = document.getElementById('detailFecha');
+  const detailTelefono = document.getElementById('detailTelefono');
+  const detailTelefonoRow = document.getElementById('detailTelefonoRow');
+  const detailWhatsapp = document.getElementById('detailWhatsapp');
+  const detailWhatsappRow = document.getElementById('detailWhatsappRow');
+  
+  // Acciones
+  const actionCall = document.getElementById('actionCall');
+  const actionWhatsapp = document.getElementById('actionWhatsapp');
+  const actionDetail = document.getElementById('actionDetail');
+  const actionRegistrar = document.getElementById('actionRegistrar');
+  const actionAgendar = document.getElementById('actionAgendar');
+  
+  // Función para mostrar detalle
+  function showDetail(item) {
+    // Remover active de todos
+    items.forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    
+    // Obtener datos
+    const nombre = item.dataset.nombre;
+    const telefono = item.dataset.telefono;
+    const whatsapp = item.dataset.whatsapp;
+    const codigo = item.dataset.codigo;
+    const fecha = item.dataset.fecha;
+    const estado = item.dataset.estado;
+    const url = item.dataset.url;
+    
+    // Llenar datos
+    detailAvatar.textContent = nombre.charAt(0).toUpperCase();
+    detailName.textContent = nombre;
+    detailFecha.textContent = fecha;
+    
+    // Estado
+    detailStatus.textContent = estado.charAt(0).toUpperCase() + estado.slice(1);
+    detailStatus.className = 'crm-detail-status';
+    if (estado === 'hoy') detailStatus.classList.add('status-hoy');
+    else if (estado === 'pendiente') detailStatus.classList.add('status-pendiente');
+    else if (estado === 'mañana') detailStatus.classList.add('status-manana');
+    
+    // Código
+    if (codigo) {
+      detailCode.textContent = codigo;
+      detailCode.style.display = 'inline-block';
+    } else {
+      detailCode.style.display = 'none';
+    }
+    
+    // Teléfono
+    if (telefono) {
+      detailTelefono.textContent = telefono;
+      detailTelefonoRow.style.display = 'flex';
+      actionCall.href = 'tel:' + telefono;
+      actionCall.style.display = 'flex';
+    } else {
+      detailTelefonoRow.style.display = 'none';
+      actionCall.style.display = 'none';
+    }
+    
+    // WhatsApp
+    if (whatsapp) {
+      detailWhatsapp.textContent = whatsapp;
+      detailWhatsappRow.style.display = 'flex';
+      actionWhatsapp.href = 'https://wa.me/' + whatsapp.replace(/[^0-9]/g, '');
+      actionWhatsapp.style.display = 'flex';
+    } else {
+      detailWhatsappRow.style.display = 'none';
+      actionWhatsapp.style.display = 'none';
+    }
+    
+    // URLs
+    actionDetail.href = url;
+    actionRegistrar.href = url;
+    actionAgendar.href = url;
+    
+    // Mostrar panel
+    detailEmpty.style.display = 'none';
+    detailContent.style.display = 'block';
+  }
+  
+  // Función para cerrar detalle
+  function hideDetail() {
+    items.forEach(i => i.classList.remove('active'));
+    detailContent.style.display = 'none';
+    detailEmpty.style.display = 'flex';
+  }
+  
+  // Event listeners
+  items.forEach(item => {
+    item.addEventListener('click', () => showDetail(item));
+  });
+  
+  detailClose.addEventListener('click', hideDetail);
+  
+  // Auto-seleccionar el primer item si hay alguno
+  if (items.length > 0) {
+    // En desktop, mostrar el primero automáticamente
+    if (window.innerWidth > 900) {
+      showDetail(items[0]);
+    }
+  }
+  
+  // Smooth scroll a secciones desde KPIs
+  document.querySelectorAll('.crm-kpi').forEach(kpi => {
+    kpi.addEventListener('click', function(e) {
+      const href = this.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    });
+  });
+});
+</script>
+
+{% endblock %}

@@ -27,24 +27,23 @@
             <span class="material-icons">description</span>
             Ficha
         </a>
-
-{# BOTÓN DAR SALIDA #}
 {% if expediente and expediente.estado == "abierto" %}
     <button type="button"
-            class="odoo-btn odoo-btn-danger"
-            disabled
-            title="No se puede dar salida mientras el expediente esté abierto."
-            style="opacity:.55; cursor:not-allowed;">
+            class="odoo-btn odoo-btn-danger js-bloqueo-salida"
+            data-bloqueo="expediente-abierto">
         <span class="material-icons">logout</span>
         Dar salida
     </button>
 {% else %}
-    <a href="{% url 'miembros_app:salida_form' miembro.pk %}"
-       class="odoo-btn odoo-btn-danger">
-        <span class="material-icons">logout</span>
-        Dar salida
-    </a>
+<a href="{% url 'miembros_app:salida_form' miembro.pk %}"
+   class="odoo-btn odoo-btn-danger js-dar-salida"
+   data-bloqueado="{% if expediente_abierto %}1{% else %}0{% endif %}">
+    <span class="material-icons">logout</span>
+    Dar salida
+</a>
+
 {% endif %}
+
 
 
         {# Si esta URL existe en tu sistema, ok. Si no, quítala. #}
@@ -974,6 +973,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const targetTab = document.querySelector(`.odoo-tab[data-tab="${tabParam}"]`);
         if (targetTab) targetTab.click();
     }
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.querySelector(".js-bloqueo-salida");
+
+    if (!btn) return;
+
+    btn.addEventListener("click", function () {
+        alert(
+            "No se puede dar salida a este nuevo creyente.\n\n" +
+            "Tiene un expediente de seguimiento ABIERTO.\n" +
+            "Debes cerrar primero el seguimiento en el módulo de Nuevo Creyente."
+        );
+    });
 });
 </script>
 
