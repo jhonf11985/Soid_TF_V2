@@ -296,6 +296,15 @@
     </span>
 </footer>
 
+<script>
+  window.SOIND_NOMBRE_PERSONA = "{{ 
+    request.user.miembro.nombres
+    |default:request.user.first_name
+    |default:request.user.username
+    |escapejs
+  }}";
+</script>
+
 <!-- Scripts de notificaciones -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -487,7 +496,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const el = document.getElementById("navSaludo");
   if (!el) return;
 
-  const nombre = "{{ user.first_name|default:user.username|escapejs }}";
+  const nombre = window.SOIND_NOMBRE_PERSONA || "Bienvenido";
+
   const hoy = new Date();
   const fechaHoy = hoy.toISOString().slice(0, 10);
 
@@ -506,8 +516,10 @@ document.addEventListener("DOMContentLoaded", function () {
     `${nombre}, Dios te acompaña 🌿`,
   ];
 
-  const keyFecha = "pwa_saludo_fecha";
-  const keyMsg = "pwa_saludo_msg";
+    const userId = window.SOIND_USER_ID || "anon";
+    const keyFecha = `pwa_saludo_fecha_${userId}`;
+    const keyMsg = `pwa_saludo_msg_${userId}`;
+
 
   let mensaje = localStorage.getItem(keyMsg);
   const fechaGuardada = localStorage.getItem(keyFecha);
