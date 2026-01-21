@@ -433,6 +433,13 @@ def miembros_dashboard(request):
 # -------------------------------------
 # FUNCIÓN AUXILIAR DE FILTRO DE MIEMBROS
 # -------------------------------------
+# =====================================================================
+# ACTUALIZACIÓN DE LA FUNCIÓN filtrar_miembros en views.py
+# Agregar estos filtros: rol_ministerial, estado_ministerial, tiene_credenciales
+# =====================================================================
+
+# REEMPLAZAR la función filtrar_miembros completa con esta versión:
+
 @login_required
 @require_GET
 @permission_required("miembros_app.view_miembro", raise_exception=True)
@@ -455,6 +462,14 @@ def filtrar_miembros(request, miembros_base):
 
     # En el HTML: bautizado = "" / "1" / "0"
     bautizado = request.GET.get("bautizado", "").strip()
+
+    # ═══════════════════════════════════════════════════════════════════
+    # NUEVOS FILTROS MINISTERIALES
+    # ═══════════════════════════════════════════════════════════════════
+    rol_ministerial = request.GET.get("rol_ministerial", "").strip()
+    estado_ministerial = request.GET.get("estado_ministerial", "").strip()
+    # tiene_credenciales: "" / "1" / "0"
+    tiene_credenciales_filtro = request.GET.get("tiene_credenciales", "").strip()
 
     # Checkboxes (vienen solo si están marcados)
     tiene_contacto = request.GET.get("tiene_contacto", "") == "1"
@@ -541,6 +556,20 @@ def filtrar_miembros(request, miembros_base):
             Q(bautizado_confirmado=False) | Q(bautizado_confirmado__isnull=True)
         )
 
+    # ═══════════════════════════════════════════════════════════════════
+    # NUEVOS FILTROS MINISTERIALES
+    # ═══════════════════════════════════════════════════════════════════
+    if rol_ministerial:
+        miembros = miembros.filter(rol_ministerial=rol_ministerial)
+
+    if estado_ministerial:
+        miembros = miembros.filter(estado_ministerial=estado_ministerial)
+
+    if tiene_credenciales_filtro == "1":
+        miembros = miembros.filter(tiene_credenciales=True)
+    elif tiene_credenciales_filtro == "0":
+        miembros = miembros.filter(tiene_credenciales=False)
+
     # Solo con contacto
     if tiene_contacto:
         miembros = miembros.filter(
@@ -601,6 +630,25 @@ def filtrar_miembros(request, miembros_base):
     except Exception:
         generos_choices = []
 
+    # ═══════════════════════════════════════════════════════════════════
+    # CHOICES PARA NUEVOS FILTROS MINISTERIALES
+    # ═══════════════════════════════════════════════════════════════════
+    try:
+        campo_rol_ministerial = Miembro._meta.get_field("rol_ministerial")
+        roles_ministeriales_choices = [
+            (k, v) for k, v in campo_rol_ministerial.flatchoices if k
+        ]
+    except Exception:
+        roles_ministeriales_choices = []
+
+    try:
+        campo_estado_ministerial = Miembro._meta.get_field("estado_ministerial")
+        estados_ministeriales_choices = [
+            (k, v) for k, v in campo_estado_ministerial.flatchoices if k
+        ]
+    except Exception:
+        estados_ministeriales_choices = []
+
     # -----------------------------
     # 8. Contexto de filtros
     # -----------------------------
@@ -619,9 +667,18 @@ def filtrar_miembros(request, miembros_base):
         "usar_rango_edad": usar_rango_edad,
         "edad_min": edad_min_str,
         "edad_max": edad_max_str,
+        # ═══════════════════════════════════════════════════════════════
+        # NUEVOS FILTROS MINISTERIALES EN CONTEXTO
+        # ═══════════════════════════════════════════════════════════════
+        "rol_ministerial": rol_ministerial,
+        "estado_ministerial": estado_ministerial,
+        "tiene_credenciales_filtro": tiene_credenciales_filtro,
+        "roles_ministeriales_choices": roles_ministeriales_choices,
+        "estados_ministeriales_choices": estados_ministeriales_choices,
     }
 
     return miembros, filtros_context
+
 
 
 # -------------------------------------
