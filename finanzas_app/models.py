@@ -276,6 +276,9 @@ class MovimientoFinanciero(models.Model):
         verbose_name = "Movimiento financiero"
         verbose_name_plural = "Movimientos financieros"
         ordering = ["-fecha", "-creado_en"]
+        permissions = [
+        ("ver_dashboard_finanzas", "Puede ver el Dashboard de Finanzas"),
+        ]
 
     def __str__(self):
         signo = "+" if self.tipo == "ingreso" else "-"

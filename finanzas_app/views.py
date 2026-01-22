@@ -37,6 +37,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
+from django.core.exceptions import PermissionDenied
 
 
 
@@ -72,11 +73,52 @@ def egreso_recibo(request, pk):
     )
 
 
+
+
 @login_required
 def dashboard(request):
-    """
-    Dashboard de Finanzas con datos reales.
-    """
+    # 1) Superuser siempre entra
+    if request.user.is_superuser:
+        return _dashboard_real(request)
+
+    # 2) Si tiene permiso explícito de dashboard, entra
+    if request.user.has_perm("finanzas_app.ver_dashboard_finanzas"):
+        return _dashboard_real(request)
+
+    # 3) Si NO tiene dashboard, lo llevamos a lo primero que SÍ pueda ver en Finanzas
+    #    (ordenado por "lo más útil" como puerta de entrada)
+
+    # Movimientos
+    if request.user.has_perm("finanzas_app.view_movimientofinanciero"):
+        return redirect("finanzas_app:movimientos_listado")
+
+    # Cuentas (si tu módulo usa este modelo)
+    if request.user.has_perm("finanzas_app.view_cuentafinanciera"):
+        return redirect("finanzas_app:cuentas_listado")
+
+    # Categorías
+    if request.user.has_perm("finanzas_app.view_categoriamovimiento"):
+        return redirect("finanzas_app:categorias_listado")
+
+    # CxP
+    if request.user.has_perm("finanzas_app.view_cuentaporpagar"):
+        return redirect("finanzas_app:cxp_list")
+
+    # Proveedores
+    if request.user.has_perm("finanzas_app.view_proveedorfinanciero"):
+        return redirect("finanzas_app:proveedores_list")
+
+    # Reportes (si quieres permitir reportes aunque no vea movimientos, déjalo)
+    if request.user.has_perm("finanzas_app.view_movimientofinanciero"):
+        return redirect("finanzas_app:reportes_home")
+    if request.user.has_perm("finanzas_app.view_cuentaporpagar"):
+        return redirect("finanzas_app:reportes_home")
+
+    # 4) Si no tiene ningún permiso de Finanzas, entonces sí: 403 bonito
+    raise PermissionDenied
+
+
+    
     from django.db.models.functions import TruncMonth
     from dateutil.relativedelta import relativedelta
     
