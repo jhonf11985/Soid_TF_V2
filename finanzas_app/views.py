@@ -31,11 +31,12 @@ from .forms import (
     ProveedorFinancieroForm,
     CuentaPorPagarForm,
 )
-
-
+from django.shortcuts import get_object_or_404
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.utils import timezone
-
+from django.views.decorators.http import require_GET, require_POST
 
 
 
@@ -46,7 +47,11 @@ from django.utils import timezone
 # ============================================
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def egreso_recibo(request, pk):
+    ...
+
     """
     Vista SOLO para imprimir el recibo de un EGRESO (formato 80mm).
     """
@@ -271,7 +276,11 @@ def dashboard(request):
 # ============================================
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_cuentafinanciera", raise_exception=True)
 def cuentas_listado(request):
+    ...
+
     """
     Listado de todas las cuentas financieras con saldo actual calculado.
     """
@@ -319,7 +328,13 @@ def cuentas_listado(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.add_cuentafinanciera", raise_exception=True)
 def cuenta_crear(request):
+
+
+
+
     """
     Crear una nueva cuenta financiera.
     """
@@ -340,7 +355,13 @@ def cuenta_crear(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.change_cuentafinanciera", raise_exception=True)
 def cuenta_editar(request, pk):
+
+
+
+
     """
     Editar una cuenta financiera existente.
     """
@@ -363,7 +384,10 @@ def cuenta_editar(request, pk):
 
 
 @login_required
+@require_POST
+@permission_required("finanzas_app.change_cuentafinanciera", raise_exception=True)
 def cuenta_toggle(request, pk):
+
     """
     Activar o desactivar una cuenta financiera.
     No eliminamos para mantener el historial de movimientos.
@@ -387,7 +411,10 @@ def cuenta_toggle(request, pk):
 # ============================================
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_categoriamovimiento", raise_exception=True)
 def categorias_listado(request):
+
     """
     Listado de todas las categorías de movimiento.
     Permite filtrar por tipo (ingreso/egreso).
@@ -415,6 +442,8 @@ def categorias_listado(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.add_categoriamovimiento", raise_exception=True)
 def categoria_crear(request):
     """
     Crear una nueva categoría de movimiento.
@@ -438,6 +467,8 @@ def categoria_crear(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.change_categoriamovimiento", raise_exception=True)
 def categoria_editar(request, pk):
     """
     Editar una categoría de movimiento existente.
@@ -461,7 +492,11 @@ def categoria_editar(request, pk):
 
 
 @login_required
+@require_POST
+@permission_required("finanzas_app.change_categoriamovimiento", raise_exception=True)
 def categoria_toggle(request, pk):
+    ...
+
     """
     Activar o desactivar una categoría.
     No eliminamos para mantener el historial de movimientos.
@@ -485,7 +520,12 @@ def categoria_toggle(request, pk):
 # ============================================
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def movimientos_listado(request):
+
+
+
     """
     Listado de movimientos financieros con filtros básicos y totales.
     """
@@ -560,7 +600,11 @@ def movimientos_listado(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.add_movimientofinanciero", raise_exception=True)
 def movimiento_crear(request):
+ 
+
     """
     Formulario para registrar un nuevo movimiento (ingreso o egreso).
     """
@@ -581,7 +625,11 @@ def movimiento_crear(request):
     return render(request, "finanzas_app/ingreso_form.html", context)
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.add_movimientofinanciero", raise_exception=True)
 def ingreso_crear(request):
+
+
     """
     Formulario específico para registrar INGRESOS.
     """
@@ -609,7 +657,10 @@ def ingreso_crear(request):
     return render(request, "finanzas_app/ingreso_form.html", context)
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.add_movimientofinanciero", raise_exception=True)
 def egreso_crear(request):
+
     """
     Formulario específico para registrar EGRESOS.
     """
@@ -637,7 +688,11 @@ def egreso_crear(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.change_movimientofinanciero", raise_exception=True)
 def movimiento_editar(request, pk):
+    ...
+
     """
     Editar un movimiento financiero existente.
     - Si es ingreso: usa MovimientoIngresoForm + ingreso_form.html
@@ -676,8 +731,11 @@ def movimiento_editar(request, pk):
     return render(request, template_name, context)
 
 @login_required
-@transaction.atomic
+@require_POST
+@permission_required("finanzas_app.change_movimientofinanciero", raise_exception=True)
 def movimiento_anular(request, pk):
+
+
     """
     Anular un movimiento financiero.
     Si es un egreso vinculado a una CxP, revierte el pago automáticamente.
@@ -745,7 +803,11 @@ def movimiento_anular(request, pk):
     return render(request, "finanzas_app/anulacion_confirmar.html", context)
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def ingreso_detalle(request, pk):
+    ...
+
     """
     Vista de detalle para un INGRESO.
     Muestra el movimiento en formato de ficha/documento.
@@ -764,7 +826,11 @@ from miembros_app.models import Miembro  # Ajusta si tu app se llama distinto
 
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.add_movimientofinanciero", raise_exception=True)
 def buscar_miembros_finanzas(request):
+    ...
+
     """
     Devuelve un JSON con miembros activos para el modal de búsqueda.
     Opcionalmente filtra por nombre/apellidos/código con ?q=.
@@ -802,7 +868,9 @@ from .forms import TransferenciaForm
 
 
 @login_required
+@permission_required("finanzas_app.add_transferencia", raise_exception=True)
 def transferencia_crear(request):
+ 
     """
     Vista para crear una transferencia entre cuentas.
     """
@@ -850,7 +918,11 @@ def transferencia_crear(request):
 
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def transferencia_detalle(request, pk):
+
+
     """
     Vista de detalle de una transferencia.
     Muestra ambos movimientos (envío y recepción).
@@ -881,7 +953,11 @@ def transferencia_detalle(request, pk):
     return render(request, "finanzas_app/transferencia_detalle.html", context)
 
 @login_required
+@require_POST
+@permission_required("finanzas_app.change_movimientofinanciero", raise_exception=True)
 def transferencia_anular(request, pk):
+
+
     """
     Anula una transferencia completa (ambos movimientos).
     Usa la plantilla unificada de anulación con estilo Odoo.
@@ -956,7 +1032,11 @@ import os
 
 
 @login_required
+@require_POST
+@permission_required("finanzas_app.change_movimientofinanciero", raise_exception=True)
 def subir_adjunto(request, movimiento_id):
+    ...
+
     """
     Sube un archivo adjunto a un movimiento financiero.
     Retorna JSON para manejar con AJAX.
@@ -1013,7 +1093,11 @@ def subir_adjunto(request, movimiento_id):
 
 
 @login_required
+@require_POST
+@permission_required("finanzas_app.change_movimientofinanciero", raise_exception=True)
 def eliminar_adjunto(request, adjunto_id):
+   
+
     """
     Elimina un adjunto de movimiento.
     Solo el usuario que lo subió o administradores pueden eliminarlo.
@@ -1055,7 +1139,11 @@ def eliminar_adjunto(request, adjunto_id):
 
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def descargar_adjunto(request, adjunto_id):
+    ...
+
     """
     Descarga un archivo adjunto.
     """
@@ -1084,7 +1172,11 @@ def descargar_adjunto(request, adjunto_id):
 
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def listar_adjuntos(request, movimiento_id):
+    ...
+
     """
     Lista todos los adjuntos de un movimiento (JSON para AJAX).
     """
@@ -1115,7 +1207,11 @@ def listar_adjuntos(request, movimiento_id):
     return JsonResponse(data)
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def ingreso_recibo(request, pk):
+    ...
+
     """
     Vista SOLO para imprimir el recibo de un ingreso (formato 80mm).
     """
@@ -1129,13 +1225,22 @@ def ingreso_recibo(request, pk):
 
 
 
+@login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def ingreso_general_pdf(request, pk):
+
+
     ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso")
     CFG = get_config()
     return render(request, "finanzas_app/recibos/ingreso_general_pdf.html", {"ingreso": ingreso, "CFG": CFG})
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def transferencia_general_pdf(request, pk):
+  
+
     """
     Vista GENERAL PDF de una transferencia.
     Usa la misma lógica que transferencia_detalle,
@@ -1171,11 +1276,17 @@ def transferencia_general_pdf(request, pk):
 
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def egreso_detalle(request, pk):
+  
+
     egreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="egreso")
     return render(request, "finanzas_app/egreso_detalle.html", {"egreso": egreso})
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def movimientos_listado_print(request):
     """
     Vista SOLO para imprimir el listado de movimientos según los filtros actuales.
@@ -1772,6 +1883,8 @@ def reporte_transferencias(request):
 # Reemplazar la vista cxp_list en views.py
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_cuentaporpagar", raise_exception=True)
 def cxp_list(request):
     estado = (request.GET.get("estado") or "").strip()
     q = (request.GET.get("q") or "").strip()
@@ -1851,6 +1964,8 @@ def cxp_list(request):
     return render(request, "finanzas_app/cxp/lista.html", context)
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.add_cuentaporpagar", raise_exception=True)
 def cxp_create(request):
     if request.method == "POST":
         form = CuentaPorPagarForm(request.POST)
@@ -1871,6 +1986,8 @@ def cxp_create(request):
 # Reemplazar la vista cxp_detail en views.py
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_cuentaporpagar", raise_exception=True)
 def cxp_detail(request, pk):
     obj = get_object_or_404(
         CuentaPorPagar.objects.select_related(
@@ -1895,6 +2012,8 @@ def cxp_detail(request, pk):
 # ----------------------------------------------------------
 
 @login_required
+@require_GET
+@permission_required("finanzas_app.view_proveedorfinanciero", raise_exception=True)
 def proveedores_list(request):
     q = (request.GET.get("q") or "").strip()
 
@@ -1911,6 +2030,8 @@ def proveedores_list(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.add_proveedorfinanciero", raise_exception=True)
 def proveedores_create(request):
     if request.method == "POST":
         form = ProveedorFinancieroForm(request.POST)
@@ -1924,6 +2045,8 @@ def proveedores_create(request):
     return render(request, "finanzas_app/cxp/proveedores_crear.html", {"form": form})
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.change_proveedorfinanciero", raise_exception=True)
 def proveedores_editar(request, pk):
     proveedor = get_object_or_404(ProveedorFinanciero, pk=pk)
 
@@ -1948,6 +2071,8 @@ def proveedores_editar(request, pk):
     )
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.change_cuentaporpagar", raise_exception=True)
 def cxp_edit(request, pk):
     """
     Editar una Cuenta por Pagar existente.
