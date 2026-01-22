@@ -288,6 +288,9 @@ class Unidad(models.Model):
 
     class Meta:
         ordering = ["orden", "nombre"]
+        permissions = [
+        ("ver_dashboard_estructura", "Puede ver el dashboard de Estructura"),
+    ]
         constraints = [
             models.UniqueConstraint(
                 fields=["tipo", "nombre", "padre"],

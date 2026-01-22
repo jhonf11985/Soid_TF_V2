@@ -18,6 +18,7 @@ from miembros_app.models import Miembro
 from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriodoForm,MovimientoUnidadForm,MovimientoUnidadEditarForm
 from datetime import datetime
 import datetime
+from django.contrib.auth.decorators import login_required, permission_required
 
 from .models import (
     Unidad,
@@ -45,12 +46,28 @@ def _get_client_ip(request):
 # ============================================================
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def estructura_home(request):
     return render(request, "estructura_app/home.html")
 
 
 @login_required
+
 def dashboard(request):
+    u = request.user
+
+    # Si NO tiene permiso de ver dashboard, lo mandamos a una pantalla permitida
+    if not u.has_perm("estructura_app.ver_dashboard_estructura"):
+        if u.has_perm("estructura_app.view_unidad"):
+            return redirect("estructura_app:unidad_listado")
+        if u.has_perm("estructura_app.change_unidadmembresia"):
+            return redirect("estructura_app:asignacion_unidad")
+        if u.has_perm("estructura_app.view_rolunidad"):
+            return redirect("estructura_app:rol_listado")
+
+        # si no tiene nada del módulo
+        raise PermissionDenied("No tienes permisos para acceder al módulo de Estructura.")
+
     total_unidades = Unidad.objects.count()
     total_tipos = TipoUnidad.objects.filter(activo=True).count()
     total_roles = RolUnidad.objects.filter(activo=True).count()
@@ -170,6 +187,7 @@ def dashboard(request):
 # ============================================================
 
 @login_required
+@permission_required("estructura_app.add_unidad", raise_exception=True)
 def unidad_crear(request):
     if request.method == "POST":
         form = UnidadForm(request.POST, request.FILES)
@@ -201,6 +219,7 @@ def unidad_crear(request):
     return render(request, "estructura_app/unidad_form.html", context)
 
 @login_required
+@permission_required("estructura_app.change_unidad", raise_exception=True)
 def unidad_editar(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -260,16 +279,19 @@ def unidad_editar(request, pk):
     })
 
 
-
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def unidad_listado(request):
     query = request.GET.get("q", "").strip()
 
+    # 🔐 FILTRO POR PERMISOS DE UNIDAD
+    unidades_permitidas = get_unidades_permitidas(request.user)
+
     unidades = (
-        Unidad.objects
+        unidades_permitidas
         .annotate(
             total_miembros=Count(
-                "membresias__miembo_fk",  # 👈 cuenta PERSONAS, no registros
+                "membresias__miembo_fk",
                 filter=Q(membresias__activo=True) & (
                     Q(membresias__rol__tipo__in=[RolUnidad.TIPO_PARTICIPACION, RolUnidad.TIPO_TRABAJO])
                     | Q(membresias__rol__isnull=True)
@@ -295,9 +317,18 @@ def unidad_listado(request):
         "query": query,
     })
 
+
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
+
+    
+    # 🔐 PROTECCIÓN DE ACCESO POR UNIDAD
+    unidades_permitidas = get_unidades_permitidas(request.user)
+    if not unidades_permitidas.filter(id=unidad.id).exists():
+        messages.error(request, "No tienes permiso para acceder a esta unidad.")
+        return redirect("estructura_app:unidad_listado")
     lideres_asignados = UnidadCargo.objects.none()
 
     # =====================================================
@@ -520,6 +551,7 @@ def unidad_detalle(request, pk):
     movimientos = movimientos_manual
 
 
+
     return render(request, "estructura_app/unidad_detalle.html", {
         "unidad": unidad,
         "miembros_asignados": miembros_asignados,
@@ -610,6 +642,7 @@ def _reglas_mvp_from_post(post, base_reglas=None):
 # ROLES
 # ============================================================
 @login_required
+@permission_required("estructura_app.view_rolunidad", raise_exception=True)
 def rol_listado(request):
     roles = RolUnidad.objects.all().order_by("orden", "nombre")
 
@@ -622,6 +655,7 @@ def rol_listado(request):
 
 
 @login_required
+@permission_required("estructura_app.add_rolunidad", raise_exception=True)
 def rol_crear(request):
     if request.method == "POST":
         form = RolUnidadForm(request.POST)
@@ -722,6 +756,8 @@ def get_unidades_con_nivel(queryset=None):
 @login_required
 
 # En tu vista de asignación:
+@login_required
+@permission_required("estructura_app.change_unidadmembresia", raise_exception=True)
 def asignacion_unidad(request):
     unidades = get_unidades_con_nivel()
     roles = RolUnidad.objects.filter(activo=True)
@@ -783,6 +819,7 @@ def _cumple_rango_edad(miembro, unidad):
     return True
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def asignacion_unidad_contexto(request):
     unidad_id = (request.GET.get("unidad_id") or "").strip()
     if not unidad_id:
@@ -1025,6 +1062,7 @@ def asignacion_unidad_contexto(request):
 
 @login_required
 @require_POST
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def asignacion_guardar_contexto(request):
     """
     Guarda el contexto unidad+rol (por ahora solo valida y devuelve OK).
@@ -1056,6 +1094,7 @@ def _to_int_from_post(post, name, default=None):
 
 @login_required
 @require_POST
+@permission_required("estructura_app.change_unidadmembresia", raise_exception=True)
 def asignacion_aplicar(request):
     """
     Recibe: unidad_id, rol_id, miembro_ids[]
@@ -1378,6 +1417,7 @@ def asignacion_aplicar(request):
 
 
 @login_required
+@permission_required("estructura_app.change_unidadmembresia", raise_exception=True) 
 @require_POST
 def asignacion_remover(request):
     try:
@@ -1514,6 +1554,7 @@ def asignacion_remover(request):
     })
 
 @login_required
+@permission_required("estructura_app.change_unidad", raise_exception=True)
 @require_POST
 def unidad_imagen_actualizar(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
@@ -1636,6 +1677,7 @@ def _generar_resumen_periodo(unidad, anio, mes):
 
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def unidad_actividades(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -1656,6 +1698,7 @@ def unidad_actividades(request, pk):
 
 
 @login_required
+@permission_required("estructura_app.add_actividadunidad", raise_exception=True)
 def actividad_crear(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -1739,6 +1782,7 @@ def _historico_reportes_unidad(unidad):
 
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def unidad_reportes(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -1935,6 +1979,7 @@ def unidad_reportes(request, pk):
     })
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True) 
 def reporte_unidad_imprimir(request, pk, anio, mes):
     unidad = get_object_or_404(Unidad, pk=pk)
     anio = int(anio)
@@ -2124,6 +2169,7 @@ def _generar_resumen_anual(unidad, anio: int):
     }
 
 @login_required
+@permission_required("estructura_app.change_rolunidad", raise_exception=True)
 def rol_editar(request, rol_id):
     rol = get_object_or_404(RolUnidad, id=rol_id)
 
@@ -2166,6 +2212,7 @@ def _rol_en_uso(rol):
 
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def reporte_unidad_padron_imprimir(request, pk, anio, mes):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -2322,6 +2369,7 @@ def reporte_unidad_padron_imprimir(request, pk, anio, mes):
     return render(request, "estructura_app/reportes/reporte_unidad_padron.html", context)
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def reporte_unidad_liderazgo_imprimir(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -2383,6 +2431,7 @@ def _to_int(v):
 
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def reporte_unidad_actividades_imprimir(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -2495,6 +2544,7 @@ def _rango_anio(anio: int):
 
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def reporte_unidad_cierre_imprimir(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -2596,6 +2646,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def reporte_miembros_multi_unidad(request):
     """
     Versión SIMPLE (sin filtros):
@@ -2727,6 +2778,7 @@ def reporte_miembros_multi_unidad(request):
 
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def reporte_unidad_historico_imprimir(request, pk):
     """
     REPORTE HISTÓRICO (Imprimible)
@@ -2951,6 +3003,7 @@ def reporte_unidad_historico_imprimir(request, pk):
 
 
 @login_required
+@permission_required("estructura_app.add_movimientounidad", raise_exception=True)
 def unidad_movimiento_crear(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -2994,6 +3047,7 @@ def unidad_movimiento_crear(request, pk):
 
 
 @login_required
+@permission_required("estructura_app.change_movimientounidad", raise_exception=True)
 def unidad_movimiento_editar(request, pk, mov_id):
     unidad = get_object_or_404(Unidad, pk=pk)
     mov = get_object_or_404(MovimientoUnidad, pk=mov_id, unidad=unidad)
@@ -3047,6 +3101,7 @@ def unidad_movimiento_editar(request, pk, mov_id):
 
 @login_required
 @require_POST
+@permission_required("estructura_app.change_movimientounidad", raise_exception=True)
 def unidad_movimiento_anular(request, pk, mov_id):
     unidad = get_object_or_404(Unidad, pk=pk)
     mov = get_object_or_404(MovimientoUnidad, pk=mov_id, unidad=unidad)
@@ -3078,3 +3133,27 @@ def unidad_movimiento_anular(request, pk, mov_id):
 
     url_detalle = reverse("estructura_app:unidad_detalle", args=[unidad.pk])
     return redirect(f"{url_detalle}?tab=finanzas")
+
+def get_unidades_permitidas(user):
+    from miembros_app.models import Miembro
+    from .models import Unidad, UnidadCargo, RolUnidad
+
+    # Admin o staff → ve todo
+    if user.is_superuser or user.is_staff:
+        return Unidad.objects.all()
+
+    # Buscar miembro asociado al usuario
+    try:
+        miembro = Miembro.objects.get(usuario=user)
+
+    except Miembro.DoesNotExist:
+        return Unidad.objects.none()
+
+    # Buscar unidades donde es líder
+    unidades_ids = UnidadCargo.objects.filter(
+        miembo_fk=miembro,
+        vigente=True,
+        rol__tipo=RolUnidad.TIPO_LIDERAZGO
+    ).values_list("unidad_id", flat=True)
+
+    return Unidad.objects.filter(id__in=unidades_ids)
