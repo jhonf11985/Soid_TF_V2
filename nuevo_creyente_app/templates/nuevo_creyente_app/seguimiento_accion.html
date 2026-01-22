@@ -30,32 +30,74 @@
 
 {% block page_content %}
 
-<div class="qa-wrap">
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     CONTROL BAR (estilo inbox / Odoo)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+  <div class="odoo-control-left">
+    <a href="{% url 'nuevo_creyente_app:seguimiento_inbox' %}" class="odoo-btn odoo-btn-secondary">
+      <span class="material-icons">arrow_back</span>
+      <span class="hide-mobile">Volver a bandeja</span>
+    </a>
 
-  <!-- Header -->
-  <div class="qa-header">
-    <div class="qa-title">
-      <div class="qa-name">{{ miembro.nombres }} {{ miembro.apellidos }}</div>
-      <div class="qa-sub">
-        {% if miembro.codigo_seguimiento %}<span class="qa-pill">{{ miembro.codigo_seguimiento }}</span>{% endif %}
-        {% if expediente.proximo_contacto %}
-          <span class="qa-chip">
-            <span class="material-icons">event</span>
-            Próximo: {{ expediente.proximo_contacto|date:"d/m/Y" }}
-          </span>
-        {% else %}
-          <span class="qa-chip warn">
-            <span class="material-icons">help_outline</span>
-            Sin próximo contacto
-          </span>
-        {% endif %}
+    <div class="odoo-breadcrumb">
+      <span class="odoo-breadcrumb-title">Acción</span>
+      <span class="material-icons odoo-breadcrumb-icon">edit_note</span>
+    </div>
+  </div>
+
+  <div class="odoo-control-right">
+    {% if miembro.codigo_seguimiento %}
+      <div class="odoo-chip">
+        <span class="material-icons">qr_code_2</span>
+        <span>{{ miembro.codigo_seguimiento }}</span>
+      </div>
+    {% endif %}
+
+    {% if expediente.proximo_contacto %}
+      <div class="odoo-chip odoo-chip--warn">
+        <span class="material-icons">event</span>
+        <span>Próximo: {{ expediente.proximo_contacto|date:"d/m/Y" }}</span>
+      </div>
+    {% else %}
+      <div class="odoo-chip odoo-chip--muted">
+        <span class="material-icons">help_outline</span>
+        <span>Sin próximo contacto</span>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="crm-action-wrap">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       HEADER STICKY (nombre + accesos rápidos)
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="crm-action-head">
+    <div class="crm-person">
+      <div class="crm-avatar">{{ miembro.nombres|slice:":1"|upper }}</div>
+      <div class="crm-person-info">
+        <div class="crm-name">{{ miembro.nombres }} {{ miembro.apellidos }}</div>
+        <div class="crm-sub">
+          {% if expediente.proximo_contacto %}
+            <span class="crm-pill crm-pill--warn">
+              <span class="material-icons">event</span>
+              {{ expediente.proximo_contacto|date:"d M, Y" }}
+            </span>
+          {% else %}
+            <span class="crm-pill crm-pill--muted">
+              <span class="material-icons">event_busy</span>
+              Sin fecha
+            </span>
+          {% endif %}
+        </div>
       </div>
     </div>
 
-    <div class="qa-actions">
+    <div class="crm-head-actions">
       {% with numero=miembro.whatsapp|default:miembro.telefono %}
         {% if numero %}
-          <a class="qa-btn" target="_blank" href="https://wa.me/{{ numero|cut:' '|cut:'-' }}">
+          <a class="crm-head-btn" target="_blank" href="https://wa.me/{{ numero|cut:' '|cut:'-' }}">
             <span class="material-icons">chat</span>
             WhatsApp
           </a>
@@ -63,66 +105,174 @@
       {% endwith %}
 
       {% if miembro.telefono %}
-        <a class="qa-btn" href="tel:{{ miembro.telefono }}">
+        <a class="crm-head-btn" href="tel:{{ miembro.telefono }}">
           <span class="material-icons">call</span>
           Llamar
         </a>
       {% endif %}
 
-      <a class="qa-btn secondary" href="{% url 'nuevo_creyente_app:seguimiento_inbox' %}">
-        <span class="material-icons">arrow_back</span>
-        Volver a bandeja
+      <a class="crm-head-btn ghost" href="{% url 'nuevo_creyente_app:seguimiento_detalle' miembro.id %}">
+        <span class="material-icons">folder</span>
+        Expediente
       </a>
     </div>
   </div>
 
   {% if expediente.estado == "CERRADO" %}
-    <div class="qa-closed">
+    <div class="crm-closed">
       <span class="material-icons">lock</span>
-      Expediente cerrado. No se pueden registrar acciones.
-      <a class="qa-link" href="{% url 'nuevo_creyente_app:seguimiento_detalle' miembro.id %}">Ver expediente</a>
+      <div>
+        <strong>Expediente cerrado.</strong>
+        <div class="crm-closed-sub">No se pueden registrar acciones. Puedes revisar el expediente.</div>
+      </div>
+      <a class="crm-link" href="{% url 'nuevo_creyente_app:seguimiento_detalle' miembro.id %}">
+        Ver expediente
+        <span class="material-icons">open_in_new</span>
+      </a>
     </div>
   {% else %}
 
-  <!-- Botones CRM -->
-  <div class="qa-card">
-    <div class="qa-card-title">¿Qué hiciste hoy?</div>
-    <div class="qa-grid">
-      <button type="button" class="qa-big" onclick="openQA('llamada')">
-        <span class="material-icons">call</span>
-        Llamé
-      </button>
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       LAYOUT TIPO INBOX: SIDEBAR + PANEL PRINCIPAL
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="crm-action-grid">
 
-      <button type="button" class="qa-big" onclick="openQA('whatsapp')">
-        <span class="material-icons">chat</span>
-        WhatsApp
-      </button>
+    <!-- Panel lateral tipo “inbox info” -->
+    <aside class="crm-side">
+      <div class="crm-side-card">
+        <div class="crm-side-title">Información rápida</div>
 
-      <button type="button" class="qa-big" onclick="openQA('reunion')">
-        <span class="material-icons">handshake</span>
-        Reunión
-      </button>
+        <div class="crm-side-row">
+          <span class="material-icons">badge</span>
+          <span class="crm-side-label">Código</span>
+          <span class="crm-side-value">{{ miembro.codigo_seguimiento|default:"—" }}</span>
+        </div>
 
-      <button type="button" class="qa-big warn" onclick="openQA('no_responde')">
-        <span class="material-icons">phone_disabled</span>
-        No respondió
-      </button>
+        <div class="crm-side-row">
+          <span class="material-icons">phone</span>
+          <span class="crm-side-label">Teléfono</span>
+          <span class="crm-side-value">{{ miembro.telefono|default:"—" }}</span>
+        </div>
 
-      <button type="button" class="qa-big secondary" onclick="openQA('nota')">
-        <span class="material-icons">note_add</span>
-        Nota rápida
-      </button>
-    </div>
+        <div class="crm-side-row">
+          <span class="material-icons">chat</span>
+          <span class="crm-side-label">WhatsApp</span>
+          <span class="crm-side-value">{{ miembro.whatsapp|default:"—" }}</span>
+        </div>
+
+        <div class="crm-side-row">
+          <span class="material-icons">event</span>
+          <span class="crm-side-label">Próximo</span>
+          <span class="crm-side-value">
+            {% if expediente.proximo_contacto %}
+              {{ expediente.proximo_contacto|date:"d/m/Y" }}
+            {% else %}
+              —
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="crm-side-actions">
+          <a class="crm-mini" href="{% url 'nuevo_creyente_app:seguimiento_inbox' %}">
+            <span class="material-icons">inbox</span>
+            Volver a bandeja
+          </a>
+        </div>
+      </div>
+
+      <div class="crm-side-card subtle">
+        <div class="crm-side-title">Tip rápido</div>
+        <div class="crm-tip">
+          Registra <strong>una nota corta</strong> + define (si aplica) el <strong>próximo contacto</strong>.
+          Eso es lo que hace que el módulo se sienta como CRM.
+        </div>
+      </div>
+    </aside>
+
+    <!-- Panel principal -->
+    <main class="crm-main">
+
+      <div class="crm-card">
+        <div class="crm-card-head">
+          <div class="crm-card-title">¿Qué hiciste hoy?</div>
+          <div class="crm-card-sub">Selecciona una acción. Es rápido, sin “llenar informes”.</div>
+        </div>
+
+        <div class="crm-tiles">
+          <button type="button" class="crm-tile" onclick="openQA('llamada')">
+            <span class="material-icons">call</span>
+            <span class="crm-tile-label">Llamé</span>
+            <span class="crm-tile-hint">Contacto telefónico</span>
+          </button>
+
+          <button type="button" class="crm-tile success" onclick="openQA('whatsapp')">
+            <span class="material-icons">chat</span>
+            <span class="crm-tile-label">WhatsApp</span>
+            <span class="crm-tile-hint">Mensaje / chat</span>
+          </button>
+
+          <button type="button" class="crm-tile" onclick="openQA('reunion')">
+            <span class="material-icons">handshake</span>
+            <span class="crm-tile-label">Reunión</span>
+            <span class="crm-tile-hint">Encuentro presencial</span>
+          </button>
+
+          <button type="button" class="crm-tile warn" onclick="openQA('no_responde')">
+            <span class="material-icons">phone_disabled</span>
+            <span class="crm-tile-label">No respondió</span>
+            <span class="crm-tile-hint">Reintentar luego</span>
+          </button>
+
+          <button type="button" class="crm-tile ghost" onclick="openQA('nota')">
+            <span class="material-icons">note_add</span>
+            <span class="crm-tile-label">Nota rápida</span>
+            <span class="crm-tile-hint">Sin resultado</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="crm-card soft">
+        <div class="crm-card-head">
+          <div class="crm-card-title">Modo Inbox</div>
+          <div class="crm-card-sub">La idea es que “Acción” se sienta como un panel dentro del flujo, no una página plana.</div>
+        </div>
+        <div class="crm-mini-grid">
+          <div class="crm-mini-card">
+            <span class="material-icons">bolt</span>
+            <div>
+              <strong>Acción rápida</strong>
+              <div class="crm-mini-text">1 click → nota corta → guardar.</div>
+            </div>
+          </div>
+          <div class="crm-mini-card">
+            <span class="material-icons">update</span>
+            <div>
+              <strong>Seguimiento constante</strong>
+              <div class="crm-mini-text">El “próximo contacto” manda.</div>
+            </div>
+          </div>
+          <div class="crm-mini-card">
+            <span class="material-icons">shield</span>
+            <div>
+              <strong>Sin fricción</strong>
+              <div class="crm-mini-text">Menos campos, más acompañamiento.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
   </div>
 
-  <!-- Panel / Modal Acción -->
+  <!-- Modal / Panel Acción -->
   <div class="qa-modal" id="qaModal" style="display:none;">
     <div class="qa-modal-backdrop" onclick="closeQA()"></div>
 
     <div class="qa-modal-panel">
       <div class="qa-modal-head">
         <div class="qa-modal-title" id="qaModalTitle">Acción</div>
-        <button type="button" class="qa-x" onclick="closeQA()">×</button>
+        <button type="button" class="qa-x" onclick="closeQA()" aria-label="Cerrar">×</button>
       </div>
 
       <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_accion_guardar' miembro.id %}" class="qa-form">
@@ -169,54 +319,224 @@
 </div>
 
 <style>
-  .qa-wrap{padding:16px}
-  .qa-header{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
-  .qa-name{font-size:18px;font-weight:900;color:#111827}
-  .qa-sub{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-  .qa-pill{font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;background:#eef2ff;color:#3730a3}
-  .qa-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;background:#f3f4f6;color:#111827}
-  .qa-chip .material-icons{font-size:16px;color:#6b7280}
-  .qa-chip.warn{background:#ffedd5;color:#7c2d12}
-  .qa-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTROL BAR (igual vibe bandeja)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-control-bar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 16px; background:#f8f9fa; border-bottom:1px solid #dee2e6;
+  flex-wrap:wrap; gap:10px;
+}
+.odoo-control-left,.odoo-control-right{display:flex; align-items:center; gap:12px;}
+.odoo-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px; font-size:13px; font-weight:600;
+  border:none; border-radius:8px; cursor:pointer; text-decoration:none;
+  transition:all .15s ease;
+}
+.odoo-btn .material-icons{font-size:18px;}
+.odoo-btn-secondary{background:#fff; color:#495057; border:1px solid #dee2e6;}
+.odoo-btn-secondary:hover{background:#e9ecef;}
+.odoo-breadcrumb{
+  display:flex; align-items:center; gap:6px; padding:4px 10px;
+  background:#fff; border:1px solid #dee2e6; border-radius:8px; font-size:13px;
+}
+.odoo-breadcrumb-title{font-weight:800; color:#495057;}
+.odoo-breadcrumb-icon{font-size:16px; color:#6c757d;}
+.odoo-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border:1px solid #dee2e6; background:#fff;
+  border-radius:999px; font-size:12px; color:#495057; font-weight:700;
+}
+.odoo-chip .material-icons{font-size:16px;}
+.odoo-chip--warn{background:#fffbeb; border-color:#fde68a; color:#92400e;}
+.odoo-chip--muted{background:#f3f4f6; border-color:#e5e7eb; color:#6b7280;}
+.hide-mobile{display:inline;}
 
-  .qa-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;color:#111827;text-decoration:none;font-weight:800;font-size:13px;cursor:pointer}
-  .qa-btn .material-icons{font-size:18px;color:#6b7280}
-  .qa-btn:hover{box-shadow:0 6px 18px rgba(0,0,0,.08);transform:translateY(-1px)}
-  .qa-btn.primary{background:#111827;color:#fff;border-color:#111827}
-  .qa-btn.primary .material-icons{color:#fff}
-  .qa-btn.secondary{background:#f9fafb}
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCIÓN: ESTRUCTURA INBOX
+   ═══════════════════════════════════════════════════════════════════════════ */
+.crm-action-wrap{padding:14px 16px; background:#f8f9fa; min-height:calc(100vh - 53px);}
+.crm-action-head{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  padding:14px; background:#fff; border:1px solid #e9ecef; border-radius:14px;
+  position:sticky; top:10px; z-index:2;
+  box-shadow:0 6px 22px rgba(0,0,0,.06);
+  margin-bottom:12px;
+}
+.crm-person{display:flex; gap:12px; align-items:center; min-width:260px;}
+.crm-avatar{
+  width:46px; height:46px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, #017e84, #0ea5e9);
+  color:#fff; font-weight:900;
+}
+.crm-name{font-weight:900; color:#111827; font-size:16px;}
+.crm-sub{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;}
+.crm-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 10px; border-radius:999px;
+  background:#f3f4f6; border:1px solid #e5e7eb;
+  font-size:12px; font-weight:800; color:#374151;
+}
+.crm-pill .material-icons{font-size:16px; color:#6b7280;}
+.crm-pill--warn{background:#fffbeb; border-color:#fde68a; color:#92400e;}
+.crm-pill--muted{background:#f3f4f6; border-color:#e5e7eb; color:#6b7280;}
 
-  .qa-card{border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:14px}
-  .qa-card-title{font-weight:900;color:#111827;margin-bottom:10px}
-  .qa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  .qa-big{display:flex;align-items:center;gap:10px;justify-content:flex-start;padding:14px 14px;border-radius:16px;border:1px solid #e5e7eb;background:#fff;font-weight:900;cursor:pointer}
-  .qa-big .material-icons{font-size:22px;color:#6b7280}
-  .qa-big:hover{box-shadow:0 6px 18px rgba(0,0,0,.08);transform:translateY(-1px)}
-  .qa-big.warn{border-color:#fed7aa;background:#fffaf3}
-  .qa-big.secondary{background:#f9fafb}
+.crm-head-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+.crm-head-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:10px 12px; border-radius:12px;
+  border:1px solid #e5e7eb; background:#fff;
+  text-decoration:none; font-weight:900; font-size:13px; color:#111827;
+  transition:all .15s ease;
+}
+.crm-head-btn .material-icons{font-size:18px; color:#6b7280;}
+.crm-head-btn:hover{box-shadow:0 8px 24px rgba(0,0,0,.08); transform:translateY(-1px);}
+.crm-head-btn.ghost{background:#f9fafb;}
 
-  .qa-closed{border:1px dashed #e5e7eb;background:#fafafa;border-radius:16px;padding:12px;display:flex;gap:10px;align-items:center;color:#6b7280}
-  .qa-link{margin-left:8px;font-weight:900;color:#111827}
+/* grid inbox: sidebar + main */
+.crm-action-grid{
+  display:grid;
+  grid-template-columns:320px 1fr;
+  gap:12px;
+  align-items:start;
+}
 
-  /* Modal */
-  .qa-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center}
-  .qa-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
-  .qa-modal-panel{position:relative;width:min(720px,100%);background:#fff;border-radius:18px 18px 0 0;border:1px solid #e5e7eb;box-shadow:0 -10px 40px rgba(0,0,0,.18);padding:14px}
-  .qa-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-  .qa-modal-title{font-weight:900;color:#111827}
-  .qa-x{width:36px;height:36px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-size:18px}
-  .qa-form{display:flex;flex-direction:column;gap:12px}
-  .qa-row label{font-size:12px;font-weight:900;color:#111827;display:block;margin-bottom:6px}
-  .qa-row select,.qa-row input,.qa-row textarea{width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;outline:none}
-  .qa-row textarea{resize:vertical}
-  .qa-hint{margin-top:6px;font-size:12px;color:#6b7280}
-  .qa-footer{display:flex;justify-content:flex-end;gap:10px;padding-top:6px}
+/* sidebar */
+.crm-side{display:flex; flex-direction:column; gap:12px;}
+.crm-side-card{
+  background:#fff; border:1px solid #e9ecef; border-radius:14px;
+  padding:14px; box-shadow:0 6px 22px rgba(0,0,0,.06);
+}
+.crm-side-card.subtle{background:#fbfbfc;}
+.crm-side-title{font-weight:900; color:#111827; margin-bottom:10px;}
+.crm-side-row{
+  display:grid; grid-template-columns:22px 1fr auto; gap:10px;
+  align-items:center; padding:10px 0;
+  border-bottom:1px solid #f3f4f6;
+}
+.crm-side-row:last-child{border-bottom:none;}
+.crm-side-row .material-icons{font-size:18px; color:#017e84;}
+.crm-side-label{color:#6b7280; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.2px;}
+.crm-side-value{color:#111827; font-weight:900; font-size:13px;}
+.crm-side-actions{margin-top:10px;}
+.crm-mini{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:10px 12px; border-radius:12px;
+  border:1px solid #e5e7eb; background:#fff;
+  text-decoration:none; font-weight:900; color:#111827; font-size:13px;
+}
+.crm-mini .material-icons{font-size:18px; color:#6b7280;}
+.crm-mini:hover{box-shadow:0 8px 24px rgba(0,0,0,.08); transform:translateY(-1px);}
+.crm-tip{color:#374151; font-size:13px; line-height:1.4;}
 
-  @media (max-width: 680px){
-    .qa-grid{grid-template-columns:1fr}
-    .qa-modal-panel{border-radius:18px; margin:10px}
-    .qa-modal{align-items:center}
-  }
+/* main cards */
+.crm-main{display:flex; flex-direction:column; gap:12px;}
+.crm-card{
+  background:#fff; border:1px solid #e9ecef; border-radius:14px;
+  padding:14px; box-shadow:0 6px 22px rgba(0,0,0,.06);
+}
+.crm-card.soft{background:#fbfbfc;}
+.crm-card-head{margin-bottom:12px;}
+.crm-card-title{font-weight:900; color:#111827; font-size:14px;}
+.crm-card-sub{color:#6b7280; font-size:13px; margin-top:4px;}
+
+/* tiles */
+.crm-tiles{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0,1fr));
+  gap:10px;
+}
+.crm-tile{
+  border:1px solid #e5e7eb; border-radius:16px; background:#fff;
+  padding:14px; text-align:left; cursor:pointer;
+  transition:all .15s ease;
+}
+.crm-tile:hover{box-shadow:0 10px 30px rgba(0,0,0,.10); transform:translateY(-1px);}
+.crm-tile .material-icons{font-size:24px; color:#6b7280;}
+.crm-tile-label{display:block; margin-top:10px; font-weight:900; color:#111827;}
+.crm-tile-hint{display:block; margin-top:4px; color:#6b7280; font-size:12px; font-weight:700;}
+
+.crm-tile.success{border-color:#bbf7d0; background:#f0fdf4;}
+.crm-tile.success .material-icons{color:#059669;}
+.crm-tile.warn{border-color:#fed7aa; background:#fffaf3;}
+.crm-tile.warn .material-icons{color:#d97706;}
+.crm-tile.ghost{background:#f9fafb;}
+
+.crm-mini-grid{
+  display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px;
+}
+.crm-mini-card{
+  display:flex; gap:10px; align-items:flex-start;
+  border:1px solid #e5e7eb; border-radius:14px; background:#fff;
+  padding:12px;
+}
+.crm-mini-card .material-icons{font-size:22px; color:#017e84;}
+.crm-mini-text{color:#6b7280; font-size:12px; margin-top:2px;}
+
+/* closed */
+.crm-closed{
+  display:flex; align-items:center; gap:10px; justify-content:space-between;
+  background:#fff; border:1px dashed #e5e7eb; border-radius:14px;
+  padding:12px 14px; color:#6b7280;
+}
+.crm-closed .material-icons{color:#6b7280;}
+.crm-closed strong{color:#111827;}
+.crm-closed-sub{font-size:12px; margin-top:2px;}
+.crm-link{
+  display:inline-flex; align-items:center; gap:6px;
+  text-decoration:none; font-weight:900; color:#111827;
+  padding:8px 10px; border-radius:12px; border:1px solid #e5e7eb; background:#fff;
+}
+.crm-link .material-icons{font-size:18px; color:#6b7280;}
+.crm-link:hover{box-shadow:0 8px 24px rgba(0,0,0,.08); transform:translateY(-1px);}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODAL (tu modal, con look más inbox)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.qa-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;color:#111827;text-decoration:none;font-weight:900;font-size:13px;cursor:pointer}
+.qa-btn .material-icons{font-size:18px;color:#6b7280}
+.qa-btn:hover{box-shadow:0 8px 24px rgba(0,0,0,.10);transform:translateY(-1px)}
+.qa-btn.primary{background:#111827;color:#fff;border-color:#111827}
+.qa-btn.primary .material-icons{color:#fff}
+.qa-btn.secondary{background:#f9fafb}
+
+.qa-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px}
+.qa-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.qa-modal-panel{
+  position:relative;width:min(720px,100%);
+  background:#fff;border-radius:18px;border:1px solid #e5e7eb;
+  box-shadow:0 18px 60px rgba(0,0,0,.25);padding:14px
+}
+.qa-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.qa-modal-title{font-weight:900;color:#111827}
+.qa-x{width:36px;height:36px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-size:18px}
+.qa-form{display:flex;flex-direction:column;gap:12px}
+.qa-row label{font-size:12px;font-weight:900;color:#111827;display:block;margin-bottom:6px}
+.qa-row select,.qa-row input,.qa-row textarea{
+  width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;outline:none;
+  transition:all .15s ease;
+}
+.qa-row textarea{resize:vertical}
+.qa-row select:focus,.qa-row input:focus,.qa-row textarea:focus{
+  border-color:#017e84; box-shadow:0 0 0 3px rgba(1,126,132,.12);
+}
+.qa-hint{margin-top:6px;font-size:12px;color:#6b7280}
+.qa-footer{display:flex;justify-content:flex-end;gap:10px;padding-top:6px}
+
+/* responsive */
+@media (max-width: 980px){
+  .crm-action-grid{grid-template-columns:1fr}
+  .crm-action-head{position:relative; top:auto}
+  .crm-tiles{grid-template-columns:repeat(2, minmax(0,1fr))}
+  .crm-mini-grid{grid-template-columns:1fr}
+}
+@media (max-width: 600px){
+  .hide-mobile{display:none;}
+  .crm-tiles{grid-template-columns:1fr}
+  .crm-person{min-width:0}
+}
 </style>
 
 <script>
@@ -233,9 +553,9 @@
     document.getElementById("tipo_accion").value = tipo;
     document.getElementById("qaModalTitle").textContent = TIT[tipo] || "Acción";
 
-    // Resultado: si es nota rápida, lo ocultamos
     const rowResultado = document.getElementById("rowResultado");
     const resultado = document.getElementById("resultado");
+
     if(tipo === "nota"){
       rowResultado.style.display = "none";
       resultado.value = "";
@@ -243,8 +563,8 @@
       rowResultado.style.display = "block";
     }
 
-    // Limpieza suave
-    document.getElementById("nota").focus();
+    const nota = document.getElementById("nota");
+    if(nota) nota.focus();
   }
 
   function closeQA(){

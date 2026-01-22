@@ -24,6 +24,13 @@
 {% block page_content %}
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
+     CSRF TOKEN (para POST desde JS)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<form style="display:none;">
+  {% csrf_token %}
+</form>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
      BARRA DE CONTROL SUPERIOR (Estilo Odoo)
      ═══════════════════════════════════════════════════════════════════════════ -->
 <div class="odoo-control-bar">
@@ -32,11 +39,19 @@
       <span class="material-icons">list</span>
       <span class="hide-mobile">Ver lista</span>
     </a>
+
+    <!-- (Opcional) botón Agenda: lo conectamos ahora, y luego hacemos la vista -->
+    <a href="{% url 'nuevo_creyente_app:seguimiento_inbox' %}#agenda" class="odoo-btn odoo-btn-secondary" title="Agenda (próximamente)">
+      <span class="material-icons">event_note</span>
+      <span class="hide-mobile">Agenda</span>
+    </a>
+
     <div class="odoo-breadcrumb">
       <span class="odoo-breadcrumb-title">Bandeja CRM</span>
       <span class="material-icons odoo-breadcrumb-icon">inbox</span>
     </div>
   </div>
+
   <div class="odoo-control-right">
     <div class="odoo-chip">
       <span class="material-icons">today</span>
@@ -54,7 +69,7 @@
        PANEL IZQUIERDO: LISTA DE CONTACTOS
        ═══════════════════════════════════════════════════════════════════════ -->
   <aside class="crm-list-panel">
-    
+
     <!-- Búsqueda -->
     <div class="crm-search-box">
       <form method="get" class="crm-search">
@@ -99,7 +114,15 @@
         </div>
         {% for exp in atrasados %}
           {% with m=exp.miembro %}
-          <div class="crm-item crm-item--danger" data-id="{{ m.id }}" data-nombre="{{ m.nombres }} {{ m.apellidos }}" data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}" data-whatsapp="{{ m.whatsapp|default:'' }}" data-codigo="{{ m.codigo_seguimiento|default:'' }}" data-fecha="{{ exp.proximo_contacto|date:'d/m/Y'|default:'Sin fecha' }}" data-estado="atrasado" data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
+          <div class="crm-item crm-item--danger"
+               data-id="{{ m.id }}"
+               data-nombre="{{ m.nombres }} {{ m.apellidos }}"
+               data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}"
+               data-whatsapp="{{ m.whatsapp|default:'' }}"
+               data-codigo="{{ m.codigo_seguimiento|default:'' }}"
+               data-fecha="{{ exp.proximo_contacto|date:'d/m/Y'|default:'Sin fecha' }}"
+               data-estado="atrasado"
+               data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
             <div class="crm-item-avatar">{{ m.nombres|slice:":1"|upper }}</div>
             <div class="crm-item-info">
               <div class="crm-item-name">{{ m.nombres }} {{ m.apellidos }}</div>
@@ -125,7 +148,15 @@
         </div>
         {% for exp in para_hoy %}
           {% with m=exp.miembro %}
-          <div class="crm-item crm-item--warn" data-id="{{ m.id }}" data-nombre="{{ m.nombres }} {{ m.apellidos }}" data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}" data-whatsapp="{{ m.whatsapp|default:'' }}" data-codigo="{{ m.codigo_seguimiento|default:'' }}" data-fecha="Hoy" data-estado="hoy" data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
+          <div class="crm-item crm-item--warn"
+               data-id="{{ m.id }}"
+               data-nombre="{{ m.nombres }} {{ m.apellidos }}"
+               data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}"
+               data-whatsapp="{{ m.whatsapp|default:'' }}"
+               data-codigo="{{ m.codigo_seguimiento|default:'' }}"
+               data-fecha="Hoy"
+               data-estado="hoy"
+               data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
             <div class="crm-item-avatar">{{ m.nombres|slice:":1"|upper }}</div>
             <div class="crm-item-info">
               <div class="crm-item-name">{{ m.nombres }} {{ m.apellidos }}</div>
@@ -150,7 +181,15 @@
         </div>
         {% for exp in sin_proximo %}
           {% with m=exp.miembro %}
-          <div class="crm-item crm-item--info" data-id="{{ m.id }}" data-nombre="{{ m.nombres }} {{ m.apellidos }}" data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}" data-whatsapp="{{ m.whatsapp|default:'' }}" data-codigo="{{ m.codigo_seguimiento|default:'' }}" data-fecha="Sin fecha" data-estado="pendiente" data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
+          <div class="crm-item crm-item--info"
+               data-id="{{ m.id }}"
+               data-nombre="{{ m.nombres }} {{ m.apellidos }}"
+               data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}"
+               data-whatsapp="{{ m.whatsapp|default:'' }}"
+               data-codigo="{{ m.codigo_seguimiento|default:'' }}"
+               data-fecha="Sin fecha"
+               data-estado="pendiente"
+               data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
             <div class="crm-item-avatar">{{ m.nombres|slice:":1"|upper }}</div>
             <div class="crm-item-info">
               <div class="crm-item-name">{{ m.nombres }} {{ m.apellidos }}</div>
@@ -175,7 +214,15 @@
         </div>
         {% for exp in para_manana %}
           {% with m=exp.miembro %}
-          <div class="crm-item" data-id="{{ m.id }}" data-nombre="{{ m.nombres }} {{ m.apellidos }}" data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}" data-whatsapp="{{ m.whatsapp|default:'' }}" data-codigo="{{ m.codigo_seguimiento|default:'' }}" data-fecha="Mañana" data-estado="mañana" data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
+          <div class="crm-item"
+               data-id="{{ m.id }}"
+               data-nombre="{{ m.nombres }} {{ m.apellidos }}"
+               data-telefono="{{ m.telefono|default:m.whatsapp|default:'' }}"
+               data-whatsapp="{{ m.whatsapp|default:'' }}"
+               data-codigo="{{ m.codigo_seguimiento|default:'' }}"
+               data-fecha="Mañana"
+               data-estado="mañana"
+               data-url="{% url 'nuevo_creyente_app:seguimiento_accion' m.id %}">
             <div class="crm-item-avatar">{{ m.nombres|slice:":1"|upper }}</div>
             <div class="crm-item-info">
               <div class="crm-item-name">{{ m.nombres }} {{ m.apellidos }}</div>
@@ -207,8 +254,8 @@
        PANEL DERECHO: DETALLE DEL CONTACTO
        ═══════════════════════════════════════════════════════════════════════ -->
   <main class="crm-detail-panel">
-    
-    <!-- Estado inicial: ningún contacto seleccionado -->
+
+    <!-- Estado inicial -->
     <div class="crm-detail-empty" id="detailEmpty">
       <div class="crm-detail-empty-icon">
         <span class="material-icons">touch_app</span>
@@ -217,10 +264,10 @@
       <p>Haz clic en un contacto de la lista para ver sus detalles y tomar acción.</p>
     </div>
 
-    <!-- Detalle del contacto (oculto inicialmente) -->
+    <!-- Detalle (oculto inicialmente) -->
     <div class="crm-detail-content" id="detailContent" style="display:none;">
-      
-      <!-- Header del contacto -->
+
+      <!-- Header -->
       <div class="crm-detail-header">
         <div class="crm-detail-avatar" id="detailAvatar">J</div>
         <div class="crm-detail-title">
@@ -273,34 +320,142 @@
       <!-- Acciones de seguimiento -->
       <div class="crm-detail-section">
         <h4>Acciones de seguimiento</h4>
+
+        <!-- NUEVO: botones abren modal (sin salir de la bandeja) -->
         <div class="crm-action-buttons">
-          <a href="#" class="crm-btn crm-btn--block" id="actionRegistrar">
+          <button type="button" class="crm-btn crm-btn--block" id="btnOpenRegistrar">
             <span class="material-icons">edit_note</span>
-            Registrar contacto
-          </a>
-          <a href="#" class="crm-btn crm-btn--outline" id="actionAgendar">
+            Registrar contacto (rápido)
+          </button>
+
+          <button type="button" class="crm-btn crm-btn--outline" id="btnOpenAgendar">
             <span class="material-icons">event</span>
-            Agendar próximo
+            Agendar próximo (rápido)
+          </button>
+
+          <!-- Fallback: sigue existiendo el link por si quieres ir a la ficha -->
+          <a href="#" class="crm-btn crm-btn--ghost" id="actionRegistrarFull">
+            <span class="material-icons">open_in_new</span>
+            Ir al expediente completo
           </a>
         </div>
       </div>
 
-      <!-- Notas rápidas -->
+      <!-- Nota rápida (GUARDA) -->
       <div class="crm-detail-section">
         <h4>Nota rápida</h4>
-        <form class="crm-quick-note">
-          <textarea placeholder="Escribe una nota sobre este contacto..." rows="3"></textarea>
-          <button type="button" class="crm-btn crm-btn--sm">
+        <form class="crm-quick-note" id="quickNoteForm">
+          <textarea id="quickNoteText" placeholder="Escribe una nota sobre este contacto..." rows="3"></textarea>
+          <button type="submit" class="crm-btn crm-btn--sm">
             <span class="material-icons">save</span>
             Guardar
           </button>
+          <div class="crm-inline-msg" id="quickNoteMsg" style="display:none;"></div>
         </form>
       </div>
 
     </div>
-
   </main>
 
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MODAL: REGISTRAR CONTACTO (RÁPIDO)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="crm-modal" id="modalRegistrar" aria-hidden="true">
+  <div class="crm-modal__backdrop" data-close="1"></div>
+  <div class="crm-modal__card" role="dialog" aria-modal="true" aria-labelledby="modalRegistrarTitle">
+    <div class="crm-modal__header">
+      <div>
+        <div class="crm-modal__kicker">Registrar contacto</div>
+        <h3 class="crm-modal__title" id="modalRegistrarTitle">—</h3>
+      </div>
+      <button class="crm-modal__close" type="button" data-close="1" title="Cerrar">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <form id="formRegistrarRapido">
+      <div class="crm-modal__body">
+        <div class="crm-field">
+          <label>Resultado</label>
+          <select id="regResultado" required>
+            <option value="">— Selecciona —</option>
+            <option value="llamada">📞 Llamada realizada</option>
+            <option value="whatsapp">💬 WhatsApp enviado</option>
+            <option value="visita">🏠 Visita</option>
+            <option value="sin_respuesta">⏳ Sin respuesta</option>
+            <option value="otro">📝 Otro</option>
+          </select>
+        </div>
+
+        <div class="crm-field">
+          <label>Nota</label>
+          <textarea id="regNota" rows="4" placeholder="Ej: oramos, está animado, pidió visita, etc." required></textarea>
+        </div>
+
+        <div class="crm-split">
+          <div class="crm-field">
+            <label>¿Agendar próximo?</label>
+            <select id="regAgendar">
+              <option value="no">No</option>
+              <option value="si">Sí</option>
+            </select>
+          </div>
+          <div class="crm-field" id="regFechaWrap" style="display:none;">
+            <label>Próximo contacto</label>
+            <input id="regProximo" type="date" />
+          </div>
+        </div>
+
+        <div class="crm-inline-msg" id="regMsg" style="display:none;"></div>
+      </div>
+
+      <div class="crm-modal__footer">
+        <button type="button" class="crm-btn crm-btn--outline" data-close="1">Cancelar</button>
+        <button type="submit" class="crm-btn crm-btn--block">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MODAL: AGENDAR PRÓXIMO (RÁPIDO)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="crm-modal" id="modalAgendar" aria-hidden="true">
+  <div class="crm-modal__backdrop" data-close="1"></div>
+  <div class="crm-modal__card" role="dialog" aria-modal="true" aria-labelledby="modalAgendarTitle">
+    <div class="crm-modal__header">
+      <div>
+        <div class="crm-modal__kicker">Agendar próximo contacto</div>
+        <h3 class="crm-modal__title" id="modalAgendarTitle">—</h3>
+      </div>
+      <button class="crm-modal__close" type="button" data-close="1" title="Cerrar">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <form id="formAgendarRapido">
+      <div class="crm-modal__body">
+        <div class="crm-field">
+          <label>Fecha del próximo contacto</label>
+          <input id="agdFecha" type="date" required />
+        </div>
+
+        <div class="crm-field">
+          <label>Nota (opcional)</label>
+          <textarea id="agdNota" rows="3" placeholder="Ej: llamar por la tarde, confirmar asistencia, etc."></textarea>
+        </div>
+
+        <div class="crm-inline-msg" id="agdMsg" style="display:none;"></div>
+      </div>
+
+      <div class="crm-modal__footer">
+        <button type="button" class="crm-btn crm-btn--outline" data-close="1">Cancelar</button>
+        <button type="submit" class="crm-btn crm-btn--block">Agendar</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
@@ -339,9 +494,7 @@
 .odoo-chip .material-icons{font-size:16px; color:#017e84;}
 .hide-mobile{display:inline;}
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   CRM LAYOUT
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* CRM LAYOUT */
 .crm-container{
   display:grid;
   grid-template-columns:380px 1fr;
@@ -351,38 +504,25 @@
 
 /* Panel izquierdo */
 .crm-list-panel{
-  display:flex;
-  flex-direction:column;
-  background:#fff;
-  border-right:1px solid #dee2e6;
+  display:flex; flex-direction:column;
+  background:#fff; border-right:1px solid #dee2e6;
   overflow:hidden;
 }
 
 /* Búsqueda */
-.crm-search-box{
-  padding:12px;
-  border-bottom:1px solid #e9ecef;
-}
+.crm-search-box{padding:12px; border-bottom:1px solid #e9ecef;}
 .crm-search{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  background:#f8f9fa;
-  border:1px solid #e9ecef;
-  border-radius:8px;
-  padding:8px 12px;
+  display:flex; align-items:center; gap:8px;
+  background:#f8f9fa; border:1px solid #e9ecef;
+  border-radius:8px; padding:8px 12px;
   transition:all .2s ease;
 }
 .crm-search:focus-within{
-  background:#fff;
-  border-color:#017e84;
+  background:#fff; border-color:#017e84;
   box-shadow:0 0 0 3px rgba(1,126,132,.1);
 }
 .crm-search .material-icons{font-size:20px; color:#6c757d;}
-.crm-search input{
-  flex:1; border:none; outline:none; background:transparent;
-  font-size:14px; color:#212529;
-}
+.crm-search input{flex:1; border:none; outline:none; background:transparent; font-size:14px; color:#212529;}
 .crm-search input::placeholder{color:#adb5bd;}
 .crm-clear{
   display:flex; align-items:center; justify-content:center;
@@ -396,24 +536,18 @@
 .crm-kpis{
   display:grid;
   grid-template-columns:repeat(4,1fr);
-  gap:8px;
-  padding:12px;
+  gap:8px; padding:12px;
   border-bottom:1px solid #e9ecef;
 }
 .crm-kpi{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:10px 6px;
-  border-radius:8px;
-  text-decoration:none;
-  transition:all .15s ease;
+  display:flex; flex-direction:column; align-items:center;
+  padding:10px 6px; border-radius:8px;
+  text-decoration:none; transition:all .15s ease;
   border:1px solid transparent;
 }
 .crm-kpi:hover{background:#f8f9fa;}
 .crm-kpi-num{font-size:18px; font-weight:800; line-height:1;}
 .crm-kpi-label{font-size:10px; font-weight:600; color:#6c757d; margin-top:4px; text-transform:uppercase;}
-
 .crm-kpi--danger .crm-kpi-num{color:#dc2626;}
 .crm-kpi--danger:hover{background:#fef2f2; border-color:#fecaca;}
 .crm-kpi--warn .crm-kpi-num{color:#d97706;}
@@ -424,38 +558,24 @@
 .crm-kpi--zero{opacity:.4;}
 
 /* Lista scroll */
-.crm-list-scroll{
-  flex:1;
-  overflow-y:auto;
-  padding:8px 0;
-}
+.crm-list-scroll{flex:1; overflow-y:auto; padding:8px 0;}
 
 /* Grupos */
 .crm-group{margin-bottom:8px;}
 .crm-group-header{
-  display:flex;
-  align-items:center;
-  gap:8px;
+  display:flex; align-items:center; gap:8px;
   padding:8px 16px;
-  font-size:11px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:.5px;
-  color:#6c757d;
+  font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.5px; color:#6c757d;
   background:#f8f9fa;
-  position:sticky;
-  top:0;
-  z-index:1;
+  position:sticky; top:0; z-index:1;
 }
 .crm-group-header .material-icons{font-size:16px;}
 .crm-group-count{
-  margin-left:auto;
-  background:#e9ecef;
-  padding:2px 8px;
-  border-radius:999px;
+  margin-left:auto; background:#e9ecef;
+  padding:2px 8px; border-radius:999px;
   font-size:10px;
 }
-
 .crm-group-header--danger{color:#991b1b; background:#fef2f2;}
 .crm-group-header--danger .crm-group-count{background:#fecaca; color:#991b1b;}
 .crm-group-header--warn{color:#92400e; background:#fffbeb;}
@@ -466,21 +586,15 @@
 
 /* Items */
 .crm-item{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  padding:12px 16px;
-  cursor:pointer;
-  transition:all .15s ease;
-  border-left:3px solid transparent;
+  display:flex; align-items:center; gap:12px;
+  padding:12px 16px; cursor:pointer;
+  transition:all .15s ease; border-left:3px solid transparent;
 }
 .crm-item:hover{background:#f8f9fa;}
 .crm-item.active{background:#e7f5f5; border-left-color:#017e84;}
-
 .crm-item--danger{border-left-color:#dc2626;}
 .crm-item--warn{border-left-color:#d97706;}
 .crm-item--info{border-left-color:#0284c7;}
-
 .crm-item-avatar{
   width:40px; height:40px;
   display:flex; align-items:center; justify-content:center;
@@ -494,13 +608,8 @@
   font-size:14px; font-weight:700; color:#212529;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.crm-item-meta{
-  display:flex; align-items:center; gap:8px; margin-top:4px;
-}
-.crm-item-date{
-  display:inline-flex; align-items:center; gap:4px;
-  font-size:11px; color:#6c757d;
-}
+.crm-item-meta{display:flex; align-items:center; gap:8px; margin-top:4px;}
+.crm-item-date{display:inline-flex; align-items:center; gap:4px; font-size:11px; color:#6c757d;}
 .crm-item-date .material-icons{font-size:14px;}
 .crm-item-date--muted{color:#adb5bd;}
 .crm-item-tag{
@@ -518,38 +627,21 @@
 
 /* Empty list */
 .crm-empty-list{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:40px 20px;
-  text-align:center;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:40px 20px; text-align:center;
   color:#6c757d;
 }
 .crm-empty-list .material-icons{font-size:48px; color:#dee2e6; margin-bottom:12px;}
 .crm-empty-list strong{font-size:14px; color:#495057;}
 .crm-empty-list p{font-size:12px; margin:4px 0 0;}
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   PANEL DERECHO: DETALLE
-   ═══════════════════════════════════════════════════════════════════════════ */
-.crm-detail-panel{
-  display:flex;
-  flex-direction:column;
-  overflow-y:auto;
-  background:#f8f9fa;
-}
-
-/* Empty state */
+/* Panel derecho */
+.crm-detail-panel{display:flex; flex-direction:column; overflow-y:auto; background:#f8f9fa;}
 .crm-detail-empty{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  padding:40px;
-  color:#6c757d;
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  text-align:center; padding:40px; color:#6c757d;
 }
 .crm-detail-empty-icon{
   width:80px; height:80px;
@@ -560,21 +652,11 @@
 .crm-detail-empty-icon .material-icons{font-size:36px; color:#adb5bd;}
 .crm-detail-empty h3{font-size:18px; font-weight:700; color:#495057; margin:0 0 8px;}
 .crm-detail-empty p{font-size:14px; margin:0; max-width:280px;}
-
-/* Content */
-.crm-detail-content{
-  padding:20px;
-}
-
-/* Header */
+.crm-detail-content{padding:20px;}
 .crm-detail-header{
-  display:flex;
-  align-items:flex-start;
-  gap:16px;
-  padding:20px;
-  background:#fff;
-  border-radius:12px;
-  border:1px solid #e9ecef;
+  display:flex; align-items:flex-start; gap:16px;
+  padding:20px; background:#fff;
+  border-radius:12px; border:1px solid #e9ecef;
   margin-bottom:16px;
 }
 .crm-detail-avatar{
@@ -582,14 +664,11 @@
   display:flex; align-items:center; justify-content:center;
   border-radius:50%;
   background:linear-gradient(135deg, #017e84, #0ea5e9);
-  color:#fff;
-  font-size:22px; font-weight:700;
+  color:#fff; font-size:22px; font-weight:700;
   flex-shrink:0;
 }
 .crm-detail-title{flex:1; min-width:0;}
-.crm-detail-title h2{
-  font-size:18px; font-weight:800; color:#212529; margin:0 0 8px;
-}
+.crm-detail-title h2{font-size:18px; font-weight:800; color:#212529; margin:0 0 8px;}
 .crm-detail-badges{display:flex; gap:8px; flex-wrap:wrap;}
 .crm-detail-status{
   font-size:11px; font-weight:700;
@@ -616,18 +695,12 @@
 
 /* Info rows */
 .crm-detail-info{
-  background:#fff;
-  border-radius:12px;
-  border:1px solid #e9ecef;
-  padding:16px;
-  margin-bottom:16px;
+  background:#fff; border-radius:12px; border:1px solid #e9ecef;
+  padding:16px; margin-bottom:16px;
 }
 .crm-info-row{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:10px 0;
-  border-bottom:1px solid #f3f4f6;
+  display:flex; align-items:center; gap:10px;
+  padding:10px 0; border-bottom:1px solid #f3f4f6;
 }
 .crm-info-row:last-child{border-bottom:none; padding-bottom:0;}
 .crm-info-row:first-child{padding-top:0;}
@@ -637,27 +710,18 @@
 
 /* Actions */
 .crm-detail-actions{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  margin-bottom:16px;
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:10px; margin-bottom:16px;
 }
 .crm-action{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:6px;
-  padding:16px 12px;
-  background:#fff;
-  border:1px solid #e9ecef;
-  border-radius:12px;
-  text-decoration:none;
-  transition:all .15s ease;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:16px 12px; background:#fff;
+  border:1px solid #e9ecef; border-radius:12px;
+  text-decoration:none; transition:all .15s ease;
 }
 .crm-action:hover{border-color:#dee2e6; box-shadow:0 2px 8px rgba(0,0,0,.06);}
 .crm-action .material-icons{font-size:24px;}
 .crm-action span:last-child{font-size:12px; font-weight:600;}
-
 .crm-action--primary{background:#017e84; border-color:#017e84; color:#fff;}
 .crm-action--primary:hover{background:#016166; border-color:#016166;}
 .crm-action--success{background:#059669; border-color:#059669; color:#fff;}
@@ -667,11 +731,8 @@
 
 /* Sections */
 .crm-detail-section{
-  background:#fff;
-  border-radius:12px;
-  border:1px solid #e9ecef;
-  padding:16px;
-  margin-bottom:16px;
+  background:#fff; border-radius:12px; border:1px solid #e9ecef;
+  padding:16px; margin-bottom:16px;
 }
 .crm-detail-section h4{
   font-size:13px; font-weight:700; color:#495057;
@@ -681,17 +742,9 @@
 /* Buttons */
 .crm-action-buttons{display:flex; flex-direction:column; gap:8px;}
 .crm-btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  padding:12px 16px;
-  font-size:14px;
-  font-weight:600;
-  border-radius:8px;
-  text-decoration:none;
-  cursor:pointer;
-  border:none;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:12px 16px; font-size:14px; font-weight:600;
+  border-radius:8px; text-decoration:none; cursor:pointer; border:none;
   transition:all .15s ease;
 }
 .crm-btn .material-icons{font-size:20px;}
@@ -701,47 +754,89 @@
 .crm-btn--outline:hover{background:#e7f5f5;}
 .crm-btn--sm{padding:8px 12px; font-size:12px;}
 .crm-btn--sm .material-icons{font-size:16px;}
+.crm-btn--ghost{background:#fff; color:#495057; border:1px dashed #dee2e6;}
+.crm-btn--ghost:hover{background:#f8f9fa;}
 
 /* Quick note */
 .crm-quick-note textarea{
-  width:100%;
-  padding:12px;
-  border:1px solid #e9ecef;
-  border-radius:8px;
-  font-size:13px;
-  resize:vertical;
-  margin-bottom:10px;
-  font-family:inherit;
+  width:100%; padding:12px; border:1px solid #e9ecef; border-radius:8px;
+  font-size:13px; resize:vertical; margin-bottom:10px; font-family:inherit;
 }
 .crm-quick-note textarea:focus{
+  outline:none; border-color:#017e84; box-shadow:0 0 0 3px rgba(1,126,132,.1);
+}
+.crm-inline-msg{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:10px;
+  font-size:12px;
+  border:1px solid #e9ecef;
+  background:#f8f9fa;
+  color:#495057;
+}
+.crm-inline-msg.ok{border-color:#bbf7d0; background:#f0fdf4; color:#14532d;}
+.crm-inline-msg.err{border-color:#fecaca; background:#fef2f2; color:#7f1d1d;}
+
+/* MODALES */
+.crm-modal{position:fixed; inset:0; display:none; z-index:9999;}
+.crm-modal.show{display:block;}
+.crm-modal__backdrop{position:absolute; inset:0; background:rgba(0,0,0,.35);}
+.crm-modal__card{
+  position:relative;
+  width:min(560px, calc(100% - 24px));
+  margin:60px auto;
+  background:#fff;
+  border-radius:14px;
+  border:1px solid #e9ecef;
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+  overflow:hidden;
+}
+.crm-modal__header{
+  display:flex; justify-content:space-between; align-items:flex-start;
+  padding:16px 16px 12px;
+  border-bottom:1px solid #f3f4f6;
+  background:#fff;
+}
+.crm-modal__kicker{font-size:11px; font-weight:800; text-transform:uppercase; color:#6c757d; letter-spacing:.4px;}
+.crm-modal__title{margin:4px 0 0; font-size:16px; font-weight:900; color:#212529;}
+.crm-modal__close{
+  border:none; background:#f3f4f6; border-radius:10px;
+  width:34px; height:34px; cursor:pointer; color:#6c757d;
+  display:flex; align-items:center; justify-content:center;
+}
+.crm-modal__close:hover{background:#e9ecef; color:#212529;}
+.crm-modal__body{padding:14px 16px 6px;}
+.crm-modal__footer{
+  display:flex; justify-content:flex-end; gap:10px;
+  padding:14px 16px 16px;
+  border-top:1px solid #f3f4f6;
+  background:#fff;
+}
+.crm-field{margin-bottom:12px;}
+.crm-field label{display:block; font-size:12px; font-weight:800; color:#495057; margin-bottom:6px;}
+.crm-field input, .crm-field select, .crm-field textarea{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid #e9ecef;
+  border-radius:10px;
+  font-size:13px;
   outline:none;
+  font-family:inherit;
+}
+.crm-field input:focus, .crm-field select:focus, .crm-field textarea:focus{
   border-color:#017e84;
   box-shadow:0 0 0 3px rgba(1,126,132,.1);
 }
+.crm-split{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+@media (max-width:520px){ .crm-split{grid-template-columns:1fr;} .crm-modal__card{margin:18px auto;} }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* RESPONSIVE */
 @media (max-width: 900px){
-  .crm-container{
-    grid-template-columns:1fr;
-    height:auto;
-    min-height:calc(100vh - 53px);
-  }
-  .crm-list-panel{
-    border-right:none;
-    border-bottom:1px solid #dee2e6;
-    max-height:50vh;
-  }
-  .crm-detail-panel{
-    min-height:50vh;
-  }
-  .crm-detail-empty{
-    padding:30px 20px;
-  }
-  .crm-detail-empty-icon{
-    width:60px; height:60px;
-  }
+  .crm-container{grid-template-columns:1fr; height:auto; min-height:calc(100vh - 53px);}
+  .crm-list-panel{border-right:none; border-bottom:1px solid #dee2e6; max-height:50vh;}
+  .crm-detail-panel{min-height:50vh;}
+  .crm-detail-empty{padding:30px 20px;}
+  .crm-detail-empty-icon{width:60px; height:60px;}
   .crm-detail-empty-icon .material-icons{font-size:28px;}
   .crm-detail-empty h3{font-size:16px;}
   .crm-detail-empty p{font-size:13px;}
@@ -750,29 +845,22 @@
 @media (max-width: 600px){
   .odoo-breadcrumb{display:none;}
   .hide-mobile{display:none;}
-  
-  .crm-kpis{
-    grid-template-columns:repeat(4,1fr);
-    gap:6px;
-    padding:10px;
-  }
+
+  .crm-kpis{grid-template-columns:repeat(4,1fr); gap:6px; padding:10px;}
   .crm-kpi{padding:8px 4px;}
   .crm-kpi-num{font-size:16px;}
   .crm-kpi-label{font-size:9px;}
-  
+
   .crm-item{padding:10px 12px;}
   .crm-item-avatar{width:36px; height:36px; font-size:14px;}
   .crm-item-name{font-size:13px;}
-  
+
   .crm-detail-content{padding:12px;}
   .crm-detail-header{padding:16px; gap:12px;}
   .crm-detail-avatar{width:48px; height:48px; font-size:18px;}
   .crm-detail-title h2{font-size:16px;}
-  
-  .crm-detail-actions{
-    grid-template-columns:1fr 1fr 1fr;
-    gap:8px;
-  }
+
+  .crm-detail-actions{grid-template-columns:1fr 1fr 1fr; gap:8px;}
   .crm-action{padding:12px 8px;}
   .crm-action .material-icons{font-size:22px;}
   .crm-action span:last-child{font-size:11px;}
@@ -788,8 +876,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const detailEmpty = document.getElementById('detailEmpty');
   const detailContent = document.getElementById('detailContent');
   const detailClose = document.getElementById('detailClose');
-  
-  // Elementos del detalle
+
+  // detalle
   const detailAvatar = document.getElementById('detailAvatar');
   const detailName = document.getElementById('detailName');
   const detailStatus = document.getElementById('detailStatus');
@@ -799,50 +887,119 @@ document.addEventListener('DOMContentLoaded', function() {
   const detailTelefonoRow = document.getElementById('detailTelefonoRow');
   const detailWhatsapp = document.getElementById('detailWhatsapp');
   const detailWhatsappRow = document.getElementById('detailWhatsappRow');
-  
-  // Acciones
+
+  // acciones top
   const actionCall = document.getElementById('actionCall');
   const actionWhatsapp = document.getElementById('actionWhatsapp');
   const actionDetail = document.getElementById('actionDetail');
-  const actionRegistrar = document.getElementById('actionRegistrar');
-  const actionAgendar = document.getElementById('actionAgendar');
-  
-  // Función para mostrar detalle
+
+  // acciones rápidas nuevas
+  const btnOpenRegistrar = document.getElementById('btnOpenRegistrar');
+  const btnOpenAgendar = document.getElementById('btnOpenAgendar');
+  const actionRegistrarFull = document.getElementById('actionRegistrarFull');
+
+  // quick note
+  const quickNoteForm = document.getElementById('quickNoteForm');
+  const quickNoteText = document.getElementById('quickNoteText');
+  const quickNoteMsg = document.getElementById('quickNoteMsg');
+
+  // modales
+  const modalRegistrar = document.getElementById('modalRegistrar');
+  const modalAgendar = document.getElementById('modalAgendar');
+  const modalRegistrarTitle = document.getElementById('modalRegistrarTitle');
+  const modalAgendarTitle = document.getElementById('modalAgendarTitle');
+
+  const formRegistrarRapido = document.getElementById('formRegistrarRapido');
+  const regResultado = document.getElementById('regResultado');
+  const regNota = document.getElementById('regNota');
+  const regAgendar = document.getElementById('regAgendar');
+  const regFechaWrap = document.getElementById('regFechaWrap');
+  const regProximo = document.getElementById('regProximo');
+  const regMsg = document.getElementById('regMsg');
+
+  const formAgendarRapido = document.getElementById('formAgendarRapido');
+  const agdFecha = document.getElementById('agdFecha');
+  const agdNota = document.getElementById('agdNota');
+  const agdMsg = document.getElementById('agdMsg');
+
+  // estado seleccionado
+  let selected = {
+    id: null,
+    nombre: null,
+    url: null,
+    telefono: null,
+    whatsapp: null
+  };
+
+  function getCsrfToken() {
+    const el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return el ? el.value : '';
+  }
+
+  function flashMsg(el, text, type) {
+    el.textContent = text;
+    el.className = 'crm-inline-msg ' + (type === 'ok' ? 'ok' : 'err');
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 2600);
+  }
+
+  function openModal(modal) {
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(modal) {
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  // cerrar modales
+  document.querySelectorAll('.crm-modal [data-close="1"]').forEach(el => {
+    el.addEventListener('click', () => {
+      closeModal(modalRegistrar);
+      closeModal(modalAgendar);
+    });
+  });
+
+  regAgendar.addEventListener('change', () => {
+    regFechaWrap.style.display = (regAgendar.value === 'si') ? 'block' : 'none';
+    if (regAgendar.value !== 'si') regProximo.value = '';
+  });
+
+  // mostrar detalle
   function showDetail(item) {
-    // Remover active de todos
     items.forEach(i => i.classList.remove('active'));
     item.classList.add('active');
-    
-    // Obtener datos
-    const nombre = item.dataset.nombre;
-    const telefono = item.dataset.telefono;
-    const whatsapp = item.dataset.whatsapp;
-    const codigo = item.dataset.codigo;
-    const fecha = item.dataset.fecha;
-    const estado = item.dataset.estado;
-    const url = item.dataset.url;
-    
-    // Llenar datos
+
+    const nombre = item.dataset.nombre || '';
+    const telefono = item.dataset.telefono || '';
+    const whatsapp = item.dataset.whatsapp || '';
+    const codigo = item.dataset.codigo || '';
+    const fecha = item.dataset.fecha || '--';
+    const estado = item.dataset.estado || '';
+    const url = item.dataset.url || '#';
+    const id = item.dataset.id || null;
+
+    selected = { id, nombre, url, telefono, whatsapp };
+
     detailAvatar.textContent = nombre.charAt(0).toUpperCase();
     detailName.textContent = nombre;
     detailFecha.textContent = fecha;
-    
-    // Estado
+
     detailStatus.textContent = estado.charAt(0).toUpperCase() + estado.slice(1);
     detailStatus.className = 'crm-detail-status';
     if (estado === 'hoy') detailStatus.classList.add('status-hoy');
     else if (estado === 'pendiente') detailStatus.classList.add('status-pendiente');
     else if (estado === 'mañana') detailStatus.classList.add('status-manana');
-    
-    // Código
+
     if (codigo) {
       detailCode.textContent = codigo;
       detailCode.style.display = 'inline-block';
     } else {
       detailCode.style.display = 'none';
     }
-    
-    // Teléfono
+
     if (telefono) {
       detailTelefono.textContent = telefono;
       detailTelefonoRow.style.display = 'flex';
@@ -852,8 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
       detailTelefonoRow.style.display = 'none';
       actionCall.style.display = 'none';
     }
-    
-    // WhatsApp
+
     if (whatsapp) {
       detailWhatsapp.textContent = whatsapp;
       detailWhatsappRow.style.display = 'flex';
@@ -863,52 +1019,168 @@ document.addEventListener('DOMContentLoaded', function() {
       detailWhatsappRow.style.display = 'none';
       actionWhatsapp.style.display = 'none';
     }
-    
+
     // URLs
     actionDetail.href = url;
-    actionRegistrar.href = url;
-    actionAgendar.href = url;
-    
-    // Mostrar panel
+    actionRegistrarFull.href = url;
+
+    // reset campos rápidos
+    quickNoteText.value = '';
+    regResultado.value = '';
+    regNota.value = '';
+    regAgendar.value = 'no';
+    regFechaWrap.style.display = 'none';
+    regProximo.value = '';
+    agdFecha.value = '';
+    agdNota.value = '';
+
     detailEmpty.style.display = 'none';
     detailContent.style.display = 'block';
   }
-  
-  // Función para cerrar detalle
+
   function hideDetail() {
     items.forEach(i => i.classList.remove('active'));
     detailContent.style.display = 'none';
     detailEmpty.style.display = 'flex';
+    selected = { id:null, nombre:null, url:null, telefono:null, whatsapp:null };
   }
-  
-  // Event listeners
-  items.forEach(item => {
-    item.addEventListener('click', () => showDetail(item));
-  });
-  
+
+  items.forEach(item => item.addEventListener('click', () => showDetail(item)));
   detailClose.addEventListener('click', hideDetail);
-  
-  // Auto-seleccionar el primer item si hay alguno
-  if (items.length > 0) {
-    // En desktop, mostrar el primero automáticamente
-    if (window.innerWidth > 900) {
-      showDetail(items[0]);
-    }
-  }
-  
-  // Smooth scroll a secciones desde KPIs
+
+  if (items.length > 0 && window.innerWidth > 900) showDetail(items[0]);
+
+  // KPIs scroll
   document.querySelectorAll('.crm-kpi').forEach(kpi => {
     kpi.addEventListener('click', function(e) {
       const href = this.getAttribute('href');
       if (href && href.startsWith('#')) {
         e.preventDefault();
         const target = document.querySelector(href);
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     });
   });
+
+  // Abrir modales
+  btnOpenRegistrar.addEventListener('click', () => {
+    if (!selected.url) return;
+    modalRegistrarTitle.textContent = selected.nombre || '—';
+    openModal(modalRegistrar);
+  });
+
+  btnOpenAgendar.addEventListener('click', () => {
+    if (!selected.url) return;
+    modalAgendarTitle.textContent = selected.nombre || '—';
+    openModal(modalAgendar);
+  });
+
+  // QUICK NOTE (POST al seguimiento_accion)
+  quickNoteForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selected.url) return;
+
+    const nota = (quickNoteText.value || '').trim();
+    if (!nota) {
+      flashMsg(quickNoteMsg, 'Escribe una nota antes de guardar.', 'err');
+      return;
+    }
+
+    try {
+      const fd = new FormData();
+      fd.append('accion_rapida', 'quick_note');
+      fd.append('nota', nota);
+
+      const res = await fetch(selected.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+        body: fd
+      });
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      flashMsg(quickNoteMsg, 'Nota guardada.', 'ok');
+      quickNoteText.value = '';
+    } catch (err) {
+      flashMsg(quickNoteMsg, 'No se pudo guardar. Revisa el backend de seguimiento_accion.', 'err');
+    }
+  });
+
+  // REGISTRAR CONTACTO (RÁPIDO) -> POST al seguimiento_accion
+  formRegistrarRapido.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selected.url) return;
+
+    const resultado = regResultado.value;
+    const nota = (regNota.value || '').trim();
+    const agendar = regAgendar.value;
+    const proximo = regProximo.value;
+
+    if (!resultado || !nota) {
+      flashMsg(regMsg, 'Completa resultado y nota.', 'err');
+      return;
+    }
+    if (agendar === 'si' && !proximo) {
+      flashMsg(regMsg, 'Selecciona la fecha del próximo contacto.', 'err');
+      return;
+    }
+
+    try {
+      const fd = new FormData();
+      fd.append('accion_rapida', 'registrar_contacto');
+      fd.append('resultado', resultado);
+      fd.append('nota', nota);
+      fd.append('agendar', agendar);
+      if (agendar === 'si') fd.append('proximo_contacto', proximo);
+
+      const res = await fetch(selected.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+        body: fd
+      });
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      flashMsg(regMsg, 'Contacto registrado.', 'ok');
+      setTimeout(() => closeModal(modalRegistrar), 600);
+    } catch (err) {
+      flashMsg(regMsg, 'No se pudo guardar. Revisa el backend de seguimiento_accion.', 'err');
+    }
+  });
+
+  // AGENDAR (RÁPIDO) -> POST al seguimiento_accion
+  formAgendarRapido.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selected.url) return;
+
+    const fecha = agdFecha.value;
+    const nota = (agdNota.value || '').trim();
+
+    if (!fecha) {
+      flashMsg(agdMsg, 'Selecciona la fecha.', 'err');
+      return;
+    }
+
+    try {
+      const fd = new FormData();
+      fd.append('accion_rapida', 'agendar');
+      fd.append('proximo_contacto', fecha);
+      if (nota) fd.append('nota', nota);
+
+      const res = await fetch(selected.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+        body: fd
+      });
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      flashMsg(agdMsg, 'Agendado.', 'ok');
+      setTimeout(() => closeModal(modalAgendar), 600);
+    } catch (err) {
+      flashMsg(agdMsg, 'No se pudo agendar. Revisa el backend de seguimiento_accion.', 'err');
+    }
+  });
+
 });
 </script>
 

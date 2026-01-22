@@ -19,15 +19,9 @@
 
 {% block page_content %}
 
-<!-- ══════════════════════════════════════════════════════════════════════════
-     VISTA MOBILE-FIRST - DETALLE DE SEGUIMIENTO
-     ══════════════════════════════════════════════════════════════════════════ -->
-
 <div class="mobile-app">
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         HEADER COMPACTO
-         ═══════════════════════════════════════════════════════════════════ -->
+    <!-- HEADER -->
     <header class="mobile-header">
         <a href="{% url 'nuevo_creyente_app:seguimiento_lista' %}" class="mobile-back">
             <span class="material-icons">arrow_back</span>
@@ -49,9 +43,7 @@
         </div>
     </header>
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         CARD DE PERFIL
-         ═══════════════════════════════════════════════════════════════════ -->
+    <!-- PERFIL -->
     <div class="profile-card">
         <div class="profile-avatar" style="background: {% if miembro.genero == 'M' %}#3b82f6{% else %}#ec4899{% endif %};">
             {% if miembro.foto %}
@@ -68,16 +60,25 @@
                 {% else %}
                     <span class="badge badge-info">{{ expediente.get_etapa_display }}</span>
                 {% endif %}
+
                 {% if miembro.edad %}
                     <span class="badge badge-light">{{ miembro.edad }} años</span>
+                {% endif %}
+
+                {# NUEVO: alerta siempre visible si no hay padre espiritual #}
+                {% if expediente.estado != "CERRADO" %}
+                    {% if not expediente.padres_links.all %}
+                        <span class="badge badge-warning">
+                            <span class="material-icons">person_off</span>
+                            Sin padre espiritual
+                        </span>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         PRÓXIMA ACCIÓN (destacado)
-         ═══════════════════════════════════════════════════════════════════ -->
+    <!-- PRÓXIMA ACCIÓN -->
     {% if expediente.estado != "CERRADO" %}
     <div class="next-action-card">
         <div class="next-action-icon">
@@ -93,18 +94,24 @@
                 {% endif %}
             </span>
         </div>
-        {% if expediente.responsable %}
-        <div class="next-action-responsible">
-            <span class="material-icons">person</span>
-            {{ expediente.responsable.nombres|truncatewords:1 }}
+
+        <div class="next-action-right">
+            {% if expediente.responsable %}
+            <div class="next-action-responsible">
+                <span class="material-icons">person</span>
+                {{ expediente.responsable.nombres|truncatewords:1 }}
+            </div>
+            {% endif %}
+
+            <button type="button" class="btn-mini" id="btn-open-agendar">
+                <span class="material-icons">edit_calendar</span>
+                Reagendar
+            </button>
         </div>
-        {% endif %}
     </div>
     {% endif %}
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         STEPPER HORIZONTAL COMPACTO
-         ═══════════════════════════════════════════════════════════════════ -->
+    <!-- STEPPER -->
     <div class="stepper-container">
         <div class="stepper-track">
             {% for e in expediente.ETAPAS_ORDEN %}
@@ -130,324 +137,32 @@
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         TABS DE NAVEGACIÓN (SWIPEABLE)
-         ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TABS (más claro) -->
     <div class="mobile-tabs">
-        <button class="mobile-tab active" data-tab="accion">
-            <span class="material-icons">{% if expediente.estado == "CERRADO" %}lock{% else %}edit_note{% endif %}</span>
-            <span>Acción</span>
-        </button>
-        <button class="mobile-tab" data-tab="historial">
+        <button class="mobile-tab" data-tab="actividad">
             <span class="material-icons">history</span>
-            <span>Historial</span>
+            <span>Actividad</span>
         </button>
-        <button class="mobile-tab" data-tab="info">
+        <button class="mobile-tab" data-tab="datos">
             <span class="material-icons">info</span>
-            <span>Info</span>
+            <span>Datos</span>
         </button>
-        <button class="mobile-tab" data-tab="mas">
-            <span class="material-icons">more_horiz</span>
-            <span>Más</span>
+        <button class="mobile-tab" data-tab="gestionar">
+            <span class="material-icons">tune</span>
+            <span>Gestionar</span>
         </button>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         CONTENIDO DE TABS
-         ═══════════════════════════════════════════════════════════════════ -->
     <div class="mobile-content">
 
-        <!-- TAB: ACCIÓN ACTUAL -->
-        <div class="tab-panel active" id="tab-accion">
-            
-            {% if expediente.estado == "CERRADO" %}
-                <div class="empty-state">
-                    <span class="material-icons">lock</span>
-                    <p>Expediente cerrado</p>
-                    <span class="empty-hint">No se pueden registrar nuevas acciones</span>
-                </div>
-
-            {% elif expediente.etapa == "INICIO" or expediente.etapa == "PRIMER_CONTACTO" %}
-                <!-- FORMULARIO: Primer contacto -->
-                <div class="action-header">
-                    <span class="material-icons">call</span>
-                    <div>
-                        <strong>Registrar contacto</strong>
-                        <p>Documenta el primer acercamiento</p>
-                    </div>
-                </div>
-
-                <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_primer_contacto' miembro.id %}" class="mobile-form">
-                    {% csrf_token %}
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Fecha</label>
-                            <input type="date" name="fecha_contacto" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row two-cols">
-                        <div class="form-group">
-                            <label>Canal</label>
-                            <select name="canal" required>
-                                <option value="">Seleccionar</option>
-                                <option value="llamada">📞 Llamada</option>
-                                <option value="whatsapp">💬 WhatsApp</option>
-                                <option value="presencial">🤝 Presencial</option>
-                                <option value="referido">👥 Referido</option>
-                                <option value="otro">📋 Otro</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Resultado</label>
-                            <select name="resultado" required>
-                                <option value="">Seleccionar</option>
-                                <option value="contactado">✅ Contactado</option>
-                                <option value="no_responde">❌ No respondió</option>
-                                <option value="num_err">⚠️ Núm. incorrecto</option>
-                                <option value="pendiente">🕐 Pendiente</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Nota breve</label>
-                        <textarea name="nota" rows="3" required placeholder="Ej: Se le escribió por WhatsApp, respondió agradecido."></textarea>
-                    </div>
-
-                    <button type="submit" class="btn-primary btn-block">
-                        <span class="material-icons">save</span>
-                        Guardar contacto
-                    </button>
-                </form>
-
-            {% elif expediente.etapa == "ACOMPANAMIENTO" %}
-                <!-- FORMULARIO: Acompañamiento -->
-                <div class="action-header">
-                    <span class="material-icons">volunteer_activism</span>
-                    <div>
-                        <strong>Registrar acompañamiento</strong>
-                        <p>Documenta el cuidado pastoral</p>
-                    </div>
-                </div>
-
-                <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_acompanamiento_add' miembro.id %}" class="mobile-form">
-                    {% csrf_token %}
-                    
-                    <div class="form-row two-cols">
-                        <div class="form-group">
-                            <label>Fecha</label>
-                            <input type="date" name="fecha_evento" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Próximo contacto</label>
-                            <input type="date" name="proximo_contacto">
-                        </div>
-                    </div>
-
-                    <div class="form-row two-cols">
-                        <div class="form-group">
-                            <label>Tipo</label>
-                            <select name="tipo_acompanamiento" required>
-                                <option value="">Seleccionar</option>
-                                <option value="oracion">🙏 Oración</option>
-                                <option value="conversacion">💬 Conversación</option>
-                                <option value="visita">🏠 Visita</option>
-                                <option value="culto">⛪ Culto</option>
-                                <option value="celula">👥 Célula</option>
-                                <option value="llamada_seguimiento">📞 Llamada</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Estado</label>
-                            <select name="estado_persona" required>
-                                <option value="">Seleccionar</option>
-                                <option value="bien">😊 Bien</option>
-                                <option value="neutro">😐 Neutro</option>
-                                <option value="desanimado">😔 Desanimado</option>
-                                <option value="riesgo">⚠️ En riesgo</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Nota pastoral</label>
-                        <textarea name="nota" rows="3" required placeholder="Ej: Oramos, está animado, vendrá el domingo."></textarea>
-                    </div>
-
-                    <button type="submit" class="btn-primary btn-block">
-                        <span class="material-icons">save</span>
-                        Guardar acompañamiento
-                    </button>
-                </form>
-
-            {% elif expediente.etapa == "INTEGRACION" %}
-                <!-- FORMULARIO: Integración -->
-                <div class="action-header">
-                    <span class="material-icons">hub</span>
-                    <div>
-                        <strong>Registrar integración</strong>
-                        <p>¿A qué grupo/actividad se integró?</p>
-                    </div>
-                </div>
-
-                <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_integracion_add' miembro.id %}" class="mobile-form">
-                    {% csrf_token %}
-                    
-                    <div class="form-row two-cols">
-                        <div class="form-group">
-                            <label>Fecha</label>
-                            <input type="date" name="fecha_integracion" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Tipo</label>
-                            <select name="tipo_integracion" required>
-                                <option value="">Seleccionar</option>
-                                <option value="celula">👥 Célula</option>
-                                <option value="culto">⛪ Culto</option>
-                                <option value="actividad">🎯 Actividad</option>
-                                <option value="unidad">🏛️ Ministerio</option>
-                                <option value="mentoria">🤝 Mentoría</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>¿A dónde se integró?</label>
-                        <input type="text" name="destino" required placeholder="Ej: Célula Jóvenes (martes 7pm)">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Responsable / contacto (opcional)</label>
-                        <input type="text" name="responsable_txt" placeholder="Ej: Líder Juan Pérez">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Próximo paso</label>
-                        <select name="proximo_paso">
-                            <option value="">Ninguno</option>
-                            <option value="confirmar_asistencia">Confirmar asistencia</option>
-                            <option value="presentar_lider">Presentarlo al líder</option>
-                            <option value="agendar_visita">Agendar visita</option>
-                            <option value="pasar_discipulado">Pasar a discipulado</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Nota (opcional)</label>
-                        <textarea name="nota" rows="2" placeholder="Ej: Se le presentó al líder, quedó motivado."></textarea>
-                    </div>
-
-                    <button type="submit" class="btn-primary btn-block">
-                        <span class="material-icons">save</span>
-                        Guardar integración
-                    </button>
-                </form>
-
-            {% elif expediente.etapa == "EVALUACION" %}
-                <!-- FORMULARIO: Evaluación -->
-                <div class="action-header">
-                    <span class="material-icons">fact_check</span>
-                    <div>
-                        <strong>Evaluación final</strong>
-                        <p>Define siguiente paso o cierra</p>
-                    </div>
-                </div>
-
-                <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_evaluacion_add' miembro.id %}" class="mobile-form">
-                    {% csrf_token %}
-                    
-                    <div class="form-row two-cols">
-                        <div class="form-group">
-                            <label>Fecha</label>
-                            <input type="date" name="fecha_evaluacion" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Decisión</label>
-                            <select name="decision" required>
-                                <option value="">Seleccionar</option>
-                                <option value="discipulado">📖 Discipulado</option>
-                                <option value="mantener_integracion">🔄 Mantener</option>
-                                <option value="visita_pastoral">🏠 Visita pastoral</option>
-                                <option value="reasignar_responsable">👤 Reasignar</option>
-                                <option value="cerrar">🔒 Cerrar</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Barreras detectadas</label>
-                        <div class="checkbox-grid">
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="barreras" value="transporte">
-                                <span>🚌 Transporte</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="barreras" value="horarios">
-                                <span>🕐 Horarios</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="barreras" value="falta_interes">
-                                <span>😕 Sin interés</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="barreras" value="familia">
-                                <span>👨‍👩‍👧 Familia</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="barreras" value="salud">
-                                <span>🏥 Salud</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="barreras" value="sin_contacto">
-                                <span>📵 Sin contacto</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Nota final</label>
-                        <textarea name="nota" rows="3" required placeholder="Ej: Se integró a célula, asistió 2 veces, listo para discipulado."></textarea>
-                    </div>
-
-                    <button type="submit" class="btn-primary btn-block">
-                        <span class="material-icons">save</span>
-                        Guardar evaluación
-                    </button>
-                </form>
-            {% endif %}
-
-            <!-- NOTA RÁPIDA (siempre visible si no está cerrado) -->
-            {% if expediente.estado != "CERRADO" %}
-            <div class="quick-note-section">
-                <button type="button" class="quick-note-toggle" id="toggle-quick-note">
-                    <span class="material-icons">add_comment</span>
-                    Agregar nota rápida
-                </button>
-                <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_nota_add' miembro.id %}" class="quick-note-form" id="quick-note-form" style="display:none;">
-                    {% csrf_token %}
-                    <input type="hidden" name="tipo" value="nota">
-                    <textarea name="texto" rows="2" placeholder="Escribe una nota..." required></textarea>
-                    <div class="quick-note-actions">
-                        <button type="button" class="btn-ghost" id="cancel-quick-note">Cancelar</button>
-                        <button type="submit" class="btn-secondary">
-                            <span class="material-icons">send</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- TAB: HISTORIAL -->
-        <div class="tab-panel" id="tab-historial">
+        <!-- TAB: ACTIVIDAD (antes Historial) -->
+        <div class="tab-panel" id="tab-actividad">
             <div class="timeline">
                 {% regroup expediente.bitacora.all by fecha|date:"d M Y" as items_by_date %}
-                
+
                 {% for date_group in items_by_date %}
                 <div class="timeline-date">{{ date_group.grouper }}</div>
-                
+
                 {% for item in date_group.list %}
                 <div class="timeline-item {% if item.tipo == 'nota' %}is-note{% endif %}">
                     <div class="timeline-dot"></div>
@@ -481,10 +196,9 @@
             </div>
         </div>
 
-        <!-- TAB: INFO -->
-        <div class="tab-panel" id="tab-info">
-            
-            <!-- Datos personales -->
+        <!-- TAB: DATOS (antes Info) -->
+        <div class="tab-panel" id="tab-datos">
+
             <div class="info-section">
                 <h3 class="info-section-title">
                     <span class="material-icons">person</span>
@@ -526,7 +240,6 @@
                 </div>
             </div>
 
-            <!-- Expediente -->
             <div class="info-section">
                 <h3 class="info-section-title">
                     <span class="material-icons">folder_open</span>
@@ -560,50 +273,50 @@
                 </div>
             </div>
 
-            <!-- Asignaciones -->
-            {% if expediente.padres_links.all %}
             <div class="info-section">
                 <h3 class="info-section-title">
                     <span class="material-icons">volunteer_activism</span>
-                    Padres espirituales
+                    Padres espirituales (solo lectura)
                 </h3>
-                <div class="assign-list">
-                    {% for link in expediente.padres_links.all %}
-                    <div class="assign-item">
-                        <div class="assign-avatar" style="background: {% if link.padre.genero == 'M' %}#3b82f6{% else %}#ec4899{% endif %};">
-                            {{ link.padre.nombres|slice:":1"|upper }}
+                {% if expediente.padres_links.all %}
+                    <div class="assign-list">
+                        {% for link in expediente.padres_links.all %}
+                        <div class="assign-item">
+                            <div class="assign-avatar" style="background: {% if link.padre.genero == 'M' %}#3b82f6{% else %}#ec4899{% endif %};">
+                                {{ link.padre.nombres|slice:":1"|upper }}
+                            </div>
+                            <span class="assign-name">{{ link.padre.nombres }} {{ link.padre.apellidos }}</span>
                         </div>
-                        <span class="assign-name">{{ link.padre.nombres }} {{ link.padre.apellidos }}</span>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-                </div>
+                {% else %}
+                    <div class="assign-empty-small" style="margin:0;">
+                        <span class="material-icons">person_off</span>
+                        <span>Sin padres asignados</span>
+                    </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
 
-        <!-- TAB: MÁS OPCIONES -->
-        <div class="tab-panel" id="tab-mas">
-            
-            <!-- Cambiar etapa manualmente -->
+        <!-- TAB: GESTIONAR (antes Más) -->
+        <div class="tab-panel" id="tab-gestionar">
+
             {% if expediente.estado != "CERRADO" %}
+            <!-- Acciones rápidas de gestión -->
             <div class="options-section">
-                <h3 class="options-title">Cambiar etapa</h3>
-                <div class="options-grid">
-                    {% for e in expediente.ETAPAS_ORDEN %}
-                    <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_set_etapa' miembro.id %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="etapa" value="{{ e }}">
-                        <button type="submit" class="option-btn {% if expediente.etapa == e %}is-active{% endif %}">
-                            {% if e == "INICIO" %}Inicio
-                            {% elif e == "PRIMER_CONTACTO" %}Primer contacto
-                            {% elif e == "ACOMPANAMIENTO" %}Acompañamiento
-                            {% elif e == "INTEGRACION" %}Integración
-                            {% elif e == "EVALUACION" %}Evaluación
-                            {% elif e == "CIERRE" %}Cierre
-                            {% else %}{{ e }}{% endif %}
-                        </button>
-                    </form>
-                    {% endfor %}
+                <h3 class="options-title">Gestión rápida</h3>
+                <div class="manage-actions">
+                    <button type="button" class="btn-secondary btn-block" id="btn-open-etapa">
+                        <span class="material-icons">flag</span>
+                        Cambiar etapa
+                    </button>
+                    <button type="button" class="btn-secondary btn-block" id="btn-open-agendar-2">
+                        <span class="material-icons">event</span>
+                        Agendar próximo contacto
+                    </button>
+                </div>
+                <div class="manage-hint">
+                    Usa “Cambiar etapa” solo cuando la persona avanzó de verdad (no por agendar).
                 </div>
             </div>
             {% endif %}
@@ -612,8 +325,7 @@
             {% if expediente.estado != "CERRADO" %}
             <div class="options-section">
                 <h3 class="options-title">Padres espirituales</h3>
-                
-                <!-- Lista actual -->
+
                 {% if expediente.padres_links.all %}
                 <div class="assign-list-editable">
                     {% for link in expediente.padres_links.all %}
@@ -641,7 +353,6 @@
                 </div>
                 {% endif %}
 
-                <!-- Agregar nuevo -->
                 <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_padre_add' miembro.id %}" class="assign-add-section">
                     {% csrf_token %}
                     <label>Añadir padre espiritual</label>
@@ -688,13 +399,13 @@
             </div>
             {% endif %}
 
-            <!-- Ajustes del expediente -->
+            <!-- Ajustes -->
             {% if expediente.estado != "CERRADO" %}
             <div class="options-section">
                 <h3 class="options-title">Ajustes</h3>
                 <form method="post" class="mobile-form">
                     {% csrf_token %}
-                    
+
                     <div class="form-group">
                         <label>Unidad responsable</label>
                         {{ form.unidad_responsable }}
@@ -716,14 +427,15 @@
                     </button>
                 </form>
             </div>
+            {% endif %}
 
-            <!-- Cerrar seguimiento -->
-            {% if expediente.puede_cerrar %}
+            <!-- Cerrar -->
+            {% if expediente.estado != "CERRADO" and expediente.puede_cerrar %}
             <div class="options-section danger-zone">
                 <h3 class="options-title">Cerrar seguimiento</h3>
                 <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_cerrar' miembro.id %}" class="mobile-form">
                     {% csrf_token %}
-                    
+
                     <div class="form-group">
                         <label>Resultado final</label>
                         <select name="resultado_final" required>
@@ -750,9 +462,8 @@
                 </form>
             </div>
             {% endif %}
-            {% endif %}
 
-            <!-- Info del sistema (siempre visible) -->
+            <!-- Información del sistema -->
             <div class="options-section">
                 <h3 class="options-title">Información</h3>
                 <div class="info-grid compact">
@@ -768,18 +479,106 @@
                     {% endif %}
                 </div>
             </div>
+
         </div>
 
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════
-     CSS MOBILE-FIRST
-     ══════════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL: AGENDAR -->
+<div class="modal-overlay" id="modal-agendar" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span class="material-icons">event</span>
+        Agendar próximo contacto
+      </div>
+      <button type="button" class="modal-close" data-close-modal="modal-agendar">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_accion' miembro.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="accion_rapida" value="agendar">
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Fecha del próximo contacto</label>
+          <input type="date" name="proximo_contacto" required value="{% if expediente.proximo_contacto %}{{ expediente.proximo_contacto|date:'Y-m-d' }}{% endif %}">
+        </div>
+
+        <div class="form-group">
+          <label>Nota (opcional)</label>
+          <textarea name="nota" rows="2" placeholder="Ej: Confirmó que estará disponible en la tarde..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close-modal="modal-agendar">Cancelar</button>
+        <button type="submit" class="btn-primary">
+          <span class="material-icons">save</span>
+          Guardar agenda
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: CAMBIAR ETAPA -->
+{% if expediente.estado != "CERRADO" %}
+<div class="modal-overlay" id="modal-etapa" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span class="material-icons">flag</span>
+        Cambiar etapa
+      </div>
+      <button type="button" class="modal-close" data-close-modal="modal-etapa">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <form method="post" action="{% url 'nuevo_creyente_app:seguimiento_set_etapa' miembro.id %}">
+      {% csrf_token %}
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nueva etapa</label>
+          <select name="etapa" required>
+            {% for e in expediente.ETAPAS_ORDEN %}
+              <option value="{{ e }}" {% if expediente.etapa == e %}selected{% endif %}>
+                {% if e == "INICIO" %}Inicio
+                {% elif e == "PRIMER_CONTACTO" %}Primer contacto
+                {% elif e == "ACOMPANAMIENTO" %}Acompañamiento
+                {% elif e == "INTEGRACION" %}Integración
+                {% elif e == "EVALUACION" %}Evaluación
+                {% elif e == "CIERRE" %}Cierre
+                {% else %}{{ e }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Motivo (opcional)</label>
+          <textarea name="nota_etapa" rows="2" placeholder="Ej: Ya fue a célula y está estable..."></textarea>
+          <div class="helper-small">Si tu view todavía no usa “nota_etapa”, luego lo conectamos para guardarlo en bitácora.</div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close-modal="modal-etapa">Cancelar</button>
+        <button type="submit" class="btn-primary">
+          <span class="material-icons">save</span>
+          Cambiar etapa
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 <style>
-/* ═══════════════════════════════════════════════════════════════════
-   VARIABLES Y RESET
-   ═══════════════════════════════════════════════════════════════════ */
 :root {
     --primary: #714B67;
     --primary-dark: #5a3d54;
@@ -803,9 +602,6 @@
     --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   APP CONTAINER
-   ═══════════════════════════════════════════════════════════════════ */
 .mobile-app {
     max-width: 100%;
     min-height: 100vh;
@@ -813,9 +609,6 @@
     padding-bottom: 100px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   HEADER
-   ═══════════════════════════════════════════════════════════════════ */
 .mobile-header {
     display: flex;
     align-items: center;
@@ -839,10 +632,7 @@
     text-decoration: none;
     transition: background 0.15s;
 }
-
-.mobile-back:hover {
-    background: var(--gray-100);
-}
+.mobile-back:hover { background: var(--gray-100); }
 
 .mobile-header-title {
     flex: 1;
@@ -851,10 +641,7 @@
     color: var(--gray-800);
 }
 
-.mobile-header-actions {
-    display: flex;
-    gap: 8px;
-}
+.mobile-header-actions { display: flex; gap: 8px; }
 
 .mobile-header-btn {
     width: 40px;
@@ -867,23 +654,10 @@
     transition: all 0.15s;
 }
 
-.mobile-header-btn.whatsapp {
-    background: #dcfce7;
-    color: #16a34a;
-}
+.mobile-header-btn.whatsapp { background: #dcfce7; color: #16a34a; }
+.mobile-header-btn.phone { background: #dbeafe; color: #2563eb; }
+.mobile-header-btn .material-icons { font-size: 20px; }
 
-.mobile-header-btn.phone {
-    background: #dbeafe;
-    color: #2563eb;
-}
-
-.mobile-header-btn .material-icons {
-    font-size: 20px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   PROFILE CARD
-   ═══════════════════════════════════════════════════════════════════ */
 .profile-card {
     display: flex;
     align-items: center;
@@ -902,24 +676,10 @@
     flex-shrink: 0;
     overflow: hidden;
 }
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-avatar span { font-size: 24px; font-weight: 700; color: #fff; }
 
-.profile-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.profile-avatar span {
-    font-size: 24px;
-    font-weight: 700;
-    color: #fff;
-}
-
-.profile-info {
-    flex: 1;
-    min-width: 0;
-}
-
+.profile-info { flex: 1; min-width: 0; }
 .profile-name {
     font-size: 20px;
     font-weight: 700;
@@ -927,14 +687,8 @@
     margin: 0 0 8px 0;
     line-height: 1.2;
 }
+.profile-badges { display: flex; flex-wrap: wrap; gap: 6px; }
 
-.profile-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-/* Badges */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -944,34 +698,16 @@
     font-weight: 600;
     border-radius: 20px;
 }
+.badge .material-icons { font-size: 14px; }
 
-.badge .material-icons {
-    font-size: 14px;
-}
+.badge-info { background: #dbeafe; color: #1d4ed8; }
+.badge-success { background: #dcfce7; color: #166534; }
+.badge-neutral { background: var(--gray-200); color: var(--gray-600); }
+.badge-light { background: var(--gray-100); color: var(--gray-600); }
 
-.badge-info {
-    background: #dbeafe;
-    color: #1d4ed8;
-}
+/* NUEVO */
+.badge-warning { background:#fffbeb; color:#b45309; }
 
-.badge-success {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.badge-neutral {
-    background: var(--gray-200);
-    color: var(--gray-600);
-}
-
-.badge-light {
-    background: var(--gray-100);
-    color: var(--gray-600);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   NEXT ACTION CARD
-   ═══════════════════════════════════════════════════════════════════ */
 .next-action-card {
     display: flex;
     align-items: center;
@@ -993,14 +729,9 @@
     justify-content: center;
 }
 
-.next-action-icon .material-icons {
-    font-size: 22px;
-}
+.next-action-icon .material-icons { font-size: 22px; }
 
-.next-action-content {
-    flex: 1;
-}
-
+.next-action-content { flex: 1; }
 .next-action-label {
     display: block;
     font-size: 11px;
@@ -1008,42 +739,49 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+.next-action-date { font-size: 15px; font-weight: 600; }
 
-.next-action-date {
-    font-size: 15px;
-    font-weight: 600;
+.next-action-right{
+    display:flex;
+    flex-direction: column;
+    align-items:flex-end;
+    gap:8px;
 }
 
 .next-action-responsible {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 4px;
     font-size: 12px;
-    opacity: 0.9;
+    opacity: 0.95;
     background: rgba(255,255,255,0.15);
     padding: 6px 10px;
     border-radius: 20px;
 }
+.next-action-responsible .material-icons { font-size: 16px; }
 
-.next-action-responsible .material-icons {
-    font-size: 16px;
+.btn-mini{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:8px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.12);
+    color:#fff;
+    cursor:pointer;
+    font-size: 12px;
+    font-weight: 600;
 }
+.btn-mini .material-icons{ font-size:16px; }
+.btn-mini:hover{ background: rgba(255,255,255,0.18); }
 
-/* ═══════════════════════════════════════════════════════════════════
-   STEPPER
-   ═══════════════════════════════════════════════════════════════════ */
 .stepper-container {
     padding: 0 16px 16px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
-
-.stepper-track {
-    display: flex;
-    gap: 4px;
-    min-width: max-content;
-}
-
+.stepper-track { display: flex; gap: 4px; min-width: max-content; }
 .stepper-item {
     display: flex;
     flex-direction: column;
@@ -1052,7 +790,6 @@
     padding: 8px 12px;
     min-width: 70px;
 }
-
 .stepper-dot {
     width: 28px;
     height: 28px;
@@ -1066,41 +803,22 @@
     font-weight: 600;
     transition: all 0.2s;
 }
-
-.stepper-dot .material-icons {
-    font-size: 16px;
-}
-
-.stepper-item.is-done .stepper-dot {
-    background: var(--success);
-    color: #fff;
-}
-
+.stepper-dot .material-icons { font-size: 16px; }
+.stepper-item.is-done .stepper-dot { background: var(--success); color: #fff; }
 .stepper-item.is-current .stepper-dot {
     background: var(--primary);
     color: #fff;
     box-shadow: 0 0 0 4px rgba(113, 75, 103, 0.2);
 }
-
 .stepper-label {
     font-size: 10px;
     color: var(--gray-500);
     text-align: center;
     white-space: nowrap;
 }
+.stepper-item.is-current .stepper-label { color: var(--primary); font-weight: 600; }
+.stepper-item.is-done .stepper-label { color: var(--success); }
 
-.stepper-item.is-current .stepper-label {
-    color: var(--primary);
-    font-weight: 600;
-}
-
-.stepper-item.is-done .stepper-label {
-    color: var(--success);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   TABS
-   ═══════════════════════════════════════════════════════════════════ */
 .mobile-tabs {
     display: flex;
     background: #fff;
@@ -1109,7 +827,6 @@
     top: 65px;
     z-index: 90;
 }
-
 .mobile-tab {
     flex: 1;
     display: flex;
@@ -1126,87 +843,17 @@
     transition: all 0.15s;
     border-bottom: 2px solid transparent;
 }
+.mobile-tab .material-icons { font-size: 22px; }
+.mobile-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
-.mobile-tab .material-icons {
-    font-size: 22px;
-}
+.mobile-content { padding: 16px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
 
-.mobile-tab.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-}
+.mobile-form { background: #fff; border-radius: var(--radius); padding: 16px; }
 
-/* ═══════════════════════════════════════════════════════════════════
-   TAB PANELS
-   ═══════════════════════════════════════════════════════════════════ */
-.mobile-content {
-    padding: 16px;
-}
-
-.tab-panel {
-    display: none;
-}
-
-.tab-panel.active {
-    display: block;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   FORMS
-   ═══════════════════════════════════════════════════════════════════ */
-.action-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 16px;
-    background: #fff;
-    border-radius: var(--radius);
-    margin-bottom: 16px;
-}
-
-.action-header .material-icons {
-    font-size: 24px;
-    color: var(--primary);
-    margin-top: 2px;
-}
-
-.action-header strong {
-    display: block;
-    font-size: 15px;
-    color: var(--gray-800);
-    margin-bottom: 2px;
-}
-
-.action-header p {
-    margin: 0;
-    font-size: 13px;
-    color: var(--gray-500);
-}
-
-.mobile-form {
-    background: #fff;
-    border-radius: var(--radius);
-    padding: 16px;
-}
-
-.form-row {
-    margin-bottom: 16px;
-}
-
-.form-row.two-cols {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-}
-
-.form-group {
-    margin-bottom: 20px;
-    position: relative;
-}
-
-.form-group:last-child {
-    margin-bottom: 0;
-}
+.form-group { margin-bottom: 20px; position: relative; }
+.form-group:last-child { margin-bottom: 0; }
 
 .form-group label {
     display: block;
@@ -1217,7 +864,6 @@
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
-
 .form-group input,
 .form-group select,
 .form-group textarea {
@@ -1232,71 +878,15 @@
     transition: border-color 0.2s;
     -webkit-appearance: none;
 }
-
 .form-group input:focus,
 .form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-bottom-color: var(--primary);
-}
+.form-group textarea:focus { outline: none; border-bottom-color: var(--primary); }
+.form-group textarea { resize: vertical; min-height: 70px; border: none; border-bottom: 2px solid var(--gray-300); }
+.form-group input[type="date"] { color-scheme: light; }
 
-.form-group input::placeholder,
-.form-group textarea::placeholder {
-    color: var(--gray-400);
-}
-
-.form-group select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0 center;
-    padding-right: 20px;
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 70px;
-    border: none;
-    border-bottom: 2px solid var(--gray-300);
-}
-
-/* Date input icon color fix */
-.form-group input[type="date"] {
-    color-scheme: light;
-}
-
-/* Checkbox grid */
-.checkbox-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-
-.checkbox-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    background: var(--gray-50);
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.checkbox-item:has(input:checked) {
-    background: #dbeafe;
-}
-
-.checkbox-item input {
-    width: auto;
-    margin: 0;
-}
-
-/* Buttons */
 .btn-primary,
 .btn-secondary,
-.btn-danger,
-.btn-ghost {
+.btn-danger {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1310,123 +900,18 @@
     transition: all 0.15s;
     text-decoration: none;
 }
-
-.btn-primary {
-    background: var(--primary);
-    color: #fff;
-}
-
-.btn-primary:hover {
-    background: var(--primary-dark);
-}
-
-.btn-secondary {
-    background: var(--gray-100);
-    color: var(--gray-700);
-    border: 1px solid var(--gray-300);
-}
-
-.btn-secondary:hover {
-    background: var(--gray-200);
-}
-
-.btn-danger {
-    background: var(--danger);
-    color: #fff;
-}
-
-.btn-danger:hover {
-    background: #dc2626;
-}
-
-.btn-ghost {
-    background: transparent;
-    color: var(--gray-600);
-    padding: 10px 16px;
-}
-
-.btn-block {
-    width: 100%;
-    margin-top: 16px;
-}
-
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-300); }
+.btn-secondary:hover { background: var(--gray-200); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+.btn-block { width: 100%; margin-top: 16px; }
 .btn-primary .material-icons,
 .btn-secondary .material-icons,
-.btn-danger .material-icons {
-    font-size: 20px;
-}
+.btn-danger .material-icons { font-size: 20px; }
 
-/* ═══════════════════════════════════════════════════════════════════
-   QUICK NOTE
-   ═══════════════════════════════════════════════════════════════════ */
-.quick-note-section {
-    margin-top: 20px;
-}
-
-.quick-note-toggle {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px;
-    background: var(--gray-50);
-    border: 2px dashed var(--gray-300);
-    border-radius: var(--radius);
-    color: var(--gray-600);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.quick-note-toggle:hover {
-    background: var(--gray-100);
-    border-color: var(--gray-400);
-}
-
-.quick-note-form {
-    background: #fff;
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-top: 12px;
-}
-
-.quick-note-form textarea {
-    width: 100%;
-    padding: 12px 0;
-    border: none;
-    border-bottom: 2px solid var(--gray-300);
-    border-radius: 0;
-    background: transparent;
-    font-size: 14px;
-    resize: none;
-    transition: border-color 0.2s;
-}
-
-.quick-note-form textarea:focus {
-    outline: none;
-    border-bottom-color: var(--primary);
-}
-
-.quick-note-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 12px;
-}
-
-.quick-note-actions .btn-secondary {
-    padding: 10px 14px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   TIMELINE
-   ═══════════════════════════════════════════════════════════════════ */
-.timeline {
-    position: relative;
-}
-
+.timeline { position: relative; }
 .timeline-date {
     font-size: 12px;
     font-weight: 600;
@@ -1437,14 +922,7 @@
     margin-bottom: 8px;
     border-bottom: 1px solid var(--gray-200);
 }
-
-.timeline-item {
-    display: flex;
-    gap: 12px;
-    padding: 12px 0;
-    position: relative;
-}
-
+.timeline-item { display: flex; gap: 12px; padding: 12px 0; position: relative; }
 .timeline-item::before {
     content: '';
     position: absolute;
@@ -1454,11 +932,7 @@
     width: 2px;
     background: var(--gray-200);
 }
-
-.timeline-item:last-child::before {
-    display: none;
-}
-
+.timeline-item:last-child::before { display: none; }
 .timeline-dot {
     width: 12px;
     height: 12px;
@@ -1467,11 +941,7 @@
     flex-shrink: 0;
     margin-top: 4px;
 }
-
-.timeline-item.is-note .timeline-dot {
-    background: var(--warning);
-}
-
+.timeline-item.is-note .timeline-dot { background: var(--warning); }
 .timeline-content {
     flex: 1;
     min-width: 0;
@@ -1480,67 +950,19 @@
     padding: 12px;
     box-shadow: var(--shadow);
 }
-
 .timeline-item.is-note .timeline-content {
     background: #fffbeb;
     border-left: 3px solid var(--warning);
 }
+.timeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.timeline-author { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+.timeline-time { font-size: 11px; color: var(--gray-400); }
+.timeline-title { font-size: 14px; font-weight: 600; color: var(--gray-800); margin-bottom: 4px; }
+.timeline-body { font-size: 13px; color: var(--gray-600); line-height: 1.5; }
+.timeline-tags { display: flex; gap: 6px; margin-top: 8px; }
+.timeline-tag { font-size: 11px; padding: 3px 8px; background: var(--gray-100); color: var(--gray-600); border-radius: 10px; }
 
-.timeline-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-}
-
-.timeline-author {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--gray-800);
-}
-
-.timeline-time {
-    font-size: 11px;
-    color: var(--gray-400);
-}
-
-.timeline-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--gray-800);
-    margin-bottom: 4px;
-}
-
-.timeline-body {
-    font-size: 13px;
-    color: var(--gray-600);
-    line-height: 1.5;
-}
-
-.timeline-tags {
-    display: flex;
-    gap: 6px;
-    margin-top: 8px;
-}
-
-.timeline-tag {
-    font-size: 11px;
-    padding: 3px 8px;
-    background: var(--gray-100);
-    color: var(--gray-600);
-    border-radius: 10px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   INFO SECTION
-   ═══════════════════════════════════════════════════════════════════ */
-.info-section {
-    background: #fff;
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 16px;
-}
-
+.info-section { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
 .info-section-title {
     display: flex;
     align-items: center;
@@ -1552,52 +974,16 @@
     padding-bottom: 12px;
     border-bottom: 1px solid var(--gray-200);
 }
+.info-section-title .material-icons { font-size: 20px; color: var(--primary); }
 
-.info-section-title .material-icons {
-    font-size: 20px;
-    color: var(--primary);
-}
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.info-grid.compact { gap: 12px; }
+.info-item { display: flex; flex-direction: column; gap: 4px; }
+.info-label { font-size: 11px; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.3px; }
+.info-value { font-size: 14px; color: var(--gray-800); }
+.info-value a { color: var(--primary); text-decoration: none; }
 
-.info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.info-grid.compact {
-    gap: 12px;
-}
-
-.info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.info-label {
-    font-size: 11px;
-    color: var(--gray-500);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-
-.info-value {
-    font-size: 14px;
-    color: var(--gray-800);
-}
-
-.info-value a {
-    color: var(--primary);
-    text-decoration: none;
-}
-
-/* Assign list */
-.assign-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
+.assign-list { display: flex; flex-direction: column; gap: 10px; }
 .assign-item {
     display: flex;
     align-items: center;
@@ -1606,7 +992,6 @@
     background: var(--gray-50);
     border-radius: var(--radius-sm);
 }
-
 .assign-avatar {
     width: 36px;
     height: 36px;
@@ -1618,120 +1003,33 @@
     font-size: 14px;
     font-weight: 600;
 }
+.assign-name { font-size: 14px; color: var(--gray-800); }
 
-.assign-name {
-    font-size: 14px;
-    color: var(--gray-800);
-}
+.options-section { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.options-section.danger-zone { border: 1px solid #fecaca; background: #fef2f2; }
+.options-title { font-size: 14px; font-weight: 600; color: var(--gray-800); margin: 0 0 16px 0; }
 
-/* ═══════════════════════════════════════════════════════════════════
-   OPTIONS SECTION
-   ═══════════════════════════════════════════════════════════════════ */
-.options-section {
-    background: #fff;
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 16px;
-}
-
-.options-section.danger-zone {
-    border: 1px solid #fecaca;
-    background: #fef2f2;
-}
-
-.options-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--gray-800);
-    margin: 0 0 16px 0;
-}
-
-.options-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-
-.option-btn {
-    padding: 12px;
-    font-size: 13px;
-    font-weight: 500;
-    background: var(--gray-50);
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius-sm);
-    color: var(--gray-700);
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.option-btn:hover {
-    background: var(--gray-100);
-}
-
-.option-btn.is-active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   PADRES ESPIRITUALES - EDITABLE
-   ═══════════════════════════════════════════════════════════════════ */
-.assign-list-editable {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
-.assign-item-edit {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--gray-50);
-    border-radius: var(--radius-sm);
-}
-
-.assign-item-edit .assign-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.assign-item-edit .assign-name {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--gray-800);
-}
-
-.assign-item-edit .assign-code {
-    font-size: 11px;
+.manage-actions{ display:flex; flex-direction: column; gap: 10px; }
+.manage-hint{
+    margin-top: 10px;
+    font-size: 12px;
     color: var(--gray-500);
 }
 
+.assign-list-editable { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.assign-item-edit { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--gray-50); border-radius: var(--radius-sm); }
+.assign-item-edit .assign-info { flex: 1; min-width: 0; }
+.assign-item-edit .assign-name { display: block; font-size: 14px; font-weight: 500; color: var(--gray-800); }
+.assign-item-edit .assign-code { font-size: 11px; color: var(--gray-500); }
+
 .assign-remove {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: 50%;
-    color: var(--gray-400);
-    cursor: pointer;
-    transition: all 0.15s;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; border-radius: 50%;
+    color: var(--gray-400); cursor: pointer; transition: all 0.15s;
 }
-
-.assign-remove:hover {
-    background: #fee2e2;
-    color: var(--danger);
-}
-
-.assign-remove .material-icons {
-    font-size: 18px;
-}
+.assign-remove:hover { background: #fee2e2; color: var(--danger); }
+.assign-remove .material-icons { font-size: 18px; }
 
 .assign-empty-small {
     display: flex;
@@ -1744,17 +1042,9 @@
     font-size: 13px;
     margin-bottom: 16px;
 }
+.assign-empty-small .material-icons { font-size: 20px; opacity: 0.5; }
 
-.assign-empty-small .material-icons {
-    font-size: 20px;
-    opacity: 0.5;
-}
-
-.assign-add-section {
-    padding-top: 16px;
-    border-top: 1px solid var(--gray-200);
-}
-
+.assign-add-section { padding-top: 16px; border-top: 1px solid var(--gray-200); }
 .assign-add-section > label {
     display: block;
     font-size: 12px;
@@ -1764,198 +1054,94 @@
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
-
-.assign-add-row {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-}
-
-.assign-add-row .autocomplete-wrapper {
-    flex: 1;
-    position: relative;
-}
-
-.assign-add-row .autocomplete-field {
-    position: relative;
-}
-
-.assign-add-row .autocomplete-search,
-.assign-add-row .autocomplete-search.input {
-    width: 100%;
-    padding: 12px 0;
-    font-size: 15px;
-    border: none;
-    border-bottom: 2px solid var(--gray-300);
-    border-radius: 0;
-    background: transparent;
-    color: var(--gray-800);
-    transition: border-color 0.2s;
-}
-
-.assign-add-row .autocomplete-search:focus {
-    outline: none;
-    border-bottom-color: var(--primary);
-}
-
-.assign-add-row .autocomplete-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: #fff;
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-lg);
-    z-index: 1000;
-    max-height: 250px;
-    overflow-y: auto;
-}
-
-.assign-add-row .autocomplete-list {
-    list-style: none;
-    margin: 0;
-    padding: 4px 0;
-}
-
-.assign-add-row .autocomplete-list li {
-    padding: 12px 14px;
-    cursor: pointer;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-bottom: 1px solid var(--gray-100);
-}
-
-.assign-add-row .autocomplete-list li:last-child {
-    border-bottom: none;
-}
-
-.assign-add-row .autocomplete-list li:hover,
-.assign-add-row .autocomplete-list li.is-active {
-    background: var(--gray-50);
-}
-
-.assign-add-row .autocomplete-loading,
-.assign-add-row .autocomplete-empty {
-    padding: 16px;
-    text-align: center;
-    color: var(--gray-500);
-    font-size: 13px;
-}
-
-.assign-add-row .autocomplete-chip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: var(--gray-100);
-    border-radius: 20px;
-    font-size: 13px;
-    margin-bottom: 4px;
-}
-
-.assign-add-row .chip-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.assign-add-row .chip-text {
-    flex: 1;
-}
-
-.assign-add-row .chip-name {
-    font-weight: 500;
-    color: var(--gray-800);
-}
-
-.assign-add-row .chip-code {
-    font-size: 11px;
-    color: var(--gray-500);
-}
-
-.assign-add-row .chip-remove {
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: var(--gray-500);
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.15s;
-}
-
-.assign-add-row .chip-remove:hover {
-    background: var(--gray-200);
-    color: var(--gray-700);
-}
+.assign-add-row { display: flex; gap: 10px; align-items: flex-end; }
+.assign-add-row .autocomplete-wrapper { flex: 1; position: relative; }
 
 .btn-add-padre {
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--primary); color: #fff;
+    border: none; border-radius: var(--radius-sm);
+    cursor: pointer; transition: background 0.15s;
+}
+.btn-add-padre:hover { background: var(--primary-dark); }
+.btn-add-padre .material-icons { font-size: 22px; }
+
+.empty-state { text-align: center; padding: 40px 20px; color: var(--gray-500); }
+.empty-state .material-icons { font-size: 48px; opacity: 0.4; margin-bottom: 12px; }
+.empty-state p { margin: 0 0 4px 0; font-size: 15px; font-weight: 500; color: var(--gray-600); }
+.empty-hint { font-size: 13px; color: var(--gray-400); }
+
+/* MODAL */
+.modal-overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(17,24,39,0.55);
+    display: none;
+    align-items: flex-end;
     justify-content: center;
-    background: var(--primary);
-    color: #fff;
+    z-index: 9999;
+    padding: 16px;
+}
+.modal-overlay.is-open{ display:flex; }
+
+.modal-card{
+    width: 100%;
+    max-width: 520px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: modalUp .14s ease-out;
+}
+@keyframes modalUp{
+    from{ transform: translateY(12px); opacity: 0.7; }
+    to{ transform: translateY(0); opacity: 1; }
+}
+.modal-header{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--gray-200);
+}
+.modal-title{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+.modal-title .material-icons{ color: var(--primary); }
+.modal-close{
+    width: 36px; height: 36px;
+    border-radius: 10px;
     border: none;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: background 0.15s;
+    background: var(--gray-100);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color: var(--gray-700);
+}
+.modal-close:hover{ background: var(--gray-200); }
+
+.modal-body{ padding: 16px; }
+.modal-actions{
+    display:flex;
+    gap: 10px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--gray-200);
+    justify-content: flex-end;
 }
 
-.btn-add-padre:hover {
-    background: var(--primary-dark);
-}
-
-.btn-add-padre .material-icons {
-    font-size: 22px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   EMPTY STATE
-   ═══════════════════════════════════════════════════════════════════ */
-.empty-state {
-    text-align: center;
-    padding: 40px 20px;
+.helper-small{
+    margin-top: 6px;
+    font-size: 12px;
     color: var(--gray-500);
 }
 
-.empty-state .material-icons {
-    font-size: 48px;
-    opacity: 0.4;
-    margin-bottom: 12px;
-}
-
-.empty-state p {
-    margin: 0 0 4px 0;
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--gray-600);
-}
-
-.empty-hint {
-    font-size: 13px;
-    color: var(--gray-400);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   RESPONSIVE - TABLET
-   ═══════════════════════════════════════════════════════════════════ */
 @media (min-width: 768px) {
     .mobile-app {
         max-width: 600px;
@@ -1963,71 +1149,83 @@
         border-left: 1px solid var(--gray-200);
         border-right: 1px solid var(--gray-200);
     }
-
-    .profile-avatar {
-        width: 80px;
-        height: 80px;
-    }
-
-    .profile-name {
-        font-size: 24px;
-    }
-
-    .info-grid {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
+    .profile-avatar { width: 80px; height: 80px; }
+    .profile-name { font-size: 24px; }
+    .info-grid { grid-template-columns: 1fr 1fr 1fr; }
+    .modal-overlay{ align-items: center; }
 }
 </style>
 
-<!-- ══════════════════════════════════════════════════════════════════════════
-     JAVASCRIPT
-     ══════════════════════════════════════════════════════════════════════════ -->
 <script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Tab switching
+    // Tabs
     const tabs = document.querySelectorAll('.mobile-tab');
     const panels = document.querySelectorAll('.tab-panel');
 
+    function activateTab(name){
+        const targetId = 'tab-' + name;
+        tabs.forEach(t => t.classList.remove('active'));
+        panels.forEach(p => p.classList.remove('active'));
+        const t = document.querySelector(`.mobile-tab[data-tab="${name}"]`);
+        const p = document.getElementById(targetId);
+        if (t) t.classList.add('active');
+        if (p) p.classList.add('active');
+    }
+
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
-            const targetId = 'tab-' + this.dataset.tab;
-
-            tabs.forEach(t => t.classList.remove('active'));
-            panels.forEach(p => p.classList.remove('active'));
-
-            this.classList.add('active');
-            document.getElementById(targetId).classList.add('active');
+            activateTab(this.dataset.tab);
         });
     });
+
+    // default
+    activateTab('actividad');
 
     // URL param for tab
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    if (tabParam) {
-        const targetTab = document.querySelector(`.mobile-tab[data-tab="${tabParam}"]`);
-        if (targetTab) targetTab.click();
+    if (tabParam) activateTab(tabParam);
+
+    // Modals
+    function openModal(id){
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.add('is-open');
+        el.setAttribute('aria-hidden','false');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeModal(id){
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('is-open');
+        el.setAttribute('aria-hidden','true');
+        document.body.style.overflow = '';
     }
 
-    // Quick note toggle
-    const toggleBtn = document.getElementById('toggle-quick-note');
-    const quickForm = document.getElementById('quick-note-form');
-    const cancelBtn = document.getElementById('cancel-quick-note');
+    const btnAgendar = document.getElementById('btn-open-agendar');
+    const btnAgendar2 = document.getElementById('btn-open-agendar-2');
+    if (btnAgendar) btnAgendar.addEventListener('click', () => openModal('modal-agendar'));
+    if (btnAgendar2) btnAgendar2.addEventListener('click', () => openModal('modal-agendar'));
 
-    if (toggleBtn && quickForm) {
-        toggleBtn.addEventListener('click', function() {
-            this.style.display = 'none';
-            quickForm.style.display = 'block';
-            quickForm.querySelector('textarea').focus();
+    const btnEtapa = document.getElementById('btn-open-etapa');
+    if (btnEtapa) btnEtapa.addEventListener('click', () => openModal('modal-etapa'));
+
+    document.querySelectorAll('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
+    });
+
+    document.querySelectorAll('.modal-overlay').forEach(ov => {
+        ov.addEventListener('click', (e) => {
+            if (e.target === ov) closeModal(ov.id);
         });
+    });
 
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', function() {
-                quickForm.style.display = 'none';
-                toggleBtn.style.display = 'flex';
-            });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape'){
+            document.querySelectorAll('.modal-overlay.is-open').forEach(ov => closeModal(ov.id));
         }
-    }
+    });
 });
 </script>
 

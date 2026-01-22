@@ -12,7 +12,10 @@ from estructura_app.models import UnidadMembresia, UnidadCargo
 from datetime import timedelta
 from django.db.models import Count, Q
 from miembros_app.models import Miembro  # ajusta si tu import es distinto
+from datetime import date, timedelta
+from django.views.decorators.http import require_http_methods
 
+from django.views.decorators.http import require_http_methods
 @require_POST
 @login_required
 def seguimiento_padre_add(request, miembro_id):
@@ -736,15 +739,15 @@ def seguimiento_inbox(request):
     return render(request, "nuevo_creyente_app/seguimiento_inbox.html", context)
 
 
-from datetime import date, timedelta
-from django.views.decorators.http import require_http_methods
 
+
+@require_http_methods(["GET", "POST"])
 @login_required
 def seguimiento_accion(request, miembro_id):
     """
     Pantalla CRM de Acción Rápida.
-    - No es el expediente completo.
-    - Es la pantalla diaria para registrar acciones en 10-15 segundos.
+    - GET: muestra pantalla
+    - POST: guarda acciones rápidas desde la bandeja (inbox) sin salir
     """
     miembro = get_object_or_404(
         Miembro.objects.select_related("expediente_nuevo_creyente"),
@@ -753,18 +756,140 @@ def seguimiento_accion(request, miembro_id):
     )
     expediente = miembro.expediente_nuevo_creyente
 
-    # Sugerencia por defecto: +7 días
-    hoy = timezone.localdate()
-    sugerido = hoy + timedelta(days=7)
+    # Si es GET, render normal
+    if request.method == "GET":
+        hoy = timezone.localdate()
+        sugerido = hoy + timedelta(days=7)
+        context = {
+            "miembro": miembro,
+            "expediente": expediente,
+            "hoy": hoy,
+            "sugerido_proximo": sugerido,
+        }
+        return render(request, "nuevo_creyente_app/seguimiento_accion.html", context)
 
-    context = {
-        "miembro": miembro,
-        "expediente": expediente,
-        "hoy": hoy,
-        "sugerido_proximo": sugerido,
-    }
-    return render(request, "nuevo_creyente_app/seguimiento_accion.html", context)
+    # -------------------------
+    # POST (desde bandeja)
+    # -------------------------
+    if expediente.estado == NuevoCreyenteExpediente.Estados.CERRADO:
+        messages.error(request, "Este expediente está cerrado. No se pueden registrar acciones.")
+        return redirect("nuevo_creyente_app:seguimiento_inbox")
 
+    accion_rapida = (request.POST.get("accion_rapida") or "").strip()
+
+    # Helpers
+    def _parse_fecha_iso(value):
+        value = (value or "").strip()
+        if not value:
+            return None
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+
+    # 1) Nota rápida (sin fecha)
+    if accion_rapida == "quick_note":
+        nota = (request.POST.get("nota") or "").strip()
+        if not nota:
+            messages.error(request, "Escribe una nota.")
+            return redirect("nuevo_creyente_app:seguimiento_inbox")
+
+        expediente.log_event(
+            tipo="accion",
+            titulo="Nota rápida",
+            detalle=nota,
+            user=request.user,
+            canal="nota",
+            resultado_contacto="",
+        )
+        expediente.save(update_fields=["fecha_actualizacion"])
+        messages.success(request, "Nota guardada. ✅")
+        return redirect("nuevo_creyente_app:seguimiento_inbox")
+
+    # 2) Agendar (solo fecha + nota opcional)
+    if accion_rapida == "agendar":
+        prox = _parse_fecha_iso(request.POST.get("proximo_contacto"))
+        nota = (request.POST.get("nota") or "").strip()
+
+        if not prox:
+            messages.error(request, "Selecciona una fecha válida para agendar.")
+            return redirect("nuevo_creyente_app:seguimiento_inbox")
+
+        # Guardar fecha
+        expediente.proximo_contacto = prox
+
+        # Registrar evento (no es “acción”, es agenda)
+        detalle = nota if nota else f"Próximo contacto agendado para {prox.strftime('%d/%m/%Y')}."
+        expediente.log_event(
+            tipo="agenda",
+            titulo="Agendado próximo contacto",
+            detalle=detalle,
+            user=request.user,
+            canal="agenda",
+            resultado_contacto="",
+        )
+
+        expediente.save(update_fields=["proximo_contacto", "fecha_actualizacion"])
+        messages.success(request, "Agendado. ✅")
+        return redirect("nuevo_creyente_app:seguimiento_inbox")
+
+    # 3) Registrar contacto (resultado + nota, con opción de agendar)
+    if accion_rapida == "registrar_contacto":
+        resultado_ui = (request.POST.get("resultado") or "").strip()
+        nota = (request.POST.get("nota") or "").strip()
+        agendar = (request.POST.get("agendar") or "no").strip()
+        prox = _parse_fecha_iso(request.POST.get("proximo_contacto"))
+
+        if not resultado_ui:
+            messages.error(request, "Selecciona un resultado.")
+            return redirect("nuevo_creyente_app:seguimiento_inbox")
+
+        if not nota:
+            messages.error(request, "Escribe una nota corta (qué pasó / qué acordaron).")
+            return redirect("nuevo_creyente_app:seguimiento_inbox")
+
+        if agendar == "si" and not prox:
+            messages.error(request, "Selecciona la fecha del próximo contacto.")
+            return redirect("nuevo_creyente_app:seguimiento_inbox")
+
+        # Mapear resultados UI a tipos internos permitidos por tu sistema
+        # (tu guardado original acepta: llamada, whatsapp, reunion, no_responde, nota)
+        mapa = {
+            "llamada": ("llamada", "Llamada registrada"),
+            "whatsapp": ("whatsapp", "Mensaje WhatsApp registrado"),
+            "visita": ("reunion", "Visita registrada"),
+            "sin_respuesta": ("no_responde", "Intento sin respuesta"),
+            "otro": ("nota", "Registro de contacto"),
+        }
+        tipo_accion, titulo = mapa.get(resultado_ui, ("nota", "Registro de contacto"))
+
+        expediente.log_event(
+            tipo="accion",
+            titulo=titulo,
+            detalle=nota,
+            user=request.user,
+            canal=tipo_accion,
+            resultado_contacto=resultado_ui,
+        )
+
+        if agendar == "si" and prox:
+            expediente.proximo_contacto = prox
+
+        # Automatización simple de etapa (misma idea que ya tenías)
+        if expediente.etapa == "INICIO" and tipo_accion in ["llamada", "whatsapp", "reunion"]:
+            etapa_from = expediente.etapa
+            expediente.etapa = "PRIMER_CONTACTO"
+            expediente.save(update_fields=["etapa", "proximo_contacto", "fecha_actualizacion"])
+            expediente.log_cambio_etapa(etapa_from=etapa_from, etapa_to="PRIMER_CONTACTO", user=request.user)
+        else:
+            expediente.save(update_fields=["proximo_contacto", "fecha_actualizacion"])
+
+        messages.success(request, "Contacto registrado. ✅")
+        return redirect("nuevo_creyente_app:seguimiento_inbox")
+
+    # Si llegó aquí, fue un POST no reconocido
+    messages.error(request, "Acción rápida inválida.")
+    return redirect("nuevo_creyente_app:seguimiento_inbox")
 
 @require_POST
 @login_required
