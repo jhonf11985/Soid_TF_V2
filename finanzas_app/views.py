@@ -74,49 +74,30 @@ def egreso_recibo(request, pk):
 
 
 
-
 @login_required
 def dashboard(request):
-    # 1) Superuser siempre entra
-    if request.user.is_superuser:
-        return _dashboard_real(request)
+    u = request.user
 
-    # 2) Si tiene permiso explícito de dashboard, entra
-    if request.user.has_perm("finanzas_app.ver_dashboard_finanzas"):
-        return _dashboard_real(request)
+    # Si NO tiene permiso de ver dashboard, lo mandamos a una pantalla permitida
+    if not (u.is_superuser or u.has_perm("finanzas_app.ver_dashboard_finanzas")):
+        # Orden de entradas "naturales" del módulo
+        if u.has_perm("finanzas_app.view_movimientofinanciero"):
+            return redirect("finanzas_app:movimientos_listado")
 
-    # 3) Si NO tiene dashboard, lo llevamos a lo primero que SÍ pueda ver en Finanzas
-    #    (ordenado por "lo más útil" como puerta de entrada)
+        if u.has_perm("finanzas_app.view_cuentaporpagar"):
+            return redirect("finanzas_app:cxp_list")
 
-    # Movimientos
-    if request.user.has_perm("finanzas_app.view_movimientofinanciero"):
-        return redirect("finanzas_app:movimientos_listado")
+        if u.has_perm("finanzas_app.view_proveedorfinanciero"):
+            return redirect("finanzas_app:proveedores_list")
 
-    # Cuentas (si tu módulo usa este modelo)
-    if request.user.has_perm("finanzas_app.view_cuentafinanciera"):
-        return redirect("finanzas_app:cuentas_listado")
+        if u.has_perm("finanzas_app.view_cuentafinanciera"):
+            return redirect("finanzas_app:cuentas_listado")
 
-    # Categorías
-    if request.user.has_perm("finanzas_app.view_categoriamovimiento"):
-        return redirect("finanzas_app:categorias_listado")
+        if u.has_perm("finanzas_app.view_categoriamovimiento"):
+            return redirect("finanzas_app:categorias_listado")
 
-    # CxP
-    if request.user.has_perm("finanzas_app.view_cuentaporpagar"):
-        return redirect("finanzas_app:cxp_list")
-
-    # Proveedores
-    if request.user.has_perm("finanzas_app.view_proveedorfinanciero"):
-        return redirect("finanzas_app:proveedores_list")
-
-    # Reportes (si quieres permitir reportes aunque no vea movimientos, déjalo)
-    if request.user.has_perm("finanzas_app.view_movimientofinanciero"):
-        return redirect("finanzas_app:reportes_home")
-    if request.user.has_perm("finanzas_app.view_cuentaporpagar"):
-        return redirect("finanzas_app:reportes_home")
-
-    # 4) Si no tiene ningún permiso de Finanzas, entonces sí: 403 bonito
-    raise PermissionDenied
-
+        # Si no tiene nada del módulo
+        raise PermissionDenied("No tienes permisos para acceder al módulo de Finanzas.")
 
     
     from django.db.models.functions import TruncMonth
