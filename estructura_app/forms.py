@@ -21,7 +21,7 @@ class UnidadForm(forms.ModelForm):
         fields = [
             "nombre",
             "categoria",
-            
+            "hereda_liderazgo",
             "tipo",
             "padre",
             "descripcion",
@@ -37,7 +37,9 @@ class UnidadForm(forms.ModelForm):
                 "autocomplete": "off",
             }),
             "categoria": forms.Select(attrs={"class": "odoo-input"}),
-            
+            "hereda_liderazgo": forms.CheckboxInput(attrs={"class": "odoo-checkbox"}),
+
+
             "tipo": forms.Select(attrs={"class": "odoo-input"}),
             "padre": forms.Select(attrs={"class": "odoo-input"}),
             "descripcion": forms.Textarea(attrs={

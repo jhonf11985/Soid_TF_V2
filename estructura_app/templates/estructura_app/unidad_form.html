@@ -187,6 +187,25 @@
                                     {% endif %}
                                 {% endfor %}
                             </select>
+                            <!-- ✅ Switch: heredar líderes (solo se muestra si hay unidad padre) -->
+<div class="odoo-quick-field" id="wrap-heredar-lideres" style="display:none; justify-content:flex-end;">
+    <span class="material-icons">supervisor_account</span>
+
+    <div style="display:flex; align-items:center; gap:10px; margin-left:6px;">
+        <span style="font-size:12px; color:#6c757d; white-space:nowrap;">
+            Heredar líderes
+        </span>
+
+        <label class="odoo-switch-inline" title="Copiar líderes principales (roles tipo Liderazgo) desde la unidad principal (raíz) del árbol">
+            <!-- 🔒 valor por defecto si el switch está apagado -->
+            <input type="hidden" name="heredar_lideres" value="0">
+
+            <input type="checkbox" name="heredar_lideres" id="id_heredar_lideres" value="1" checked>
+            <span class="odoo-switch-slider-sm"></span>
+        </label>
+    </div>
+</div>
+
                         </div>
                         <div class="odoo-quick-field">
                             <span class="material-icons">tag</span>
@@ -921,6 +940,26 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const padreSelect = document.getElementById("{{ form.padre.id_for_label }}");
+    const wrap = document.getElementById("wrap-heredar-lideres");
+    const chk = document.getElementById("id_heredar_lideres");
+
+    if (!padreSelect || !wrap || !chk) return;
+
+    function syncHeredar() {
+        const tienePadre = !!padreSelect.value;
+        wrap.style.display = tienePadre ? "" : "none";
+
+        // Si no hay padre, lo apagamos para que no se envíe como "1"
+        if (!tienePadre) chk.checked = false;
+    }
+
+    padreSelect.addEventListener("change", syncHeredar);
+    syncHeredar(); // estado inicial al cargar (crear/editar)
+});
+</script>
 
 
 {% endblock %}

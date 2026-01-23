@@ -351,15 +351,40 @@ def unidad_detalle(request, pk):
         .select_related("miembo_fk", "rol")
         .order_by("rol__orden", "rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
     )
-    lideres_asignados = (
+        
+
+
+    lideres_propios = (
         UnidadCargo.objects
         .filter(
             unidad=unidad,
             vigente=True,
-            rol__tipo=RolUnidad.TIPO_LIDERAZGO
+            rol__tipo=RolUnidad.TIPO_LIDERAZGO,
         )
         .select_related("miembo_fk", "rol")
-        .order_by("rol__orden", "rol__nombre", "miembo_fk__nombres", "miembo_fk__apellidos")
+    )
+
+    lideres_heredados = (
+        get_lideres_en_cadena(unidad)
+        .select_related("miembo_fk", "rol", "unidad")
+    )
+
+    ids_propios = set(lideres_propios.values_list("miembo_fk_id", flat=True))
+
+    lideres_finales = []
+
+    for c in lideres_propios:
+        c.es_heredado = False
+        lideres_finales.append(c)
+
+    for c in lideres_heredados:
+        if c.miembo_fk_id not in ids_propios:
+            c.es_heredado = True
+            lideres_finales.append(c)
+
+    lideres_asignados = sorted(
+        lideres_finales,
+        key=lambda x: (x.rol.orden, x.rol.nombre, x.miembo_fk.nombres, x.miembo_fk.apellidos)
     )
 
     # =====================================================
@@ -3157,3 +3182,69 @@ def get_unidades_permitidas(user):
     ).values_list("unidad_id", flat=True)
 
     return Unidad.objects.filter(id__in=unidades_ids)
+
+def get_lideres_en_cadena(unidad):
+    """
+    Devuelve UnidadCargo heredado en cadena (padre -> abuelo -> ...),
+    heredando TODOS los roles de tipo LIDERAZGO.
+    """
+    from .models import UnidadCargo, RolUnidad
+
+    if not unidad.padre:
+        return UnidadCargo.objects.none()
+
+    if hasattr(unidad, "hereda_lideres_padre") and not unidad.hereda_lideres_padre:
+        return UnidadCargo.objects.none()
+
+    heredados = UnidadCargo.objects.none()
+    visitadas = set()
+    padre = unidad.padre
+
+    while padre and padre.id not in visitadas:
+        visitadas.add(padre.id)
+
+        qs = UnidadCargo.objects.filter(
+            unidad=padre,
+            vigente=True,
+            rol__tipo=RolUnidad.TIPO_LIDERAZGO,
+        )
+        heredados = heredados.union(qs)
+
+        if hasattr(padre, "hereda_lideres_padre") and not padre.hereda_lideres_padre:
+            break
+
+        padre = padre.padre
+
+    return heredados
+
+
+def get_lideres_heredados(unidad):
+    from .models import UnidadCargo, RolUnidad
+
+    lideres = UnidadCargo.objects.none()
+    visitadas = set()
+    padre = unidad.padre
+
+    # Si la unidad no hereda liderazgo, no traer nada
+    if not getattr(unidad, "hereda_liderazgo", True):
+        return lideres
+
+    while padre and padre.id not in visitadas:
+        visitadas.add(padre.id)
+
+        qs = UnidadCargo.objects.filter(
+            unidad=padre,
+            vigente=True,
+            rol__tipo=RolUnidad.TIPO_LIDERAZGO
+        )
+
+        lideres = lideres.union(qs)
+
+        # Si el padre no hereda, se detiene la cadena
+        if hasattr(padre, "hereda_liderazgo") and not padre.hereda_liderazgo:
+            break
+
+        padre = padre.padre
+
+    return lideres
+

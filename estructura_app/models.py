@@ -225,6 +225,10 @@ class Unidad(models.Model):
         on_delete=models.PROTECT,
         related_name="unidades",
     )
+    hereda_liderazgo = models.BooleanField(
+        default=True,
+        help_text="Indica si la unidad hereda líderes de la unidad padre."
+    )
 
     tipo = models.ForeignKey(
         TipoUnidad,
