@@ -6,7 +6,7 @@ from django.template.loader import render_to_string
 from .utils_email import enviar_correo_sencillo
 from django.conf import settings
 from django.contrib.auth.decorators import permission_required
-from .forms import UsuarioIglesiaForm
+from .forms import UsuarioIglesiaForm,UsuarioIglesiaEditForm
 from . import ajax_views
 from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
@@ -811,24 +811,16 @@ def editar_usuario(request, user_id):
         return redirect("core:listado")
 
     if request.method == "POST":
-        form = UsuarioIglesiaForm(request.POST, instance=usuario)
+        form = UsuarioIglesiaEditForm(request.POST, instance=usuario)
         if form.is_valid():
             with transaction.atomic():
-                user = form.save(commit=False)
-                user.save()
-
-                # actualizar grupo
-                grupo = form.cleaned_data.get("grupo")
-                if grupo:
-                    user.groups.clear()
-                    user.groups.add(grupo)
-
+                form.save()  # el form ya guarda y asigna el grupo
             messages.success(request, "Usuario actualizado correctamente.")
             return redirect("core:listado")
         else:
             messages.error(request, "Hay errores en el formulario.")
     else:
-        form = UsuarioIglesiaForm(instance=usuario)
+        form = UsuarioIglesiaEditForm(instance=usuario)
 
     context = {
         "form": form,

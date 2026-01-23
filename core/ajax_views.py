@@ -169,13 +169,21 @@ User = get_user_model()
 @require_http_methods(["GET"])
 def email_disponible(request):
     email = (request.GET.get("email") or "").strip().lower()
+    exclude_id = request.GET.get("exclude_id")  # 👈 ID del usuario en edición
 
     if not email:
         return JsonResponse({"success": True, "available": True, "message": ""})
 
-    exists = User.objects.filter(email__iexact=email).exists()
+    qs = User.objects.filter(email__iexact=email)
+
+    # ✅ EXCLUIR el mismo usuario cuando se edita
+    if exclude_id and exclude_id.isdigit():
+        qs = qs.exclude(pk=int(exclude_id))
+
+    exists = qs.exists()
+
     return JsonResponse({
         "success": True,
-        "available": (not exists),
+        "available": not exists,
         "message": "Correo disponible" if not exists else "Ya existe un usuario con este correo."
     })

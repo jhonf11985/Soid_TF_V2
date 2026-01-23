@@ -108,16 +108,37 @@
             </div>
           </div>
 
-          <div class="odoo-quick-fields">
-            <div class="odoo-quick-field">
-              <span class="material-icons">email</span>
-              {{ form.email }}
-            </div>
-            <div id="email-status" class="email-status" style="display:none;"></div>
+<div class="odoo-quick-fields">
+  <div class="odoo-quick-field">
+    <span class="material-icons">email</span>
+
+    {% if form.miembro_id.value %}
+      <input
+        type="email"
+        id="id_email"
+        name="email"
+        value="{{ form.email.value|default:'' }}"
+        readonly
+        style="background:transparent; cursor:not-allowed; opacity:.85;"
+      >
+    {% else %}
+      {{ form.email }}
+    {% endif %}
+  </div>
+
+  {% if form.miembro_id.value %}
+    <div class="email-status ok" style="display:block;">
+      <span class="material-icons">link</span>
+      Email tomado del miembro vinculado.
+    </div>
+  {% else %}
+    <div id="email-status" class="email-status" style="display:none;"></div>
+  {% endif %}
+</div>
 
           </div>
         </div>
-      </div>
+     
       
 
       <div class="odoo-form-body">
@@ -143,27 +164,39 @@
           </div>
         </div>
 
-        <div class="odoo-form-column">
-          <h3 class="odoo-section-title">Seguridad</h3>
+        {% if not modo_edicion %}
+  <div class="odoo-form-column">
+    <h3 class="odoo-section-title">Seguridad</h3>
 
-          <div class="odoo-field">
-            <label class="odoo-label">Contraseña</label>
-            {{ form.password1 }}
-            <small class="odoo-help">Usa una contraseña segura (mínimo 8 caracteres, números y mayúsculas).</small>
-            {% if form.password1.errors %}
-              <div class="odoo-field-error">{{ form.password1.errors.0 }}</div>
-            {% endif %}
-          </div>
+    <div class="odoo-field">
+      <label class="odoo-label">Contraseña</label>
+      {{ form.password1 }}
+      <small class="odoo-help">Usa una contraseña segura (mínimo 8 caracteres, números y mayúsculas).</small>
+      {% if form.password1.errors %}
+        <div class="odoo-field-error">{{ form.password1.errors.0 }}</div>
+      {% endif %}
+    </div>
 
-          <div class="odoo-field">
-            <label class="odoo-label">Repetir contraseña</label>
-            {{ form.password2 }}
-            <small class="odoo-help">Debe coincidir exactamente con la contraseña.</small>
-            {% if form.password2.errors %}
-              <div class="odoo-field-error">{{ form.password2.errors.0 }}</div>
-            {% endif %}
-          </div>
-        </div>
+    <div class="odoo-field">
+      <label class="odoo-label">Repetir contraseña</label>
+      {{ form.password2 }}
+      <small class="odoo-help">Debe coincidir exactamente con la contraseña.</small>
+      {% if form.password2.errors %}
+        <div class="odoo-field-error">{{ form.password2.errors.0 }}</div>
+      {% endif %}
+    </div>
+  </div>
+{% else %}
+  <div class="odoo-form-column">
+    <h3 class="odoo-section-title">Seguridad</h3>
+    <div class="odoo-field">
+      <div class="odoo-help">
+        La contraseña no se edita aquí. Para cambiarla, usa la opción “Cambiar contraseña” del usuario (o crea un flujo admin específico).
+      </div>
+    </div>
+  </div>
+{% endif %}
+
       </div>
     </div>
 
@@ -1240,8 +1273,13 @@
     setStatus("wait", "Comprobando correo…");
 
     try{
-      const url = `/api/email-disponible/?email=${encodeURIComponent(email)}`;
-      const res = await fetch(url, {
+      const excludeId = "{{ usuario_obj.id|default:'' }}";
+
+      const url = excludeId
+        ? `/api/email-disponible/?email=${encodeURIComponent(email)}&exclude_id=${excludeId}`
+        : `/api/email-disponible/?email=${encodeURIComponent(email)}`;
+
+            const res = await fetch(url, {
         method: "GET",
         credentials: "same-origin",
         headers: { "X-Requested-With": "XMLHttpRequest" },

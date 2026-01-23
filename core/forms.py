@@ -192,13 +192,19 @@ class UsuarioIglesiaForm(UserCreationForm):
         if not email:
             return email
 
-        existe = User.objects.filter(email__iexact=email).exists()
-        if existe:
+        qs = User.objects.filter(email__iexact=email)
+
+        # ✅ si estoy editando, excluir mi propio usuario
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
             raise forms.ValidationError(
-                "Ya existe un usuario con este correo electrónico."
+                "Ya existe otro usuario con este correo electrónico."
             )
 
         return email
+
     def _get_miembro_nombres(self, miembro):
         """
         Intentamos encontrar nombre/apellidos con varios nombres de campos posibles,
@@ -225,7 +231,18 @@ class UsuarioIglesiaForm(UserCreationForm):
         user = super().save(commit=False)
 
         # Datos normales del form
-        user.email = self.cleaned_data.get("email", "")
+        miembro_id = self.cleaned_data.get("miembro_id")
+
+        if miembro_id:
+            from miembros_app.models import Miembro
+            miembro = Miembro.objects.filter(id=miembro_id).first()
+            if miembro and miembro.email:
+                user.email = miembro.email  # 🔥 el miembro manda
+            else:
+                user.email = self.cleaned_data.get("email", "")
+        else:
+            user.email = self.cleaned_data.get("email", "")
+
 
         miembro_id = self.cleaned_data.get("miembro_id")
         override = bool(self.cleaned_data.get("override_nombre"))
@@ -283,4 +300,84 @@ class UsuarioIglesiaForm(UserCreationForm):
                 "class": "form-input",
                 "placeholder": "Confirmar contraseña"
             }),
+        }
+
+class UsuarioIglesiaEditForm(forms.ModelForm):
+    grupo = forms.ModelChoiceField(
+        label="Rol / Grupo",
+        queryset=Group.objects.all(),
+        required=True,
+        widget=forms.Select(attrs={"class": "form-input"})
+    )
+
+    miembro_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
+    override_nombre = forms.BooleanField(required=False, initial=False, widget=forms.HiddenInput())
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if not email:
+            return email
+
+        qs = User.objects.filter(email__iexact=email)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError("Ya existe otro usuario con este correo electrónico.")
+
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+
+        miembro_id = self.cleaned_data.get("miembro_id")
+        override = bool(self.cleaned_data.get("override_nombre"))
+
+        if miembro_id and not override:
+            from miembros_app.models import Miembro
+            miembro = Miembro.objects.filter(id=miembro_id).first()
+            if miembro:
+                user.first_name = getattr(miembro, "nombre", "") or self.cleaned_data.get("first_name", "")
+                user.last_name = getattr(miembro, "apellido", "") or self.cleaned_data.get("last_name", "")
+
+        if commit:
+            user.save()
+            grupo = self.cleaned_data.get("grupo")
+            if grupo:
+                user.groups.set([grupo])
+
+        return user
+
+    def clean_miembro_id(self):
+        miembro_id = self.cleaned_data.get("miembro_id")
+        if not miembro_id:
+            return miembro_id
+
+        from miembros_app.models import Miembro
+        miembro = Miembro.objects.filter(id=miembro_id).first()
+
+        if not miembro:
+            return miembro_id
+
+        # buscar si ese miembro ya está vinculado a otro usuario
+        qs = User.objects.filter(email__iexact=miembro.email)
+
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError(
+                f"⚠️ Este miembro ya está vinculado a otro usuario ({qs.first().username})."
+            )
+
+        return miembro_id
+
+    class Meta:
+        model = User
+        fields = ["username", "first_name", "last_name", "email"]
+        widgets = {
+            "username": forms.TextInput(attrs={"class": "form-input"}),
+            "first_name": forms.TextInput(attrs={"class": "form-input"}),
+            "last_name": forms.TextInput(attrs={"class": "form-input"}),
+            "email": forms.EmailInput(attrs={"class": "form-input"}),
         }
