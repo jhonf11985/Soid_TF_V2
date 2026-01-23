@@ -36,7 +36,9 @@ from django.contrib.auth.decorators import login_required
 User = get_user_model()
 
 @login_required
+@permission_required("auth.view_user", raise_exception=True)
 def usuarios_listado(request):
+
     q = (request.GET.get("q") or "").strip()
     grupo_id = (request.GET.get("grupo") or "").strip()
     estado = (request.GET.get("estado") or "").strip()  # "activos" | "inactivos" | ""
@@ -797,3 +799,40 @@ def miembro_detalle_api(request, miembro_id):
             'success': False,
             'error': str(e)
         }, status=500)
+
+@login_required
+@permission_required("auth.change_user", raise_exception=True)
+def editar_usuario(request, user_id):
+    User = get_user_model()
+    usuario = User.objects.filter(id=user_id).first()
+
+    if not usuario:
+        messages.error(request, "El usuario no existe.")
+        return redirect("core:listado")
+
+    if request.method == "POST":
+        form = UsuarioIglesiaForm(request.POST, instance=usuario)
+        if form.is_valid():
+            with transaction.atomic():
+                user = form.save(commit=False)
+                user.save()
+
+                # actualizar grupo
+                grupo = form.cleaned_data.get("grupo")
+                if grupo:
+                    user.groups.clear()
+                    user.groups.add(grupo)
+
+            messages.success(request, "Usuario actualizado correctamente.")
+            return redirect("core:listado")
+        else:
+            messages.error(request, "Hay errores en el formulario.")
+    else:
+        form = UsuarioIglesiaForm(instance=usuario)
+
+    context = {
+        "form": form,
+        "usuario_obj": usuario,
+        "modo_edicion": True,
+    }
+    return render(request, "core/usuarios/crear_usuario.html", context)

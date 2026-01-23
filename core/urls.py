@@ -34,6 +34,7 @@ urlpatterns = [
     # 🔌 AJAX APIs
     path("api/buscar-miembros/", ajax_views.buscar_miembros, name="api_buscar_miembros"),
     path("api/miembro-detalle/<int:miembro_id>/", ajax_views.miembro_detalle, name="api_miembro_detalle"),
+path("usuarios/<int:user_id>/editar/", views.editar_usuario, name="editar_usuario"),
 
     # ✅ VALIDAR EMAIL EN TIEMPO REAL
     path("api/email-disponible/", ajax_views.email_disponible, name="api_email_disponible"),
