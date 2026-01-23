@@ -54,7 +54,9 @@ INSTALLED_APPS = [
     'nuevo_creyente_app',
     'actualizacion_datos_miembros',
     'django.contrib.humanize',
-    
+        "cloudinary",
+    "cloudinary_storage",
+
     'inventario_app'
 ]
 
@@ -161,6 +163,18 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# =============================================================================
+# CLOUDINARY (MEDIA EN LA NUBE)
+# =============================================================================
+
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
+    "API_KEY": os.environ.get("CLOUDINARY_API_KEY", ""),
+    "API_SECRET": os.environ.get("CLOUDINARY_API_SECRET", ""),
+}
+
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 # =============================================================================
 # CONFIGURACIÓN DE CORREO (SMTP GMAIL)
