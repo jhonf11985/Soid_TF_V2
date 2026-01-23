@@ -2351,7 +2351,13 @@ def nuevo_creyente_crear(request):
         "modo": "crear",
     }
     return render(request, "miembros_app/nuevos_creyentes_form.html", context)
+
+
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def nuevo_creyente_lista(request):
+
     """
     Lista de nuevos creyentes (miembros con nuevo_creyente=True),
     con filtros por texto, género, rango de fecha de conversión
@@ -2449,7 +2455,10 @@ def nuevo_creyente_lista(request):
         "miembros_app/nuevos_creyentes_lista.html",
         context,
     )
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def nuevo_creyente_editar(request, pk):
+
     """
     Editar un nuevo creyente usando el mismo formulario sencillo.
     Solo permite editar registros marcados como nuevo_creyente=True.
@@ -2477,7 +2486,11 @@ def nuevo_creyente_editar(request, pk):
 # -------------------------------------
 # REPORTE: NUEVOS CREYENTES
 # -------------------------------------
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def reporte_nuevos_creyentes(request):
+
     """
     Reporte imprimible de nuevos creyentes.
     Permite filtrar por nombre/contacto y por rango de fecha de conversión.
@@ -2630,8 +2643,11 @@ def generar_pdf_ficha_miembro(miembro):
         f.write(resultado.getvalue())
 
     return ruta_pdf
+
 @login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def listado_miembros_enviar_email(request):
+
     """
     Genera un PDF EXACTO del listado de miembros usando la URL real
     y lo envía por correo.
@@ -2886,7 +2902,9 @@ def get_chrome_path():
         "Instálalo o define CHROME_PATH en settings.py o en variables de entorno."
     )
 @login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def nuevos_creyentes_enviar_email(request):
+
     """
     Genera un PDF del listado de nuevos creyentes (con los filtros actuales)
     y lo envía por correo.
@@ -2970,7 +2988,11 @@ def nuevos_creyentes_enviar_email(request):
             "adjunto_auto_nombre": "nuevos_creyentes.pdf",
         },
     )
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def exportar_miembros_excel(request):
+
     """
     Exporta a Excel los miembros que se están viendo en el listado,
     respetando TODOS los filtros aplicados en la vista miembro_lista.
@@ -3083,7 +3105,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 
 @login_required
+@require_POST
+@permission_required("miembros_app.add_miembro", raise_exception=True)
 def importar_miembros_excel(request):
+
     """
     Importa miembros desde un archivo de Excel.
     Crea NUEVOS miembros usando las columnas del archivo.
@@ -3298,7 +3323,11 @@ def _miembro_tiene_asignacion_en_unidades(miembro_obj):
 
 CEDULA_RE = re.compile(r"^\d{3}-\d{7}-\d$")
 
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def ajax_validar_cedula(request):
+
     """
     GET /miembros/ajax/validar-cedula/?cedula=000-0000000-0&pk=123
     Devuelve si la cédula ya existe (excluyendo el pk si viene).
@@ -3333,9 +3362,14 @@ def ajax_validar_cedula(request):
         "message": "Ya existe un miembro con esta cédula." if exists else "Cédula disponible.",
     })
 
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def miembro_dar_salida(request, pk):
     return salida_form(request, pk)
+    return salida_form(request, pk)
 
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 def nuevo_creyente_dar_salida(request, pk):
     return salida_form(request, pk)
 
@@ -3518,8 +3552,11 @@ def reincorporar_miembro(request, pk):
     )
 
 
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
 @require_http_methods(["GET", "POST"])
 def salida_form(request, pk):
+
     miembro = get_object_or_404(Miembro, pk=pk)
 
     from nuevo_creyente_app.models import NuevoCreyenteExpediente
@@ -3702,7 +3739,9 @@ def miembro_bitacora_add(request, pk):
 
 @login_required
 @require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
 def validar_telefono(request):
+
     telefono = request.GET.get("telefono", "")
     pk = request.GET.get("pk", "")  # para edición
 
