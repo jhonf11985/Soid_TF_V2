@@ -82,26 +82,45 @@ def agenda_anual(request):
     return render(request, "agenda_app/agenda_anual.html", context)
 
 
+from django.contrib.auth import get_user_model
+from notificaciones_app.models import Notification
+
+User = get_user_model()
 
 @login_required
 def actividad_create(request):
     """
-    Crear actividad (V1 simple)
+    Crear actividad + notificación PWA
     """
     if request.method == "POST":
         form = ActividadForm(request.POST)
         if form.is_valid():
             actividad = form.save()
-            messages.success(request, "✅ Actividad agendada correctamente.")
-            # Volvemos a agenda anual del año de la actividad
+
+            # ===============================
+            # 🔔 NOTIFICACIÓN PWA
+            # ===============================
+            usuarios = User.objects.filter(is_active=True)
+
+            titulo = "🗓️ Nueva actividad agendada"
+            mensaje = f"{actividad.titulo} • {actividad.fecha.strftime('%d/%m/%Y')}"
+            url = f"/agenda/actividad/{actividad.id}/"
+
+            for u in usuarios:
+                Notification.objects.create(
+                    usuario=u,
+                    titulo=titulo,
+                    mensaje=mensaje,
+                    url_destino=url,
+                )
+
+            messages.success(request, "✅ Actividad agendada y notificada.")
             return redirect("agenda_app:agenda_anual")
     else:
         form = ActividadForm()
 
     context = {"form": form}
     return render(request, "agenda_app/actividad_form.html", context)
-
-from django.shortcuts import get_object_or_404
 
 @login_required
 def actividad_detail(request, pk):
