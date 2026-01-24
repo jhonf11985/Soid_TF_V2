@@ -1,6 +1,7 @@
-# services/welcome_messages.py
+# core/services/welcome_messages.py
 """
-🧠 SOID - Sistema de Mensajes Inteligentes de Bienvenida
+🧠 SOID - Sistema de Mensajes de Bienvenida
+Simple, humano, sin gamificación.
 """
 
 import random
@@ -8,11 +9,20 @@ from django.utils import timezone
 
 
 class WelcomeMessageService:
-    """Genera mensajes de bienvenida inteligentes y contextuales."""
+    """Genera mensajes de bienvenida contextuales."""
     
     # ═══════════════════════════════════════════════════════════════
     # 📚 BANCO DE MENSAJES
     # ═══════════════════════════════════════════════════════════════
+    
+    MENSAJES_PRIMERA_VEZ = [
+        "🎉 ¡Bienvenido a la familia, {nombre}! Es tu primera vez aquí",
+        "👋 ¡Hola {nombre}! Qué emoción tenerte por primera vez en SOID",
+        "🌟 ¡{nombre}! Bienvenido a bordo. Esto es el comienzo de algo grande",
+        "🚀 ¡Primera vez aquí, {nombre}! Estoy para ayudarte",
+        "✨ ¡{nombre}! Como dice Isaías: 'He aquí, hago cosa nueva'. ¡Bienvenido!",
+        "🙌 ¡{nombre}, bienvenido! 'El que comenzó la buena obra, la perfeccionará'",
+    ]
     
     MENSAJES_AUSENCIA_LARGA = [
         "¡{nombre}! Pensé que no volverías... 🙈 ¡Qué bueno verte!",
@@ -57,8 +67,8 @@ class WelcomeMessageService:
         "¡Hola Pastor {nombre}! 'Apacienta mis ovejas' 🐑",
         "¡{nombre}! Como Nehemías, tú edificas vidas 🏗️",
         "¡Bienvenido {nombre}! El buen pastor conoce sus ovejas 😉",
-        "¡que susto! {nombre}! pense que era el Pastor 😉",
-            "😏 Atención… ha llegado {nombre}. Ahora sí se puede trabajar.",
+        "¡Qué susto! {nombre}! Pensé que era el Pastor 😉",
+        "😏 Atención… ha llegado {nombre}. Ahora sí se puede trabajar.",
         "👑 Señoras y señores… {nombre} ha entrado. Mantengan la calma.",
         "🫡 Saludos, líder {nombre}. El sistema estaba esperando órdenes.",
         "🔥 {nombre} ha llegado. Nivel de liderazgo: activado.",
@@ -67,41 +77,30 @@ class WelcomeMessageService:
         "😄 {nombre}, pensé que hoy nos dejabas solos… pero no.",
         "🛡️ Líder {nombre} detectado. Permisos concedidos.",
         "📜 {nombre}, el consejo se reúne… aunque sea en el sistema.",
-                "¡{nombre}! El arquitecto del sistema ha llegado 🏛️",
+        "¡{nombre}! El arquitecto del sistema ha llegado 🏛️",
         "¡Bienvenido Admin {nombre}! Todo bajo control... creo 😅",
         "¡{nombre}! Con gran poder viene gran responsabilidad 🦸",
         "¡{nombre}! Como José en Egipto, todo está bajo tu mano 📊",
     ]
-    
-   
 
     MENSAJES_ADMIN = [
-        # 👑 Solemnes
         "🏛️ Bienvenido, {nombre}. El sistema está bajo tu gobierno.",
         "👑 {nombre}, el arquitecto del sistema ha llegado.",
         "📊 {nombre}, todo está listo para tu supervisión.",
         "⚖️ Administrador {nombre}, el orden ha sido restablecido.",
-
-        # 😏 Jocosos
         "😏 Ah… llegó {nombre}. Ahora sí hay auditoría.",
         "😂 {nombre} ha entrado. Los bugs están nerviosos.",
         "🛡️ Atención… {nombre} está en línea. Compórtense.",
         "🤭 {nombre}, el sistema funcionaba… hasta que llegaste 😅",
-
-        # 🤓 Chistes tech + bíblicos
         "💻 {nombre}, como Moisés… separaste el caos del orden.",
         "📖 {nombre}, hoy no abriste el mar… pero sí la base de datos.",
         "🧠 {nombre}, el primer admin bíblico fue José en Egipto.",
         "🐛 {nombre}, los errores se esconden… pero tú los encuentras.",
-
-        # 🏛️ Épicos
         "🏰 Las puertas del sistema se abren para {nombre}.",
         "⚔️ {nombre} ha cruzado el umbral del servidor.",
         "🔥 {nombre}, el núcleo del sistema reconoce tu autoridad.",
         "🚀 {nombre} ha iniciado sesión. Modo administrador activado.",
     ]
-
-    
     
     MENSAJES_SECRETARIA = [
         "¡{nombre}! La persona más organizada ha llegado 📋",
@@ -137,7 +136,7 @@ class WelcomeMessageService:
     
     @classmethod
     def get_welcome_message(cls, user, previous_login=None, soid_ctx=None):
-        """Genera un mensaje de bienvenida inteligente."""
+        """Genera un mensaje de bienvenida."""
         now = timezone.now()
         nombre = cls._get_display_name(user)
         rol = soid_ctx.get('rol', 'usuario') if soid_ctx else 'usuario'
@@ -147,14 +146,22 @@ class WelcomeMessageService:
         icono = 'fa-hand-wave'
         extra = None
         
-        # 1️⃣ Verificar cumpleaños
+        # 0️⃣ Primera vez
+        if previous_login is None:
+            mensaje = random.choice(cls.MENSAJES_PRIMERA_VEZ).format(nombre=nombre)
+            tipo = 'primera_vez'
+            icono = 'fa-rocket'
+            extra = "💡 Tip: Explora el menú lateral para conocer todas las funciones"
+            return {'mensaje': mensaje, 'tipo': tipo, 'icono': icono, 'extra': extra}
+        
+        # 1️⃣ Cumpleaños
         if cls._is_user_birthday(user):
             mensaje = random.choice(cls.MENSAJES_CUMPLEANOS).format(nombre=nombre)
             tipo = 'cumpleanos'
             icono = 'fa-birthday-cake'
             return {'mensaje': mensaje, 'tipo': tipo, 'icono': icono, 'extra': None}
         
-        # 2️⃣ Verificar ausencia
+        # 2️⃣ Ausencia
         if previous_login and previous_login.login_at:
             dias_ausente = (now - previous_login.login_at).days
             
@@ -199,7 +206,7 @@ class WelcomeMessageService:
                 tipo = periodo
                 icono = cls._get_time_icon(periodo)
         
-        # 4️⃣ Agregar chiste (20% probabilidad)
+        # 4️⃣ Chiste (20% probabilidad)
         if random.random() < 0.2:
             extra = random.choice(cls.CHISTES_BIBLICOS)
         
@@ -213,7 +220,6 @@ class WelcomeMessageService:
     @classmethod
     def _get_display_name(cls, user):
         """Obtiene el nombre más amigable."""
-        # Intentar desde miembro
         if hasattr(user, 'miembro') and user.miembro:
             miembro = user.miembro
             if hasattr(miembro, 'nombres') and miembro.nombres:

@@ -324,3 +324,53 @@ class UserLoginHistory(models.Model):
             cls.objects.filter(pk__in=old).delete()
         
         return previous
+    
+class UserEngagement(models.Model):
+    """Trackea engagement del usuario para mensajes inteligentes."""
+    user = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='engagement')
+    login_count = models.PositiveIntegerField(default=0)
+    current_streak = models.PositiveIntegerField(default=0)
+    max_streak = models.PositiveIntegerField(default=0)
+    last_login_date = models.DateField(null=True, blank=True)
+    shown_message_ids = models.JSONField(default=list)  # No repetir mensajes
+    
+    class Meta:
+        verbose_name = "Engagement de Usuario"
+
+    @classmethod
+    def get_or_create_for_user(cls, user):
+        obj, _ = cls.objects.get_or_create(user=user)
+        return obj
+    def register_login(self):
+        """Registra login y actualiza rachas."""
+        from django.utils import timezone
+        today = timezone.now().date()
+        
+        # ⚡ Si ya se registró hoy, no hacer nada
+        if self.last_login_date == today:
+            return {
+                'is_first_login': False,
+                'days_absent': 0,
+                'login_count': self.login_count
+            }
+        
+        is_first = self.login_count == 0
+        days_absent = (today - self.last_login_date).days if self.last_login_date else 0
+        
+        # Actualizar racha
+        if self.last_login_date:
+            if days_absent == 1:
+                self.current_streak += 1
+            elif days_absent > 1:
+                self.current_streak = 1
+        else:
+            self.current_streak = 1
+        
+        if self.current_streak > self.max_streak:
+            self.max_streak = self.current_streak
+        
+        self.login_count += 1
+        self.last_login_date = today
+        self.save()
+        
+        return {'is_first_login': is_first, 'days_absent': days_absent, 'login_count': self.login_count}

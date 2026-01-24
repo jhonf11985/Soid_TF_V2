@@ -474,14 +474,67 @@ def configuracion_permisos(request):
 
 
 
-@login_required(login_url="/accounts/login/")
+# core/views.py - REEMPLAZAR tu función home() con esta
+
+# core/views.py - REEMPLAZAR tu función home() con esta
+
+# core/views.py - REEMPLAZAR tu función home() con esta
+
+@login_required
 def home(request):
     user = request.user
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 🧠 MENSAJE DE BIENVENIDA
+    # ═══════════════════════════════════════════════════════════════
+    from core.models import UserLoginHistory
+    from core.services.welcome_messages import WelcomeMessageService
+    from django.utils import timezone
+    
+    # Obtener login anterior (antes de registrar el nuevo)
+    previous_login = UserLoginHistory.objects.filter(user=user).order_by('-login_at').first()
+    
+    # Solo registrar si es la primera vez hoy
+    today = timezone.now().date()
+    already_logged_today = previous_login and previous_login.login_at.date() == today
+    
+    if not already_logged_today:
+        # Registrar nuevo login
+        UserLoginHistory.register_login(user, request)
+    
+    # Determinar rol del usuario
+    rol = 'usuario'
+    if user.is_superuser:
+        rol = 'admin'
+    elif user.groups.filter(name__icontains='admin').exists():
+        rol = 'admin'
+    elif user.groups.filter(name__icontains='lider').exists():
+        rol = 'lider'
+    elif user.groups.filter(name__icontains='pastor').exists():
+        rol = 'lider'
+    elif user.groups.filter(name__icontains='secretar').exists():
+        rol = 'secretaria'
+    
 
+    # Generar mensaje de bienvenida
+    welcome_data = WelcomeMessageService.get_welcome_message(
+        user=user,
+        previous_login=previous_login,
+        soid_ctx={'rol': rol}
+    )        
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 📦 MÓDULOS
+    # ═══════════════════════════════════════════════════════════════
+    
     # Superuser ve todo
     if user.is_superuser:
         modules = Module.objects.filter(is_enabled=True).order_by("order", "name")
-        return render(request, "core/home.html", {"modules": modules})
+        context = {
+            "modules": modules,
+            "WELCOME_MESSAGE": welcome_data,
+        }
+        return render(request, "core/home.html", context)
 
     # Apps instalados (labels)
     installed_labels = set(app.split(".")[-1] for app in settings.INSTALLED_APPS)
@@ -546,7 +599,11 @@ def home(request):
         if app_label in allowed_app_labels:
             visible_modules.append(m)
 
-    return render(request, "core/home.html", {"modules": visible_modules})
+    context = {
+        "modules": visible_modules,
+        "WELCOME_MESSAGE": welcome_data,
+    }
+    return render(request, "core/home.html", context)
 
 @login_required
 @user_passes_test(es_staff)

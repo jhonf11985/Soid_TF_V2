@@ -1,8 +1,10 @@
+{# core/templates/core/_welcome_message_test.html #}
+{# Mensaje de bienvenida inteligente v2.0 con rachas #}
 
 {% if WELCOME_MESSAGE %}
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   🎨 ESTILOS DEL MODAL DE BIENVENIDA SOID
+   🎨 ESTILOS DEL MODAL DE BIENVENIDA SOID v2.0
    ═══════════════════════════════════════════════════════════════ */
 
 .soid-welcome-overlay {
@@ -75,6 +77,12 @@
 .soid-welcome-icon.type-manana { background: linear-gradient(135deg, #f5af19 0%, #f12711 100%); color: #fff; }
 .soid-welcome-icon.type-tarde { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: #fff; }
 .soid-welcome-icon.type-noche { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); color: #fff; }
+.soid-welcome-icon.type-primera_vez { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: #fff; }
+.soid-welcome-icon.type-onboarding { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #fff; }
+.soid-welcome-icon.type-racha { background: linear-gradient(135deg, #f12711 0%, #f5af19 100%); color: #fff; }
+.soid-welcome-icon.type-navidad { background: linear-gradient(135deg, #c41e3a 0%, #228b22 100%); color: #fff; }
+.soid-welcome-icon.type-ano_nuevo { background: linear-gradient(135deg, #667eea 0%, #f5af19 100%); color: #fff; }
+.soid-welcome-icon.type-fin_ano { background: linear-gradient(135deg, #667eea 0%, #f5af19 100%); color: #fff; }
 
 /* Mensaje principal */
 .soid-welcome-message {
@@ -85,7 +93,36 @@
     font-weight: 500;
 }
 
-/* Mensaje extra (chiste o pendientes) */
+/* 🔥 Badge de racha */
+.soid-welcome-streak {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    animation: streak-pulse 2s ease-in-out infinite;
+}
+
+@keyframes streak-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(255, 107, 53, 0); }
+}
+
+.soid-welcome-streak i {
+    animation: flame-flicker 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes flame-flicker {
+    from { transform: scale(1); }
+    to { transform: scale(1.1); }
+}
+
+/* Mensaje extra (chiste o tip) */
 .soid-welcome-extra {
     background: #f8f9fa;
     border-radius: 12px;
@@ -194,7 +231,18 @@
     <!-- Mensaje principal -->
     <p class="soid-welcome-message">{{ WELCOME_MESSAGE.mensaje }}</p>
     
-    <!-- Extra (chiste o pendientes) -->
+    <!-- 🔥 Badge de racha -->
+    {% if WELCOME_MESSAGE.racha and WELCOME_MESSAGE.racha.current > 1 %}
+    <div class="soid-welcome-streak">
+        <i class="fas fa-fire"></i>
+        <span>Racha: {{ WELCOME_MESSAGE.racha.current }} días</span>
+        {% if WELCOME_MESSAGE.racha.max > WELCOME_MESSAGE.racha.current %}
+        <span style="opacity: 0.8; font-size: 0.75rem;">(máx: {{ WELCOME_MESSAGE.racha.max }})</span>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Extra (chiste o tip) -->
     {% if WELCOME_MESSAGE.extra %}
     <div class="soid-welcome-extra">
         {{ WELCOME_MESSAGE.extra }}
@@ -215,10 +263,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('soidWelcomeModal').classList.add('show');
     }, 300);
     
-    // Auto-cerrar después de 8 segundos
+    // Auto-cerrar después de 10 segundos
     setTimeout(function() {
         closeSoidWelcome();
-    }, 8000);
+    }, 10000);
 });
 
 // Cerrar modal
@@ -238,7 +286,7 @@ function closeSoidWelcome() {
 }
 
 // Cerrar con click en overlay
-document.getElementById('soidWelcomeOverlay').addEventListener('click', closeSoidWelcome);
+document.getElementById('soidWelcomeOverlay')?.addEventListener('click', closeSoidWelcome);
 
 // Cerrar con Escape
 document.addEventListener('keydown', function(e) {
