@@ -1,11 +1,53 @@
 {% extends 'core/base_sidebar.html' %}
+{% load static %}
 
+{% block sidebar_role_label %}Agenda{% endblock %}
 
-{% block title %}{% block agenda_title %}Agenda{% endblock %}{% endblock %}
+{% block sidebar_menu %}
+<nav class="sidebar-nav">
 
-{% block content %}
-  <div class="odoo-module-wrapper">
-    <!-- Aquí puedes poner el sub-navbar del módulo Agenda si lo usas -->
-    {% block agenda_content %}{% endblock %}
-  </div>
+  <!-- Dashboard -->
+  <a href="{% url 'agenda_app:home' %}"
+     class="sidebar-link {% if request.resolver_match.app_name == 'agenda_app' and request.resolver_match.url_name == 'home' %}active{% endif %}">
+    <span class="material-icons">event_available</span>
+    <span>Inicio</span>
+  </a>
+
+  <!-- Sección: Agenda -->
+  <div class="sidebar-section-title">Agenda</div>
+
+  <a href="{% url 'agenda_app:agenda_anual' %}"
+     class="sidebar-link {% if request.resolver_match.app_name == 'agenda_app' and request.resolver_match.url_name == 'agenda_anual' %}active{% endif %}">
+    <span class="material-icons">calendar_month</span>
+    <span>Agenda anual</span>
+  </a>
+
+  {# Lo activamos cuando creemos el formulario/vista #}
+  <a href="#"
+     class="sidebar-link"
+     style="opacity:.6; pointer-events:none;"
+     title="Lo activamos en el próximo paso">
+    <span class="material-icons">add_circle</span>
+    <span>Agendar actividad</span>
+  </a>
+
+  <a href="{% url 'agenda_app:actividad_create' %}"
+   class="sidebar-link {% if request.resolver_match.url_name == 'actividad_create' %}active{% endif %}">
+  <span class="material-icons">add_circle</span>
+  <span>Agendar actividad</span>
+</a>
+
+</nav>
+{% endblock %}
+
+{% block page_content %}
+  {% if messages %}
+    <div class="messages-container">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% block agenda_content %}{% endblock %}
 {% endblock %}

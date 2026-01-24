@@ -1,0 +1,176 @@
+{% extends "agenda_app/base_agenda.html" %}
+{% load static %}
+
+{% block agenda_content %}
+
+<div class="odoo-page">
+
+  <!-- Header -->
+  <div class="odoo-page-header" style="display:flex; gap:12px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap;">
+    <div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <h1 style="margin:0;">Agenda anual</h1>
+        <span class="odoo-badge" style="opacity:.9;">{{ year }}</span>
+      </div>
+      <div style="opacity:.75; margin-top:6px;">
+        Actividades organizadas por mes (modo simple)
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <form method="get" style="display:flex; gap:8px; align-items:center; margin:0;">
+        <span class="material-icons" style="opacity:.7;">calendar_month</span>
+        <input
+          name="year"
+          type="number"
+          value="{{ year }}"
+          min="2000"
+          max="2100"
+          class="odoo-input"
+          style="width:110px;"
+        />
+        <button class="odoo-btn odoo-btn-secondary" type="submit">
+          Ver
+        </button>
+      </form>
+
+      {# lo activamos cuando hagamos create view #}
+      <button class="odoo-btn odoo-btn-primary" type="button" disabled title="Lo activamos en el próximo paso">
+        <span class="material-icons" style="font-size:18px; vertical-align:-4px;">add</span>
+        Agendar
+      </button>
+    </div>
+  </div>
+
+  <!-- Meses -->
+  <div class="odoo-page-body" style="margin-top:14px; display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:12px;">
+    {% for m in meses_data %}
+      <div class="odoo-card" style="grid-column: span 12; overflow:hidden;">
+        <div class="odoo-card-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <span class="material-icons" style="opacity:.75;">event</span>
+            <div>
+              <div style="font-weight:700; letter-spacing:.5px;">{{ m.mes_nombre|upper }}</div>
+              <div style="opacity:.7; font-size:.9rem;">
+                {% if m.total == 0 %}
+                  Sin actividades
+                {% elif m.total == 1 %}
+                  1 actividad
+                {% else %}
+                  {{ m.total }} actividades
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; align-items:center;">
+            {# listo para el futuro: agregar actividad dentro del mes #}
+            <button class="odoo-btn odoo-btn-light" type="button" disabled title="Lo activamos luego">
+              <span class="material-icons" style="font-size:18px; vertical-align:-4px;">add_circle</span>
+              Añadir
+            </button>
+          </div>
+        </div>
+
+        <div class="odoo-card-body" style="padding:0;">
+          {% if m.total == 0 %}
+            <div style="padding:14px; opacity:.75; display:flex; gap:10px; align-items:center;">
+              <span class="material-icons" style="opacity:.65;">info</span>
+              <span>Aún no hay nada agendado en {{ m.mes_nombre|lower }}.</span>
+            </div>
+          {% else %}
+            <div class="odoo-table-wrapper" style="padding:0;">
+              <table class="odoo-table" style="margin:0;">
+                <thead>
+                  <tr>
+                    <th style="width:120px;">Fecha</th>
+                    <th>Actividad</th>
+                    <th style="width:120px;">Hora</th>
+                    <th style="width:140px;">Tipo</th>
+                    <th style="width:140px;">Estado</th>
+                    <th style="width:140px; text-align:right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for a in m.actividades %}
+                    <tr>
+                      <td>
+                        <div style="font-weight:600;">
+                          {{ a.fecha|date:"d M" }}
+                        </div>
+                        <div style="opacity:.7; font-size:.85rem;">
+                          {{ a.fecha|date:"D" }}
+                        </div>
+                      </td>
+
+                      <td>
+                        <div style="font-weight:700;">{{ a.titulo }}</div>
+                        <div style="opacity:.75; font-size:.9rem; display:flex; gap:10px; flex-wrap:wrap;">
+                          {% if a.lugar %}
+                            <span style="display:inline-flex; gap:6px; align-items:center;">
+                              <span class="material-icons" style="font-size:16px; opacity:.7;">place</span>
+                              {{ a.lugar }}
+                            </span>
+                          {% endif %}
+                          {% if a.responsable_texto %}
+                            <span style="display:inline-flex; gap:6px; align-items:center;">
+                              <span class="material-icons" style="font-size:16px; opacity:.7;">person</span>
+                              {{ a.responsable_texto }}
+                            </span>
+                          {% endif %}
+                        </div>
+                      </td>
+
+                      <td>
+                        {% if a.hora_inicio %}
+                          <div style="font-weight:600;">
+                            {{ a.hora_inicio|time:"H:i" }}
+                            {% if a.hora_fin %}– {{ a.hora_fin|time:"H:i" }}{% endif %}
+                          </div>
+                        {% else %}
+                          <span style="opacity:.7;">—</span>
+                        {% endif %}
+                      </td>
+
+                      <td>
+                        <span class="odoo-badge">
+                          {{ a.get_tipo_display }}
+                        </span>
+                      </td>
+
+                      <td>
+                        {% if a.estado == "PROGRAMADA" %}
+                          <span class="odoo-badge">Programada</span>
+                        {% elif a.estado == "REALIZADA" %}
+                          <span class="odoo-badge">Realizada</span>
+                        {% else %}
+                          <span class="odoo-badge">Cancelada</span>
+                        {% endif %}
+                      </td>
+
+                      <td style="text-align:right;">
+                        {# los activamos cuando creemos las vistas CRUD #}
+                        <button class="odoo-btn odoo-btn-light" type="button" disabled title="Luego">
+                          <span class="material-icons" style="font-size:18px; vertical-align:-4px;">visibility</span>
+                        </button>
+                        <button class="odoo-btn odoo-btn-light" type="button" disabled title="Luego">
+                          <span class="material-icons" style="font-size:18px; vertical-align:-4px;">edit</span>
+                        </button>
+                        <button class="odoo-btn odoo-btn-light" type="button" disabled title="Luego">
+                          <span class="material-icons" style="font-size:18px; vertical-align:-4px;">delete</span>
+                        </button>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+{% endblock %}

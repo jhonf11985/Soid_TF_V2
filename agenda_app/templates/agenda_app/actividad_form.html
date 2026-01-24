@@ -1,0 +1,738 @@
+{% extends "agenda_app/base_agenda.html" %}
+{% load static %}
+
+{% block title %}
+{% if form.instance.pk %}Editar actividad · Soid_Tf_2{% else %}Nueva actividad · Soid_Tf_2{% endif %}
+{% endblock %}
+
+{% block agenda_content %}
+
+<div class="odoo-page">
+
+    <!-- BARRA SUPERIOR -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a href="{% url 'agenda_app:agenda_anual' %}" class="odoo-back-link">
+                <span class="material-icons">arrow_back</span>
+            </a>
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-parent">Agenda</span>
+                <span class="odoo-breadcrumb-separator">/</span>
+                <span class="odoo-breadcrumb-current">
+                    {% if form.instance.pk %}Editar{% else %}Nueva{% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="odoo-topbar-right">
+            <span class="odoo-record-count">
+                {% if form.instance.pk %}Editando{% else %}Nueva actividad{% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- BARRA DE ACCIONES -->
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            <button type="submit" form="actividad-form" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons">save</span>
+                Guardar
+            </button>
+            <a href="{% url 'agenda_app:agenda_anual' %}" class="odoo-btn odoo-btn-secondary">
+                Cancelar
+            </a>
+        </div>
+        <div class="odoo-actionbar-right">
+            <a href="{% url 'agenda_app:agenda_anual' %}" class="odoo-btn odoo-btn-link">
+                <span class="material-icons">calendar_month</span>
+                Ver agenda
+            </a>
+        </div>
+    </div>
+
+    <!-- FORMULARIO PRINCIPAL -->
+    <div class="odoo-form-sheet">
+        <form method="post" novalidate id="actividad-form">
+            {% csrf_token %}
+
+            <!-- ERRORES GENERALES -->
+            {% if form.errors %}
+            <div class="odoo-form-errors">
+                <div class="odoo-error" style="font-weight:600; margin-bottom:6px;">
+                    Hay campos con errores. Revisa:
+                </div>
+                <ul style="margin:0; padding-left:18px;">
+                    {% for field in form %}
+                        {% if field.errors %}
+                            <li><b>{{ field.label }}</b>: {{ field.errors.0 }}</li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if form.non_field_errors %}
+            <div class="odoo-form-errors">
+                {% for err in form.non_field_errors %}
+                    <div class="odoo-error">{{ err }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ========================================
+                 HEADER: ICONO + TÍTULO + INFO RÁPIDA
+                 ======================================== -->
+            <div class="odoo-form-header">
+                
+                <!-- Avatar / Icono -->
+                <div class="odoo-avatar" id="avatar-container">
+                    <span class="material-icons">event</span>
+                </div>
+
+                <!-- Info principal -->
+                <div class="odoo-header-info">
+                    
+                    <!-- Estado badge -->
+                    <div class="odoo-estado-group">
+                        {{ form.estado }}
+                        {% if form.estado.errors %}<span class="odoo-error">{{ form.estado.errors.0 }}</span>{% endif %}
+                    </div>
+
+                    <!-- Título grande -->
+                    <div class="odoo-header-name">
+                        {{ form.titulo }}
+                        {% if form.titulo.errors %}<span class="odoo-error">{{ form.titulo.errors.0 }}</span>{% endif %}
+                    </div>
+
+                    <!-- Info rápida: Fecha y Tipo -->
+                    <div class="odoo-header-contact">
+                        <div class="odoo-contact-item">
+                            <span class="material-icons">calendar_today</span>
+                            {{ form.fecha }}
+                            {% if form.fecha.errors %}<span class="odoo-error">{{ form.fecha.errors.0 }}</span>{% endif %}
+                        </div>
+                        <div class="odoo-contact-item">
+                            <span class="material-icons">category</span>
+                            {{ form.tipo }}
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ========================================
+                 CAMPOS PRINCIPALES (2 columnas)
+                 ======================================== -->
+            <div class="odoo-form-content">
+                
+                <!-- COLUMNA IZQUIERDA -->
+                <div class="odoo-form-col">
+                    
+                    <div class="odoo-field-row">
+                        <label>Hora inicio</label>
+                        <div class="odoo-field-value">
+                            {{ form.hora_inicio }}
+                            {% if form.hora_inicio.errors %}<span class="odoo-error">{{ form.hora_inicio.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Hora fin</label>
+                        <div class="odoo-field-value">
+                            {{ form.hora_fin }}
+                            {% if form.hora_fin.errors %}<span class="odoo-error">{{ form.hora_fin.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Lugar</label>
+                        <div class="odoo-field-value">
+                            {{ form.lugar }}
+                            {% if form.lugar.errors %}<span class="odoo-error">{{ form.lugar.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- COLUMNA DERECHA -->
+                <div class="odoo-form-col">
+
+                    <div class="odoo-field-row">
+                        <label>Responsable</label>
+                        <div class="odoo-field-value">
+                            {{ form.responsable_texto }}
+                            {% if form.responsable_texto.errors %}<span class="odoo-error">{{ form.responsable_texto.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Descripción</label>
+                        <div class="odoo-field-value">
+                            {{ form.descripcion }}
+                            {% if form.descripcion.errors %}<span class="odoo-error">{{ form.descripcion.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Detalles adicionales de la actividad</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+<!-- =============================================
+     ESTILOS ODOO FORM
+     ============================================= -->
+<style>
+:root {
+    --odoo-primary: #714B67;
+    --odoo-primary-light: #8F6B83;
+    --odoo-primary-dark: #5C3D54;
+    --odoo-secondary: #017E84;
+    --odoo-bg: #F1F1F1;
+    --odoo-card-bg: #FFFFFF;
+    --odoo-border: #DEE2E6;
+    --odoo-text: #212529;
+    --odoo-text-muted: #6C757D;
+    --odoo-success: #28A745;
+    --odoo-warning: #FFC107;
+    --odoo-danger: #DC3545;
+    --odoo-info: #17A2B8;
+}
+
+/* ================================
+   TOPBAR
+   ================================ */
+.odoo-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--odoo-card-bg);
+    border-bottom: 1px solid var(--odoo-border);
+}
+
+.odoo-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.odoo-back-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    color: var(--odoo-text-muted);
+    transition: all 0.2s;
+}
+
+.odoo-back-link:hover {
+    background: var(--odoo-bg);
+    color: var(--odoo-text);
+}
+
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.odoo-breadcrumb-parent {
+    color: var(--odoo-text-muted);
+}
+
+.odoo-breadcrumb-separator {
+    color: var(--odoo-text-muted);
+}
+
+.odoo-breadcrumb-current {
+    color: var(--odoo-text);
+    font-weight: 500;
+}
+
+.odoo-record-count {
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+}
+
+/* ================================
+   ACTIONBAR
+   ================================ */
+.odoo-actionbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--odoo-card-bg);
+    border-bottom: 1px solid var(--odoo-border);
+}
+
+.odoo-actionbar-left,
+.odoo-actionbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ================================
+   BOTONES
+   ================================ */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+.odoo-btn-primary {
+    background: var(--odoo-primary);
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: var(--odoo-primary-dark);
+    color: white;
+}
+
+.odoo-btn-secondary {
+    background: var(--odoo-bg);
+    color: var(--odoo-text);
+    border: 1px solid var(--odoo-border);
+}
+
+.odoo-btn-secondary:hover {
+    background: #E9ECEF;
+}
+
+.odoo-btn-link {
+    background: transparent;
+    color: var(--odoo-primary);
+    padding: 8px 12px;
+}
+
+.odoo-btn-link:hover {
+    background: rgba(113, 75, 103, 0.08);
+}
+
+/* ================================
+   FORM SHEET
+   ================================ */
+.odoo-form-sheet {
+    max-width: 1000px;
+    margin: 20px auto;
+    background: var(--odoo-card-bg);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+/* ================================
+   ERRORES
+   ================================ */
+.odoo-form-errors {
+    margin: 16px;
+    padding: 12px 16px;
+    background: #FFF3F3;
+    border: 1px solid var(--odoo-danger);
+    border-radius: 6px;
+    color: var(--odoo-danger);
+    font-size: 13px;
+}
+
+.odoo-error {
+    color: var(--odoo-danger);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* ================================
+   FORM HEADER (Avatar + Título)
+   ================================ */
+.odoo-form-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 24px;
+    border-bottom: 1px solid var(--odoo-border);
+    background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%);
+}
+
+.odoo-avatar {
+    width: 100px;
+    height: 100px;
+    min-width: 100px;
+    border-radius: 8px;
+    background: var(--odoo-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed var(--odoo-border);
+    overflow: hidden;
+}
+
+.odoo-avatar .material-icons {
+    font-size: 48px;
+    color: var(--odoo-primary);
+    opacity: 0.7;
+}
+
+.odoo-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.odoo-header-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Estado badge */
+.odoo-estado-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-estado-group select {
+    padding: 4px 24px 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-radius: 20px;
+    border: none;
+    background: var(--odoo-primary);
+    color: white;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+
+/* Título grande */
+.odoo-header-name {
+    width: 100%;
+}
+
+.odoo-header-name input {
+    width: 100%;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--odoo-text);
+    border: none;
+    background: transparent;
+    padding: 4px 0;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.odoo-header-name input:focus {
+    outline: none;
+    border-bottom-color: var(--odoo-primary);
+}
+
+.odoo-header-name input::placeholder {
+    color: var(--odoo-text-muted);
+    font-weight: 400;
+}
+
+/* Info de contacto rápida */
+.odoo-header-contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.odoo-contact-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--odoo-text-muted);
+}
+
+.odoo-contact-item .material-icons {
+    font-size: 18px;
+    color: var(--odoo-primary);
+    opacity: 0.7;
+}
+
+.odoo-contact-item input,
+.odoo-contact-item select {
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: var(--odoo-text);
+    padding: 4px 0;
+    border-bottom: 1px solid transparent;
+    max-width: 160px;
+}
+
+.odoo-contact-item input:focus,
+.odoo-contact-item select:focus {
+    outline: none;
+    border-bottom-color: var(--odoo-primary);
+}
+
+.odoo-inline-hint {
+    font-size: 12px;
+    color: var(--odoo-text-muted);
+}
+
+/* ================================
+   FORM CONTENT (2 columnas)
+   ================================ */
+.odoo-form-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    padding: 24px;
+}
+
+.odoo-form-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Field row */
+.odoo-field-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+.odoo-field-row > label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--odoo-text-muted);
+    padding-top: 8px;
+    text-align: right;
+}
+
+.odoo-field-value {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.odoo-field-value input,
+.odoo-field-value select,
+.odoo-field-value textarea {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid var(--odoo-border);
+    border-radius: 4px;
+    background: var(--odoo-card-bg);
+    color: var(--odoo-text);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.odoo-field-value input:focus,
+.odoo-field-value select:focus,
+.odoo-field-value textarea:focus {
+    outline: none;
+    border-color: var(--odoo-primary);
+    box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
+}
+
+.odoo-field-value textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.odoo-field-hint {
+    font-size: 12px;
+    color: var(--odoo-text-muted);
+}
+
+/* Checkbox group */
+.odoo-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--odoo-text);
+    cursor: pointer;
+}
+
+.odoo-checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--odoo-primary);
+}
+
+/* ================================
+   RESPONSIVE MÓVIL
+   ================================ */
+@media (max-width: 768px) {
+    
+    .odoo-form-sheet {
+        margin: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    /* Header móvil */
+    .odoo-form-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 20px 16px;
+    }
+
+    .odoo-avatar {
+        width: 80px;
+        height: 80px;
+        min-width: 80px;
+    }
+
+    .odoo-avatar .material-icons {
+        font-size: 36px;
+    }
+
+    .odoo-header-info {
+        width: 100%;
+        align-items: center;
+    }
+
+    .odoo-estado-group {
+        justify-content: center;
+    }
+
+    .odoo-header-name input {
+        font-size: 22px !important;
+        text-align: center;
+    }
+
+    .odoo-header-contact {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .odoo-contact-item {
+        justify-content: flex-start;
+    }
+
+    .odoo-contact-item input,
+    .odoo-contact-item select {
+        max-width: none;
+        flex: 1;
+    }
+
+    /* Contenido móvil - 1 columna */
+    .odoo-form-content {
+        grid-template-columns: 1fr;
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .odoo-field-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .odoo-field-row > label {
+        text-align: left;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--odoo-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        padding-top: 0;
+    }
+
+    /* Breadcrumb móvil */
+    .odoo-breadcrumb-parent,
+    .odoo-breadcrumb-separator {
+        display: none;
+    }
+
+    /* Actionbar móvil */
+    .odoo-actionbar {
+        padding: 10px 12px;
+    }
+
+    .odoo-actionbar-left {
+        flex-wrap: wrap;
+    }
+
+    .odoo-actionbar-right {
+        display: none;
+    }
+
+    .odoo-btn {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+
+    /* Topbar móvil */
+    .odoo-topbar {
+        padding: 10px 12px;
+    }
+}
+
+/* ================================
+   EXTRA PEQUEÑO (< 480px)
+   ================================ */
+@media (max-width: 480px) {
+    
+    .odoo-header-name input {
+        font-size: 20px !important;
+    }
+
+    .odoo-avatar {
+        width: 70px;
+        height: 70px;
+        min-width: 70px;
+    }
+
+    .odoo-avatar .material-icons {
+        font-size: 32px;
+    }
+
+    .odoo-btn {
+        padding: 10px 12px;
+    }
+
+    .odoo-btn .material-icons {
+        font-size: 16px;
+    }
+}
+</style>
+
+{% endblock %}
