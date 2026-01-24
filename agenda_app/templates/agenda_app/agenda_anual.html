@@ -5,172 +5,831 @@
 
 <div class="odoo-page">
 
-  <!-- Header -->
-  <div class="odoo-page-header" style="display:flex; gap:12px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap;">
-    <div>
-      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <h1 style="margin:0;">Agenda anual</h1>
-        <span class="odoo-badge" style="opacity:.9;">{{ year }}</span>
+  <div class="agenda-header">
+    <div class="agenda-header-left">
+      <div class="agenda-title-group">
+        <h1 class="agenda-title">Agenda anual</h1>
+        <span class="agenda-year-badge">{{ year }}</span>
       </div>
-      <div style="opacity:.75; margin-top:6px;">
-        Actividades organizadas por mes (modo simple)
-      </div>
+      <p class="agenda-subtitle">Selecciona un mes para ver sus actividades</p>
     </div>
 
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <form method="get" style="display:flex; gap:8px; align-items:center; margin:0;">
-        <span class="material-icons" style="opacity:.7;">calendar_month</span>
+    <div class="agenda-header-right">
+      <form method="get" class="year-selector">
+        <span class="material-icons">calendar_month</span>
         <input
           name="year"
           type="number"
           value="{{ year }}"
           min="2000"
           max="2100"
-          class="odoo-input"
-          style="width:110px;"
+          class="year-input"
         />
-        <button class="odoo-btn odoo-btn-secondary" type="submit">
-          Ver
-        </button>
+        <button class="btn-ver" type="submit">Ver</button>
       </form>
 
-      {# lo activamos cuando hagamos create view #}
-      <button class="odoo-btn odoo-btn-primary" type="button" disabled title="Lo activamos en el próximo paso">
-        <span class="material-icons" style="font-size:18px; vertical-align:-4px;">add</span>
+      <a href="{% url 'agenda_app:actividad_create' %}" class="btn-agendar">
+        <span class="material-icons">add</span>
         Agendar
-      </button>
+      </a>
     </div>
   </div>
 
-  <!-- Meses -->
-  <div class="odoo-page-body" style="margin-top:14px; display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:12px;">
+  <div class="mini-calendar-grid">
     {% for m in meses_data %}
-      <div class="odoo-card" style="grid-column: span 12; overflow:hidden;">
-        <div class="odoo-card-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-          <div style="display:flex; gap:10px; align-items:center;">
-            <span class="material-icons" style="opacity:.75;">event</span>
-            <div>
-              <div style="font-weight:700; letter-spacing:.5px;">{{ m.mes_nombre|upper }}</div>
-              <div style="opacity:.7; font-size:.9rem;">
-                {% if m.total == 0 %}
-                  Sin actividades
-                {% elif m.total == 1 %}
-                  1 actividad
-                {% else %}
-                  {{ m.total }} actividades
-                {% endif %}
-              </div>
-            </div>
-          </div>
-
-          <div style="display:flex; gap:8px; align-items:center;">
-            {# listo para el futuro: agregar actividad dentro del mes #}
-            <button class="odoo-btn odoo-btn-light" type="button" disabled title="Lo activamos luego">
-              <span class="material-icons" style="font-size:18px; vertical-align:-4px;">add_circle</span>
-              Añadir
-            </button>
-          </div>
-        </div>
-
-        <div class="odoo-card-body" style="padding:0;">
-          {% if m.total == 0 %}
-            <div style="padding:14px; opacity:.75; display:flex; gap:10px; align-items:center;">
-              <span class="material-icons" style="opacity:.65;">info</span>
-              <span>Aún no hay nada agendado en {{ m.mes_nombre|lower }}.</span>
-            </div>
+      <div class="mini-mes {% if m.total > 0 %}mini-mes-activo{% endif %}"
+           data-mes="{{ m.mes_num }}"
+           onclick="seleccionarMes({{ m.mes_num }})">
+        <div class="mini-mes-nombre">{{ m.mes_nombre|slice:":3" }}</div>
+        <div class="mini-mes-count">
+          {% if m.total > 0 %}
+            <span class="count-badge">{{ m.total }}</span>
           {% else %}
-            <div class="odoo-table-wrapper" style="padding:0;">
-              <table class="odoo-table" style="margin:0;">
-                <thead>
-                  <tr>
-                    <th style="width:120px;">Fecha</th>
-                    <th>Actividad</th>
-                    <th style="width:120px;">Hora</th>
-                    <th style="width:140px;">Tipo</th>
-                    <th style="width:140px;">Estado</th>
-                    <th style="width:140px; text-align:right;">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for a in m.actividades %}
-                    <tr>
-                      <td>
-                        <div style="font-weight:600;">
-                          {{ a.fecha|date:"d M" }}
-                        </div>
-                        <div style="opacity:.7; font-size:.85rem;">
-                          {{ a.fecha|date:"D" }}
-                        </div>
-                      </td>
-
-                      <td>
-                        <div style="font-weight:700;">{{ a.titulo }}</div>
-                        <div style="opacity:.75; font-size:.9rem; display:flex; gap:10px; flex-wrap:wrap;">
-                          {% if a.lugar %}
-                            <span style="display:inline-flex; gap:6px; align-items:center;">
-                              <span class="material-icons" style="font-size:16px; opacity:.7;">place</span>
-                              {{ a.lugar }}
-                            </span>
-                          {% endif %}
-                          {% if a.responsable_texto %}
-                            <span style="display:inline-flex; gap:6px; align-items:center;">
-                              <span class="material-icons" style="font-size:16px; opacity:.7;">person</span>
-                              {{ a.responsable_texto }}
-                            </span>
-                          {% endif %}
-                        </div>
-                      </td>
-
-                      <td>
-                        {% if a.hora_inicio %}
-                          <div style="font-weight:600;">
-                            {{ a.hora_inicio|time:"H:i" }}
-                            {% if a.hora_fin %}– {{ a.hora_fin|time:"H:i" }}{% endif %}
-                          </div>
-                        {% else %}
-                          <span style="opacity:.7;">—</span>
-                        {% endif %}
-                      </td>
-
-                      <td>
-                        <span class="odoo-badge">
-                          {{ a.get_tipo_display }}
-                        </span>
-                      </td>
-
-                      <td>
-                        {% if a.estado == "PROGRAMADA" %}
-                          <span class="odoo-badge">Programada</span>
-                        {% elif a.estado == "REALIZADA" %}
-                          <span class="odoo-badge">Realizada</span>
-                        {% else %}
-                          <span class="odoo-badge">Cancelada</span>
-                        {% endif %}
-                      </td>
-
-                      <td style="text-align:right;">
-                        {# los activamos cuando creemos las vistas CRUD #}
-                        <button class="odoo-btn odoo-btn-light" type="button" disabled title="Luego">
-                          <span class="material-icons" style="font-size:18px; vertical-align:-4px;">visibility</span>
-                        </button>
-                        <button class="odoo-btn odoo-btn-light" type="button" disabled title="Luego">
-                          <span class="material-icons" style="font-size:18px; vertical-align:-4px;">edit</span>
-                        </button>
-                        <button class="odoo-btn odoo-btn-light" type="button" disabled title="Luego">
-                          <span class="material-icons" style="font-size:18px; vertical-align:-4px;">delete</span>
-                        </button>
-                      </td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
+            <span class="count-empty">—</span>
           {% endif %}
         </div>
       </div>
     {% endfor %}
   </div>
 
+  <div class="mes-detalle-container">
+
+    {% for m in meses_data %}
+      <div class="mes-detalle" id="mes-{{ m.mes_num }}" style="display: none;">
+
+        <div class="mes-detalle-header">
+          <div class="mes-detalle-info">
+            <h2 class="mes-detalle-titulo">{{ m.mes_nombre }} {{ year }}</h2>
+            <span class="mes-detalle-count">
+              {% if m.total == 0 %}
+                Sin actividades
+              {% elif m.total == 1 %}
+                1 actividad programada
+              {% else %}
+                {{ m.total }} actividades programadas
+              {% endif %}
+            </span>
+          </div>
+
+          <a href="{% url 'agenda_app:actividad_create' %}?mes={{ m.mes_num }}&year={{ year }}" class="btn-add-actividad">
+            <span class="material-icons">add</span>
+            Nueva actividad
+          </a>
+        </div>
+
+        <div class="mes-detalle-body">
+
+          {% if m.total == 0 %}
+            <div class="mes-vacio">
+              <div class="mes-vacio-icon">
+                <span class="material-icons">event_busy</span>
+              </div>
+              <p class="mes-vacio-text">No hay actividades en {{ m.mes_nombre|lower }}</p>
+
+              <a href="{% url 'agenda_app:actividad_create' %}?mes={{ m.mes_num }}&year={{ year }}" class="btn-crear-primera">
+                <span class="material-icons">add_circle</span>
+                Crear primera actividad
+              </a>
+            </div>
+
+          {% elif m.actividades %}
+            <div class="actividades-lista">
+              {% for a in m.actividades %}
+                <div class="actividad-row">
+                  <div class="actividad-fecha">
+                    <span class="fecha-num">{{ a.fecha|date:"d" }}</span>
+                    <span class="fecha-dia">{{ a.fecha|date:"D" }}</span>
+                  </div>
+
+                  <div class="actividad-info">
+                    <div class="actividad-titulo-line">
+                      <a href="#" class="actividad-nombre">{{ a.titulo }}</a>
+
+                      {% if a.estado == "PROGRAMADA" %}
+                        <span class="estado-dot estado-programada"></span>
+                      {% elif a.estado == "REALIZADA" %}
+                        <span class="estado-dot estado-realizada"></span>
+                      {% else %}
+                        <span class="estado-dot estado-cancelada"></span>
+                      {% endif %}
+                    </div>
+
+                    <div class="actividad-detalles">
+                      {% if a.hora_inicio %}
+                        <span class="detalle-item">
+                          <span class="material-icons">schedule</span>
+                          {{ a.hora_inicio|time:"H:i" }}
+                          {% if a.hora_fin %} - {{ a.hora_fin|time:"H:i" }}{% endif %}
+                        </span>
+                      {% endif %}
+
+                      {% if a.lugar %}
+                        <span class="detalle-item">
+                          <span class="material-icons">place</span>
+                          {{ a.lugar }}
+                        </span>
+                      {% endif %}
+
+                      {% if a.responsable_texto %}
+                        <span class="detalle-item">
+                          <span class="material-icons">person</span>
+                          {{ a.responsable_texto }}
+                        </span>
+                      {% endif %}
+
+                      <span class="detalle-item tipo-badge">
+                        {{ a.get_tipo_display }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+          {% else %}
+            <div class="mes-vacio">
+              <div class="mes-vacio-icon">
+                <span class="material-icons">event_busy</span>
+              </div>
+              <p class="mes-vacio-text">No hay actividades en {{ m.mes_nombre|lower }}</p>
+            </div>
+          {% endif %}
+
+        </div>
+
+      </div>
+    {% endfor %}
+
+    <div class="mes-placeholder" id="mes-placeholder">
+      <div class="placeholder-icon">
+        <span class="material-icons">touch_app</span>
+      </div>
+      <p class="placeholder-text">Selecciona un mes del calendario para ver sus actividades</p>
+    </div>
+
+  </div>
+
 </div>
+
+<style>
+
+/* ================================
+   VARIABLES
+   ================================ */
+:root {
+  --primary: #714B67;
+  --primary-light: #8F6B83;
+  --primary-dark: #5C3D54;
+  --secondary: #00A09D;
+  --secondary-light: #E8F8F8;
+  --bg-light: #F8F9FA;
+  --bg-card: #FFFFFF;
+  --border: #E9ECEF;
+  --text-dark: #212529;
+  --text-muted: #6C757D;
+  --success: #28A745;
+  --success-bg: #D4EDDA;
+  --danger: #DC3545;
+  --danger-bg: #F8D7DA;
+  --info: #17A2B8;
+  --info-bg: #D1ECF1;
+}
+
+/* ================================
+   HEADER
+   ================================ */
+.agenda-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: 16px;
+  color: white;
+}
+
+.agenda-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.agenda-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.agenda-year-badge {
+  background: rgba(255,255,255,0.2);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.agenda-subtitle {
+  margin: 8px 0 0;
+  opacity: 0.85;
+  font-size: 14px;
+}
+
+.agenda-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.year-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.15);
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.year-selector .material-icons {
+  font-size: 20px;
+  opacity: 0.8;
+}
+
+.year-input {
+  width: 80px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.9);
+  color: var(--text-dark);
+}
+
+.btn-ver {
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-ver:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.btn-agendar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: white;
+  color: var(--primary);
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.btn-agendar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.btn-agendar .material-icons {
+  font-size: 20px;
+}
+
+/* ================================
+   MINI CALENDAR GRID
+   ================================ */
+.mini-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.mini-mes {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mini-mes:hover {
+  border-color: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.mini-mes.mini-mes-activo {
+  border-color: var(--secondary);
+  background: var(--secondary-light);
+}
+
+.mini-mes.mini-mes-selected {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
+
+.mini-mes.mini-mes-selected .mini-mes-nombre {
+  color: white;
+}
+
+.mini-mes.mini-mes-selected .count-badge {
+  background: white;
+  color: var(--primary);
+}
+
+.mini-mes.mini-mes-selected .count-empty {
+  color: rgba(255,255,255,0.6);
+}
+
+.mini-mes-nombre {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.mini-mes-count {
+  display: flex;
+  justify-content: center;
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  background: var(--secondary);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 12px;
+}
+
+.count-empty {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ================================
+   MES DETALLE
+   ================================ */
+.mes-detalle-container {
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  min-height: 300px;
+}
+
+.mes-detalle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(90deg, var(--bg-light) 0%, transparent 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.mes-detalle-titulo {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.mes-detalle-count {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.btn-add-actividad {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: var(--primary);
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.btn-add-actividad:hover {
+  background: var(--primary-dark);
+}
+
+.btn-add-actividad .material-icons {
+  font-size: 18px;
+}
+
+/* Mes vacío */
+.mes-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.mes-vacio-icon {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-light);
+  border-radius: 50%;
+  margin-bottom: 16px;
+}
+
+.mes-vacio-icon .material-icons {
+  font-size: 40px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.mes-vacio-text {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+
+.btn-crear-primera {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--secondary);
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.btn-crear-primera:hover {
+  background: #008B88;
+  transform: translateY(-2px);
+}
+
+/* Placeholder */
+.mes-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.placeholder-icon {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: 50%;
+  margin-bottom: 20px;
+  animation: pulse 2s infinite;
+}
+
+.placeholder-icon .material-icons {
+  font-size: 48px;
+  color: white;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+.placeholder-text {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ================================
+   ACTIVIDADES LISTA
+   ================================ */
+.actividades-lista {
+  padding: 0;
+}
+
+.actividad-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.actividad-row:last-child {
+  border-bottom: none;
+}
+
+.actividad-row:hover {
+  background: var(--bg-light);
+}
+
+/* Fecha */
+.actividad-fecha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 50px;
+  padding: 8px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: 8px;
+  color: white;
+}
+
+.fecha-num {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.fecha-dia {
+  font-size: 10px;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+/* Info */
+.actividad-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.actividad-titulo-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.actividad-nombre {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-decoration: none;
+}
+
+.actividad-nombre:hover {
+  color: var(--primary);
+}
+
+.estado-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.estado-programada {
+  background: var(--info);
+  box-shadow: 0 0 0 3px var(--info-bg);
+}
+
+.estado-realizada {
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-bg);
+}
+
+.estado-cancelada {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-bg);
+}
+
+.actividad-detalles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.detalle-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.detalle-item .material-icons {
+  font-size: 15px;
+  color: var(--secondary);
+}
+
+.tipo-badge {
+  background: var(--bg-light);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Acciones */
+.actividad-acciones {
+  display: flex;
+  gap: 6px;
+}
+
+.accion-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-light);
+  border-radius: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.accion-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.accion-btn .material-icons {
+  font-size: 18px;
+}
+
+.accion-danger:hover {
+  background: var(--danger);
+}
+
+/* ================================
+   RESPONSIVE
+   ================================ */
+@media (max-width: 992px) {
+  .mini-calendar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .agenda-header {
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .agenda-title {
+    font-size: 24px;
+  }
+
+  .agenda-header-right {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .year-selector {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-agendar {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mini-calendar-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .mini-mes {
+    padding: 10px 6px;
+  }
+
+  .mini-mes-nombre {
+    font-size: 11px;
+  }
+
+  /* Detalle */
+  .mes-detalle-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .btn-add-actividad {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .actividad-row {
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .actividad-fecha {
+    flex-direction: row;
+    gap: 8px;
+    width: fit-content;
+    padding: 6px 12px;
+  }
+
+  .fecha-num {
+    font-size: 16px;
+  }
+
+  .actividad-acciones {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .accion-btn {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mini-calendar-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .agenda-title {
+    font-size: 20px;
+  }
+
+  .mes-detalle-titulo {
+    font-size: 18px;
+  }
+}
+</style>
+
+<script>
+function seleccionarMes(mesNumero) {
+  document.querySelectorAll('.mini-mes').forEach(el => {
+    el.classList.remove('mini-mes-selected');
+  });
+
+  const mesBtn = document.querySelector('.mini-mes[data-mes="' + mesNumero + '"]');
+  if (mesBtn) mesBtn.classList.add('mini-mes-selected');
+
+  const placeholder = document.getElementById('mes-placeholder');
+  if (placeholder) placeholder.style.display = 'none';
+
+  document.querySelectorAll('.mes-detalle').forEach(el => {
+    el.style.display = 'none';
+  });
+
+  const detalle = document.getElementById('mes-' + mesNumero);
+  if (detalle) detalle.style.display = 'block';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // 1) Si hay algún mes con actividades, abre el primero con actividades
+  const primerMesConActividades = document.querySelector('.mini-mes.mini-mes-activo');
+  if (primerMesConActividades) {
+    const mes = parseInt(primerMesConActividades.getAttribute('data-mes'));
+    seleccionarMes(mes);
+    return;
+  }
+
+  // 2) Si no hay actividades en ningún mes, abre el mes actual igual (para ver "Sin actividades")
+  const mesActual = new Date().getMonth() + 1;
+  seleccionarMes(mesActual);
+});
+</script>
+
 
 {% endblock %}

@@ -39,11 +39,26 @@ def agenda_anual(request):
     except ValueError:
         year = hoy.year
 
-    actividades = (
-        Actividad.objects
-        .filter(fecha__year=year)
-        .order_by("fecha", "hora_inicio", "titulo")
-    )
+    # ==========================================================
+    # SOLO FUTURAS:
+    # - Si el año es el actual: fecha >= hoy
+    # - Si el año es futuro: todas (porque todas son futuras)
+    # - Si el año es pasado: ninguna
+    # ==========================================================
+    qs = Actividad.objects.all()
+
+    if year < hoy.year:
+        actividades = Actividad.objects.none()
+    elif year == hoy.year:
+        actividades = (
+            qs.filter(fecha__year=year, fecha__gte=hoy)
+              .order_by("fecha", "hora_inicio", "titulo")
+        )
+    else:
+        actividades = (
+            qs.filter(fecha__year=year)
+              .order_by("fecha", "hora_inicio", "titulo")
+        )
 
     por_mes = {m: [] for m, _ in MESES_ES}
     for a in actividades:
@@ -65,6 +80,7 @@ def agenda_anual(request):
         "meses_data": meses_data,
     }
     return render(request, "agenda_app/agenda_anual.html", context)
+
 
 
 @login_required
