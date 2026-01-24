@@ -54,10 +54,9 @@ INSTALLED_APPS = [
     'nuevo_creyente_app',
     'actualizacion_datos_miembros',
     'django.contrib.humanize',
-        "cloudinary",
+    "cloudinary",
     "cloudinary_storage",
-
-    'inventario_app'
+    'inventario_app',
 ]
 
 MIDDLEWARE = [
@@ -96,10 +95,6 @@ WSGI_APPLICATION = 'Soid_Tf_2.wsgi.application'
 # =============================================================================
 # BASE DE DATOS
 # =============================================================================
-
-
-
-
 
 DATABASES = {
     "default": dj_database_url.config(
@@ -152,11 +147,6 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# ⚠️ IMPORTANTE: Usar CompressedStaticFilesStorage (SIN Manifest)
-# CompressedManifestStaticFilesStorage puede causar errores 403/500
-# si hay referencias rotas o no se ejecutó collectstatic correctamente
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
-
 # =============================================================================
 # ARCHIVOS MEDIA (fotos y archivos del usuario)
 # =============================================================================
@@ -174,12 +164,27 @@ CLOUDINARY_STORAGE = {
     "API_SECRET": os.environ.get("CLOUDINARY_API_SECRET", ""),
 }
 
-# Si hay credenciales de Cloudinary, usarlo como storage por defecto (PROD)
-if os.environ.get("CLOUDINARY_CLOUD_NAME") and os.environ.get("CLOUDINARY_API_KEY") and os.environ.get("CLOUDINARY_API_SECRET"):
-    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+# =============================================================================
+# STORAGES - Django 5.x (reemplaza DEFAULT_FILE_STORAGE y STATICFILES_STORAGE)
+# =============================================================================
 
+# Determinar si usar Cloudinary (producción) o FileSystem (local)
+_use_cloudinary = all([
+    os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    os.environ.get("CLOUDINARY_API_KEY"),
+    os.environ.get("CLOUDINARY_API_SECRET"),
+])
 
-DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"
+        if _use_cloudinary
+        else "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 # =============================================================================
 # CONFIGURACIÓN DE CORREO (SMTP GMAIL)
