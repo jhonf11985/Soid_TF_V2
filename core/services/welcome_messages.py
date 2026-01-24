@@ -57,14 +57,51 @@ class WelcomeMessageService:
         "¡Hola Pastor {nombre}! 'Apacienta mis ovejas' 🐑",
         "¡{nombre}! Como Nehemías, tú edificas vidas 🏗️",
         "¡Bienvenido {nombre}! El buen pastor conoce sus ovejas 😉",
-    ]
-    
-    MENSAJES_ADMIN = [
-        "¡{nombre}! El arquitecto del sistema ha llegado 🏛️",
+        "¡que susto! {nombre}! pense que era el Pastor 😉",
+            "😏 Atención… ha llegado {nombre}. Ahora sí se puede trabajar.",
+        "👑 Señoras y señores… {nombre} ha entrado. Mantengan la calma.",
+        "🫡 Saludos, líder {nombre}. El sistema estaba esperando órdenes.",
+        "🔥 {nombre} ha llegado. Nivel de liderazgo: activado.",
+        "🐑 Pastor {nombre}, el rebaño está presente… y el sistema también.",
+        "🏗️ Como Nehemías… {nombre} ha vuelto a la obra.",
+        "😄 {nombre}, pensé que hoy nos dejabas solos… pero no.",
+        "🛡️ Líder {nombre} detectado. Permisos concedidos.",
+        "📜 {nombre}, el consejo se reúne… aunque sea en el sistema.",
+                "¡{nombre}! El arquitecto del sistema ha llegado 🏛️",
         "¡Bienvenido Admin {nombre}! Todo bajo control... creo 😅",
         "¡{nombre}! Con gran poder viene gran responsabilidad 🦸",
         "¡{nombre}! Como José en Egipto, todo está bajo tu mano 📊",
     ]
+    
+   
+
+    MENSAJES_ADMIN = [
+        # 👑 Solemnes
+        "🏛️ Bienvenido, {nombre}. El sistema está bajo tu gobierno.",
+        "👑 {nombre}, el arquitecto del sistema ha llegado.",
+        "📊 {nombre}, todo está listo para tu supervisión.",
+        "⚖️ Administrador {nombre}, el orden ha sido restablecido.",
+
+        # 😏 Jocosos
+        "😏 Ah… llegó {nombre}. Ahora sí hay auditoría.",
+        "😂 {nombre} ha entrado. Los bugs están nerviosos.",
+        "🛡️ Atención… {nombre} está en línea. Compórtense.",
+        "🤭 {nombre}, el sistema funcionaba… hasta que llegaste 😅",
+
+        # 🤓 Chistes tech + bíblicos
+        "💻 {nombre}, como Moisés… separaste el caos del orden.",
+        "📖 {nombre}, hoy no abriste el mar… pero sí la base de datos.",
+        "🧠 {nombre}, el primer admin bíblico fue José en Egipto.",
+        "🐛 {nombre}, los errores se esconden… pero tú los encuentras.",
+
+        # 🏛️ Épicos
+        "🏰 Las puertas del sistema se abren para {nombre}.",
+        "⚔️ {nombre} ha cruzado el umbral del servidor.",
+        "🔥 {nombre}, el núcleo del sistema reconoce tu autoridad.",
+        "🚀 {nombre} ha iniciado sesión. Modo administrador activado.",
+    ]
+
+    
     
     MENSAJES_SECRETARIA = [
         "¡{nombre}! La persona más organizada ha llegado 📋",
