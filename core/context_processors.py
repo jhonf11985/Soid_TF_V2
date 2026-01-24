@@ -1,3 +1,6 @@
+# context_processors.py
+# Actualizado con sistema de mensajes inteligentes de bienvenida
+
 from django.conf import settings
 from django.apps import apps
 from .models import ConfiguracionSistema, Module
@@ -93,6 +96,13 @@ def configuracion_global(request):
                     soid_ctx["pendientes"]["pendiente_envio_nuevo_creyente"] = Miembro.objects.filter(**{f: True}).count()
                     break
 
+    # ===============================
+    # 💬 MENSAJE DE BIENVENIDA
+    # ===============================
+    welcome_message = None
+    if hasattr(request, 'session'):
+        welcome_message = request.session.pop('welcome_message', None)
+
     return {
         "CFG": config,
         "MODULOS_ACTIVOS": modulos_activos,
@@ -103,4 +113,7 @@ def configuracion_global(request):
 
         # 🧠 SOID INTELIGENTE
         "SOID_CTX": soid_ctx,
+        
+        # 💬 MENSAJE DE BIENVENIDA
+        "WELCOME_MESSAGE": welcome_message,
     }

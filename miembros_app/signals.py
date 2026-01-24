@@ -7,7 +7,51 @@ from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧠 MENSAJES DE BIENVENIDA INTELIGENTES
+# ═══════════════════════════════════════════════════════════════════════════════
 
+from django.contrib.auth.signals import user_logged_in
+
+@receiver(user_logged_in)
+def on_user_login_welcome(sender, request, user, **kwargs):
+    """Genera mensaje de bienvenida contextual."""
+    print(f"🔔 SIGNAL: Usuario {user.username} ha iniciado sesión")
+    
+    try:
+        from core.models import UserLoginHistory
+        from core.services.welcome_messages import WelcomeMessageService
+        
+        previous = UserLoginHistory.register_login(user, request)
+        
+        # Determinar rol
+        soid_ctx = {'rol': 'usuario'}
+        if getattr(user, 'is_superuser', False):
+            soid_ctx['rol'] = 'admin'
+        else:
+            try:
+                groups = [g.name.lower() for g in user.groups.all()]
+                if any("admin" in g or "geren" in g for g in groups):
+                    soid_ctx['rol'] = 'admin'
+                elif any("secre" in g for g in groups):
+                    soid_ctx['rol'] = 'secretaria'
+                elif any("lider" in g or "pastor" in g for g in groups):
+                    soid_ctx['rol'] = 'lider'
+            except:
+                pass
+        
+        mensaje_data = WelcomeMessageService.get_welcome_message(
+            user=user,
+            previous_login=previous,
+            soid_ctx=soid_ctx
+        )
+        
+        request.session['welcome_message'] = mensaje_data
+        request.session.modified = True
+        print(f"   ✅ Mensaje: {mensaje_data.get('mensaje')[:40]}...")
+        
+    except Exception as e:
+        print(f"   ❌ Error: {e}")
 # ═══════════════════════════════════════════════════════════════════════════════
 # HELPER: Obtener usuario actual del request (thread-local)
 # ═══════════════════════════════════════════════════════════════════════════════

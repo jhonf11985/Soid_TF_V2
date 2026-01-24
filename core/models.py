@@ -286,3 +286,41 @@ class ConfiguracionSistema(models.Model):
             }
         )
         return obj
+
+class UserLoginHistory(models.Model):
+    """Rastrea el historial de logins para mensajes de bienvenida."""
+    user = models.ForeignKey(
+        'auth.User',
+        on_delete=models.CASCADE,
+        related_name='login_history'
+    )
+    login_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default='')
+    
+    class Meta:
+        verbose_name = "Historial de Login"
+        verbose_name_plural = "Historial de Logins"
+        ordering = ['-login_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.login_at.strftime('%d/%m/%Y %H:%M')}"
+    
+    @classmethod
+    def register_login(cls, user, request=None):
+        previous = cls.objects.filter(user=user).order_by('-login_at').first()
+        
+        ip = None
+        user_agent = ''
+        if request:
+            xff = request.META.get('HTTP_X_FORWARDED_FOR')
+            ip = xff.split(',')[0].strip() if xff else request.META.get('REMOTE_ADDR')
+            user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
+        
+        cls.objects.create(user=user, ip_address=ip, user_agent=user_agent)
+        
+        old = list(cls.objects.filter(user=user).order_by('-login_at').values_list('pk', flat=True)[10:])
+        if old:
+            cls.objects.filter(pk__in=old).delete()
+        
+        return previous

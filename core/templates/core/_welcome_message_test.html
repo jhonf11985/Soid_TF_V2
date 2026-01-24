@@ -1,0 +1,248 @@
+
+{% if WELCOME_MESSAGE %}
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   🎨 ESTILOS DEL MODAL DE BIENVENIDA SOID
+   ═══════════════════════════════════════════════════════════════ */
+
+.soid-welcome-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 9998;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.soid-welcome-overlay.show {
+    opacity: 1;
+}
+
+.soid-welcome-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px 28px;
+    max-width: 420px;
+    width: 90%;
+    z-index: 9999;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    text-align: center;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.soid-welcome-modal.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* Icono principal */
+.soid-welcome-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 32px;
+    animation: soid-bounce 0.6s ease-out 0.3s both;
+}
+
+@keyframes soid-bounce {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Colores según tipo de mensaje */
+.soid-welcome-icon.type-normal { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+.soid-welcome-icon.type-admin { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; }
+.soid-welcome-icon.type-lider { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: #fff; }
+.soid-welcome-icon.type-secretaria { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #fff; }
+.soid-welcome-icon.type-ausencia_larga { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: #fff; }
+.soid-welcome-icon.type-ausencia_media { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #5a5a5a; }
+.soid-welcome-icon.type-cumpleanos { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color: #fff; }
+.soid-welcome-icon.type-madrugada { background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); color: #fff; }
+.soid-welcome-icon.type-manana { background: linear-gradient(135deg, #f5af19 0%, #f12711 100%); color: #fff; }
+.soid-welcome-icon.type-tarde { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: #fff; }
+.soid-welcome-icon.type-noche { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); color: #fff; }
+
+/* Mensaje principal */
+.soid-welcome-message {
+    font-size: 1.15rem;
+    line-height: 1.5;
+    color: #333;
+    margin-bottom: 16px;
+    font-weight: 500;
+}
+
+/* Mensaje extra (chiste o pendientes) */
+.soid-welcome-extra {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 20px;
+    border-left: 4px solid var(--primary, #0097A7);
+}
+
+/* Botón cerrar */
+.soid-welcome-close {
+    background: linear-gradient(135deg, var(--primary, #0097A7) 0%, var(--primary-dark, #007c8a) 100%);
+    color: #fff;
+    border: none;
+    padding: 14px 36px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 151, 167, 0.3);
+}
+
+.soid-welcome-close:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 151, 167, 0.4);
+}
+
+.soid-welcome-close:active {
+    transform: translateY(0);
+}
+
+/* Confetti para cumpleaños */
+.soid-confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    opacity: 0;
+}
+
+.soid-welcome-modal.type-cumpleanos .soid-confetti {
+    animation: soid-confetti-fall 3s ease-out forwards;
+}
+
+@keyframes soid-confetti-fall {
+    0% {
+        opacity: 1;
+        transform: translateY(-100px) rotate(0deg);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(300px) rotate(720deg);
+    }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .soid-welcome-modal {
+        padding: 24px 20px;
+        border-radius: 16px;
+    }
+    
+    .soid-welcome-icon {
+        width: 64px;
+        height: 64px;
+        font-size: 26px;
+    }
+    
+    .soid-welcome-message {
+        font-size: 1rem;
+    }
+    
+    .soid-welcome-extra {
+        padding: 12px 14px;
+        font-size: 0.85rem;
+    }
+    
+    .soid-welcome-close {
+        padding: 12px 28px;
+        font-size: 0.95rem;
+    }
+}
+</style>
+
+<!-- Overlay -->
+<div class="soid-welcome-overlay" id="soidWelcomeOverlay"></div>
+
+<!-- Modal -->
+<div class="soid-welcome-modal type-{{ WELCOME_MESSAGE.tipo }}" id="soidWelcomeModal">
+    
+    <!-- Confetti para cumpleaños -->
+    {% if WELCOME_MESSAGE.tipo == 'cumpleanos' %}
+    <div class="soid-confetti" style="left: 10%; background: #ff6b6b; animation-delay: 0.1s;"></div>
+    <div class="soid-confetti" style="left: 30%; background: #4ecdc4; animation-delay: 0.2s;"></div>
+    <div class="soid-confetti" style="left: 50%; background: #ffe66d; animation-delay: 0.15s;"></div>
+    <div class="soid-confetti" style="left: 70%; background: #95e1d3; animation-delay: 0.25s;"></div>
+    <div class="soid-confetti" style="left: 90%; background: #f38181; animation-delay: 0.3s;"></div>
+    {% endif %}
+    
+    <!-- Icono -->
+    <div class="soid-welcome-icon type-{{ WELCOME_MESSAGE.tipo }}">
+        <i class="fas {{ WELCOME_MESSAGE.icono }}"></i>
+    </div>
+    
+    <!-- Mensaje principal -->
+    <p class="soid-welcome-message">{{ WELCOME_MESSAGE.mensaje }}</p>
+    
+    <!-- Extra (chiste o pendientes) -->
+    {% if WELCOME_MESSAGE.extra %}
+    <div class="soid-welcome-extra">
+        {{ WELCOME_MESSAGE.extra }}
+    </div>
+    {% endif %}
+    
+    <!-- Botón -->
+    <button class="soid-welcome-close" onclick="closeSoidWelcome()">
+        ¡Vamos! 🚀
+    </button>
+</div>
+
+<script>
+// Mostrar el modal al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        document.getElementById('soidWelcomeOverlay').classList.add('show');
+        document.getElementById('soidWelcomeModal').classList.add('show');
+    }, 300);
+    
+    // Auto-cerrar después de 8 segundos
+    setTimeout(function() {
+        closeSoidWelcome();
+    }, 8000);
+});
+
+// Cerrar modal
+function closeSoidWelcome() {
+    const overlay = document.getElementById('soidWelcomeOverlay');
+    const modal = document.getElementById('soidWelcomeModal');
+    
+    if (overlay && modal) {
+        overlay.classList.remove('show');
+        modal.classList.remove('show');
+        
+        setTimeout(function() {
+            overlay.remove();
+            modal.remove();
+        }, 400);
+    }
+}
+
+// Cerrar con click en overlay
+document.getElementById('soidWelcomeOverlay').addEventListener('click', closeSoidWelcome);
+
+// Cerrar con Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSoidWelcome();
+});
+</script>
+{% endif %}
