@@ -1,0 +1,205 @@
+{% extends "agenda_app/base_agenda.html" %}
+
+{% block agenda_title %}Dashboard · Agenda{% endblock %}
+
+{% block agenda_content %}
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar">
+  <div class="odoo-control-left">
+    <a href="#" class="odoo-btn odoo-btn-primary">
+      <span class="material-icons">add</span>
+      Nuevo evento
+    </a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTENIDO
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-dashboard">
+
+  <!-- KPIs rápidos -->
+  <div class="odoo-kpi-row" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="odoo-kpi-card">
+      <div class="odoo-kpi-icon" style="background: #e0f2fe; color: #0284c7;">
+        <span class="material-icons">today</span>
+      </div>
+      <div class="odoo-kpi-content">
+        <div class="odoo-kpi-value">{{ eventos_hoy|default:"0" }}</div>
+        <div class="odoo-kpi-label">Eventos hoy</div>
+        <div class="odoo-kpi-sub">Programados para hoy</div>
+      </div>
+    </div>
+
+    <div class="odoo-kpi-card">
+      <div class="odoo-kpi-icon" style="background: #d1fae5; color: #059669;">
+        <span class="material-icons">date_range</span>
+      </div>
+      <div class="odoo-kpi-content">
+        <div class="odoo-kpi-value">{{ eventos_semana|default:"0" }}</div>
+        <div class="odoo-kpi-label">Esta semana</div>
+        <div class="odoo-kpi-sub">Próximos 7 días</div>
+      </div>
+    </div>
+
+    <div class="odoo-kpi-card">
+      <div class="odoo-kpi-icon" style="background: #fef3c7; color: #d97706;">
+        <span class="material-icons">campaign</span>
+      </div>
+      <div class="odoo-kpi-content">
+        <div class="odoo-kpi-value">—</div>
+        <div class="odoo-kpi-label">Anuncios</div>
+        <div class="odoo-kpi-sub">(Luego: recordatorios y avisos)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid principal -->
+  <div class="odoo-dashboard-grid">
+
+    <!-- Próximos eventos -->
+    <div class="odoo-panel">
+      <div class="odoo-panel-header">
+        <h2>Próximos eventos</h2>
+        <span class="odoo-panel-sub">Vista rápida</span>
+      </div>
+
+      {% if proximos_eventos %}
+        <ul class="odoo-recent-list">
+          {% for e in proximos_eventos|slice:":6" %}
+          <li class="odoo-recent-item">
+            <div class="odoo-recent-avatar" style="background: #017e84;">
+              <span class="material-icons" style="font-size:18px;">event</span>
+            </div>
+            <div class="odoo-recent-info">
+              <div class="odoo-recent-name">{{ e.titulo }}</div>
+              <div class="odoo-recent-sub">{{ e.inicio|date:"d/m/Y H:i" }} · {{ e.lugar }}</div>
+            </div>
+            <span class="odoo-recent-badge odoo-badge-new">Próximo</span>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="odoo-empty">Aún no hay eventos creados.</p>
+      {% endif %}
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="odoo-panel">
+      <div class="odoo-panel-header">
+        <h2>Acciones rápidas</h2>
+        <span class="odoo-panel-sub">Agenda general</span>
+      </div>
+
+      <div class="odoo-quick-actions">
+        <a href="#" class="odoo-quick-action">
+          <span class="material-icons">calendar_month</span>
+          <div>
+            <div class="odoo-qa-title">Ver calendario</div>
+            <div class="odoo-qa-sub">Mes / Semana / Día</div>
+          </div>
+          <span class="material-icons odoo-qa-arrow">chevron_right</span>
+        </a>
+
+        <a href="#" class="odoo-quick-action">
+          <span class="material-icons">list</span>
+          <div>
+            <div class="odoo-qa-title">Listado de eventos</div>
+            <div class="odoo-qa-sub">Filtrar por fecha y tipo</div>
+          </div>
+          <span class="material-icons odoo-qa-arrow">chevron_right</span>
+        </a>
+
+        <a href="#" class="odoo-quick-action">
+          <span class="material-icons">notifications</span>
+          <div>
+            <div class="odoo-qa-title">Recordatorios</div>
+            <div class="odoo-qa-sub">(Luego: automáticos)</div>
+          </div>
+          <span class="material-icons odoo-qa-arrow">chevron_right</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+/* Reuso de tu estilo (copiado “mínimo vital” del dashboard de miembros) */
+.odoo-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+.odoo-control-left, .odoo-control-right { display:flex; align-items:center; gap:12px; }
+.odoo-btn {
+  display: inline-flex; align-items:center; gap:4px;
+  padding: 6px 12px; font-size:13px; font-weight:500;
+  border:none; border-radius:4px; cursor:pointer;
+  text-decoration:none; transition: all .15s ease;
+}
+.odoo-btn .material-icons { font-size:18px; }
+.odoo-btn-primary { background:#017e84; color:white; }
+.odoo-btn-primary:hover { background:#016166; }
+
+.odoo-dashboard { padding:16px; background:#f8f9fa; min-height: calc(100vh - 120px); display:flex; flex-direction:column; gap:16px; }
+.odoo-kpi-row { display:grid; gap:16px; }
+.odoo-kpi-card { background:white; border:1px solid #dee2e6; border-radius:8px; padding:16px; display:flex; align-items:center; gap:16px; }
+.odoo-kpi-icon { width:48px; height:48px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.odoo-kpi-content { flex:1; min-width:0; }
+.odoo-kpi-value { font-size:28px; font-weight:700; color:#212529; line-height:1; }
+.odoo-kpi-label { font-size:13px; font-weight:500; color:#495057; margin-top:4px; }
+.odoo-kpi-sub { font-size:11px; color:#6c757d; margin-top:2px; }
+
+.odoo-dashboard-grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+.odoo-panel { background:white; border:1px solid #dee2e6; border-radius:8px; padding:16px; }
+.odoo-panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #e9ecef; }
+.odoo-panel-header h2 { font-size:14px; font-weight:600; color:#212529; margin:0; }
+.odoo-panel-sub { font-size:11px; color:#6c757d; }
+.odoo-empty { font-size:13px; color:#6c757d; text-align:center; padding:20px; }
+
+.odoo-quick-actions { display:flex; flex-direction:column; gap:8px; }
+.odoo-quick-action {
+  display:flex; align-items:center; gap:12px; padding:10px 12px;
+  background:#f8f9fa; border:1px solid #e9ecef; border-radius:6px;
+  text-decoration:none; transition: all .15s ease;
+}
+.odoo-quick-action:hover { background:#e9ecef; border-color:#dee2e6; }
+.odoo-quick-action > .material-icons:first-child { font-size:20px; color:#017e84; }
+.odoo-qa-title { font-size:13px; font-weight:500; color:#212529; }
+.odoo-qa-sub { font-size:11px; color:#6c757d; }
+.odoo-qa-arrow { font-size:18px; color:#adb5bd; }
+
+.odoo-recent-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+.odoo-recent-item { display:flex; align-items:center; gap:12px; padding:8px; background:#f8f9fa; border-radius:6px; }
+.odoo-recent-avatar {
+  width:36px; height:36px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:white; flex-shrink:0;
+}
+.odoo-recent-info { flex:1; min-width:0; }
+.odoo-recent-name { font-size:13px; font-weight:500; color:#212529; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.odoo-recent-sub { font-size:11px; color:#6c757d; }
+.odoo-recent-badge { font-size:10px; font-weight:500; padding:2px 8px; border-radius:10px; flex-shrink:0; }
+.odoo-badge-new { background:#d1fae5; color:#065f46; }
+
+@media (max-width: 992px) {
+  .odoo-dashboard-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .odoo-dashboard { padding:12px; gap:12px; min-height:auto; padding-bottom:80px; }
+  .odoo-kpi-row { gap:10px; }
+  .odoo-kpi-card { padding:12px; gap:10px; }
+  .odoo-kpi-icon { width:40px; height:40px; }
+  .odoo-kpi-value { font-size:22px; }
+  .odoo-kpi-sub { display:none; }
+}
+</style>
+
+{% endblock %}
