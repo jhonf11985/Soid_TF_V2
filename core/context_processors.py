@@ -1,10 +1,20 @@
 from django.conf import settings
+from django.apps import apps
 from .models import ConfiguracionSistema, Module
+
+
+def _has_field(model, field_name: str) -> bool:
+    try:
+        model._meta.get_field(field_name)
+        return True
+    except Exception:
+        return False
+
 
 def configuracion_global(request):
     """
-    Envía la configuración del sistema y los módulos activos
-    a TODAS las plantillas.
+    Envía la configuración del sistema, módulos activos
+    y contexto inteligente de SOID a TODAS las plantillas.
     """
     config = ConfiguracionSistema.load()
 
@@ -18,12 +28,79 @@ def configuracion_global(request):
     modulos_principales = todos_los_modulos[:3]
     modulos_extras = todos_los_modulos[3:]
 
+    # ===============================
+    # 🧠 CONTEXTO INTELIGENTE DE SOID
+    # ===============================
+    soid_ctx = {
+        "tiene_miembro": False,
+        "rol": "usuario",
+        "pendientes": {
+            "pendiente_envio_nuevo_creyente": 0,
+            "sin_padre_espiritual": 0,
+        },
+    }
+
+    u = getattr(request, "user", None)
+
+    if u and getattr(u, "is_authenticated", False):
+
+        # 1) ¿Tiene miembro vinculado?
+        try:
+            soid_ctx["tiene_miembro"] = bool(getattr(u, "miembro", None))
+        except Exception:
+            soid_ctx["tiene_miembro"] = False
+
+        # 2) Rol del usuario
+        if getattr(u, "is_superuser", False):
+            soid_ctx["rol"] = "admin"
+        else:
+            try:
+                groups = [g.name.lower() for g in u.groups.all()]
+            except Exception:
+                groups = []
+
+            if any("admin" in g or "geren" in g for g in groups):
+                soid_ctx["rol"] = "admin"
+            elif any("secre" in g for g in groups):
+                soid_ctx["rol"] = "secretaria"
+            elif any("lider" in g or "pastor" in g for g in groups):
+                soid_ctx["rol"] = "lider"
+            else:
+                soid_ctx["rol"] = "usuario"
+
+        # 3) Pendientes del sistema (Miembros)
+        try:
+            Miembro = apps.get_model("miembros_app", "Miembro")
+        except Exception:
+            Miembro = None
+
+        if Miembro:
+            # Miembros sin padre espiritual
+            for f in ["padre_espiritual", "padre_espiritual_miembro", "padre_espiritual_fk"]:
+                if _has_field(Miembro, f):
+                    soid_ctx["pendientes"]["sin_padre_espiritual"] = Miembro.objects.filter(**{f"{f}__isnull": True}).count()
+                    break
+
+            # Pendientes de envío a Nuevo Creyente
+            for f in [
+                "pendiente_envio_nuevo_creyente",
+                "pendiente_envio_nc",
+                "pendiente_envio",
+                "nuevo_creyente_pendiente_envio",
+                "pendiente_a_nuevo_creyente",
+            ]:
+                if _has_field(Miembro, f):
+                    soid_ctx["pendientes"]["pendiente_envio_nuevo_creyente"] = Miembro.objects.filter(**{f: True}).count()
+                    break
+
     return {
         "CFG": config,
         "MODULOS_ACTIVOS": modulos_activos,
         "TODOS_LOS_MODULOS": todos_los_modulos,
         "MODULOS_PRINCIPALES": modulos_principales,
         "MODULOS_EXTRAS": modulos_extras,
-        # Push notifications
         "VAPID_PUBLIC_KEY": getattr(settings, 'VAPID_PUBLIC_KEY', ''),
+
+        # 🧠 SOID INTELIGENTE
+        "SOID_CTX": soid_ctx,
     }
