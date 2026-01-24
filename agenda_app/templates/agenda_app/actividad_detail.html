@@ -1,0 +1,63 @@
+{% extends "agenda_app/base_agenda.html" %}
+
+{% block agenda_content %}
+<div class="odoo-page">
+  <div class="agenda-header" style="margin-bottom:16px;">
+    <div class="agenda-header-left">
+      <div class="agenda-title-group">
+        <h1 class="agenda-title">{{ actividad.titulo }}</h1>
+        <span class="agenda-year-badge">{{ actividad.fecha|date:"Y-m-d" }}</span>
+      </div>
+      <p class="agenda-subtitle">
+        {% if actividad.hora_inicio %}
+          {{ actividad.hora_inicio|time:"H:i" }}{% if actividad.hora_fin %} - {{ actividad.hora_fin|time:"H:i" }}{% endif %}
+        {% else %}
+          Sin hora
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="agenda-header-right">
+      <a class="btn-agendar" href="{% url 'agenda_app:actividad_update' actividad.pk %}">
+        <span class="material-icons">edit</span>
+        Editar
+      </a>
+
+      <a class="btn-agendar" style="background:#fff;color:#DC3545;" href="{% url 'agenda_app:actividad_delete' actividad.pk %}">
+        <span class="material-icons">delete</span>
+        Eliminar
+      </a>
+    </div>
+  </div>
+
+  <div class="mes-detalle-container" style="padding:18px;">
+    <div style="display:grid; gap:10px;">
+      <div><strong>Fecha:</strong> {{ actividad.fecha|date:"l, d F Y" }}</div>
+
+      <div>
+        <strong>Hora:</strong>
+        {% if actividad.hora_inicio %}
+          {{ actividad.hora_inicio|time:"H:i" }}{% if actividad.hora_fin %} - {{ actividad.hora_fin|time:"H:i" }}{% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </div>
+
+      <div><strong>Tipo:</strong> {{ actividad.get_tipo_display }}</div>
+      <div><strong>Estado:</strong> {{ actividad.estado }}</div>
+
+      {% if actividad.lugar %}
+        <div><strong>Lugar:</strong> {{ actividad.lugar }}</div>
+      {% endif %}
+
+      {% if actividad.responsable_texto %}
+        <div><strong>Responsable:</strong> {{ actividad.responsable_texto }}</div>
+      {% endif %}
+    </div>
+
+    <div style="margin-top:18px;">
+      <a href="{% url 'agenda_app:agenda_anual' %}?year={{ actividad.fecha|date:'Y' }}">← Volver a agenda anual</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

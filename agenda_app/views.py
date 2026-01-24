@@ -100,3 +100,39 @@ def actividad_create(request):
 
     context = {"form": form}
     return render(request, "agenda_app/actividad_form.html", context)
+
+from django.shortcuts import get_object_or_404
+
+@login_required
+def actividad_detail(request, pk):
+    actividad = get_object_or_404(Actividad, pk=pk)
+    return render(request, "agenda_app/actividad_detail.html", {"actividad": actividad})
+
+
+@login_required
+def actividad_update(request, pk):
+    actividad = get_object_or_404(Actividad, pk=pk)
+
+    if request.method == "POST":
+        form = ActividadForm(request.POST, instance=actividad)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "✅ Actividad actualizada correctamente.")
+            return redirect("agenda_app:actividad_detail", pk=actividad.pk)
+    else:
+        form = ActividadForm(instance=actividad)
+
+    return render(request, "agenda_app/actividad_form.html", {"form": form, "actividad": actividad})
+
+
+@login_required
+def actividad_delete(request, pk):
+    actividad = get_object_or_404(Actividad, pk=pk)
+
+    if request.method == "POST":
+        year = actividad.fecha.year
+        actividad.delete()
+        messages.success(request, "🗑️ Actividad eliminada.")
+        return redirect(f"{redirect('agenda_app:agenda_anual').url}?year={year}")
+
+    return render(request, "agenda_app/actividad_confirm_delete.html", {"actividad": actividad})
