@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Mi perfil · Soid_Tf_2{% endblock %}
+{% block title %}Mi perfil · SOID{% endblock %}
 
 {% block breadcrumb %}
 Mi perfil
@@ -8,616 +8,767 @@ Mi perfil
 
 {% block content %}
 
-<section class="page-header">
-    <div>
-        <h1 class="page-title">Mi perfil</h1>
-        <p class="page-subtitle">
-            Información de tu cuenta en el sistema Soid_Tf_2.
-        </p>
-    </div>
-</section>
-
-<section class="page-section">
-    <div class="perfil-layout">
-        <!-- COLUMNA IZQUIERDA: FICHA -->
-        <div class="perfil-card">
-            <div class="perfil-header">
-                <div class="perfil-avatar">
-                    {{ usuario.first_name|default:usuario.username|first|upper }}
+<section class="perfil-page">
+    <!-- HEADER COMPACTO -->
+    <div class="perfil-header-bar">
+        <div class="perfil-header-content">
+            <div class="perfil-avatar">
+                {% if usuario.miembro and usuario.miembro.foto %}
+                    <img src="{{ usuario.miembro.foto.url }}" alt="Foto" class="perfil-avatar-img">
+                {% else %}
+                    {{ usuario.miembro.nombres|default:usuario.first_name|default:usuario.username|first|upper }}
+                {% endif %}
+            </div>
+            <div class="perfil-header-info">
+                <h1>{% if usuario.miembro %}{{ usuario.miembro.nombres }} {{ usuario.miembro.apellidos }}{% else %}{{ usuario.get_full_name|default:usuario.username }}{% endif %}</h1>
+                <div class="perfil-meta">
+                    <span class="perfil-username">@{{ usuario.username }}</span>
+                    <span class="perfil-rol">
+                        <span class="material-icons">{% if usuario.is_superuser %}admin_panel_settings{% elif usuario.is_staff %}verified_user{% else %}person{% endif %}</span>
+                        {% if usuario.is_superuser %}Admin{% elif usuario.is_staff %}Staff{% else %}Usuario{% endif %}
+                    </span>
+                    <span class="perfil-status {% if usuario.is_active %}active{% endif %}">
+                        <span class="dot"></span>{{ usuario.is_active|yesno:"Activo,Inactivo" }}
+                    </span>
                 </div>
-                <div class="perfil-header-text">
-                    <h2 class="perfil-nombre">
-                        {{ usuario.get_full_name|default:usuario.username }}
-                    </h2>
-                    <p class="perfil-username">
-                        @{{ usuario.username }}
-                    </p>
-                    <p class="perfil-rol">
-                        {% if usuario.is_superuser %}
-                            Administrador del sistema
-                        {% elif usuario.is_staff %}
-                            Usuario de equipo / staff
-                        {% else %}
-                            Usuario estándar
-                        {% endif %}
-                    </p>
-                </div>
-            </div>
-
-            <div class="perfil-section">
-                <h3>Datos de contacto</h3>
-                <dl class="perfil-lista">
-                    <div>
-                        <dt>Correo electrónico</dt>
-                        <dd>{{ usuario.email|default:"No definido" }}</dd>
-                    </div>
-                </dl>
-            </div>
-
-            <div class="perfil-section">
-                <h3>Estado de la cuenta</h3>
-                <dl class="perfil-lista">
-                    <div>
-                        <dt>Activo</dt>
-                        <dd>
-                            {% if usuario.is_active %}
-                                Sí
-                            {% else %}
-                                No
-                            {% endif %}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Puede acceder al sistema</dt>
-                        <dd>
-                            {% if usuario.is_staff %}
-                                Sí (staff)
-                            {% else %}
-                                Solo áreas públicas
-                            {% endif %}
-                        </dd>
-                    </div>
-                </dl>
-            </div>
-
-            <div class="perfil-section">
-                <h3>Roles / grupos</h3>
-                {% with grupos=usuario.groups.all %}
-                    {% if grupos %}
-                        <ul class="perfil-tags">
-                            {% for g in grupos %}
-                                <li>{{ g.name }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="perfil-texto-secundario">
-                            Este usuario no tiene grupos asignados todavía.
-                        </p>
-                    {% endif %}
-                {% endwith %}
-            </div>
-
-            <div class="perfil-section" id="pushBox">
-                <h3>Notificaciones (Push)</h3>
-
-                <p class="perfil-texto-secundario" style="margin-top:6px;">
-                    Actívalas para recibir avisos importantes del sistema incluso si no estás dentro de SOID.
-                    Se activa solo para este dispositivo/navegador.
-                </p>
-
-                <dl class="perfil-lista" style="margin-top:10px;">
-                    <div>
-                        <dt>Estado en este dispositivo</dt>
-                        <dd id="pushEstado">Comprobando…</dd>
-                    </div>
-                </dl>
-
-                <div class="perfil-actions" style="margin-top:10px;">
-                    <button type="button" class="btn btn-primary" id="btnPushActivar" disabled>
-                        Activar notificaciones
-                    </button>
-
-                    <button type="button" class="btn btn-secondary" id="btnPushDesactivar" style="display:none;">
-                        Desactivar
-                    </button>
-                </div>
-
-                <p class="perfil-texto-secundario" id="pushMsg" style="margin-top:8px;"></p>
-            </div>
-
-            <div class="perfil-actions">
-                <a href="{% url 'core:cambiar_contrasena' %}" class="btn btn-primary">
-                    Cambiar contraseña
-                </a>
             </div>
         </div>
+    </div>
 
-        <!-- COLUMNA DERECHA: NOTAS / AYUDA -->
-        <aside class="perfil-help-card">
-            <h2>Sobre tu cuenta</h2>
-            <p class="perfil-help-text">
-                Tu usuario te permite acceder a los distintos módulos del sistema
-                según los permisos y grupos que el administrador te haya asignado.
-            </p>
+    <!-- CONTENIDO -->
+    <div class="perfil-body">
+        
+        <!-- ACCIONES RÁPIDAS (horizontal en móvil) -->
+        <div class="perfil-actions-bar">
+            <a href="{% url 'core:cambiar_contrasena' %}" class="action-btn">
+                <span class="material-icons">lock</span>
+                <span>Cambiar contraseña</span>
+            </a>
+            {% if usuario.miembro %}
+            <a href="{% url 'miembros_app:detalle_miembro' usuario.miembro.pk %}" class="action-btn">
+                <span class="material-icons">badge</span>
+                <span>Mi ficha</span>
+            </a>
+            {% endif %}
+            {% if usuario.is_staff %}
+            <a href="{% url 'core:configuracion' %}" class="action-btn">
+                <span class="material-icons">settings</span>
+                <span>Configuración</span>
+            </a>
+            {% endif %}
+        </div>
 
-            <ul class="perfil-help-list">
-                <li>
-                    <strong>Administradores</strong> pueden gestionar usuarios, configuración y módulos.
-                </li>
-                <li>
-                    <strong>Secretaría</strong> suele registrar miembros y nuevos creyentes.
-                </li>
-                <li>
-                    <strong>Consulta</strong> solo ve información, sin modificarla.
-                </li>
-            </ul>
+        <div class="perfil-grid">
+            <!-- INFORMACIÓN Y PERMISOS -->
+            <div class="perfil-card">
+                <div class="card-section">
+                    <h3><span class="material-icons">person</span> Información</h3>
+                    <div class="info-rows">
+                        <div class="info-row">
+                            <span class="label">Email</span>
+                            <span class="value">
+                                {% if usuario.email %}
+                                    <a href="mailto:{{ usuario.email }}">{{ usuario.email }}</a>
+                                {% else %}
+                                    <em>No definido</em>
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if usuario.miembro and usuario.miembro.telefono %}
+                        <div class="info-row">
+                            <span class="label">Teléfono</span>
+                            <span class="value"><a href="tel:{{ usuario.miembro.telefono }}">{{ usuario.miembro.telefono }}</a></span>
+                        </div>
+                        {% endif %}
+                        {% if usuario.miembro and usuario.miembro.codigo_miembro %}
+                        <div class="info-row">
+                            <span class="label">Código</span>
+                            <span class="value code">{{ usuario.miembro.codigo_miembro }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
 
-            <div class="perfil-note">
-                <p>
-                    Si notas algo incorrecto en tus datos o necesitas más permisos,
-                    habla con el administrador del sistema.
-                </p>
+                <div class="card-section">
+                    <h3><span class="material-icons">security</span> Permisos</h3>
+                    <div class="permisos-chips">
+                        <span class="chip {% if usuario.is_active %}success{% else %}muted{% endif %}">
+                            <span class="material-icons">{% if usuario.is_active %}check_circle{% else %}cancel{% endif %}</span>
+                            Cuenta {{ usuario.is_active|yesno:"activa,inactiva" }}
+                        </span>
+                        <span class="chip {% if usuario.is_staff %}success{% else %}muted{% endif %}">
+                            <span class="material-icons">{% if usuario.is_staff %}check_circle{% else %}cancel{% endif %}</span>
+                            Acceso {{ usuario.is_staff|yesno:"completo,limitado" }}
+                        </span>
+                        {% if usuario.is_superuser %}
+                        <span class="chip success">
+                            <span class="material-icons">check_circle</span>
+                            Superusuario
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    {% with grupos=usuario.groups.all %}
+                    {% if grupos %}
+                    <div class="grupos-list">
+                        {% for g in grupos %}
+                        <span class="grupo-chip">{{ g.name }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
             </div>
-        </aside>
+
+            <!-- NOTIFICACIONES PUSH -->
+            <div class="perfil-card" id="pushBox">
+                <div class="card-section">
+                    <h3><span class="material-icons">notifications</span> Notificaciones push</h3>
+                    <div class="push-row">
+                        <div class="push-status" id="pushStatusBox">
+                            <span class="material-icons" id="pushIcon">hourglass_empty</span>
+                            <span id="pushEstado">Comprobando…</span>
+                        </div>
+                        <div class="push-buttons">
+                            <button type="button" class="btn-sm btn-primary" id="btnPushActivar" disabled>
+                                Activar
+                            </button>
+                            <button type="button" class="btn-sm btn-secondary" id="btnPushDesactivar" style="display:none;">
+                                Desactivar
+                            </button>
+                        </div>
+                    </div>
+                    <p class="push-msg" id="pushMsg"></p>
+                </div>
+            </div>
+
+            <!-- AYUDA (colapsable en móvil) -->
+            <details class="perfil-card help-card">
+                <summary>
+                    <span class="material-icons">help_outline</span>
+                    <span>¿Necesitas ayuda?</span>
+                    <span class="material-icons arrow">expand_more</span>
+                </summary>
+                <div class="help-content">
+                    <p>Tu nivel de acceso determina qué módulos puedes usar:</p>
+                    <ul>
+                        <li><strong>Administradores:</strong> Gestión completa</li>
+                        <li><strong>Equipo pastoral:</strong> Registro y seguimiento</li>
+                        <li><strong>Consulta:</strong> Solo lectura</li>
+                    </ul>
+                    <p class="help-note">Si necesitas más permisos, contacta al administrador.</p>
+                </div>
+            </details>
+        </div>
     </div>
 </section>
 
 <style>
-    .perfil-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
-        gap: 18px;
-        align-items: flex-start;
-    }
+/* ═══════════════════════════════════════════════════════════════
+   PERFIL OPTIMIZADO - COMPACTO
+   ═══════════════════════════════════════════════════════════════ */
 
-    @media (max-width: 900px) {
-        .perfil-layout {
-            grid-template-columns: minmax(0, 1fr);
-        }
-    }
+.perfil-page {
+    min-height: 100%;
+    background: #f8fafc;
+}
 
-    .perfil-card {
-        background: #ffffff;
-        border-radius: 12px;
-        border: 1px solid var(--color-border-subtle);
-        padding: 14px 16px;
-        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-    }
+/* ─────────────────────────────────────────────────────────────────
+   HEADER BAR - Ultra compacto
+   ───────────────────────────────────────────────────────────────── */
+.perfil-header-bar {
+    background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 75%, #1a1a2e));
+    padding: 0.875rem 1rem;
+}
 
-    .perfil-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 14px;
-    }
+.perfil-header-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
 
+.perfil-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.perfil-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.perfil-header-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.perfil-header-info h1 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.perfil-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+    flex-wrap: wrap;
+}
+
+.perfil-username {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.8);
+}
+
+.perfil-rol {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+    color: #fff;
+}
+
+.perfil-rol .material-icons {
+    font-size: 0.7rem;
+}
+
+.perfil-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.7);
+}
+
+.perfil-status .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #f87171;
+}
+
+.perfil-status.active .dot {
+    background: #4ade80;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   BODY
+   ───────────────────────────────────────────────────────────────── */
+.perfil-body {
+    padding: 0.75rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   ACCIONES RÁPIDAS - Horizontal scroll en móvil
+   ───────────────────────────────────────────────────────────────── */
+.perfil-actions-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.perfil-actions-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #334155;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.action-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.action-btn .material-icons {
+    font-size: 1rem;
+    color: var(--color-primary);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   GRID
+   ───────────────────────────────────────────────────────────────── */
+.perfil-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   CARDS
+   ───────────────────────────────────────────────────────────────── */
+.perfil-card {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.card-section {
+    padding: 0.875rem;
+}
+
+.card-section + .card-section {
+    border-top: 1px solid #f1f5f9;
+}
+
+.card-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.card-section h3 .material-icons {
+    font-size: 1rem;
+    color: var(--color-primary);
+}
+
+/* Info rows */
+.info-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0;
+}
+
+.info-row .label {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.info-row .value {
+    font-size: 0.8rem;
+    color: #1e293b;
+    text-align: right;
+}
+
+.info-row .value a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.info-row .value em {
+    color: #94a3b8;
+    font-style: normal;
+}
+
+.info-row .value.code {
+    font-family: 'SF Mono', monospace;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+/* Permisos chips */
+.permisos-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.chip .material-icons {
+    font-size: 0.85rem;
+}
+
+.chip.success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.chip.muted {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.grupos-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.6rem;
+}
+
+.grupo-chip {
+    padding: 3px 8px;
+    background: #ede9fe;
+    color: #5b21b6;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   PUSH NOTIFICATIONS
+   ───────────────────────────────────────────────────────────────── */
+.push-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.push-status {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #475569;
+}
+
+.push-status .material-icons {
+    font-size: 1.1rem;
+    color: #94a3b8;
+}
+
+.push-status.active .material-icons {
+    color: #22c55e;
+}
+
+.push-buttons {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.btn-sm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.btn-secondary {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.push-msg {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: #64748b;
+    min-height: 1em;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   HELP CARD (collapsible)
+   ───────────────────────────────────────────────────────────────── */
+.help-card {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.help-card summary {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.75rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #166534;
+    list-style: none;
+}
+
+.help-card summary::-webkit-details-marker {
+    display: none;
+}
+
+.help-card summary .material-icons {
+    font-size: 1.1rem;
+}
+
+.help-card summary .arrow {
+    margin-left: auto;
+    transition: transform 0.2s;
+}
+
+.help-card[open] summary .arrow {
+    transform: rotate(180deg);
+}
+
+.help-content {
+    padding: 0 0.75rem 0.75rem;
+    font-size: 0.75rem;
+    color: #166534;
+}
+
+.help-content p {
+    margin: 0 0 0.5rem;
+}
+
+.help-content ul {
+    margin: 0 0 0.5rem;
+    padding-left: 1.25rem;
+}
+
+.help-content li {
+    margin-bottom: 0.25rem;
+}
+
+.help-note {
+    padding: 0.5rem;
+    background: rgba(255,255,255,0.6);
+    border-radius: 6px;
+    font-size: 0.7rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   DESKTOP: 2 columnas
+   ───────────────────────────────────────────────────────────────── */
+@media (min-width: 640px) {
+    .perfil-header-bar {
+        padding: 1rem 1.5rem;
+    }
+    
     .perfil-avatar {
-        width: 44px;
-        height: 44px;
-        border-radius: 999px;
-        background: #f3f4f6;
-        border: 1px solid var(--color-border-subtle);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 20px;
-        color: var(--color-primary);
-        flex: 0 0 auto;
+        width: 56px;
+        height: 56px;
+        font-size: 1.5rem;
     }
-
-    .perfil-header-text {
-        min-width: 0;
+    
+    .perfil-header-info h1 {
+        font-size: 1.15rem;
     }
-
-    .perfil-nombre {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--color-text-main);
-        line-height: 1.25;
+    
+    .perfil-body {
+        padding: 1rem;
     }
-
-    .perfil-username {
-        margin: 2px 0 0;
-        font-size: 12px;
-        color: var(--color-text-muted);
+    
+    .perfil-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
     }
-
-    .perfil-rol {
-        margin: 2px 0 0;
-        font-size: 11px;
-        color: var(--color-text-muted);
+    
+    .perfil-card:first-child {
+        grid-row: span 2;
     }
-
-    .perfil-section {
-        margin-top: 14px;
-        padding-top: 10px;
-        border-top: 1px solid var(--color-border-subtle);
+    
+    .action-btn {
+        padding: 0.5rem 1rem;
     }
-
-    .perfil-section h3 {
-        margin: 0 0 6px;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--color-text-main);
-    }
-
-    .perfil-lista {
-        margin: 0;
-        padding: 0;
-    }
-
-    .perfil-lista > div {
-        margin-bottom: 6px;
-    }
-
-    .perfil-lista dt {
-        font-size: 11px;
-        color: var(--color-text-muted);
-        margin: 0;
-    }
-
-    .perfil-lista dd {
-        margin: 0;
-        font-size: 13px;
-        color: var(--color-text-main);
-    }
-
-    .perfil-tags {
-        list-style: none;
-        padding: 0;
-        margin: 4px 0 0;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    .perfil-tags li {
-        font-size: 11px;
-        padding: 3px 8px;
-        border-radius: 999px;
-        background: #f3f4f6;
-        color: var(--color-text-main);
-        border: 1px solid var(--color-border-subtle);
-    }
-
-    .perfil-texto-secundario {
-        margin: 2px 0 0;
-        font-size: 12px;
-        color: var(--color-text-muted);
-    }
-
-    .perfil-actions {
-        margin-top: 14px;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .perfil-help-card {
-        background: #f9fafb;
-        border-radius: 12px;
-        border: 1px solid var(--color-border-subtle);
-        padding: 12px 14px;
-        font-size: 12px;
-        color: var(--color-text-main);
-    }
-
-    .perfil-help-card h2 {
-        margin: 0 0 6px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--color-text-main);
-    }
-
-    .perfil-help-text {
-        margin: 0 0 10px;
-        color: var(--color-text-muted);
-    }
-
-    .perfil-help-list {
-        padding-left: 16px;
-        margin: 0 0 12px;
-        color: var(--color-text-main);
-    }
-
-    .perfil-help-list li {
-        margin-bottom: 4px;
-    }
-
-    .perfil-note {
-        padding: 8px 10px;
-        border-radius: 8px;
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        font-size: 11px;
-        color: #1d4ed8;
-    }
+}
 </style>
 
 <script>
 (function () {
-    // =============================================
-    // ELEMENTOS DEL DOM
-    // =============================================
     const estadoEl = document.getElementById("pushEstado");
     const msgEl = document.getElementById("pushMsg");
     const btnOn = document.getElementById("btnPushActivar");
     const btnOff = document.getElementById("btnPushDesactivar");
+    const statusBox = document.getElementById("pushStatusBox");
+    const iconEl = document.getElementById("pushIcon");
 
-    if (!estadoEl || !btnOn || !btnOff) {
-        console.warn("[Push] Elementos del DOM no encontrados");
-        return;
-    }
+    if (!estadoEl || !btnOn || !btnOff) return;
 
-    // =============================================
-    // CONFIGURACIÓN
-    // =============================================
     const VAPID_PUBLIC_KEY = "{{ VAPID_PUBLIC_KEY|default:'' }}";
     const URL_PUSH_STATUS = "{% url 'notificaciones_app:push_status' %}";
     const URL_PUSH_SUBSCRIBE = "{% url 'notificaciones_app:push_subscribe' %}";
     const URL_PUSH_UNSUBSCRIBE = "{% url 'notificaciones_app:push_unsubscribe' %}";
 
-    // =============================================
-    // FUNCIONES AUXILIARES
-    // =============================================
-    function setUI(estado, textoExtra = "") {
-        // estado: "activo" | "inactivo" | "no-soportado" | "cargando" | "error"
+    function setUI(estado, texto = "") {
         btnOn.disabled = false;
+        statusBox.className = "push-status";
         
         switch (estado) {
             case "activo":
-                estadoEl.textContent = "Activadas ✅";
+                estadoEl.textContent = "Activadas ✓";
+                iconEl.textContent = "notifications_active";
+                statusBox.classList.add("active");
                 btnOn.style.display = "none";
-                btnOff.style.display = "inline-flex";
+                btnOff.style.display = "inline-block";
                 break;
             case "inactivo":
                 estadoEl.textContent = "Desactivadas";
-                btnOn.style.display = "inline-flex";
+                iconEl.textContent = "notifications_off";
+                btnOn.style.display = "inline-block";
                 btnOff.style.display = "none";
                 break;
             case "no-soportado":
                 estadoEl.textContent = "No disponible";
+                iconEl.textContent = "notifications_paused";
                 btnOn.style.display = "none";
                 btnOff.style.display = "none";
                 break;
             case "cargando":
                 estadoEl.textContent = "Comprobando…";
+                iconEl.textContent = "hourglass_empty";
                 btnOn.disabled = true;
                 break;
             case "error":
-                estadoEl.textContent = "Error al comprobar";
-                btnOn.style.display = "inline-flex";
-                btnOff.style.display = "none";
+                estadoEl.textContent = "Error";
+                iconEl.textContent = "error_outline";
                 break;
         }
-        
-        msgEl.textContent = textoExtra || "";
+        msgEl.textContent = texto;
     }
 
     function getCSRFToken() {
-        const match = document.cookie.match(/csrftoken=([^;]+)/);
-        return match ? match[1] : "";
+        const m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? m[1] : "";
     }
 
-    function urlBase64ToUint8Array(base64String) {
-        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
+    function urlBase64ToUint8Array(b64) {
+        const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+        const base64 = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+        const raw = atob(base64);
+        const arr = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+        return arr;
     }
 
-    // =============================================
-    // VERIFICAR SOPORTE
-    // =============================================
     function checkSupport() {
-        if (!("serviceWorker" in navigator)) {
-            console.warn("[Push] Service Worker no soportado");
-            return false;
-        }
-        if (!("PushManager" in window)) {
-            console.warn("[Push] PushManager no soportado");
-            return false;
-        }
-        if (!("Notification" in window)) {
-            console.warn("[Push] Notifications no soportadas");
-            return false;
-        }
-        return true;
+        return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
     }
 
-    // =============================================
-    // CONSULTAR ESTADO EN SERVIDOR
-    // =============================================
     async function fetchStatus() {
         setUI("cargando");
-
-        // Verificar soporte del navegador
-        if (!checkSupport()) {
-            setUI("no-soportado", "Tu navegador no soporta notificaciones push.");
-            return;
-        }
-
-        // Verificar VAPID key
-        if (!VAPID_PUBLIC_KEY) {
-            setUI("error", "Configuración incompleta en el servidor (VAPID).");
-            console.error("[Push] VAPID_PUBLIC_KEY vacía");
-            return;
-        }
+        if (!checkSupport()) return setUI("no-soportado", "Tu navegador no soporta push.");
+        if (!VAPID_PUBLIC_KEY) return setUI("error", "Config VAPID faltante.");
 
         try {
-            // Esperar a que el SW esté listo
             await navigator.serviceWorker.ready;
-            
-            const res = await fetch(URL_PUSH_STATUS, { 
-                credentials: "same-origin",
-                headers: {
-                    "Accept": "application/json"
-                }
-            });
-
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-
+            const res = await fetch(URL_PUSH_STATUS, { credentials: "same-origin" });
+            if (!res.ok) throw new Error();
             const data = await res.json();
-            
-            if (data.activo) {
-                setUI("activo");
-            } else {
-                setUI("inactivo");
-            }
-        } catch (err) {
-            console.error("[Push] Error en fetchStatus:", err);
-            setUI("error", "No se pudo verificar el estado.");
+            setUI(data.activo ? "activo" : "inactivo");
+        } catch {
+            setUI("error", "No se pudo verificar.");
         }
     }
 
-    // =============================================
-    // ACTIVAR NOTIFICACIONES
-    // =============================================
     async function activar() {
-        msgEl.textContent = "";
         btnOn.disabled = true;
-        btnOn.textContent = "Activando...";
-
+        btnOn.textContent = "...";
         try {
-            // 1. Verificar soporte
-            if (!checkSupport()) {
-                setUI("no-soportado", "Tu navegador no soporta notificaciones push.");
-                return;
-            }
-
-            // 2. Verificar VAPID
-            if (!VAPID_PUBLIC_KEY) {
-                setUI("error", "Falta configuración VAPID en el servidor.");
-                return;
-            }
-
-            // 3. Solicitar permiso
+            if (!checkSupport() || !VAPID_PUBLIC_KEY) throw new Error();
             const permiso = await Notification.requestPermission();
-            if (permiso !== "granted") {
-                setUI("inactivo", "Permiso denegado. Puedes activarlo desde la configuración del navegador.");
-                btnOn.textContent = "Activar notificaciones";
-                return;
-            }
-
-            // 4. Obtener registro del SW
-            const registration = await navigator.serviceWorker.ready;
-
-            // 5. Suscribirse a push
-            const subscription = await registration.pushManager.subscribe({
+            if (permiso !== "granted") return setUI("inactivo", "Permiso denegado.");
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
             });
-
-            // 6. Enviar suscripción al servidor
             const res = await fetch(URL_PUSH_SUBSCRIBE, {
                 method: "POST",
                 credentials: "same-origin",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken(),
-                },
-                body: JSON.stringify(subscription.toJSON()),
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+                body: JSON.stringify(sub.toJSON()),
             });
-
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-
             const data = await res.json();
-
-            if (data.ok) {
-                setUI("activo", "¡Listo! Recibirás notificaciones en este dispositivo.");
-            } else {
-                setUI("inactivo", data.error || "No se pudo guardar la suscripción.");
-            }
-        } catch (err) {
-            console.error("[Push] Error al activar:", err);
-            setUI("inactivo", `Error: ${err.message || "No se pudo activar"}`);
+            setUI(data.ok ? "activo" : "inactivo", data.ok ? "¡Listo!" : data.error);
+        } catch {
+            setUI("inactivo", "Error al activar.");
         } finally {
-            btnOn.textContent = "Activar notificaciones";
+            btnOn.textContent = "Activar";
             btnOn.disabled = false;
         }
     }
 
-    // =============================================
-    // DESACTIVAR NOTIFICACIONES
-    // =============================================
-// =============================================
-    // DESACTIVAR NOTIFICACIONES
-    // =============================================
     async function desactivar() {
-        msgEl.textContent = "";
         btnOff.disabled = true;
-        btnOff.textContent = "Desactivando...";
-
+        btnOff.textContent = "...";
         try {
             let endpoint = "";
-            
-            // 1. Obtener endpoint y desuscribir del navegador
             if ("serviceWorker" in navigator) {
-                const registration = await navigator.serviceWorker.ready;
-                const subscription = await registration.pushManager.getSubscription();
-                if (subscription) {
-                    endpoint = subscription.endpoint;
-                    await subscription.unsubscribe();
-                }
+                const reg = await navigator.serviceWorker.ready;
+                const sub = await reg.pushManager.getSubscription();
+                if (sub) { endpoint = sub.endpoint; await sub.unsubscribe(); }
             }
-
-            // 2. Notificar al servidor con el endpoint
             const res = await fetch(URL_PUSH_UNSUBSCRIBE, {
                 method: "POST",
                 credentials: "same-origin",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken(),
-                    "Accept": "application/json"
-                },
-                body: JSON.stringify({ endpoint: endpoint })
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+                body: JSON.stringify({ endpoint }),
             });
-
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-
             const data = await res.json();
-
-            if (data.ok) {
-                setUI("inactivo", "Notificaciones desactivadas en este dispositivo.");
-            } else {
-                setUI("activo", data.error || "No se pudo desactivar en el servidor.");
-            }
-        } catch (err) {
-            console.error("[Push] Error al desactivar:", err);
-            setUI("activo", `Error: ${err.message || "No se pudo desactivar"}`);
+            setUI(data.ok ? "inactivo" : "activo", data.ok ? "Desactivadas." : data.error);
+        } catch {
+            setUI("activo", "Error al desactivar.");
         } finally {
             btnOff.textContent = "Desactivar";
             btnOff.disabled = false;
         }
     }
 
-    // =============================================
-    // EVENT LISTENERS
-    // =============================================
     btnOn.addEventListener("click", activar);
     btnOff.addEventListener("click", desactivar);
-
-    // =============================================
-    // INICIALIZAR
-    // =============================================
-    // Esperar a que el DOM esté completamente listo
+    
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", fetchStatus);
+        document.addEventListener("DOMContentLoaded", () => setTimeout(fetchStatus, 300));
     } else {
-        // Pequeño delay para asegurar que el SW se registre primero
-        setTimeout(fetchStatus, 500);
+        setTimeout(fetchStatus, 300);
     }
 })();
 </script>
