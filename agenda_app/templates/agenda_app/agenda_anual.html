@@ -93,27 +93,25 @@
             </div>
 
           {% elif m.actividades %}
-            <div class="actividades-lista">
+            <div class="actividades-grid">
               {% for a in m.actividades %}
-                <div class="actividad-row">
-                  <div class="actividad-fecha">
-                    <span class="fecha-num">{{ a.fecha|date:"d" }}</span>
-                    <span class="fecha-dia">{{ a.fecha|date:"D" }}</span>
+                <div class="actividad-card">
+                  <div class="actividad-card-header">
+                    <div class="actividad-fecha">
+                      <span class="fecha-num">{{ a.fecha|date:"d" }}</span>
+                      <span class="fecha-dia">{{ a.fecha|date:"D" }}</span>
+                    </div>
+                    {% if a.estado == "PROGRAMADA" %}
+                      <span class="estado-dot estado-programada"></span>
+                    {% elif a.estado == "REALIZADA" %}
+                      <span class="estado-dot estado-realizada"></span>
+                    {% else %}
+                      <span class="estado-dot estado-cancelada"></span>
+                    {% endif %}
                   </div>
 
-                  <div class="actividad-info">
-                    <div class="actividad-titulo-line">
-                      <a href="{% url 'agenda_app:actividad_detail' a.pk %}" class="actividad-nombre">{{ a.titulo }}</a>
-
-
-                      {% if a.estado == "PROGRAMADA" %}
-                        <span class="estado-dot estado-programada"></span>
-                      {% elif a.estado == "REALIZADA" %}
-                        <span class="estado-dot estado-realizada"></span>
-                      {% else %}
-                        <span class="estado-dot estado-cancelada"></span>
-                      {% endif %}
-                    </div>
+                  <div class="actividad-card-body">
+                    <a href="{% url 'agenda_app:actividad_detail' a.pk %}" class="actividad-nombre">{{ a.titulo }}</a>
 
                     <div class="actividad-detalles">
                       {% if a.hora_inicio %}
@@ -137,11 +135,11 @@
                           {{ a.responsable_texto }}
                         </span>
                       {% endif %}
-
-                      <span class="detalle-item tipo-badge">
-                        {{ a.get_tipo_display }}
-                      </span>
                     </div>
+                  </div>
+
+                  <div class="actividad-card-footer">
+                    <span class="tipo-badge">{{ a.get_tipo_display }}</span>
                   </div>
                 </div>
               {% endfor %}
@@ -310,20 +308,20 @@
 }
 
 /* ================================
-   MINI CALENDAR GRID
+   MINI CALENDAR GRID - MÁS COMPACTO
    ================================ */
 .mini-calendar-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 6px;
   margin-bottom: 24px;
 }
 
 .mini-mes {
   background: var(--bg-card);
   border: 2px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 10px;
+  border-radius: 8px;
+  padding: 8px 4px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
@@ -360,47 +358,45 @@
 }
 
 .mini-mes-nombre {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-dark);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .mini-mes-count {
+  min-height: 20px;
   display: flex;
+  align-items: center;
   justify-content: center;
 }
 
 .count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 8px;
   background: var(--secondary);
   color: white;
-  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
   font-weight: 700;
-  border-radius: 12px;
+  min-width: 18px;
 }
 
 .count-empty {
   color: var(--text-muted);
-  font-size: 14px;
+  opacity: 0.4;
+  font-size: 12px;
 }
 
 /* ================================
-   MES DETALLE
+   MES DETALLE CONTAINER
    ================================ */
 .mes-detalle-container {
   background: var(--bg-card);
   border-radius: 16px;
-  border: 1px solid var(--border);
-  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   min-height: 300px;
+  overflow: hidden;
 }
 
 .mes-detalle-header {
@@ -410,8 +406,8 @@
   flex-wrap: wrap;
   gap: 16px;
   padding: 20px 24px;
-  background: linear-gradient(90deg, var(--bg-light) 0%, transparent 100%);
   border-bottom: 1px solid var(--border);
+  background: var(--bg-light);
 }
 
 .mes-detalle-titulo {
@@ -422,8 +418,10 @@
 }
 
 .mes-detalle-count {
-  font-size: 14px;
+  display: block;
+  font-size: 13px;
   color: var(--text-muted);
+  margin-top: 4px;
 }
 
 .btn-add-actividad {
@@ -431,7 +429,7 @@
   align-items: center;
   gap: 6px;
   padding: 10px 18px;
-  background: var(--primary);
+  background: var(--secondary);
   color: white;
   border-radius: 8px;
   font-weight: 600;
@@ -441,11 +439,16 @@
 }
 
 .btn-add-actividad:hover {
-  background: var(--primary-dark);
+  background: #008B88;
+  transform: translateY(-1px);
 }
 
 .btn-add-actividad .material-icons {
   font-size: 18px;
+}
+
+.mes-detalle-body {
+  padding: 20px 24px;
 }
 
 /* Mes vacío */
@@ -470,7 +473,7 @@
 }
 
 .mes-vacio-icon .material-icons {
-  font-size: 40px;
+  font-size: 36px;
   color: var(--text-muted);
   opacity: 0.5;
 }
@@ -538,78 +541,110 @@
 }
 
 /* ================================
-   ACTIVIDADES LISTA
+   ACTIVIDADES GRID - 3 COLUMNAS
    ================================ */
-.actividades-lista {
-  padding: 0;
-}
-
-.actividad-row {
-  display: flex;
-  align-items: flex-start;
+.actividades-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.2s;
 }
 
-.actividad-row:last-child {
-  border-bottom: none;
-}
-
-.actividad-row:hover {
+.actividad-card {
   background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
 }
 
-/* Fecha */
-.actividad-fecha {
+.actividad-card:hover {
+  border-color: var(--primary-light);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.actividad-card-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  min-width: 50px;
-  padding: 8px;
+  padding: 12px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  border-radius: 8px;
+}
+
+.actividad-card-header .actividad-fecha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: white;
 }
 
-.fecha-num {
-  font-size: 20px;
+.actividad-card-header .fecha-num {
+  font-size: 22px;
   font-weight: 700;
   line-height: 1;
 }
 
-.fecha-dia {
-  font-size: 10px;
+.actividad-card-header .fecha-dia {
+  font-size: 11px;
   text-transform: uppercase;
   opacity: 0.85;
-  margin-top: 2px;
 }
 
-/* Info */
-.actividad-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.actividad-titulo-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
+.actividad-card-body {
+  padding: 14px;
 }
 
 .actividad-nombre {
-  font-size: 15px;
+  display: block;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-dark);
   text-decoration: none;
+  margin-bottom: 10px;
+  line-height: 1.3;
 }
 
 .actividad-nombre:hover {
   color: var(--primary);
 }
 
+.actividad-detalles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detalle-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.detalle-item .material-icons {
+  font-size: 14px;
+  color: var(--secondary);
+}
+
+.actividad-card-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: white;
+}
+
+.tipo-badge {
+  display: inline-block;
+  background: var(--secondary-light);
+  color: var(--secondary);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Estado dots */
 .estado-dot {
   width: 10px;
   height: 10px;
@@ -618,87 +653,37 @@
 }
 
 .estado-programada {
-  background: var(--info);
-  box-shadow: 0 0 0 3px var(--info-bg);
+  background: #17A2B8;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
 }
 
 .estado-realizada {
-  background: var(--success);
-  box-shadow: 0 0 0 3px var(--success-bg);
+  background: #28A745;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
 }
 
 .estado-cancelada {
-  background: var(--danger);
-  box-shadow: 0 0 0 3px var(--danger-bg);
-}
-
-.actividad-detalles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.detalle-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.detalle-item .material-icons {
-  font-size: 15px;
-  color: var(--secondary);
-}
-
-.tipo-badge {
-  background: var(--bg-light);
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-/* Acciones */
-.actividad-acciones {
-  display: flex;
-  gap: 6px;
-}
-
-.accion-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-light);
-  border-radius: 6px;
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: all 0.2s;
-}
-
-.accion-btn:hover {
-  background: var(--primary);
-  color: white;
-}
-
-.accion-btn .material-icons {
-  font-size: 18px;
-}
-
-.accion-danger:hover {
-  background: var(--danger);
+  background: #DC3545;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
 }
 
 /* ================================
    RESPONSIVE
    ================================ */
+@media (max-width: 1200px) {
+  .actividades-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 992px) {
   .mini-calendar-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  
+  .mini-mes {
+    padding: 10px 6px;
   }
 }
 
@@ -728,16 +713,22 @@
   }
 
   .mini-calendar-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
   }
 
   .mini-mes {
-    padding: 10px 6px;
+    padding: 8px 4px;
   }
 
   .mini-mes-nombre {
-    font-size: 11px;
+    font-size: 10px;
+  }
+
+  .count-badge {
+    font-size: 9px;
+    padding: 2px 5px;
+    min-width: 16px;
   }
 
   /* Detalle */
@@ -752,39 +743,23 @@
     justify-content: center;
   }
 
-  .actividad-row {
-    flex-direction: column;
+  .actividades-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-    padding: 14px 16px;
   }
 
-  .actividad-fecha {
-    flex-direction: row;
-    gap: 8px;
-    width: fit-content;
-    padding: 6px 12px;
+  .actividad-card-body {
+    padding: 12px;
   }
 
-  .fecha-num {
-    font-size: 16px;
-  }
-
-  .actividad-acciones {
-    width: 100%;
-    justify-content: flex-end;
-    padding-top: 10px;
-    border-top: 1px dashed var(--border);
-  }
-
-  .accion-btn {
-    width: 38px;
-    height: 38px;
+  .actividad-nombre {
+    font-size: 13px;
   }
 }
 
 @media (max-width: 480px) {
   .mini-calendar-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .agenda-title {
@@ -793,6 +768,14 @@
 
   .mes-detalle-titulo {
     font-size: 18px;
+  }
+
+  .actividades-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mes-detalle-body {
+    padding: 16px;
   }
 }
 </style>
