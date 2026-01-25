@@ -485,43 +485,42 @@ def home(request):
     user = request.user
     
     # ═══════════════════════════════════════════════════════════════
-    # 🧠 MENSAJE DE BIENVENIDA
+    # 🧠 MENSAJE DE BIENVENIDA (solo primer acceso del día)
     # ═══════════════════════════════════════════════════════════════
     from core.models import UserLoginHistory
     from core.services.welcome_messages import WelcomeMessageService
     from django.utils import timezone
     
-    # Obtener login anterior (antes de registrar el nuevo)
     previous_login = UserLoginHistory.objects.filter(user=user).order_by('-login_at').first()
     
-    # Solo registrar si es la primera vez hoy
     today = timezone.now().date()
     already_logged_today = previous_login and previous_login.login_at.date() == today
     
     if not already_logged_today:
         # Registrar nuevo login
         UserLoginHistory.register_login(user, request)
-    
-    # Determinar rol del usuario
-    rol = 'usuario'
-    if user.is_superuser:
-        rol = 'admin'
-    elif user.groups.filter(name__icontains='admin').exists():
-        rol = 'admin'
-    elif user.groups.filter(name__icontains='lider').exists():
-        rol = 'lider'
-    elif user.groups.filter(name__icontains='pastor').exists():
-        rol = 'lider'
-    elif user.groups.filter(name__icontains='secretar').exists():
-        rol = 'secretaria'
-    
-
-    # Generar mensaje de bienvenida
-    welcome_data = WelcomeMessageService.get_welcome_message(
-        user=user,
-        previous_login=previous_login,
-        soid_ctx={'rol': rol}
-    )        
+        
+        # Determinar rol del usuario
+        rol = 'usuario'
+        if user.is_superuser:
+            rol = 'admin'
+        elif user.groups.filter(name__icontains='admin').exists():
+            rol = 'admin'
+        elif user.groups.filter(name__icontains='lider').exists():
+            rol = 'lider'
+        elif user.groups.filter(name__icontains='pastor').exists():
+            rol = 'lider'
+        elif user.groups.filter(name__icontains='secretar').exists():
+            rol = 'secretaria'
+        
+        # ✅ Generar mensaje SOLO si es primer acceso del día
+        welcome_data = WelcomeMessageService.get_welcome_message(
+            user=user,
+            previous_login=previous_login,
+            soid_ctx={'rol': rol}
+        )
+        # Guardar en sesión (el context_processor lo leerá con pop)
+        request.session['welcome_message'] = welcome_data
     
     # ═══════════════════════════════════════════════════════════════
     # 📦 MÓDULOS
@@ -532,7 +531,6 @@ def home(request):
         modules = Module.objects.filter(is_enabled=True).order_by("order", "name")
         context = {
             "modules": modules,
-            "WELCOME_MESSAGE": welcome_data,
         }
         return render(request, "core/home.html", context)
 
@@ -601,7 +599,6 @@ def home(request):
 
     context = {
         "modules": visible_modules,
-        "WELCOME_MESSAGE": welcome_data,
     }
     return render(request, "core/home.html", context)
 
