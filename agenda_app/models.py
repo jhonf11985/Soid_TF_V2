@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from estructura_app.models import Unidad
 
 
 class Actividad(models.Model):
@@ -28,6 +29,16 @@ class Actividad(models.Model):
         choices=Tipo.choices,
         default=Tipo.OTRO
     )
+
+    unidad = models.ForeignKey(
+        Unidad,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="actividades_agenda",
+        verbose_name="Unidad / Ministerio"
+    )
+
 
     lugar = models.CharField(max_length=120, blank=True, default="")
     responsable_texto = models.CharField(max_length=120, blank=True, default="")

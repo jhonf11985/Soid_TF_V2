@@ -35,21 +35,35 @@
     </div>
   </div>
 
-  <div class="mini-calendar-grid">
-    {% for m in meses_data %}
-      <div class="mini-mes {% if m.total > 0 %}mini-mes-activo{% endif %}"
-           data-mes="{{ m.mes_num }}"
-           onclick="seleccionarMes({{ m.mes_num }})">
-        <div class="mini-mes-nombre">{{ m.mes_nombre|slice:":3" }}</div>
-        <div class="mini-mes-count">
-          {% if m.total > 0 %}
-            <span class="count-badge">{{ m.total }}</span>
-          {% else %}
-            <span class="count-empty">—</span>
-          {% endif %}
-        </div>
+  <!-- Botón acordeón para móvil -->
+  <div class="calendario-acordeon">
+    <button type="button" class="acordeon-toggle" onclick="toggleCalendario()">
+      <div class="acordeon-info">
+        <span class="material-icons">calendar_month</span>
+        <span class="acordeon-mes-actual">Selecciona un mes</span>
       </div>
-    {% endfor %}
+      <span class="material-icons acordeon-arrow">expand_more</span>
+    </button>
+    
+    <div class="acordeon-content" id="acordeon-content">
+      <div class="mini-calendar-grid">
+        {% for m in meses_data %}
+          <div class="mini-mes {% if m.total > 0 %}mini-mes-activo{% endif %}"
+               data-mes="{{ m.mes_num }}"
+               data-nombre="{{ m.mes_nombre }}"
+               onclick="seleccionarMes({{ m.mes_num }}, '{{ m.mes_nombre }}')">
+            <div class="mini-mes-nombre">{{ m.mes_nombre|slice:":3" }}</div>
+            <div class="mini-mes-count">
+              {% if m.total > 0 %}
+                <span class="count-badge">{{ m.total }}</span>
+              {% else %}
+                <span class="count-empty">—</span>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 
   <div class="mes-detalle-container">
@@ -93,55 +107,56 @@
             </div>
 
           {% elif m.actividades %}
-            <div class="actividades-grid">
+            <div class="actividades-lista">
               {% for a in m.actividades %}
-                <div class="actividad-card">
-                  <div class="actividad-card-header">
-                    <div class="actividad-fecha">
-                      <span class="fecha-num">{{ a.fecha|date:"d" }}</span>
-                      <span class="fecha-dia">{{ a.fecha|date:"D" }}</span>
-                    </div>
+                <a href="{% url 'agenda_app:actividad_detail' a.pk %}" class="actividad-row">
+                  <div class="actividad-fecha-col">
+                    <span class="fecha-num">{{ a.fecha|date:"d" }}</span>
+                    <span class="fecha-dia">{{ a.fecha|date:"D" }}</span>
+                  </div>
+                  
+                  <div class="actividad-estado-col">
                     {% if a.estado == "PROGRAMADA" %}
-                      <span class="estado-dot estado-programada"></span>
+                      <span class="estado-dot estado-programada" title="Programada"></span>
                     {% elif a.estado == "REALIZADA" %}
-                      <span class="estado-dot estado-realizada"></span>
+                      <span class="estado-dot estado-realizada" title="Realizada"></span>
                     {% else %}
-                      <span class="estado-dot estado-cancelada"></span>
+                      <span class="estado-dot estado-cancelada" title="Cancelada"></span>
                     {% endif %}
                   </div>
-
-                  <div class="actividad-card-body">
-                    <a href="{% url 'agenda_app:actividad_detail' a.pk %}" class="actividad-nombre">{{ a.titulo }}</a>
-
-                    <div class="actividad-detalles">
+                  
+                  <div class="actividad-info-col">
+                    <span class="actividad-titulo">{{ a.titulo }}</span>
+                    <div class="actividad-meta">
                       {% if a.hora_inicio %}
-                        <span class="detalle-item">
+                        <span class="meta-item">
                           <span class="material-icons">schedule</span>
-                          {{ a.hora_inicio|time:"H:i" }}
-                          {% if a.hora_fin %} - {{ a.hora_fin|time:"H:i" }}{% endif %}
+                          {{ a.hora_inicio|time:"H:i" }}{% if a.hora_fin %}-{{ a.hora_fin|time:"H:i" }}{% endif %}
                         </span>
                       {% endif %}
-
                       {% if a.lugar %}
-                        <span class="detalle-item">
+                        <span class="meta-item">
                           <span class="material-icons">place</span>
-                          {{ a.lugar }}
+                          {{ a.lugar|truncatechars:20 }}
                         </span>
                       {% endif %}
-
-                      {% if a.responsable_texto %}
-                        <span class="detalle-item">
-                          <span class="material-icons">person</span>
-                          {{ a.responsable_texto }}
+                      {% if a.unidad %}
+                        <span class="meta-item">
+                          <span class="material-icons">groups</span>
+                          {{ a.unidad.nombre|truncatechars:15 }}
                         </span>
                       {% endif %}
                     </div>
                   </div>
-
-                  <div class="actividad-card-footer">
-                    <span class="tipo-badge">{{ a.get_tipo_display }}</span>
+                  
+                  <div class="actividad-tipo-col">
+                    <span class="tipo-badge tipo-{{ a.tipo|lower }}">{{ a.get_tipo_display }}</span>
                   </div>
-                </div>
+                  
+                  <div class="actividad-arrow-col">
+                    <span class="material-icons">chevron_right</span>
+                  </div>
+                </a>
               {% endfor %}
             </div>
 
@@ -308,7 +323,73 @@
 }
 
 /* ================================
-   MINI CALENDAR GRID - MÁS COMPACTO
+   ACORDEÓN CALENDARIO (MÓVIL)
+   ================================ */
+.calendario-acordeon {
+  margin-bottom: 24px;
+}
+
+.acordeon-toggle {
+  display: none; /* Oculto en desktop */
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+}
+
+.acordeon-toggle:hover {
+  border-color: var(--primary-light);
+}
+
+.acordeon-toggle.active {
+  border-color: var(--primary);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: none;
+}
+
+.acordeon-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.acordeon-info .material-icons {
+  color: var(--primary);
+  font-size: 22px;
+}
+
+.acordeon-mes-actual {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.acordeon-arrow {
+  color: var(--text-muted);
+  font-size: 24px;
+  transition: transform 0.3s;
+}
+
+.acordeon-toggle.active .acordeon-arrow {
+  transform: rotate(180deg);
+}
+
+.acordeon-content {
+  /* Visible por defecto en desktop */
+}
+
+.acordeon-content.collapsed {
+  display: none;
+}
+
+/* ================================
+   MINI CALENDAR GRID
    ================================ */
 .mini-calendar-grid {
   display: grid;
@@ -349,62 +430,49 @@
 }
 
 .mini-mes.mini-mes-selected .count-badge {
-  background: white;
-  color: var(--primary);
-}
-
-.mini-mes.mini-mes-selected .count-empty {
-  color: rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.25);
+  color: white;
 }
 
 .mini-mes-nombre {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-dark);
   text-transform: uppercase;
   margin-bottom: 4px;
 }
 
-.mini-mes-count {
-  min-height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .count-badge {
+  display: inline-block;
   background: var(--secondary);
   color: white;
-  padding: 2px 6px;
-  border-radius: 10px;
   font-size: 10px;
   font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
   min-width: 18px;
 }
 
 .count-empty {
   color: var(--text-muted);
-  opacity: 0.4;
   font-size: 12px;
 }
 
 /* ================================
-   MES DETALLE CONTAINER
+   MES DETALLE
    ================================ */
 .mes-detalle-container {
   background: var(--bg-card);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  min-height: 300px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
   overflow: hidden;
+  min-height: 300px;
 }
 
 .mes-detalle-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
   padding: 20px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-light);
@@ -412,35 +480,34 @@
 
 .mes-detalle-titulo {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-dark);
 }
 
 .mes-detalle-count {
-  display: block;
   font-size: 13px;
   color: var(--text-muted);
   margin-top: 4px;
+  display: block;
 }
 
 .btn-add-actividad {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 18px;
+  padding: 8px 16px;
   background: var(--secondary);
   color: white;
-  border-radius: 8px;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 600;
-  font-size: 14px;
   text-decoration: none;
   transition: all 0.2s;
 }
 
 .btn-add-actividad:hover {
   background: #008B88;
-  transform: translateY(-1px);
 }
 
 .btn-add-actividad .material-icons {
@@ -448,7 +515,7 @@
 }
 
 .mes-detalle-body {
-  padding: 20px 24px;
+  padding: 0;
 }
 
 /* Mes vacío */
@@ -462,8 +529,8 @@
 }
 
 .mes-vacio-icon {
-  width: 80px;
-  height: 80px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -541,110 +608,75 @@
 }
 
 /* ================================
-   ACTIVIDADES GRID - 3 COLUMNAS
+   ACTIVIDADES LISTA (COMPACTA - 2 COLUMNAS)
    ================================ */
-.actividades-grid {
+.actividades-lista {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
 }
 
-.actividad-card {
+.actividades-lista .actividad-row:nth-child(odd) {
+  border-right: 1px solid var(--border);
+}
+
+.actividades-lista .actividad-row:nth-last-child(1),
+.actividades-lista .actividad-row:nth-last-child(2) {
+  border-bottom: none;
+}
+
+.actividad-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s;
+}
+
+.actividad-row:last-child {
+  border-bottom: none;
+}
+
+.actividad-row:hover {
   background: var(--bg-light);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.2s;
 }
 
-.actividad-card:hover {
-  border-color: var(--primary-light);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  transform: translateY(-2px);
-}
-
-.actividad-card-header {
+/* Columna fecha */
+.actividad-fecha-col {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 12px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-}
-
-.actividad-card-header .actividad-fecha {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  min-width: 44px;
+  padding: 6px 8px;
+  background: var(--primary);
+  border-radius: 8px;
   color: white;
 }
 
-.actividad-card-header .fecha-num {
-  font-size: 22px;
+.actividad-fecha-col .fecha-num {
+  font-size: 18px;
   font-weight: 700;
   line-height: 1;
 }
 
-.actividad-card-header .fecha-dia {
-  font-size: 11px;
+.actividad-fecha-col .fecha-dia {
+  font-size: 9px;
   text-transform: uppercase;
   opacity: 0.85;
+  margin-top: 2px;
 }
 
-.actividad-card-body {
-  padding: 14px;
-}
-
-.actividad-nombre {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-dark);
-  text-decoration: none;
-  margin-bottom: 10px;
-  line-height: 1.3;
-}
-
-.actividad-nombre:hover {
-  color: var(--primary);
-}
-
-.actividad-detalles {
+/* Columna estado */
+.actividad-estado-col {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.detalle-item {
-  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-muted);
+  justify-content: center;
+  width: 20px;
 }
 
-.detalle-item .material-icons {
-  font-size: 14px;
-  color: var(--secondary);
-}
-
-.actividad-card-footer {
-  padding: 10px 14px;
-  border-top: 1px solid var(--border);
-  background: white;
-}
-
-.tipo-badge {
-  display: inline-block;
-  background: var(--secondary-light);
-  color: var(--secondary);
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-/* Estado dots */
 .estado-dot {
   width: 10px;
   height: 10px;
@@ -654,28 +686,88 @@
 
 .estado-programada {
   background: #17A2B8;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
 }
 
 .estado-realizada {
   background: #28A745;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
 }
 
 .estado-cancelada {
   background: #DC3545;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
+}
+
+/* Columna info principal */
+.actividad-info-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.actividad-titulo {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actividad-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.meta-item .material-icons {
+  font-size: 13px;
+  color: var(--secondary);
+}
+
+/* Columna tipo */
+.actividad-tipo-col {
+  flex-shrink: 0;
+}
+
+.tipo-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--secondary-light);
+  color: var(--secondary);
+}
+
+/* Columna arrow */
+.actividad-arrow-col {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.actividad-arrow-col .material-icons {
+  font-size: 20px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+
+.actividad-row:hover .actividad-arrow-col .material-icons {
+  opacity: 1;
+  color: var(--primary);
 }
 
 /* ================================
    RESPONSIVE
    ================================ */
-@media (max-width: 1200px) {
-  .actividades-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 992px) {
   .mini-calendar-grid {
     grid-template-columns: repeat(6, 1fr);
@@ -712,9 +804,29 @@
     justify-content: center;
   }
 
+  /* Acordeón visible en móvil */
+  .acordeon-toggle {
+    display: flex;
+  }
+
+  .acordeon-content {
+    display: none;
+    border: 2px solid var(--primary);
+    border-top: none;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    padding: 12px;
+    background: var(--bg-card);
+  }
+
+  .acordeon-content.expanded {
+    display: block;
+  }
+
   .mini-calendar-grid {
-    grid-template-columns: repeat(6, 1fr);
-    gap: 6px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 0;
   }
 
   .mini-mes {
@@ -735,6 +847,7 @@
   .mes-detalle-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
     padding: 16px;
   }
 
@@ -743,17 +856,43 @@
     justify-content: center;
   }
 
-  .actividades-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+  /* Lista compacta en móvil - 1 columna */
+  .actividades-lista {
+    grid-template-columns: 1fr;
   }
 
-  .actividad-card-body {
-    padding: 12px;
+  .actividades-lista .actividad-row:nth-child(odd) {
+    border-right: none;
   }
 
-  .actividad-nombre {
+  .actividad-row {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .actividad-fecha-col {
+    min-width: 38px;
+    padding: 5px 6px;
+  }
+
+  .actividad-fecha-col .fecha-num {
+    font-size: 16px;
+  }
+
+  .actividad-tipo-col {
+    display: none;
+  }
+
+  .actividad-arrow-col {
+    display: none;
+  }
+
+  .actividad-titulo {
     font-size: 13px;
+  }
+
+  .meta-item {
+    font-size: 10px;
   }
 }
 
@@ -770,24 +909,54 @@
     font-size: 18px;
   }
 
-  .actividades-grid {
-    grid-template-columns: 1fr;
+  .actividad-estado-col {
+    display: none;
   }
 
-  .mes-detalle-body {
-    padding: 16px;
+  .actividad-meta {
+    gap: 8px;
   }
 }
 </style>
 
 <script>
-function seleccionarMes(mesNumero) {
+let calendarioExpandido = false;
+
+function toggleCalendario() {
+  const toggle = document.querySelector('.acordeon-toggle');
+  const content = document.getElementById('acordeon-content');
+  
+  calendarioExpandido = !calendarioExpandido;
+  
+  if (calendarioExpandido) {
+    toggle.classList.add('active');
+    content.classList.add('expanded');
+    content.classList.remove('collapsed');
+  } else {
+    toggle.classList.remove('active');
+    content.classList.remove('expanded');
+    content.classList.add('collapsed');
+  }
+}
+
+function seleccionarMes(mesNumero, mesNombre) {
   document.querySelectorAll('.mini-mes').forEach(el => {
     el.classList.remove('mini-mes-selected');
   });
 
   const mesBtn = document.querySelector('.mini-mes[data-mes="' + mesNumero + '"]');
   if (mesBtn) mesBtn.classList.add('mini-mes-selected');
+
+  // Actualizar texto del acordeón
+  const acordeonTexto = document.querySelector('.acordeon-mes-actual');
+  if (acordeonTexto && mesNombre) {
+    acordeonTexto.textContent = mesNombre + ' {{ year }}';
+  }
+
+  // Cerrar acordeón en móvil después de seleccionar
+  if (window.innerWidth <= 768 && calendarioExpandido) {
+    toggleCalendario();
+  }
 
   const placeholder = document.getElementById('mes-placeholder');
   if (placeholder) placeholder.style.display = 'none';
@@ -801,17 +970,25 @@ function seleccionarMes(mesNumero) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Obtener el nombre del mes desde el elemento
+  function getMesNombre(mesNum) {
+    const mesEl = document.querySelector('.mini-mes[data-mes="' + mesNum + '"]');
+    return mesEl ? mesEl.getAttribute('data-nombre') : '';
+  }
+
   // 1) Si hay algún mes con actividades, abre el primero con actividades
   const primerMesConActividades = document.querySelector('.mini-mes.mini-mes-activo');
   if (primerMesConActividades) {
     const mes = parseInt(primerMesConActividades.getAttribute('data-mes'));
-    seleccionarMes(mes);
+    const nombre = primerMesConActividades.getAttribute('data-nombre');
+    seleccionarMes(mes, nombre);
     return;
   }
 
-  // 2) Si no hay actividades en ningún mes, abre el mes actual igual (para ver "Sin actividades")
+  // 2) Si no hay actividades en ningún mes, abre el mes actual igual
   const mesActual = new Date().getMonth() + 1;
-  seleccionarMes(mesActual);
+  const nombreActual = getMesNombre(mesActual);
+  seleccionarMes(mesActual, nombreActual);
 });
 </script>
 

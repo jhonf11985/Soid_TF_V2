@@ -1,8 +1,9 @@
 from datetime import date
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required, permission_required
+
+from django.shortcuts import render, redirect, get_object_or_404
 
 from .models import Actividad
 from .forms import ActividadForm
@@ -30,6 +31,7 @@ def home(request):
 
 
 @login_required
+@permission_required('agenda_app.view_actividad', raise_exception=True)
 def agenda_anual(request):
     hoy = date.today()
 
@@ -88,6 +90,7 @@ from notificaciones_app.models import Notification
 User = get_user_model()
 
 @login_required
+@permission_required('agenda_app.add_actividad', raise_exception=True)
 def actividad_create(request):
     """
     Crear actividad + notificación PWA
@@ -123,12 +126,14 @@ def actividad_create(request):
     return render(request, "agenda_app/actividad_form.html", context)
 
 @login_required
+@permission_required('agenda_app.view_actividad', raise_exception=True)
 def actividad_detail(request, pk):
     actividad = get_object_or_404(Actividad, pk=pk)
     return render(request, "agenda_app/actividad_detail.html", {"actividad": actividad})
 
 
 @login_required
+@permission_required('agenda_app.change_actividad', raise_exception=True)
 def actividad_update(request, pk):
     actividad = get_object_or_404(Actividad, pk=pk)
 
@@ -145,6 +150,7 @@ def actividad_update(request, pk):
 
 
 @login_required
+@permission_required('agenda_app.delete_actividad', raise_exception=True)
 def actividad_delete(request, pk):
     actividad = get_object_or_404(Actividad, pk=pk)
 
