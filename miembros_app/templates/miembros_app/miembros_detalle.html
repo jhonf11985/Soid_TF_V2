@@ -655,6 +655,75 @@
         <!-- TAB: Familia -->
 <!-- TAB: Familia -->
 <div class="odoo-tab-content" id="tab-familia">
+
+    <!-- ============================
+     🌳 FAMILIA INTELIGENTE (SOID)
+     ============================ -->
+
+<div class="odoo-detail-section" style="margin-bottom:20px;">
+    <div class="odoo-section-header">
+        <span class="material-icons">home</span>
+        <span>Mi hogar</span>
+    </div>
+
+    {% if hogar_principal %}
+        <div style="margin-bottom:8px;">
+            <strong>{{ hogar_principal.nombre }}</strong>
+        </div>
+
+        <ul style="margin:0; padding-left:16px;">
+            {% for hm in miembros_hogar %}
+                <li>
+                    <strong>{{ hm.miembro.nombres }} {{ hm.miembro.apellidos }}</strong>
+                    <span style="opacity:.7;">— {{ hm.get_rol_display }}</span>
+                    {% if hm.es_principal %}
+                        <span style="opacity:.6;">(principal)</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div style="opacity:.7;">
+            Este miembro aún no tiene un hogar definido.
+        </div>
+    {% endif %}
+</div>
+
+
+<div class="odoo-detail-section">
+    <div class="odoo-section-header">
+        <span class="material-icons">account_tree</span>
+        <span>Familia extendida</span>
+    </div>
+
+    {% if clan_familiar %}
+        <div style="margin-bottom:8px;">
+            <strong>{{ clan_familiar.nombre }}</strong>
+        </div>
+
+        {% for hogar in hogares_clan %}
+            <div style="margin-bottom:14px; padding:10px; border:1px solid #eee; border-radius:8px;">
+                <div style="font-weight:600; margin-bottom:6px;">
+                    🏠 {{ hogar.nombre }}
+                </div>
+
+                <ul style="margin:0; padding-left:16px;">
+                    {% for hm in hogar.miembros.all %}
+                        <li>
+                            {{ hm.miembro.nombres }} {{ hm.miembro.apellidos }}
+                            <span style="opacity:.7;">— {{ hm.get_rol_display }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div style="opacity:.7;">
+            Este miembro aún no pertenece a un clan familiar.
+        </div>
+    {% endif %}
+</div>
+
     {% if relaciones_familia %}
     <div class="odoo-table-container">
         <table class="odoo-table">
@@ -709,7 +778,49 @@
     {% else %}
     <p class="odoo-empty">No hay familiares registrados para este miembro.</p>
     {% endif %}
+{% if relaciones_inferidas %}
+  <div style="margin-top:16px;">
+    <div style="font-weight:600; margin-bottom:8px;">
+      🧠 Parentescos inferidos por el sistema
+      <span style="opacity:.6; font-weight:400;">(no están guardados, se calculan)</span>
+    </div>
+
+    <div class="odoo-table-container">
+      <table class="odoo-table">
+        <thead>
+          <tr>
+            <th>Familiar</th>
+            <th>Relación</th>
+            <th>Tipo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rel in relaciones_inferidas %}
+            <tr>
+              <td>
+                <a href="{% url 'miembros_app:detalle' rel.otro.pk %}">
+                  {{ rel.otro.nombres }} {{ rel.otro.apellidos }}
+                </a>
+              </td>
+              <td>
+                <span class="odoo-badge odoo-badge-neutral">
+                  {{ rel.tipo_label }}
+                </span>
+              </td>
+              <td>
+                <span class="odoo-badge odoo-badge-info">Inferido</span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+
+
 </div>
+
 <!-- TAB: Privado -->
 <div class="odoo-tab-content" id="tab-privado">
 

@@ -7,6 +7,7 @@ from core.models import ConfiguracionSistema
 from django.conf import settings
 from django.utils import timezone
 import re
+from django.db import transaction
 
 # ==========================
 # FORMACIÓN MINISTERIAL (CHOICES)
@@ -856,6 +857,30 @@ class Miembro(models.Model):
             referencia_tipo=referencia_tipo,
             referencia_id=referencia_id,
         )
+    @property
+    def hogar_principal(self):
+        hm = self.hogares.select_related("hogar__clan").filter(es_principal=True).first()
+        return hm.hogar if hm else None
+
+    @property
+    def clan_familiar(self):
+        hogar = self.hogar_principal
+        return hogar.clan if hogar and hogar.clan else None
+
+    @property
+    def miembros_de_mi_hogar(self):
+        hogar = self.hogar_principal
+        if not hogar:
+            return []
+        return hogar.miembros.select_related("miembro").all()
+
+    @property
+    def hogares_de_mi_clan(self):
+        clan = self.clan_familiar
+        if not clan:
+            return []
+        return clan.hogares.prefetch_related("miembros__miembro").all()
+
 class MiembroRelacion(models.Model):
     # ✅ Tipos (guardamos CLAVES neutras y mostramos bonito según género)
     TIPO_RELACION_CHOICES = [
@@ -953,22 +978,33 @@ class MiembroRelacion(models.Model):
         genero = cls._norm_genero(genero)
 
         etiquetas = {
+            # Núcleo familiar
             "padre": ("Padre", "Padre"),
             "madre": ("Madre", "Madre"),
             "hijo": ("Hijo", "Hija"),
-            "conyuge": ("Cónyuge", "Cónyuge"),  # si quieres: ("Esposo","Esposa")
+            "conyuge": ("Cónyuge", "Cónyuge"),
             "hermano": ("Hermano", "Hermana"),
 
+            # Ascendientes
             "abuelo": ("Abuelo", "Abuela"),
+            "bisabuelo": ("Bisabuelo", "Bisabuela"),  # ← NUEVO
+
+            # Descendientes
             "nieto": ("Nieto", "Nieta"),
+            "bisnieto": ("Bisnieto", "Bisnieta"),  # ← NUEVO
+
+            # Colaterales
             "tio": ("Tío", "Tía"),
             "sobrino": ("Sobrino", "Sobrina"),
             "primo": ("Primo", "Prima"),
 
+            # Políticos
             "suegro": ("Suegro", "Suegra"),
             "yerno": ("Yerno", "Nuera"),
             "cunado": ("Cuñado", "Cuñada"),
+            "consuegro": ("Consuegro", "Consuegra"),  # ← NUEVO
 
+            # Otros
             "tutor": ("Tutor", "Tutora"),
             "otro": ("Otro", "Otro"),
         }
@@ -1257,3 +1293,190 @@ class ZonaGeo(models.Model):
     def __str__(self):
         parts = [p for p in [self.sector, self.ciudad, self.provincia] if p]
         return " / ".join(parts) if parts else "—"
+
+# ==========================================================
+# ✅ FAMILIAS INTELIGENTES (HOGAR + CLAN)
+# ==========================================================
+
+class ClanFamiliar(models.Model):
+    """
+    Familia extendida (padres + hijos + nietos...). Aquí caen varios hogares.
+    Ej: "Familia Pérez" (incluye el hogar de Jonathan y el hogar del hermano).
+    """
+    nombre = models.CharField(max_length=150)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nombre
+
+
+class HogarFamiliar(models.Model):
+    """
+    Familia nuclear (hogar): pareja + hijos.
+    Cada pareja normalmente crea un hogar.
+    """
+    clan = models.ForeignKey(
+        ClanFamiliar,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="hogares"
+    )
+    nombre = models.CharField(max_length=150, blank=True, null=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nombre or f"Hogar #{self.pk}"
+
+
+class HogarMiembro(models.Model):
+    """
+    Miembros dentro de un hogar (roles: padre, madre, hijo).
+    """
+    ROL_CHOICES = [
+        ("padre", "Padre"),
+        ("madre", "Madre"),
+        ("hijo", "Hijo/Hija"),
+        ("otro", "Otro"),
+    ]
+
+    hogar = models.ForeignKey(HogarFamiliar, on_delete=models.CASCADE, related_name="miembros")
+    miembro = models.ForeignKey("Miembro", on_delete=models.CASCADE, related_name="hogares")
+    rol = models.CharField(max_length=20, choices=ROL_CHOICES)
+    es_principal = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("hogar", "miembro")
+
+    def __str__(self):
+        return f"{self.miembro} → {self.hogar} ({self.rol})"
+
+
+# ==========================================================
+# ✅ HELPERS (LÓGICA “INTELIGENTE”)
+# ==========================================================
+
+def _norm_genero(g):
+    g = (g or "").strip().lower()
+    if g in ("m", "masculino", "hombre"):
+        return "m"
+    if g in ("f", "femenino", "mujer"):
+        return "f"
+    return ""
+
+
+def _rol_padre_o_madre_por_genero(miembro):
+    gen = _norm_genero(getattr(miembro, "genero", ""))
+    return "madre" if gen == "f" else "padre"
+
+
+def _buscar_clan_desde_padres(miembro):
+    """
+    Si el miembro tiene padre/madre definidos en MiembroRelacion,
+    buscamos el hogar principal de ese padre/madre y usamos su clan.
+    Así dos hermanos comparten clan automáticamente.
+    """
+    padres = (
+        MiembroRelacion.objects
+        .filter(miembro=miembro, tipo_relacion__in=["padre", "madre"])
+        .select_related("familiar")
+    )
+
+    for rel in padres:
+        padre_madre = rel.familiar
+        hm = (
+            HogarMiembro.objects
+            .filter(miembro=padre_madre, es_principal=True)
+            .select_related("hogar__clan")
+            .first()
+        )
+        if hm and hm.hogar and hm.hogar.clan:
+            return hm.hogar.clan
+
+    return None
+
+
+@transaction.atomic
+def asegurar_hogar_para_miembro(miembro, clan_sugerido=None):
+    """
+    Si el miembro no tiene hogar principal, crea uno (hogar unipersonal por ahora).
+    """
+    existente = HogarMiembro.objects.filter(miembro=miembro, es_principal=True).select_related("hogar").first()
+    if existente:
+        return existente.hogar
+
+    clan = clan_sugerido or _buscar_clan_desde_padres(miembro)
+    if clan is None:
+        clan = ClanFamiliar.objects.create(nombre=f"Clan de {miembro.apellidos}".strip() if getattr(miembro, "apellidos", "") else f"Clan #{miembro.pk}")
+
+    hogar = HogarFamiliar.objects.create(
+        clan=clan,
+        nombre=f"Hogar de {miembro.nombres} {miembro.apellidos}".strip()
+    )
+
+    HogarMiembro.objects.create(
+        hogar=hogar,
+        miembro=miembro,
+        rol=_rol_padre_o_madre_por_genero(miembro),
+        es_principal=True
+    )
+
+    return hogar
+
+
+@transaction.atomic
+def sync_familia_inteligente_por_relacion(relacion: "MiembroRelacion"):
+    """
+    Se llama cuando se crea una relación.
+    Reglas:
+    - Si se crea CÓNYUGE: crea/asegura hogar para la pareja y los une en el mismo hogar.
+    - Si se crea HIJO: mete al hijo en el hogar del padre/madre.
+    - Si se crea PADRE/MADRE: mete al miembro como hijo en el hogar del padre/madre.
+    """
+    miembro = relacion.miembro
+    familiar = relacion.familiar
+    tipo = relacion.tipo_relacion
+
+    # 1) Cónyuge: mismo hogar (familia nuclear)
+    if tipo == "conyuge":
+        # Intentamos heredar clan desde los padres de cualquiera de los dos
+        clan = _buscar_clan_desde_padres(miembro) or _buscar_clan_desde_padres(familiar)
+
+        hogar_miembro = asegurar_hogar_para_miembro(miembro, clan_sugerido=clan)
+
+        # Asegurar que el cónyuge esté en el mismo hogar
+        HogarMiembro.objects.get_or_create(
+            hogar=hogar_miembro,
+            miembro=familiar,
+            defaults={"rol": _rol_padre_o_madre_por_genero(familiar), "es_principal": True}
+        )
+
+        # Marcar ambos como principales (opcional, pero útil)
+        HogarMiembro.objects.filter(hogar=hogar_miembro, miembro__in=[miembro, familiar]).update(es_principal=True)
+
+        # Nombre bonito del hogar (opcional)
+        if not hogar_miembro.nombre:
+            hogar_miembro.nombre = f"Hogar de {miembro.apellidos}".strip() if getattr(miembro, "apellidos", "") else f"Hogar #{hogar_miembro.pk}"
+            hogar_miembro.save(update_fields=["nombre"])
+
+        return
+
+    # 2) Hijo: hijo dentro del hogar del padre/madre
+    if tipo == "hijo":
+        hogar = asegurar_hogar_para_miembro(miembro)
+        HogarMiembro.objects.get_or_create(
+            hogar=hogar,
+            miembro=familiar,
+            defaults={"rol": "hijo", "es_principal": False}
+        )
+        return
+
+    # 3) Padre/Madre: el miembro es hijo del padre/madre
+    if tipo in ("padre", "madre"):
+        hogar_padre = asegurar_hogar_para_miembro(familiar)  # familiar es el padre/madre
+        HogarMiembro.objects.get_or_create(
+            hogar=hogar_padre,
+            miembro=miembro,
+            defaults={"rol": "hijo", "es_principal": False}
+        )
+        return

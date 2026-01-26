@@ -14,7 +14,8 @@ from .forms import EnviarFichaMiembroEmailForm
 from .forms import EnviarFichaMiembroEmailForm
 import tempfile
 import subprocess   # ← ESTE
-from .models import Miembro, MiembroRelacion, RazonSalidaMiembro
+from .models import Miembro, MiembroRelacion, RazonSalidaMiembro, sync_familia_inteligente_por_relacion
+
 from .forms import MiembroForm, MiembroRelacionForm,NuevoCreyenteForm,MiembroSalidaForm, MiembroReingresoForm
 import platform   # ← ESTE FALTABA
 from core.utils_config import get_edad_minima_miembro_oficial
@@ -877,6 +878,514 @@ def miembro_crear(request):
 
     return render(request, "miembros_app/miembro_form.html", context)
 
+def _get_padres_ids(miembro_id):
+    return set(
+        MiembroRelacion.objects
+        .filter(miembro_id=miembro_id, tipo_relacion__in=["padre", "madre"])
+        .values_list("familiar_id", flat=True)
+    )
+
+def _get_hijos_ids(miembro_id):
+    return set(
+        MiembroRelacion.objects
+        .filter(miembro_id=miembro_id, tipo_relacion="hijo")
+        .values_list("familiar_id", flat=True)
+    )
+
+def _get_conyuge_ids(miembro_id):
+    return set(
+        MiembroRelacion.objects
+        .filter(miembro_id=miembro_id, tipo_relacion="conyuge")
+        .values_list("familiar_id", flat=True)
+    )
+
+
+
+"""
+═══════════════════════════════════════════════════════════════════════════════
+INFERENCIA INTELIGENTE DE RELACIONES FAMILIARES v4 - DEFINITIVA
+═══════════════════════════════════════════════════════════════════════════════
+
+CORREGIDO COMPLETAMENTE:
+- Todas las inferencias ahora usan padres/hijos COMPLETOS (directos + inferidos)
+- Funciona en cascada: si A es padre inferido de B, y B es padre de C, 
+  entonces A es abuelo inferido de C
+
+CASOS CUBIERTOS:
+✅ Padres inferidos (cónyuge de mi padre/madre)
+✅ Hijos inferidos (hijos de mi cónyuge)  
+✅ Hermanos (compartimos padre/madre, incluyendo inferidos)
+✅ Abuelos (padres de mis padres, incluyendo inferidos)
+✅ Tíos (hermanos de mis padres, usando abuelos completos)
+✅ Sobrinos (hijos de mis hermanos, incluyendo inferidos)
+✅ Primos (hijos de mis tíos)
+✅ Nietos (hijos de mis hijos, incluyendo inferidos)
+✅ Cuñados (cónyuge de hermano + hermanos de cónyuge)
+✅ Suegros (padres de mi cónyuge, incluyendo inferidos)
+✅ Yernos/Nueras (cónyuges de mis hijos)
+✅ Consuegros (padres de mis yernos/nueras)
+
+═══════════════════════════════════════════════════════════════════════════════
+"""
+
+from django.db.models import Q
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FUNCIONES AUXILIARES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _obtener_relaciones_directas(miembro_id, MiembroRelacion):
+    """
+    Obtiene todas las relaciones directas de un miembro, normalizadas.
+    Retorna: dict con sets de IDs por tipo de relación.
+    """
+    padres = set()
+    hijos = set()
+    hermanos = set()
+    conyuges = set()
+    
+    rels = (
+        MiembroRelacion.objects
+        .filter(Q(miembro_id=miembro_id) | Q(familiar_id=miembro_id))
+        .select_related("miembro", "familiar")
+    )
+    
+    for rel in rels:
+        if rel.miembro_id == miembro_id:
+            otro_id = rel.familiar_id
+            tipo = rel.tipo_relacion
+        else:
+            otro_id = rel.miembro_id
+            tipo = MiembroRelacion.inverse_tipo(rel.tipo_relacion, rel.miembro.genero)
+        
+        if tipo in ("padre", "madre"):
+            padres.add(otro_id)
+        elif tipo == "hijo":
+            hijos.add(otro_id)
+        elif tipo == "hermano":
+            hermanos.add(otro_id)
+        elif tipo == "conyuge":
+            conyuges.add(otro_id)
+    
+    return {
+        "padres": padres,
+        "hijos": hijos,
+        "hermanos": hermanos,
+        "conyuges": conyuges,
+    }
+
+
+def _obtener_padres_completos(miembro_id, MiembroRelacion, _cache=None):
+    """
+    Obtiene TODOS los padres de un miembro (directos + inferidos por cónyuge).
+    Retorna: (padres_directos, padres_inferidos)
+    """
+    if _cache is None:
+        _cache = {}
+    
+    if miembro_id in _cache:
+        return _cache[miembro_id]
+    
+    rels = _obtener_relaciones_directas(miembro_id, MiembroRelacion)
+    padres_directos = rels["padres"]
+    
+    # Padres inferidos = cónyuges de los padres directos
+    padres_inferidos = set()
+    
+    if padres_directos:
+        rels_padres = (
+            MiembroRelacion.objects
+            .filter(
+                Q(miembro_id__in=padres_directos, tipo_relacion="conyuge") |
+                Q(familiar_id__in=padres_directos, tipo_relacion="conyuge")
+            )
+        )
+        
+        for rel in rels_padres:
+            if rel.miembro_id in padres_directos:
+                conyuge_id = rel.familiar_id
+            else:
+                conyuge_id = rel.miembro_id
+            
+            if conyuge_id not in padres_directos and conyuge_id != miembro_id:
+                padres_inferidos.add(conyuge_id)
+    
+    resultado = (padres_directos, padres_inferidos)
+    _cache[miembro_id] = resultado
+    return resultado
+
+
+def _obtener_hijos_completos(miembro_id, MiembroRelacion, _cache=None):
+    """
+    Obtiene TODOS los hijos de un miembro (directos + inferidos por cónyuge).
+    Retorna: (hijos_directos, hijos_inferidos)
+    """
+    if _cache is None:
+        _cache = {}
+    
+    cache_key = f"hijos_{miembro_id}"
+    if cache_key in _cache:
+        return _cache[cache_key]
+    
+    rels = _obtener_relaciones_directas(miembro_id, MiembroRelacion)
+    hijos_directos = rels["hijos"]
+    conyuges = rels["conyuges"]
+    
+    # Hijos inferidos = hijos de mis cónyuges que no son míos
+    hijos_inferidos = set()
+    
+    if conyuges:
+        for conyuge_id in conyuges:
+            rels_conyuge = _obtener_relaciones_directas(conyuge_id, MiembroRelacion)
+            hijos_conyuge = rels_conyuge["hijos"]
+            
+            for hijo_id in hijos_conyuge:
+                if hijo_id not in hijos_directos and hijo_id != miembro_id:
+                    hijos_inferidos.add(hijo_id)
+    
+    resultado = (hijos_directos, hijos_inferidos)
+    _cache[cache_key] = resultado
+    return resultado
+
+
+def _obtener_hermanos_completos(miembro_id, todos_padres_ids, MiembroRelacion):
+    """
+    Obtiene todos los hermanos (personas que comparten al menos un padre).
+    """
+    hermanos = set()
+    
+    if todos_padres_ids:
+        # Personas que dicen "X es mi padre/madre" donde X está en todos_padres_ids
+        hermanos = set(
+            MiembroRelacion.objects
+            .filter(tipo_relacion__in=["padre", "madre"], familiar_id__in=todos_padres_ids)
+            .exclude(miembro_id=miembro_id)
+            .values_list("miembro_id", flat=True)
+        )
+        
+        # Personas que mis padres dicen "X es mi hijo"
+        hijos_de_padres = set(
+            MiembroRelacion.objects
+            .filter(miembro_id__in=todos_padres_ids, tipo_relacion="hijo")
+            .exclude(familiar_id=miembro_id)
+            .values_list("familiar_id", flat=True)
+        )
+        hermanos |= hijos_de_padres
+    
+    return hermanos
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FUNCIÓN PRINCIPAL
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def calcular_parentescos_inferidos(miembro):
+    """
+    Calcula TODOS los parentescos inferidos de un miembro.
+    Usa inferencias en cascada para máxima precisión.
+    """
+    from .models import MiembroRelacion, Miembro
+    
+    mi_id = miembro.id
+    cache = {}  # Cache para evitar queries repetidos
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 1: Obtener MIS relaciones directas
+    # ═══════════════════════════════════════════════════════════════════════════
+    mis_rels = _obtener_relaciones_directas(mi_id, MiembroRelacion)
+    
+    padres_directos = mis_rels["padres"]
+    hijos_directos = mis_rels["hijos"]
+    hermanos_directos = mis_rels["hermanos"]
+    conyuges_directos = mis_rels["conyuges"]
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 2: MIS PADRES COMPLETOS (directos + inferidos)
+    # ═══════════════════════════════════════════════════════════════════════════
+    padres_dir, padres_inf = _obtener_padres_completos(mi_id, MiembroRelacion, cache)
+    todos_mis_padres = padres_dir | padres_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 3: MIS HIJOS COMPLETOS (directos + inferidos)
+    # ═══════════════════════════════════════════════════════════════════════════
+    hijos_dir, hijos_inf = _obtener_hijos_completos(mi_id, MiembroRelacion, cache)
+    todos_mis_hijos = hijos_dir | hijos_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 4: MIS HERMANOS (compartimos padre/madre)
+    # ═══════════════════════════════════════════════════════════════════════════
+    hermanos_inferidos = _obtener_hermanos_completos(mi_id, todos_mis_padres, MiembroRelacion)
+    hermanos_inferidos |= hermanos_directos
+    todos_mis_hermanos = hermanos_inferidos.copy()
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 5: MIS ABUELOS (padres de mis padres, INCLUYENDO INFERIDOS)
+    # ═══════════════════════════════════════════════════════════════════════════
+    abuelos_ids = set()
+    
+    for padre_id in todos_mis_padres:
+        padres_de_padre_dir, padres_de_padre_inf = _obtener_padres_completos(
+            padre_id, MiembroRelacion, cache
+        )
+        abuelos_ids |= padres_de_padre_dir
+        abuelos_ids |= padres_de_padre_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 6: MIS TÍOS (hermanos de mis padres)
+    # Hermano de mi padre = alguien que comparte padre con mi padre
+    # ═══════════════════════════════════════════════════════════════════════════
+    tios_ids = set()
+    
+    for padre_id in todos_mis_padres:
+        # Obtener los padres de mi padre (mis abuelos por esa línea)
+        padres_de_padre_dir, padres_de_padre_inf = _obtener_padres_completos(
+            padre_id, MiembroRelacion, cache
+        )
+        abuelos_linea = padres_de_padre_dir | padres_de_padre_inf
+        
+        # Los hermanos de mi padre = hijos de mis abuelos que no son mi padre
+        hermanos_del_padre = _obtener_hermanos_completos(padre_id, abuelos_linea, MiembroRelacion)
+        tios_ids |= hermanos_del_padre
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 7: MIS SOBRINOS (hijos de mis hermanos, INCLUYENDO INFERIDOS)
+    # ═══════════════════════════════════════════════════════════════════════════
+    sobrinos_ids = set()
+    
+    for hermano_id in todos_mis_hermanos:
+        hijos_hermano_dir, hijos_hermano_inf = _obtener_hijos_completos(
+            hermano_id, MiembroRelacion, cache
+        )
+        sobrinos_ids |= hijos_hermano_dir
+        sobrinos_ids |= hijos_hermano_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 8: MIS PRIMOS (hijos de mis tíos)
+    # ═══════════════════════════════════════════════════════════════════════════
+    primos_ids = set()
+    
+    for tio_id in tios_ids:
+        hijos_tio_dir, hijos_tio_inf = _obtener_hijos_completos(
+            tio_id, MiembroRelacion, cache
+        )
+        primos_ids |= hijos_tio_dir
+        primos_ids |= hijos_tio_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 9: MIS NIETOS (hijos de mis hijos, INCLUYENDO INFERIDOS)
+    # ═══════════════════════════════════════════════════════════════════════════
+    nietos_ids = set()
+    
+    for hijo_id in todos_mis_hijos:
+        hijos_hijo_dir, hijos_hijo_inf = _obtener_hijos_completos(
+            hijo_id, MiembroRelacion, cache
+        )
+        nietos_ids |= hijos_hijo_dir
+        nietos_ids |= hijos_hijo_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 10: MIS CUÑADOS
+    # - Cónyuges de mis hermanos
+    # - Hermanos de mi cónyuge
+    # ═══════════════════════════════════════════════════════════════════════════
+    cunados_ids = set()
+    
+    # Cónyuges de mis hermanos
+    for hermano_id in todos_mis_hermanos:
+        rels_hermano = _obtener_relaciones_directas(hermano_id, MiembroRelacion)
+        cunados_ids |= rels_hermano["conyuges"]
+    
+    # Hermanos de mi cónyuge
+    for conyuge_id in conyuges_directos:
+        padres_conyuge_dir, padres_conyuge_inf = _obtener_padres_completos(
+            conyuge_id, MiembroRelacion, cache
+        )
+        padres_conyuge = padres_conyuge_dir | padres_conyuge_inf
+        
+        hermanos_conyuge = _obtener_hermanos_completos(conyuge_id, padres_conyuge, MiembroRelacion)
+        cunados_ids |= hermanos_conyuge
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 11: MIS SUEGROS (padres de mi cónyuge, INCLUYENDO INFERIDOS)
+    # ═══════════════════════════════════════════════════════════════════════════
+    suegros_ids = set()
+    
+    for conyuge_id in conyuges_directos:
+        padres_conyuge_dir, padres_conyuge_inf = _obtener_padres_completos(
+            conyuge_id, MiembroRelacion, cache
+        )
+        suegros_ids |= padres_conyuge_dir
+        suegros_ids |= padres_conyuge_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 12: MIS YERNOS/NUERAS (cónyuges de mis hijos)
+    # ═══════════════════════════════════════════════════════════════════════════
+    yernos_ids = set()
+    
+    for hijo_id in todos_mis_hijos:
+        rels_hijo = _obtener_relaciones_directas(hijo_id, MiembroRelacion)
+        yernos_ids |= rels_hijo["conyuges"]
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 13: MIS CONSUEGROS (padres de mis yernos/nueras)
+    # ═══════════════════════════════════════════════════════════════════════════
+    consuegros_ids = set()
+    
+    for yerno_id in yernos_ids:
+        padres_yerno_dir, padres_yerno_inf = _obtener_padres_completos(
+            yerno_id, MiembroRelacion, cache
+        )
+        consuegros_ids |= padres_yerno_dir
+        consuegros_ids |= padres_yerno_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 14: BISABUELOS (padres de mis abuelos)
+    # ═══════════════════════════════════════════════════════════════════════════
+    bisabuelos_ids = set()
+    
+    for abuelo_id in abuelos_ids:
+        padres_abuelo_dir, padres_abuelo_inf = _obtener_padres_completos(
+            abuelo_id, MiembroRelacion, cache
+        )
+        bisabuelos_ids |= padres_abuelo_dir
+        bisabuelos_ids |= padres_abuelo_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASO 15: BISNIETOS (hijos de mis nietos)
+    # ═══════════════════════════════════════════════════════════════════════════
+    bisnietos_ids = set()
+    
+    for nieto_id in nietos_ids:
+        hijos_nieto_dir, hijos_nieto_inf = _obtener_hijos_completos(
+            nieto_id, MiembroRelacion, cache
+        )
+        bisnietos_ids |= hijos_nieto_dir
+        bisnietos_ids |= hijos_nieto_inf
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # LIMPIEZA: Quitar duplicados y relaciones directas
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    ids_directos = padres_directos | hijos_directos | hermanos_directos | conyuges_directos
+    
+    # Todos los sets de inferidos
+    todos_sets = [
+        padres_inf, hijos_inf, hermanos_inferidos, abuelos_ids, tios_ids,
+        sobrinos_ids, primos_ids, nietos_ids, cunados_ids, suegros_ids,
+        yernos_ids, consuegros_ids, bisabuelos_ids, bisnietos_ids
+    ]
+    
+    for s in todos_sets:
+        s.discard(mi_id)
+        s -= ids_directos
+
+    # Quitar hermanos directos del set de hermanos inferidos
+    hermanos_inferidos -= hermanos_directos
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CONSTRUIR RESULTADO
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    ids_total = set()
+    for s in todos_sets:
+        ids_total |= s
+    
+    miembros_map = {
+        m.id: m 
+        for m in Miembro.objects.filter(id__in=ids_total).only("id", "nombres", "apellidos", "genero")
+    }
+
+    def pack(ids_set, tipo, razon=""):
+        out = []
+        for mid in ids_set:
+            otro = miembros_map.get(mid)
+            if not otro:
+                continue
+            out.append({
+                "otro": otro,
+                "tipo": tipo,
+                "tipo_label": MiembroRelacion.label_por_genero(tipo, otro.genero),
+                "inferido": True,
+                "razon": razon,
+            })
+        return out
+
+    inferidos = []
+    
+    inferidos += pack(padres_inf, "padre", "Cónyuge de tu padre/madre")
+    inferidos += pack(hijos_inf, "hijo", "Hijo/a de tu cónyuge")
+    inferidos += pack(hermanos_inferidos, "hermano", "Comparten padre/madre")
+    inferidos += pack(abuelos_ids, "abuelo", "Padre/madre de tu padre/madre")
+    inferidos += pack(bisabuelos_ids, "bisabuelo", "Padre/madre de tu abuelo/a")
+    inferidos += pack(tios_ids, "tio", "Hermano/a de tu padre/madre")
+    inferidos += pack(sobrinos_ids, "sobrino", "Hijo/a de tu hermano/a")
+    inferidos += pack(primos_ids, "primo", "Hijo/a de tu tío/a")
+    inferidos += pack(nietos_ids, "nieto", "Hijo/a de tu hijo/a")
+    inferidos += pack(bisnietos_ids, "bisnieto", "Hijo/a de tu nieto/a")
+    inferidos += pack(cunados_ids, "cunado", "Cónyuge de hermano/a o hermano/a de cónyuge")
+    inferidos += pack(suegros_ids, "suegro", "Padre/madre de tu cónyuge")
+    inferidos += pack(yernos_ids, "yerno", "Cónyuge de tu hijo/a")
+    inferidos += pack(consuegros_ids, "consuegro", "Padre/madre del cónyuge de tu hijo/a")
+
+    return inferidos
+# ═══════════════════════════════════════════════════════════════════════════════
+# FUNCIÓN ADICIONAL: Ver familia completa de un miembro
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def obtener_familia_completa(miembro):
+    """
+    Devuelve TODAS las relaciones de un miembro:
+    - Directas (guardadas en DB)
+    - Inferidas (calculadas)
+    
+    Útil para mostrar todo en una sola lista.
+    """
+    from .models import MiembroRelacion
+    
+    mi_id = miembro.id
+    
+    # 1) Relaciones directas (normalizadas para mí)
+    relaciones_directas = []
+    
+    rels_qs = (
+        MiembroRelacion.objects
+        .filter(Q(miembro_id=mi_id) | Q(familiar_id=mi_id))
+        .select_related("miembro", "familiar")
+    )
+    
+    for rel in rels_qs:
+        if rel.miembro_id == mi_id:
+            otro = rel.familiar
+            tipo = rel.tipo_relacion
+        else:
+            otro = rel.miembro
+            tipo = MiembroRelacion.inverse_tipo(rel.tipo_relacion, otro.genero)
+        
+        relaciones_directas.append({
+            "otro": otro,
+            "tipo": tipo,
+            "tipo_label": MiembroRelacion.label_por_genero(tipo, otro.genero),
+            "inferido": False,
+            "vive_junto": rel.vive_junto,
+            "es_responsable": rel.es_responsable,
+            "notas": rel.notas,
+        })
+    
+    # 2) Relaciones inferidas
+    relaciones_inferidas = calcular_parentescos_inferidos(miembro)
+    
+    # 3) Combinar (sin duplicados)
+    ids_directos = {r["otro"].id for r in relaciones_directas}
+    
+    familia_completa = relaciones_directas.copy()
+    
+    for rel in relaciones_inferidas:
+        if rel["otro"].id not in ids_directos:
+            familia_completa.append(rel)
+    
+    return familia_completa
+
 
 # -------------------------------------
 # EDITAR MIEMBRO
@@ -914,6 +1423,7 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         bloquear_estado = _miembro_tiene_asignacion_en_unidades(miembro)
         rel_form = MiembroRelacionForm()
         
+        relaciones_inferidas = calcular_parentescos_inferidos(miembro)
 
         context = {
             "form": form,
@@ -926,6 +1436,8 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
               "bloquear_estado": bloquear_estado,
               "bloquear_identidad": bloquear_identidad,
                "TIPOS_RELACION_CHOICES": MiembroRelacion.TIPO_RELACION_CHOICES,
+               "relaciones_inferidas": relaciones_inferidas,
+
 
 
             
@@ -948,6 +1460,7 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
                 relacion = rel_form.save(commit=False)
                 relacion.miembro = miembro
                 relacion.save()
+                sync_familia_inteligente_por_relacion(relacion)
                 messages.success(request, "Familiar agregado correctamente.")
             else:
                 for field, errs in rel_form.errors.items():
@@ -1138,6 +1651,18 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             "TIPOS_RELACION_CHOICES": MiembroRelacion.TIPO_RELACION_CHOICES,
         }
         return render(request, "miembros_app/miembro_form.html", context)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        miembro = self.get_object()
+        context["hogar_principal"] = miembro.hogar_principal
+        context["miembros_hogar"] = miembro.miembros_de_mi_hogar
+        context["clan_familiar"] = miembro.clan_familiar
+        context["hogares_clan"] = miembro.hogares_de_mi_clan
+
+        return context
+
 
 
 
@@ -1229,6 +1754,8 @@ class MiembroDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
             "unidades_resumen": [],
             "unidades_total": 0,
         }
+        # ✅ Parentescos inferidos (no se guardan, solo se calculan)
+        context["relaciones_inferidas"] = calcular_parentescos_inferidos(miembro)
 
 
                 # =========================
