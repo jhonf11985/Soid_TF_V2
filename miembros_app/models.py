@@ -949,6 +949,10 @@ class MiembroRelacion(models.Model):
     vive_junto = models.BooleanField(default=False, help_text="Marcar si viven en la misma casa.")
     es_responsable = models.BooleanField(default=False, help_text="Marcar si es responsable principal (económico / tutor).")
     notas = models.TextField(blank=True, help_text="Notas breves sobre la relación familiar (opcional).")
+    es_inferida = models.BooleanField(
+        default=False,
+        help_text="True si fue creada automáticamente por el sistema."
+    )
 
     class Meta:
         verbose_name = "Relación familiar"
@@ -991,7 +995,9 @@ class MiembroRelacion(models.Model):
 
             # Descendientes
             "nieto": ("Nieto", "Nieta"),
-            "bisnieto": ("Bisnieto", "Bisnieta"),  # ← NUEVO
+            "bisabuelo": ("Bisabuelo", "Bisabuela"),
+            "bisnieto": ("Bisnieto", "Bisnieta"),
+            "consuegro": ("Consuegro", "Consuegra"),
 
             # Colaterales
             "tio": ("Tío", "Tía"),

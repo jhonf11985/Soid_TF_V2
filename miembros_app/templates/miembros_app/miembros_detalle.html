@@ -652,21 +652,182 @@
             </div>
         </div>
 
-        <!-- TAB: Familia -->
+  <!-- TAB: Familia -->
 <!-- TAB: Familia -->
 <div class="odoo-tab-content" id="tab-familia">
 
-    <!-- ============================
-     🌳 FAMILIA INTELIGENTE (SOID)
-     ============================ -->
+    <!-- ════════════════════════════════════════════════════════════════════
+         👨‍👩‍👧‍👦 MI FAMILIA NUCLEAR (Cónyuge + Hijos)
+         ════════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-detail-section" style="margin-bottom:24px;">
+        <div class="odoo-section-header">
+            <span class="material-icons">favorite</span>
+            <span>Mi familia</span>
+        </div>
 
-<div class="odoo-detail-section" style="margin-bottom:20px;">
-    <div class="odoo-section-header">
-        <span class="material-icons">home</span>
-        <span>Mi hogar</span>
+        {% if familia_nuclear %}
+            <div class="familia-cards-grid">
+                {% for rel in familia_nuclear %}
+                <div class="familia-card familia-card--nuclear">
+                    <div class="familia-card__avatar">
+                        {% if rel.otro.foto %}
+                            <img src="{{ rel.otro.foto.url }}" alt="{{ rel.otro.nombres }}">
+                        {% else %}
+                            <span class="material-icons">person</span>
+                        {% endif %}
+                    </div>
+                    <div class="familia-card__info">
+                        <a href="{% url 'miembros_app:detalle' rel.otro.pk %}" class="familia-card__nombre">
+                            {{ rel.otro.nombres }} {{ rel.otro.apellidos }}
+                        </a>
+                        <span class="familia-card__relacion">
+                            {{ rel.tipo_label }}
+                            {% if rel.es_inferida %}
+                                <span class="badge-inferido" title="{{ rel.notas }}">●</span>
+                            {% endif %}
+                        </span>
+                        {% if rel.vive_junto %}
+                            <span class="familia-card__tag">
+                                <span class="material-icons" style="font-size:12px;">home</span>
+                                Vive junto
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="odoo-empty-subtle">No hay cónyuge ni hijos registrados.</p>
+        {% endif %}
     </div>
 
+    <!-- ════════════════════════════════════════════════════════════════════
+         👨‍👩‍👦 MIS PADRES Y HERMANOS
+         ════════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-detail-section" style="margin-bottom:24px;">
+        <div class="odoo-section-header">
+            <span class="material-icons">family_restroom</span>
+            <span>Padres y hermanos</span>
+        </div>
+
+        {% if familia_origen %}
+            <div class="familia-cards-grid">
+                {% for rel in familia_origen %}
+                <div class="familia-card familia-card--origen">
+                    <div class="familia-card__avatar">
+                        {% if rel.otro.foto %}
+                            <img src="{{ rel.otro.foto.url }}" alt="{{ rel.otro.nombres }}">
+                        {% else %}
+                            <span class="material-icons">person</span>
+                        {% endif %}
+                    </div>
+                    <div class="familia-card__info">
+                        <a href="{% url 'miembros_app:detalle' rel.otro.pk %}" class="familia-card__nombre">
+                            {{ rel.otro.nombres }} {{ rel.otro.apellidos }}
+                        </a>
+                        <span class="familia-card__relacion">
+                            {{ rel.tipo_label }}
+                            {% if rel.es_inferida %}
+                                <span class="badge-inferido" title="{{ rel.notas }}">●</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="odoo-empty-subtle">No hay padres ni hermanos registrados.</p>
+        {% endif %}
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         🌳 FAMILIA EXTENDIDA (Abuelos, Tíos, Primos, Sobrinos, Nietos)
+         ════════════════════════════════════════════════════════════════════ -->
+    {% if familia_extendida %}
+    <div class="odoo-detail-section" style="margin-bottom:24px;">
+        <div class="odoo-section-header">
+            <span class="material-icons">account_tree</span>
+            <span>Familia extendida</span>
+        </div>
+
+        <div class="familia-lista">
+            {% for rel in familia_extendida %}
+            <div class="familia-lista__item">
+                <div class="familia-lista__avatar">
+                    {% if rel.otro.foto %}
+                        <img src="{{ rel.otro.foto.url }}" alt="{{ rel.otro.nombres }}">
+                    {% else %}
+                        <span class="material-icons">person</span>
+                    {% endif %}
+                </div>
+                <div class="familia-lista__info">
+                    <a href="{% url 'miembros_app:detalle' rel.otro.pk %}">
+                        {{ rel.otro.nombres }} {{ rel.otro.apellidos }}
+                    </a>
+                </div>
+                <div class="familia-lista__relacion">
+                    <span class="odoo-badge odoo-badge-neutral">
+                        {{ rel.tipo_label }}
+                    </span>
+                    {% if rel.es_inferida %}
+                        <span class="odoo-badge odoo-badge-info" title="{{ rel.notas }}">Inferido</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         💍 FAMILIA POLÍTICA (Suegros, Cuñados, Yernos, Consuegros)
+         ════════════════════════════════════════════════════════════════════ -->
+    {% if familia_politica %}
+    <div class="odoo-detail-section" style="margin-bottom:24px;">
+        <div class="odoo-section-header">
+            <span class="material-icons">groups</span>
+            <span>Familia política</span>
+        </div>
+
+        <div class="familia-lista">
+            {% for rel in familia_politica %}
+            <div class="familia-lista__item">
+                <div class="familia-lista__avatar">
+                    {% if rel.otro.foto %}
+                        <img src="{{ rel.otro.foto.url }}" alt="{{ rel.otro.nombres }}">
+                    {% else %}
+                        <span class="material-icons">person</span>
+                    {% endif %}
+                </div>
+                <div class="familia-lista__info">
+                    <a href="{% url 'miembros_app:detalle' rel.otro.pk %}">
+                        {{ rel.otro.nombres }} {{ rel.otro.apellidos }}
+                    </a>
+                </div>
+                <div class="familia-lista__relacion">
+                    <span class="odoo-badge odoo-badge-neutral">
+                        {{ rel.tipo_label }}
+                    </span>
+                    {% if rel.es_inferida %}
+                        <span class="odoo-badge odoo-badge-info" title="{{ rel.notas }}">Inferido</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         🏠 MI HOGAR (Sistema de hogares)
+         ════════════════════════════════════════════════════════════════════ -->
     {% if hogar_principal %}
+    <div class="odoo-detail-section" style="margin-bottom:24px;">
+        <div class="odoo-section-header">
+            <span class="material-icons">home</span>
+            <span>Mi hogar</span>
+        </div>
+
         <div style="margin-bottom:8px;">
             <strong>{{ hogar_principal.nombre }}</strong>
         </div>
@@ -682,21 +843,19 @@
                 </li>
             {% endfor %}
         </ul>
-    {% else %}
-        <div style="opacity:.7;">
-            Este miembro aún no tiene un hogar definido.
-        </div>
-    {% endif %}
-</div>
-
-
-<div class="odoo-detail-section">
-    <div class="odoo-section-header">
-        <span class="material-icons">account_tree</span>
-        <span>Familia extendida</span>
     </div>
+    {% endif %}
 
+    <!-- ════════════════════════════════════════════════════════════════════
+         🌲 CLAN FAMILIAR
+         ════════════════════════════════════════════════════════════════════ -->
     {% if clan_familiar %}
+    <div class="odoo-detail-section">
+        <div class="odoo-section-header">
+            <span class="material-icons">diversity_3</span>
+            <span>Clan familiar</span>
+        </div>
+
         <div style="margin-bottom:8px;">
             <strong>{{ clan_familiar.nombre }}</strong>
         </div>
@@ -717,107 +876,248 @@
                 </ul>
             </div>
         {% endfor %}
-    {% else %}
-        <div style="opacity:.7;">
-            Este miembro aún no pertenece a un clan familiar.
+    </div>
+    {% endif %}
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         📝 MENSAJE SI NO HAY NADA
+         ════════════════════════════════════════════════════════════════════ -->
+    {% if not familia_nuclear and not familia_origen and not familia_extendida and not familia_politica %}
+        <div class="odoo-empty-state">
+            <span class="material-icons" style="font-size:48px; opacity:0.3;">family_restroom</span>
+            <p>No hay familiares registrados para este miembro.</p>
+            <a href="{% url 'miembros_app:editar' miembro.pk %}" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons">edit</span>
+                Agregar familiares
+            </a>
         </div>
     {% endif %}
+
 </div>
 
-    {% if relaciones_familia %}
-    <div class="odoo-table-container">
-        <table class="odoo-table">
-            <thead>
-                <tr>
-                    <th>Familiar</th>
-                    <th>Relación</th>
-                    <th>Vive junto</th>
-                    <th>Responsable</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for rel in relaciones_familia %}
-                <tr>
-                    <td>
-                        <a href="{% url 'miembros_app:detalle' rel.otro.pk %}">
-                            {{ rel.otro.nombres }} {{ rel.otro.apellidos }}
-                        </a>
-                        {% if rel.notas %}
-                            <div style="font-size:12px;color:#6c757d;margin-top:4px;">
-                                {{ rel.notas }}
-                            </div>
-                        {% endif %}
-                    </td>
+<!-- ════════════════════════════════════════════════════════════════════════════
+     ESTILOS PARA LA SECCIÓN DE FAMILIA
+     ════════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* Grid de tarjetas de familia */
+.familia-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
 
-                    <td>
-                        <span class="odoo-badge odoo-badge-neutral">
-                            {{ rel.tipo_label }}
-                        </span>
-                    </td>
+/* Tarjeta de familiar */
+.familia-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
 
-                    <td>
-                        {% if rel.vive_junto %}
-                            <span class="odoo-badge odoo-badge-success">Sí</span>
-                        {% else %}
-                            <span class="odoo-badge odoo-badge-neutral">No</span>
-                        {% endif %}
-                    </td>
+.familia-card:hover {
+    background: #fff;
+    border-color: #dee2e6;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
 
-                    <td>
-                        {% if rel.es_responsable %}
-                            <span class="odoo-badge odoo-badge-info">Sí</span>
-                        {% else %}
-                            <span class="odoo-badge odoo-badge-neutral">No</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <p class="odoo-empty">No hay familiares registrados para este miembro.</p>
-    {% endif %}
-{% if relaciones_inferidas %}
-  <div style="margin-top:16px;">
-    <div style="font-weight:600; margin-bottom:8px;">
-      🧠 Parentescos inferidos por el sistema
-      <span style="opacity:.6; font-weight:400;">(no están guardados, se calculan)</span>
-    </div>
+/* Variantes de color */
+.familia-card--nuclear {
+    background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+    border-color: #fed7d7;
+}
 
-    <div class="odoo-table-container">
-      <table class="odoo-table">
-        <thead>
-          <tr>
-            <th>Familiar</th>
-            <th>Relación</th>
-            <th>Tipo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for rel in relaciones_inferidas %}
-            <tr>
-              <td>
-                <a href="{% url 'miembros_app:detalle' rel.otro.pk %}">
-                  {{ rel.otro.nombres }} {{ rel.otro.apellidos }}
-                </a>
-              </td>
-              <td>
-                <span class="odoo-badge odoo-badge-neutral">
-                  {{ rel.tipo_label }}
-                </span>
-              </td>
-              <td>
-                <span class="odoo-badge odoo-badge-info">Inferido</span>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-{% endif %}
+.familia-card--nuclear:hover {
+    border-color: #feb2b2;
+}
 
+.familia-card--origen {
+    background: linear-gradient(135deg, #f0fff4 0%, #fff 100%);
+    border-color: #c6f6d5;
+}
+
+.familia-card--origen:hover {
+    border-color: #9ae6b4;
+}
+
+/* Avatar */
+.familia-card__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.familia-card__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.familia-card__avatar .material-icons {
+    font-size: 24px;
+    color: #adb5bd;
+}
+
+/* Info */
+.familia-card__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.familia-card__nombre {
+    font-weight: 600;
+    color: #212529;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.familia-card__nombre:hover {
+    color: #495057;
+    text-decoration: underline;
+}
+
+.familia-card__relacion {
+    font-size: 13px;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.familia-card__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    color: #28a745;
+    background: #d4edda;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+/* Badge de inferido */
+.badge-inferido {
+    color: #17a2b8;
+    font-size: 10px;
+    cursor: help;
+}
+
+/* Lista de familia (para extendida y política) */
+.familia-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.familia-lista__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.familia-lista__item:hover {
+    background: #fff;
+    border-color: #dee2e6;
+}
+
+.familia-lista__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.familia-lista__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.familia-lista__avatar .material-icons {
+    font-size: 18px;
+    color: #adb5bd;
+}
+
+.familia-lista__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.familia-lista__info a {
+    color: #212529;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.familia-lista__info a:hover {
+    text-decoration: underline;
+}
+
+.familia-lista__relacion {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* Empty state */
+.odoo-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.odoo-empty-state p {
+    margin: 16px 0;
+}
+
+.odoo-empty-subtle {
+    color: #adb5bd;
+    font-size: 14px;
+    margin: 0;
+    padding: 12px 0;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    .familia-cards-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .familia-lista__item {
+        flex-wrap: wrap;
+    }
+    
+    .familia-lista__relacion {
+        width: 100%;
+        margin-top: 8px;
+        padding-left: 48px;
+    }
+}
+</style>
 
 </div>
 

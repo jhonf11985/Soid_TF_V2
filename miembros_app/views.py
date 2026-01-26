@@ -1,4 +1,3 @@
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.db.models import Q, Count
@@ -1702,42 +1701,13 @@ class MiembroDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         )
 
         # =========================
-        # FAMILIA (normalizado + etiqueta bonita)
+        # FAMILIA (organizada en 4 categorías)
         # =========================
-        relaciones_qs = (
-            MiembroRelacion.objects
-            .filter(Q(miembro=miembro) | Q(familiar=miembro))
-            .select_related("miembro", "familiar")
-        )
-
-        relaciones_familia = []
-        pares_vistos = set()  # ✅ evita duplicados por fila inversa
-
-        for rel in relaciones_qs:
-            if rel.miembro_id == miembro.id:
-                otro = rel.familiar
-                tipo_para_mi = rel.tipo_relacion
-            else:
-                otro = rel.miembro
-                tipo_para_mi = MiembroRelacion.inverse_tipo(
-                    rel.tipo_relacion,
-                    genero_persona_invertida=otro.genero
-                )
-
-            par = frozenset({miembro.id, otro.id})
-            if par in pares_vistos:
-                continue
-            pares_vistos.add(par)
-
-            relaciones_familia.append({
-                "id": rel.id,
-                "otro": otro,
-                "tipo": tipo_para_mi,
-                "tipo_label": MiembroRelacion.label_por_genero(tipo_para_mi, otro.genero),
-                "vive_junto": rel.vive_junto,
-                "es_responsable": rel.es_responsable,
-                "notas": rel.notas,
-            })
+        relaciones_organizadas = obtener_relaciones_organizadas(miembro)
+        familia_nuclear = relaciones_organizadas["familia_nuclear"]
+        familia_origen = relaciones_organizadas["familia_origen"]
+        familia_extendida = relaciones_organizadas["familia_extendida"]
+        familia_politica = relaciones_organizadas["familia_politica"]
 
         edad_minima = get_edad_minima_miembro_oficial()
 
@@ -1746,7 +1716,12 @@ class MiembroDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         # =========================
         context = {
             "miembro": miembro,
-            "relaciones_familia": relaciones_familia,
+            # Familia organizada en 4 categorías
+            "familia_nuclear": familia_nuclear,
+            "familia_origen": familia_origen,
+            "familia_extendida": familia_extendida,
+            "familia_politica": familia_politica,
+            # Resto del contexto
             "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
             "movimientos_financieros": movimientos_financieros,
             "total_aportes": total_aportes,
@@ -1754,8 +1729,6 @@ class MiembroDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
             "unidades_resumen": [],
             "unidades_total": 0,
         }
-        # ✅ Parentescos inferidos (no se guardan, solo se calculan)
-        context["relaciones_inferidas"] = calcular_parentescos_inferidos(miembro)
 
 
                 # =========================
@@ -4439,3 +4412,209 @@ def padre_espiritual_remove_simple(request, miembro_id, padre_id):
             reverse("miembros_app:nuevo_creyente_detalle", kwargs={"pk": miembro.pk})
         )
     )
+
+"""
+═══════════════════════════════════════════════════════════════════════════════
+CÓDIGO PARA LA VISTA - Organizar relaciones familiares por categoría
+═══════════════════════════════════════════════════════════════════════════════
+
+Agregar este código en la vista de detalle del miembro (miembro_detalle_view).
+
+Reemplaza la lógica actual que pasa 'relaciones_familia' y 'relaciones_inferidas'
+al contexto por esta nueva lógica que organiza todo en 4 categorías.
+═══════════════════════════════════════════════════════════════════════════════
+"""
+
+def obtener_relaciones_organizadas(miembro):
+    """
+    Obtiene todas las relaciones del miembro organizadas en 4 categorías:
+    - familia_nuclear: cónyuge e hijos
+    - familia_origen: padres y hermanos
+    - familia_extendida: abuelos, nietos, tíos, sobrinos, primos, bisabuelos, bisnietos
+    - familia_politica: suegros, cuñados, yernos/nueras, consuegros
+    
+    Retorna un dict con las 4 listas.
+    """
+    from django.db.models import Q
+    from miembros_app.models import MiembroRelacion
+    
+    mi_id = miembro.id
+    
+    # Obtener TODAS las relaciones donde aparece este miembro
+    relaciones_qs = (
+        MiembroRelacion.objects
+        .filter(Q(miembro_id=mi_id) | Q(familiar_id=mi_id))
+        .select_related("miembro", "familiar")
+    )
+    
+    # Normalizar relaciones
+    todas_relaciones = []
+    
+    for rel in relaciones_qs:
+        if rel.miembro_id == mi_id:
+            otro = rel.familiar
+            tipo = rel.tipo_relacion
+        else:
+            otro = rel.miembro
+            tipo = MiembroRelacion.inverse_tipo(rel.tipo_relacion, rel.miembro.genero)
+        
+        todas_relaciones.append({
+            "otro": otro,
+            "tipo": tipo,
+            "tipo_label": MiembroRelacion.label_por_genero(tipo, otro.genero),
+            "vive_junto": rel.vive_junto,
+            "es_responsable": rel.es_responsable,
+            "es_inferida": getattr(rel, 'es_inferida', False),  # Compatible si no existe el campo
+            "notas": rel.notas,
+        })
+    
+    # Clasificar en categorías
+    TIPOS_NUCLEAR = {"conyuge", "hijo"}
+    TIPOS_ORIGEN = {"padre", "madre", "hermano"}
+    TIPOS_EXTENDIDA = {"abuelo", "nieto", "tio", "sobrino", "primo", "bisabuelo", "bisnieto"}
+    TIPOS_POLITICA = {"suegro", "cunado", "yerno", "consuegro"}
+    
+    familia_nuclear = []
+    familia_origen = []
+    familia_extendida = []
+    familia_politica = []
+    
+    # Set para evitar duplicados
+    ids_agregados = set()
+    
+    for rel in todas_relaciones:
+        otro_id = rel["otro"].id
+        
+        # Evitar duplicados
+        if otro_id in ids_agregados:
+            continue
+        ids_agregados.add(otro_id)
+        
+        tipo = rel["tipo"]
+        
+        if tipo in TIPOS_NUCLEAR:
+            familia_nuclear.append(rel)
+        elif tipo in TIPOS_ORIGEN:
+            familia_origen.append(rel)
+        elif tipo in TIPOS_EXTENDIDA:
+            familia_extendida.append(rel)
+        elif tipo in TIPOS_POLITICA:
+            familia_politica.append(rel)
+    
+    # Ordenar cada categoría
+    def orden_tipo(rel):
+        """Ordena por tipo de relación para que se vean agrupados."""
+        orden = {
+            # Nuclear
+            "conyuge": 0,
+            "hijo": 1,
+            # Origen
+            "padre": 0,
+            "madre": 1,
+            "hermano": 2,
+            # Extendida
+            "abuelo": 0,
+            "bisabuelo": 1,
+            "tio": 2,
+            "primo": 3,
+            "sobrino": 4,
+            "nieto": 5,
+            "bisnieto": 6,
+            # Política
+            "suegro": 0,
+            "cunado": 1,
+            "yerno": 2,
+            "consuegro": 3,
+        }
+        return orden.get(rel["tipo"], 99)
+    
+    familia_nuclear.sort(key=orden_tipo)
+    familia_origen.sort(key=orden_tipo)
+    familia_extendida.sort(key=orden_tipo)
+    familia_politica.sort(key=orden_tipo)
+    
+    return {
+        "familia_nuclear": familia_nuclear,
+        "familia_origen": familia_origen,
+        "familia_extendida": familia_extendida,
+        "familia_politica": familia_politica,
+    }
+
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VERSIÓN SIMPLIFICADA (si prefieres menos cambios)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def obtener_relaciones_organizadas_simple(miembro):
+    """
+    Versión que retorna las mismas variables pero desempaquetadas,
+    listas para agregar directamente al contexto con **.
+    """
+    from django.db.models import Q
+    from miembros_app.models import MiembroRelacion
+    
+    mi_id = miembro.id
+    
+    relaciones_qs = (
+        MiembroRelacion.objects
+        .filter(Q(miembro_id=mi_id) | Q(familiar_id=mi_id))
+        .select_related("miembro", "familiar")
+    )
+    
+    TIPOS_NUCLEAR = {"conyuge", "hijo"}
+    TIPOS_ORIGEN = {"padre", "madre", "hermano"}
+    TIPOS_EXTENDIDA = {"abuelo", "nieto", "tio", "sobrino", "primo", "bisabuelo", "bisnieto"}
+    TIPOS_POLITICA = {"suegro", "cunado", "yerno", "consuegro"}
+    
+    familia_nuclear = []
+    familia_origen = []
+    familia_extendida = []
+    familia_politica = []
+    
+    ids_agregados = set()
+    
+    for rel in relaciones_qs:
+        if rel.miembro_id == mi_id:
+            otro = rel.familiar
+            tipo = rel.tipo_relacion
+        else:
+            otro = rel.miembro
+            tipo = MiembroRelacion.inverse_tipo(rel.tipo_relacion, rel.miembro.genero)
+        
+        if otro.id in ids_agregados:
+            continue
+        ids_agregados.add(otro.id)
+        
+        dato = {
+            "otro": otro,
+            "tipo": tipo,
+            "tipo_label": MiembroRelacion.label_por_genero(tipo, otro.genero),
+            "vive_junto": rel.vive_junto,
+            "es_responsable": rel.es_responsable,
+            "es_inferida": rel.es_inferida,
+            "notas": rel.notas,
+        }
+        
+        if tipo in TIPOS_NUCLEAR:
+            familia_nuclear.append(dato)
+        elif tipo in TIPOS_ORIGEN:
+            familia_origen.append(dato)
+        elif tipo in TIPOS_EXTENDIDA:
+            familia_extendida.append(dato)
+        elif tipo in TIPOS_POLITICA:
+            familia_politica.append(dato)
+    
+    # Ordenar
+    orden = {
+        "conyuge": 0, "hijo": 1,
+        "padre": 0, "madre": 1, "hermano": 2,
+        "abuelo": 0, "bisabuelo": 1, "tio": 2, "primo": 3, "sobrino": 4, "nieto": 5, "bisnieto": 6,
+        "suegro": 0, "cunado": 1, "yerno": 2, "consuegro": 3,
+    }
+    
+    for lista in (familia_nuclear, familia_origen, familia_extendida, familia_politica):
+        lista.sort(key=lambda r: orden.get(r["tipo"], 99))
+    
+    return familia_nuclear, familia_origen, familia_extendida, familia_politica
