@@ -12,7 +12,7 @@ Miembros / Reportes / Familias
     <div>
         <h1 class="page-title">Familias de la Iglesia</h1>
         <p class="page-subtitle">
-            Núcleos familiares registrados entre los miembros
+            Análisis completo de relaciones familiares entre los miembros
         </p>
     </div>
     <div class="page-header-actions">
@@ -46,61 +46,104 @@ Miembros / Reportes / Familias
     </div>
 
     {# ═══════════════════════════════════════════════════════════════════════════ #}
-    {# RESUMEN                                                                      #}
+    {# RESUMEN ESTADÍSTICO COMPLETO                                                 #}
     {# ═══════════════════════════════════════════════════════════════════════════ #}
-    <div class="stats-row no-print">
-        <div class="stat-card">
+    <div class="stats-grid no-print">
+        <div class="stat-card stat-primary">
             <div class="stat-icon" style="background: #dbeafe;">
-                <span class="material-icons" style="color: #2563eb;">family_restroom</span>
+                <span class="material-icons" style="color: #2563eb;">account_tree</span>
             </div>
             <div class="stat-content">
-                <span class="stat-value">{{ total_familias }}</span>
-                <span class="stat-label">Familias</span>
+                <span class="stat-value">{{ total_familias_extendidas }}</span>
+                <span class="stat-label">Familias Extendidas</span>
             </div>
         </div>
 
         <div class="stat-card">
             <div class="stat-icon" style="background: #dcfce7;">
-                <span class="material-icons" style="color: #16a34a;">groups</span>
+                <span class="material-icons" style="color: #16a34a;">family_restroom</span>
             </div>
             <div class="stat-content">
-                <span class="stat-value">{{ total_personas }}</span>
-                <span class="stat-label">Personas en familias</span>
+                <span class="stat-value">{{ total_familias_nucleares }}</span>
+                <span class="stat-label">Familias Nucleares</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fce7f3;">
+                <span class="material-icons" style="color: #db2777;">favorite</span>
+            </div>
+            <div class="stat-content">
+                <span class="stat-value">{{ total_parejas }}</span>
+                <span class="stat-label">Parejas/Matrimonios</span>
             </div>
         </div>
 
         <div class="stat-card">
             <div class="stat-icon" style="background: #fef3c7;">
-                <span class="material-icons" style="color: #d97706;">favorite</span>
+                <span class="material-icons" style="color: #d97706;">groups</span>
             </div>
             <div class="stat-content">
-                <span class="stat-value">{{ total_matrimonios }}</span>
-                <span class="stat-label">Matrimonios</span>
+                <span class="stat-value">{{ total_personas_en_familias }}</span>
+                <span class="stat-label">Personas en familias</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e0e7ff;">
+                <span class="material-icons" style="color: #6366f1;">child_care</span>
+            </div>
+            <div class="stat-content">
+                <span class="stat-value">{{ total_hijos }}</span>
+                <span class="stat-label">Hijos registrados</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #f3e8ff;">
+                <span class="material-icons" style="color: #9333ea;">elderly</span>
+            </div>
+            <div class="stat-content">
+                <span class="stat-value">{{ total_abuelos }}</span>
+                <span class="stat-label">Abuelos/Bisabuelos</span>
             </div>
         </div>
     </div>
 
     {# ═══════════════════════════════════════════════════════════════════════════ #}
-    {# FILTRO DE BÚSQUEDA                                                           #}
+    {# FILTROS Y BÚSQUEDA                                                           #}
     {# ═══════════════════════════════════════════════════════════════════════════ #}
     <form method="get" class="filter-panel no-print">
         <div class="filter-row">
-            <div class="filter-field" style="flex: 1;">
+            <div class="filter-field" style="flex: 2;">
                 <label for="id_q">
                     <span class="material-icons">search</span>
-                    Buscar familia
+                    Buscar
                 </label>
                 <input type="text" id="id_q" name="q" 
                        placeholder="Apellido o nombre de cualquier miembro..." 
                        value="{{ query }}">
             </div>
 
+            <div class="filter-field">
+                <label for="id_tipo">
+                    <span class="material-icons">filter_list</span>
+                    Tipo de familia
+                </label>
+                <select id="id_tipo" name="tipo">
+                    <option value="">Todas</option>
+                    <option value="extendida" {% if tipo_filtro == 'extendida' %}selected{% endif %}>Solo Extendidas</option>
+                    <option value="nuclear" {% if tipo_filtro == 'nuclear' %}selected{% endif %}>Solo Nucleares</option>
+                    <option value="pareja" {% if tipo_filtro == 'pareja' %}selected{% endif %}>Solo Parejas</option>
+                </select>
+            </div>
+
             <div class="filter-actions-inline">
                 <button type="submit" class="btn-primary">
                     <span class="material-icons">search</span>
-                    Buscar
+                    Filtrar
                 </button>
-                {% if query %}
+                {% if query or tipo_filtro %}
                 <a href="{% url 'miembros_app:reporte_relaciones_familiares' %}" class="btn-secondary">
                     <span class="material-icons">clear</span>
                     Limpiar
@@ -109,77 +152,332 @@ Miembros / Reportes / Familias
             </div>
         </div>
         
-        {% if query %}
+        {% if query or tipo_filtro %}
         <div class="filter-result-info">
-            Se encontraron <strong>{{ total_familias }}</strong> familia{{ total_familias|pluralize:"s" }} 
-            con "{{ query }}"
+            Mostrando <strong>{{ total_resultados }}</strong> resultado{{ total_resultados|pluralize:"s" }}
+            {% if query %}con "{{ query }}"{% endif %}
+            {% if tipo_filtro %}(tipo: {{ tipo_filtro }}){% endif %}
         </div>
         {% endif %}
     </form>
 
     {# ═══════════════════════════════════════════════════════════════════════════ #}
-    {# LISTADO DE FAMILIAS                                                          #}
+    {# NAVEGACIÓN POR SECCIONES (Tabs)                                              #}
     {# ═══════════════════════════════════════════════════════════════════════════ #}
-    {% if familias %}
-    <div class="familias-grid">
-        {% for familia in familias %}
-        <div class="familia-card">
-            {# Cabecera #}
-            <div class="familia-header">
-                <div class="familia-titulo">
-                    <span class="familia-numero">{{ forloop.counter }}</span>
-                    <h3>Familia {{ familia.apellido }}</h3>
-                </div>
-                <span class="familia-count">{{ familia.miembros|length }}</span>
-            </div>
-
-            {# Miembros #}
-            <div class="familia-miembros">
-                {% for persona in familia.miembros %}
-                <div class="familia-persona {% if persona.es_cabeza %}es-cabeza{% endif %}">
-                    <div class="persona-avatar {% if persona.genero == 'masculino' %}avatar-m{% elif persona.genero == 'femenino' %}avatar-f{% else %}avatar-u{% endif %}">
-                        <span class="material-icons">person</span>
-                    </div>
-                    <div class="persona-info">
-                        <span class="persona-nombre">
-                            {{ persona.nombre_completo }}
-                            {% if persona.es_cabeza %}
-                                <span class="badge-cabeza" title="Cabeza de familia">★</span>
-                            {% endif %}
-                        </span>
-                        <span class="persona-detalle">
-                            {{ persona.rol }}
-                            {% if persona.edad %} · {{ persona.edad }} años{% endif %}
-                        </span>
-                    </div>
-                    <a href="{% url 'miembros_app:detalle' persona.id %}" 
-                       class="btn-ver no-print" 
-                       title="Ver ficha de {{ persona.nombre_completo }}">
-                        <span class="material-icons">chevron_right</span>
-                    </a>
-                </div>
-                {% endfor %}
-            </div>
-
-            {# Pie con contacto #}
-            {% if familia.telefono %}
-            <div class="familia-footer">
-                <span class="material-icons">phone</span>
-                {{ familia.telefono }}
-            </div>
-            {% endif %}
-        </div>
-        {% endfor %}
+    <div class="section-tabs no-print">
+        <button class="tab-btn active" data-section="todas">
+            <span class="material-icons">view_list</span>
+            Todas
+            <span class="tab-count">{{ total_resultados }}</span>
+        </button>
+        <button class="tab-btn" data-section="extendidas">
+            <span class="material-icons">account_tree</span>
+            Extendidas
+            <span class="tab-count">{{ familias_extendidas|length }}</span>
+        </button>
+        <button class="tab-btn" data-section="nucleares">
+            <span class="material-icons">family_restroom</span>
+            Nucleares
+            <span class="tab-count">{{ familias_nucleares|length }}</span>
+        </button>
+        <button class="tab-btn" data-section="parejas">
+            <span class="material-icons">favorite</span>
+            Parejas
+            <span class="tab-count">{{ parejas|length }}</span>
+        </button>
     </div>
 
-    {% else %}
-    {# Estado vacío #}
+    {# ═══════════════════════════════════════════════════════════════════════════ #}
+    {# SECCIÓN: FAMILIAS EXTENDIDAS                                                 #}
+    {# ═══════════════════════════════════════════════════════════════════════════ #}
+    {% if familias_extendidas %}
+    <div class="familia-section" data-section="extendidas">
+        <div class="section-header">
+            <div class="section-title">
+                <span class="material-icons">account_tree</span>
+                <h2>Familias Extendidas</h2>
+            </div>
+            <span class="section-count">{{ familias_extendidas|length }} familia{{ familias_extendidas|length|pluralize:"s" }}</span>
+        </div>
+        <p class="section-description">
+            Grupos familiares completos que incluyen múltiples generaciones (abuelos, padres, hijos, nietos, etc.)
+        </p>
+
+        <div class="familias-grid">
+            {% for familia in familias_extendidas %}
+            <div class="familia-card familia-extendida">
+                <div class="familia-header">
+                    <div class="familia-titulo">
+                        <span class="familia-numero">{{ forloop.counter }}</span>
+                        <div>
+                            <h3>Familia {{ familia.apellido }}</h3>
+                            <span class="familia-tipo-badge extendida">
+                                <span class="material-icons">account_tree</span>
+                                {{ familia.generaciones }} generaciones
+                            </span>
+                        </div>
+                    </div>
+                    <span class="familia-count">{{ familia.miembros|length }} miembros</span>
+                </div>
+
+                {# Miembros agrupados por generación #}
+                <div class="familia-miembros">
+                    {% regroup familia.miembros by generacion as miembros_por_gen %}
+                    {% for gen in miembros_por_gen %}
+                    <div class="generacion-grupo">
+                        <div class="generacion-label">
+                            {% if gen.grouper == 1 %}
+                                <span class="material-icons">elderly</span> Abuelos/Bisabuelos
+                            {% elif gen.grouper == 2 %}
+                                <span class="material-icons">person</span> Padres/Tíos
+                            {% elif gen.grouper == 3 %}
+                                <span class="material-icons">face</span> Hijos/Primos
+                            {% elif gen.grouper == 4 %}
+                                <span class="material-icons">child_care</span> Nietos
+                            {% else %}
+                                <span class="material-icons">group</span> Familia
+                            {% endif %}
+                        </div>
+                        {% for persona in gen.list %}
+                        <div class="familia-persona {% if persona.es_cabeza %}es-cabeza{% endif %}">
+                            <div class="persona-avatar {% if persona.genero == 'masculino' %}avatar-m{% elif persona.genero == 'femenino' %}avatar-f{% else %}avatar-u{% endif %}">
+                                <span class="material-icons">person</span>
+                            </div>
+                            <div class="persona-info">
+                                <span class="persona-nombre">
+                                    {{ persona.nombre_completo }}
+                                    {% if persona.es_cabeza %}
+                                        <span class="badge-cabeza" title="Cabeza de familia">★</span>
+                                    {% endif %}
+                                </span>
+                                <span class="persona-detalle">
+                                    {{ persona.rol }}
+                                    {% if persona.edad %} · {{ persona.edad }} años{% endif %}
+                                    {% if persona.relaciones_desc %}
+                                        <span class="relacion-extra">{{ persona.relaciones_desc }}</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <a href="{% url 'miembros_app:detalle' persona.id %}" 
+                               class="btn-ver no-print" 
+                               title="Ver ficha">
+                                <span class="material-icons">chevron_right</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if familia.telefono or familia.direccion %}
+                <div class="familia-footer">
+                    {% if familia.telefono %}
+                    <span class="footer-item">
+                        <span class="material-icons">phone</span>
+                        {{ familia.telefono }}
+                    </span>
+                    {% endif %}
+                    {% if familia.direccion %}
+                    <span class="footer-item">
+                        <span class="material-icons">location_on</span>
+                        {{ familia.direccion|truncatewords:6 }}
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# ═══════════════════════════════════════════════════════════════════════════ #}
+    {# SECCIÓN: FAMILIAS NUCLEARES                                                  #}
+    {# ═══════════════════════════════════════════════════════════════════════════ #}
+    {% if familias_nucleares %}
+    <div class="familia-section" data-section="nucleares">
+        <div class="section-header">
+            <div class="section-title">
+                <span class="material-icons">family_restroom</span>
+                <h2>Familias Nucleares</h2>
+            </div>
+            <span class="section-count">{{ familias_nucleares|length }} familia{{ familias_nucleares|length|pluralize:"s" }}</span>
+        </div>
+        <p class="section-description">
+            Parejas con hijos (padre/madre e hijos viviendo juntos)
+        </p>
+
+        <div class="familias-grid">
+            {% for familia in familias_nucleares %}
+            <div class="familia-card familia-nuclear">
+                <div class="familia-header nuclear-header">
+                    <div class="familia-titulo">
+                        <span class="familia-numero">{{ forloop.counter }}</span>
+                        <div>
+                            <h3>Familia {{ familia.apellido }}</h3>
+                            <span class="familia-tipo-badge nuclear">
+                                <span class="material-icons">family_restroom</span>
+                                {% if familia.num_hijos == 1 %}1 hijo{% else %}{{ familia.num_hijos }} hijos{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <span class="familia-count">{{ familia.miembros|length }}</span>
+                </div>
+
+                <div class="familia-miembros">
+                    {# Padres #}
+                    <div class="padres-section">
+                        {% for persona in familia.padres %}
+                        <div class="familia-persona {% if persona.es_cabeza %}es-cabeza{% endif %}">
+                            <div class="persona-avatar {% if persona.genero == 'masculino' %}avatar-m{% elif persona.genero == 'femenino' %}avatar-f{% else %}avatar-u{% endif %}">
+                                <span class="material-icons">person</span>
+                            </div>
+                            <div class="persona-info">
+                                <span class="persona-nombre">
+                                    {{ persona.nombre_completo }}
+                                    {% if persona.es_cabeza %}
+                                        <span class="badge-cabeza">★</span>
+                                    {% endif %}
+                                </span>
+                                <span class="persona-detalle">
+                                    {{ persona.rol }}
+                                    {% if persona.edad %} · {{ persona.edad }} años{% endif %}
+                                </span>
+                            </div>
+                            <a href="{% url 'miembros_app:detalle' persona.id %}" 
+                               class="btn-ver no-print">
+                                <span class="material-icons">chevron_right</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {# Hijos #}
+                    {% if familia.hijos %}
+                    <div class="hijos-divider">
+                        <span class="material-icons">arrow_downward</span>
+                        <span>Hijos</span>
+                    </div>
+                    <div class="hijos-section">
+                        {% for persona in familia.hijos %}
+                        <div class="familia-persona hijo-item">
+                            <div class="persona-avatar {% if persona.genero == 'masculino' %}avatar-m{% elif persona.genero == 'femenino' %}avatar-f{% else %}avatar-u{% endif %}">
+                                <span class="material-icons">{% if persona.edad and persona.edad < 12 %}child_care{% else %}face{% endif %}</span>
+                            </div>
+                            <div class="persona-info">
+                                <span class="persona-nombre">{{ persona.nombre_completo }}</span>
+                                <span class="persona-detalle">
+                                    {{ persona.rol }}
+                                    {% if persona.edad %} · {{ persona.edad }} años{% endif %}
+                                </span>
+                            </div>
+                            <a href="{% url 'miembros_app:detalle' persona.id %}" 
+                               class="btn-ver no-print">
+                                <span class="material-icons">chevron_right</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if familia.telefono %}
+                <div class="familia-footer">
+                    <span class="material-icons">phone</span>
+                    {{ familia.telefono }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# ═══════════════════════════════════════════════════════════════════════════ #}
+    {# SECCIÓN: PAREJAS / MATRIMONIOS                                               #}
+    {# ═══════════════════════════════════════════════════════════════════════════ #}
+    {% if parejas %}
+    <div class="familia-section" data-section="parejas">
+        <div class="section-header">
+            <div class="section-title">
+                <span class="material-icons">favorite</span>
+                <h2>Parejas y Matrimonios</h2>
+            </div>
+            <span class="section-count">{{ parejas|length }} pareja{{ parejas|length|pluralize:"s" }}</span>
+        </div>
+        <p class="section-description">
+            Cónyuges registrados (sin hijos en el sistema o hijos ya independientes)
+        </p>
+
+        <div class="parejas-grid">
+            {% for pareja in parejas %}
+            <div class="pareja-card">
+                <div class="pareja-content">
+                    {# Persona 1 #}
+                    <div class="pareja-persona">
+                        <div class="persona-avatar {% if pareja.persona1.genero == 'masculino' %}avatar-m{% elif pareja.persona1.genero == 'femenino' %}avatar-f{% else %}avatar-u{% endif %}">
+                            <span class="material-icons">person</span>
+                        </div>
+                        <div class="persona-info">
+                            <span class="persona-nombre">{{ pareja.persona1.nombre_completo }}</span>
+                            <span class="persona-detalle">
+                                {% if pareja.persona1.edad %}{{ pareja.persona1.edad }} años{% endif %}
+                            </span>
+                        </div>
+                        <a href="{% url 'miembros_app:detalle' pareja.persona1.id %}" 
+                           class="btn-ver no-print">
+                            <span class="material-icons">open_in_new</span>
+                        </a>
+                    </div>
+
+                    {# Conector corazón #}
+                    <div class="pareja-conector">
+                        <span class="material-icons">favorite</span>
+                        {% if pareja.anios_juntos %}
+                        <span class="anios-juntos">{{ pareja.anios_juntos }} año{{ pareja.anios_juntos|pluralize:"s" }}</span>
+                        {% endif %}
+                    </div>
+
+                    {# Persona 2 #}
+                    <div class="pareja-persona">
+                        <div class="persona-avatar {% if pareja.persona2.genero == 'masculino' %}avatar-m{% elif pareja.persona2.genero == 'femenino' %}avatar-f{% else %}avatar-u{% endif %}">
+                            <span class="material-icons">person</span>
+                        </div>
+                        <div class="persona-info">
+                            <span class="persona-nombre">{{ pareja.persona2.nombre_completo }}</span>
+                            <span class="persona-detalle">
+                                {% if pareja.persona2.edad %}{{ pareja.persona2.edad }} años{% endif %}
+                            </span>
+                        </div>
+                        <a href="{% url 'miembros_app:detalle' pareja.persona2.id %}" 
+                           class="btn-ver no-print">
+                            <span class="material-icons">open_in_new</span>
+                        </a>
+                    </div>
+                </div>
+
+                {% if pareja.telefono %}
+                <div class="pareja-footer">
+                    <span class="material-icons">phone</span>
+                    {{ pareja.telefono }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# ═══════════════════════════════════════════════════════════════════════════ #}
+    {# ESTADO VACÍO                                                                 #}
+    {# ═══════════════════════════════════════════════════════════════════════════ #}
+    {% if not familias_extendidas and not familias_nucleares and not parejas %}
     <div class="empty-state">
         <span class="material-icons">family_restroom</span>
         <h3>No se encontraron familias</h3>
         <p>
-            {% if query %}
-                No hay familias que coincidan con "{{ query }}".
+            {% if query or tipo_filtro %}
+                No hay familias que coincidan con los filtros aplicados.
                 <a href="{% url 'miembros_app:reporte_relaciones_familiares' %}">Ver todas las familias</a>
             {% else %}
                 Aún no hay relaciones familiares registradas entre miembros.<br>
@@ -192,12 +490,12 @@ Miembros / Reportes / Familias
 </section>
 
 <style>
-/* ─────────────────────────────────────────────────────────────────────────────
-   ESTADÍSTICAS
-   ───────────────────────────────────────────────────────────────────────────── */
-.stats-row {
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ESTADÍSTICAS - Grid mejorado
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 16px;
     margin-bottom: 24px;
 }
@@ -205,16 +503,28 @@ Miembros / Reportes / Familias
 .stat-card {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
-    padding: 18px 20px;
+    padding: 16px;
+    transition: all 0.2s;
+}
+
+.stat-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.stat-card.stat-primary {
+    grid-column: span 1;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-color: #bfdbfe;
 }
 
 .stat-icon {
-    width: 52px;
-    height: 52px;
+    width: 48px;
+    height: 48px;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -223,30 +533,34 @@ Miembros / Reportes / Familias
 }
 
 .stat-icon .material-icons {
-    font-size: 26px;
+    font-size: 24px;
 }
 
 .stat-content {
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .stat-value {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 700;
     color: #111827;
     line-height: 1;
 }
 
 .stat-label {
-    font-size: 14px;
+    font-size: 12px;
     color: #6b7280;
     margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════════
    FILTROS
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════════ */
 .filter-panel {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -280,7 +594,8 @@ Miembros / Reportes / Familias
     color: #94a3b8;
 }
 
-.filter-field input {
+.filter-field input,
+.filter-field select {
     width: 100%;
     padding: 12px 16px;
     border: 1px solid #cbd5e1;
@@ -289,7 +604,8 @@ Miembros / Reportes / Familias
     background: #fff;
 }
 
-.filter-field input:focus {
+.filter-field input:focus,
+.filter-field select:focus {
     outline: none;
     border-color: #4f46e5;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
@@ -306,36 +622,152 @@ Miembros / Reportes / Familias
     color: #64748b;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TABS DE NAVEGACIÓN
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.section-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 4px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    overflow-x: auto;
+}
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.tab-btn:hover {
+    color: #334155;
+    background: rgba(255,255,255,0.5);
+}
+
+.tab-btn.active {
+    background: #fff;
+    color: #4f46e5;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.tab-btn .material-icons {
+    font-size: 20px;
+}
+
+.tab-count {
+    font-size: 12px;
+    background: #e2e8f0;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.tab-btn.active .tab-count {
+    background: #e0e7ff;
+    color: #4f46e5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SECCIONES DE FAMILIA
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.familia-section {
+    margin-bottom: 40px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.section-title .material-icons {
+    font-size: 28px;
+    color: #4f46e5;
+}
+
+.section-title h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.section-count {
+    font-size: 14px;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.section-description {
+    font-size: 14px;
+    color: #64748b;
+    margin: 0 0 20px 40px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    GRID DE FAMILIAS
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════════ */
 .familias-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
     gap: 20px;
 }
 
 .familia-card {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: 14px;
+    border-radius: 16px;
     overflow: hidden;
-    transition: box-shadow 0.2s, transform 0.2s;
+    transition: all 0.2s;
 }
 
 .familia-card:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
     transform: translateY(-2px);
 }
 
-/* Cabecera de familia */
+/* Variantes de tarjeta */
+.familia-card.familia-extendida {
+    border-left: 4px solid #2563eb;
+}
+
+.familia-card.familia-nuclear {
+    border-left: 4px solid #16a34a;
+}
+
+/* Header de familia */
 .familia-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    border-bottom: 1px solid #e0f2fe;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.familia-header.nuclear-header {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
 }
 
 .familia-titulo {
@@ -347,7 +779,7 @@ Miembros / Reportes / Familias
 .familia-numero {
     width: 28px;
     height: 28px;
-    background: #2563eb;
+    background: #4f46e5;
     color: #fff;
     border-radius: 8px;
     display: flex;
@@ -355,6 +787,7 @@ Miembros / Reportes / Familias
     justify-content: center;
     font-size: 13px;
     font-weight: 700;
+    flex-shrink: 0;
 }
 
 .familia-titulo h3 {
@@ -364,25 +797,70 @@ Miembros / Reportes / Familias
     margin: 0;
 }
 
+.familia-tipo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-top: 4px;
+}
+
+.familia-tipo-badge .material-icons {
+    font-size: 14px;
+}
+
+.familia-tipo-badge.extendida {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.familia-tipo-badge.nuclear {
+    background: #dcfce7;
+    color: #166534;
+}
+
 .familia-count {
     font-size: 13px;
     color: #64748b;
     background: #fff;
-    padding: 4px 12px;
+    padding: 6px 14px;
     border-radius: 20px;
     font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-/* Lista de miembros */
+/* Miembros de familia */
 .familia-miembros {
     padding: 8px 0;
+}
+
+.generacion-grupo {
+    margin-bottom: 4px;
+}
+
+.generacion-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 20px 4px;
+}
+
+.generacion-label .material-icons {
+    font-size: 16px;
 }
 
 .familia-persona {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 20px;
+    padding: 10px 20px;
     transition: background 0.15s;
 }
 
@@ -395,8 +873,8 @@ Miembros / Reportes / Familias
 }
 
 .persona-avatar {
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -420,7 +898,7 @@ Miembros / Reportes / Familias
 }
 
 .persona-avatar .material-icons {
-    font-size: 22px;
+    font-size: 20px;
 }
 
 .persona-info {
@@ -432,7 +910,7 @@ Miembros / Reportes / Familias
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: #1e293b;
 }
@@ -444,9 +922,14 @@ Miembros / Reportes / Familias
 
 .persona-detalle {
     display: block;
-    font-size: 13px;
+    font-size: 12px;
     color: #64748b;
-    margin-top: 2px;
+    margin-top: 1px;
+}
+
+.relacion-extra {
+    color: #94a3b8;
+    font-style: italic;
 }
 
 .btn-ver {
@@ -466,30 +949,147 @@ Miembros / Reportes / Familias
     color: #4f46e5;
 }
 
-.btn-ver .material-icons {
-    font-size: 22px;
-}
-
-/* Pie de familia */
-.familia-footer {
+/* Sección de hijos */
+.hijos-divider {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 8px 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+}
+
+.hijos-divider .material-icons {
+    font-size: 16px;
+}
+
+.hijos-section .familia-persona {
+    padding-left: 32px;
+}
+
+/* Footer de familia */
+.familia-footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
     padding: 12px 20px;
     background: #f8fafc;
     border-top: 1px solid #e5e7eb;
-    font-size: 14px;
+}
+
+.footer-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
     color: #64748b;
 }
 
-.familia-footer .material-icons {
-    font-size: 18px;
+.footer-item .material-icons {
+    font-size: 16px;
     color: #94a3b8;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════════
+   GRID DE PAREJAS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.parejas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+}
+
+.pareja-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    overflow: hidden;
+    border-left: 4px solid #db2777;
+    transition: all 0.2s;
+}
+
+.pareja-card:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+
+.pareja-content {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    gap: 12px;
+}
+
+.pareja-persona {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+.pareja-persona .persona-info {
+    flex: 1;
+}
+
+.pareja-persona .persona-nombre {
+    font-size: 13px;
+}
+
+.pareja-persona .persona-detalle {
+    font-size: 11px;
+}
+
+.pareja-persona .btn-ver {
+    width: 28px;
+    height: 28px;
+}
+
+.pareja-persona .btn-ver .material-icons {
+    font-size: 18px;
+}
+
+.pareja-conector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+}
+
+.pareja-conector .material-icons {
+    font-size: 24px;
+    color: #f472b6;
+}
+
+.anios-juntos {
+    font-size: 10px;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+.pareja-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #fdf2f8;
+    border-top: 1px solid #fce7f3;
+    font-size: 13px;
+    color: #9d174d;
+}
+
+.pareja-footer .material-icons {
+    font-size: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    ESTADO VACÍO
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════════ */
 .empty-state {
     text-align: center;
     padding: 80px 24px;
@@ -520,16 +1120,16 @@ Miembros / Reportes / Familias
     text-decoration: underline;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════════
    UTILIDADES
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════════ */
 .only-print {
     display: none !important;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════════
    IMPRESIÓN
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════════ */
 @media print {
     .topbar, .main-nav, .sidebar, .footer, .no-print {
         display: none !important;
@@ -584,19 +1184,27 @@ Miembros / Reportes / Familias
         border-top: 1px solid #ddd;
     }
 
-    .familias-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
+    .familia-section {
+        page-break-inside: avoid;
+        margin-bottom: 24px;
     }
 
-    .familia-card {
+    .familias-grid,
+    .parejas-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .familia-card,
+    .pareja-card {
         break-inside: avoid;
         border: 1px solid #ccc;
         box-shadow: none !important;
         transform: none !important;
     }
 
-    .familia-header {
+    .familia-header,
+    .familia-header.nuclear-header {
         background: #f5f5f5 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
@@ -606,6 +1214,10 @@ Miembros / Reportes / Familias
         background: #fffbeb !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+
+    .section-title h2 {
+        font-size: 16px;
     }
 
     .persona-avatar {
@@ -636,13 +1248,27 @@ Miembros / Reportes / Familias
     }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════════
    RESPONSIVE
-   ───────────────────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1200px) {
+    .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
 @media (max-width: 768px) {
-    .stats-row {
-        grid-template-columns: 1fr;
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
         gap: 12px;
+    }
+
+    .stat-card {
+        padding: 14px;
+    }
+
+    .stat-value {
+        font-size: 24px;
     }
 
     .filter-row {
@@ -657,10 +1283,84 @@ Miembros / Reportes / Familias
         flex: 1;
     }
 
-    .familias-grid {
+    .section-tabs {
+        gap: 4px;
+    }
+
+    .tab-btn {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+
+    .tab-btn .material-icons {
+        display: none;
+    }
+
+    .familias-grid,
+    .parejas-grid {
         grid-template-columns: 1fr;
+    }
+
+    .pareja-content {
+        flex-direction: column;
+    }
+
+    .pareja-persona {
+        width: 100%;
+    }
+
+    .pareja-conector {
+        flex-direction: row;
+        padding: 8px 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .section-description {
+        margin-left: 0;
     }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tabs functionality
+    const tabs = document.querySelectorAll('.tab-btn');
+    const sections = document.querySelectorAll('.familia-section');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetSection = this.dataset.section;
+            
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show/hide sections
+            if (targetSection === 'todas') {
+                sections.forEach(s => s.style.display = 'block');
+            } else {
+                sections.forEach(s => {
+                    if (s.dataset.section === targetSection) {
+                        s.style.display = 'block';
+                    } else {
+                        s.style.display = 'none';
+                    }
+                });
+            }
+        });
+    });
+});
+</script>
 
 {% endblock %}
