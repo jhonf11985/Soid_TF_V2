@@ -2202,16 +2202,38 @@ from core.utils_config import get_config
 
 
 
+"""
+═══════════════════════════════════════════════════════════════════════════════
+REPORTE DE RELACIONES FAMILIARES - VERSIÓN 2
+═══════════════════════════════════════════════════════════════════════════════
+
+CAMBIO PRINCIPAL:
+- Las familias nucleares se muestran SIEMPRE por separado
+- Si una familia nuclear es parte de una extendida, aparece en AMBAS secciones
+- Ejemplo: Leonel + Victoria (padres) + Jhon + Esposa + Hijo
+  → En Extendidas: toda la familia junta
+  → En Nucleares: "Familia de Jhon" (Jhon + Esposa + Hijo) por separado
+"""
+
+from django.shortcuts import render
+from django.db.models import Q
+from django.contrib.auth.decorators import login_required, permission_required
+from django.utils import timezone
+from collections import defaultdict
+
+# Ajusta estos imports según tu proyecto:
+# from .models import Miembro, MiembroRelacion
+# from core.utils_config import get_config
+
+
 @login_required
-@require_GET
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def reporte_relaciones_familiares(request):
     """
-    Reporte: Familias de la Iglesia (Versión Mejorada)
+    Reporte: Familias de la Iglesia
     
-    Clasifica las familias en:
-    - Familias Extendidas: 3+ generaciones o 5+ miembros con relaciones diversas
-    - Familias Nucleares: Padres con hijos
+    - Familias Extendidas: Grupos con múltiples núcleos conectados
+    - Familias Nucleares: TODAS las unidades padres+hijos (incluso si son parte de extendida)
     - Parejas: Cónyuges sin hijos registrados
     """
     
@@ -2222,7 +2244,7 @@ def reporte_relaciones_familiares(request):
     # PARÁMETROS DE FILTRO
     # ═══════════════════════════════════════════════════════════════════════════
     query = request.GET.get("q", "").strip()
-    tipo_filtro = request.GET.get("tipo", "").strip()  # extendida, nuclear, pareja
+    tipo_filtro = request.GET.get("tipo", "").strip()
     
     # ═══════════════════════════════════════════════════════════════════════════
     # OBTENER TODAS LAS RELACIONES
@@ -2242,16 +2264,10 @@ def reporte_relaciones_familiares(request):
         )
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # CONSTRUIR GRAFO DE CONEXIONES Y TIPOS DE RELACIÓN
+    # CONSTRUIR GRAFO DE CONEXIONES
     # ═══════════════════════════════════════════════════════════════════════════
     conexiones = defaultdict(set)
-    relaciones_info = {}  # {(id1, id2): {tipo, vive_junto, es_responsable}}
-    
-    # Tipos de relación que indican generaciones
-    TIPOS_GENERACION_MAYOR = {"abuelo", "bisabuelo"}  # El que tiene esta relación es de generación mayor
-    TIPOS_GENERACION_MENOR = {"nieto", "bisnieto", "hijo"}  # El que tiene esta relación es de generación menor
-    TIPOS_MISMA_GENERACION = {"conyuge", "hermano", "cunado", "primo"}
-    TIPOS_FAMILIA_POLITICA = {"suegro", "cunado", "yerno", "consuegro"}
+    relaciones_info = {}
     
     for rel in relaciones_qs:
         mid = rel.miembro_id
@@ -2263,26 +2279,24 @@ def reporte_relaciones_familiares(request):
         conexiones[mid].add(fid)
         conexiones[fid].add(mid)
         
-        # Guardar info de la relación (en ambas direcciones)
+        # Guardar info de la relación
         relaciones_info[(mid, fid)] = {
             "tipo": rel.tipo_relacion,
             "vive_junto": rel.vive_junto,
             "es_responsable": rel.es_responsable,
         }
-
         
-            # Guardar inversa REAL también (porque el grafo es bidireccional pero relaciones_info no)
+        # Guardar inversa
         tipo_inverso = MiembroRelacion.inverse_tipo(
             rel.tipo_relacion,
-            genero_persona_invertida=rel.miembro.genero  # género del "otro" desde el punto de vista del familiar
+            genero_persona_invertida=rel.miembro.genero
         )
-
         relaciones_info[(fid, mid)] = {
             "tipo": tipo_inverso,
             "vive_junto": rel.vive_junto,
-            "es_responsable": False,  # responsable es direccional; no lo copies al inverso
+            "es_responsable": False,
         }
-
+    
     # ═══════════════════════════════════════════════════════════════════════════
     # ENCONTRAR GRUPOS FAMILIARES (componentes conectados)
     # ═══════════════════════════════════════════════════════════════════════════
@@ -2293,7 +2307,6 @@ def reporte_relaciones_familiares(request):
         if persona_id in visitados:
             continue
         
-        # BFS para encontrar todos los conectados
         grupo = set()
         cola = [persona_id]
         
@@ -2326,10 +2339,23 @@ def reporte_relaciones_familiares(request):
     # FUNCIONES AUXILIARES
     # ═══════════════════════════════════════════════════════════════════════════
     
+    def rel_tipo(a, b):
+        """Tipo de relación desde a -> b."""
+        info = relaciones_info.get((a, b))
+        return info["tipo"] if info else None
+    
+    def son_conyuges(a, b):
+        return rel_tipo(a, b) == "conyuge" or rel_tipo(b, a) == "conyuge"
+    
+    def es_hijo_de(hijo_id, padre_id):
+        """Retorna True si hijo_id es hijo de padre_id."""
+        return (
+            rel_tipo(padre_id, hijo_id) == "hijo"
+            or rel_tipo(hijo_id, padre_id) in ("padre", "madre")
+        )
+    
     def obtener_rol_genero(tipo, genero):
-        """Retorna el rol con género correcto."""
         es_femenino = (genero or "").lower() in ("femenino", "f", "mujer")
-        
         roles = {
             "padre": "Padre",
             "madre": "Madre",
@@ -2350,115 +2376,13 @@ def reporte_relaciones_familiares(request):
         }
         return roles.get(tipo, "Familiar")
     
-    def determinar_rol(miembro_id, grupo_ids, genero):
-        """Determina el rol de un miembro en el grupo."""
-        es_femenino = (genero or "").lower() in ("femenino", "f", "mujer")
-        
-        # Qué dicen los otros de este miembro
-        for otro_id in grupo_ids:
-            if otro_id == miembro_id:
-                continue
-            
-            key = (otro_id, miembro_id)
-            if key in relaciones_info:
-                tipo = relaciones_info[key]["tipo"]
-                return obtener_rol_genero(tipo, genero)
-        
-        # Qué dice este miembro de los otros (inferir rol inverso)
-        for otro_id in grupo_ids:
-            if otro_id == miembro_id:
-                continue
-            
-            key = (miembro_id, otro_id)
-            if key in relaciones_info:
-                tipo = relaciones_info[key]["tipo"]
-                
-                # Invertir la relación
-                if tipo == "hijo":
-                    return "Madre" if es_femenino else "Padre"
-                elif tipo in ("padre", "madre"):
-                    return "Hija" if es_femenino else "Hijo"
-                elif tipo == "conyuge":
-                    return "Esposa" if es_femenino else "Esposo"
-                elif tipo == "hermano":
-                    return "Hermana" if es_femenino else "Hermano"
-                elif tipo == "nieto":
-                    return "Abuela" if es_femenino else "Abuelo"
-                elif tipo == "abuelo":
-                    return "Nieta" if es_femenino else "Nieto"
-                elif tipo == "tio":
-                    return "Sobrina" if es_femenino else "Sobrino"
-                elif tipo == "sobrino":
-                    return "Tía" if es_femenino else "Tío"
-        
-        return "Familiar"
-    
-    def determinar_generacion(miembro_id, grupo_ids):
-        """
-        Determina la generación relativa de un miembro.
-        Retorna un número donde:
-        - 1 = Abuelos/Bisabuelos (generación mayor)
-        - 2 = Padres/Tíos
-        - 3 = Hijos/Primos (generación actual)
-        - 4 = Nietos/Bisnietos
-        """
-        generacion = 3  # Por defecto, generación media
-        
-        for otro_id in grupo_ids:
-            if otro_id == miembro_id:
-                continue
-            
-            # Ver qué dice otro de este miembro
-            key = (otro_id, miembro_id)
-            if key in relaciones_info:
-                tipo = relaciones_info[key]["tipo"]
-                if tipo in ("abuelo", "bisabuelo"):
-                    generacion = min(generacion, 1)
-                elif tipo in ("padre", "madre", "tio"):
-                    generacion = min(generacion, 2)
-                elif tipo in ("nieto", "bisnieto"):
-                    generacion = max(generacion, 4)
-            
-            # Ver qué dice este miembro de otro
-            key = (miembro_id, otro_id)
-            if key in relaciones_info:
-                tipo = relaciones_info[key]["tipo"]
-                if tipo in ("nieto", "bisnieto"):
-                    generacion = min(generacion, 1)
-                elif tipo in ("hijo",):
-                    generacion = min(generacion, 2)
-                elif tipo in ("abuelo", "bisabuelo"):
-                    generacion = max(generacion, 4)
-        
-        return generacion
-    
     def es_cabeza_familia(miembro_id, grupo_ids):
-        """Determina si un miembro es cabeza de familia."""
         for otro_id in grupo_ids:
             if otro_id == miembro_id:
                 continue
             key = (otro_id, miembro_id)
             if key in relaciones_info and relaciones_info[key].get("es_responsable"):
                 return True
-        return False
-    
-    def contar_generaciones(grupo_ids):
-        """Cuenta cuántas generaciones diferentes hay en el grupo."""
-        generaciones = set()
-        for mid in grupo_ids:
-            gen = determinar_generacion(mid, grupo_ids)
-            generaciones.add(gen)
-        return len(generaciones)
-    
-    def tiene_relacion_tipo(grupo_ids, tipos_buscados):
-        """Verifica si el grupo tiene alguna relación del tipo especificado."""
-        for id1 in grupo_ids:
-            for id2 in grupo_ids:
-                if id1 == id2:
-                    continue
-                key = (id1, id2)
-                if key in relaciones_info and relaciones_info[key]["tipo"] in tipos_buscados:
-                    return True
         return False
     
     def obtener_parejas_en_grupo(grupo_ids):
@@ -2468,181 +2392,168 @@ def reporte_relaciones_familiares(request):
         
         for id1 in grupo_ids:
             for id2 in grupo_ids:
-                if id1 >= id2:  # Evitar duplicados
+                if id1 >= id2:
                     continue
-                key = (id1, id2)
-                key_rev = (id2, id1)
-                
-                if (key in relaciones_info and relaciones_info[key]["tipo"] == "conyuge") or \
-                   (key_rev in relaciones_info and relaciones_info[key_rev]["tipo"] == "conyuge"):
+                if son_conyuges(id1, id2):
                     if (id1, id2) not in vistos:
                         parejas.append((id1, id2))
                         vistos.add((id1, id2))
         
         return parejas
     
-    def obtener_hijos_de_padres(grupo_ids, padre_ids):
-        """Encuentra los hijos de los padres especificados."""
+    def obtener_hijos_directos(padre_ids, todos_ids):
+        """Obtiene los hijos directos de un conjunto de padres."""
         hijos = set()
-        
         for padre_id in padre_ids:
-            for otro_id in grupo_ids:
+            for otro_id in todos_ids:
                 if otro_id in padre_ids:
                     continue
-                
-                # Ver si padre dice que otro es su hijo
-                key = (padre_id, otro_id)
-                if key in relaciones_info and relaciones_info[key]["tipo"] == "hijo":
+                if es_hijo_de(otro_id, padre_id):
                     hijos.add(otro_id)
-                
-                # Ver si otro dice que padre es su padre/madre
-                key = (otro_id, padre_id)
-                if key in relaciones_info and relaciones_info[key]["tipo"] in ("padre", "madre"):
-                    hijos.add(otro_id)
-        
         return hijos
-    # ═══════════════════════════════════════════════════════════════════════════
-    # MOTOR FAMILIAR INTELIGENTE (B)
-    # - Construye subfamilias nucleares dentro de un clan (familia extendida)
-    # - Separa el núcleo del hijo casado de la familia de sus padres
-    # ═══════════════════════════════════════════════════════════════════════════
-
-    def rel_tipo(a, b):
-        """Tipo de relación registrado desde a -> b (o None)."""
-        info = relaciones_info.get((a, b))
-        return info["tipo"] if info else None
-
-    def son_conyuges(a, b):
-        return rel_tipo(a, b) == "conyuge" or rel_tipo(b, a) == "conyuge"
-
-    def es_hijo_de(hijo_id, padre_id):
+    
+    def construir_datos_persona(m, rol, es_cabeza=False):
+        """Crea el dict de datos de una persona."""
+        return {
+            "id": m.id,
+            "nombre_completo": f"{m.nombres} {m.apellidos}",
+            "rol": rol,
+            "edad": m.calcular_edad(),
+            "genero": m.genero,
+            "es_cabeza": es_cabeza,
+        }
+    
+    def construir_familia_nuclear(padre_ids, grupo_ids, apellido_default=None):
         """
-        True si (padre -> hijo) está como 'hijo'
-        o si (hijo -> padre) está como 'padre'/'madre'
-        """
-        return (
-            rel_tipo(padre_id, hijo_id) == "hijo"
-            or rel_tipo(hijo_id, padre_id) in ("padre", "madre")
-        )
-
-    def obtener_padres_potenciales(grupo_ids):
-        """
-        Devuelve IDs que actúan como padres/madres según relaciones explícitas.
-        """
-        padres = set()
-        for a in grupo_ids:
-            for b in grupo_ids:
-                if a == b:
-                    continue
-                t = rel_tipo(a, b)
-                # a dice que b es hijo => a es padre/madre
-                if t == "hijo":
-                    padres.add(a)
-                # a dice que b es padre/madre => b es padre/madre
-                if t in ("padre", "madre"):
-                    padres.add(b)
-        return padres
-
-    def construir_nuclear_desde_padres(grupo_ids, padre_ids):
-        """
-        Construye una familia nuclear (padres+sus hijos) sin meter 'otros' por deducción.
+        Construye una familia nuclear desde un conjunto de padres.
+        Retorna None si no hay hijos.
         """
         padres_lista = []
         hijos_lista = []
-
-        # Padres
+        
+        # Construir lista de padres
         for pid in padre_ids:
-            if pid in miembros_map:
-                m = miembros_map[pid]
-                es_femenino = (m.genero or "").lower() in ("femenino", "f", "mujer")
-                # Si hay relación explícita 'madre'/'padre' preferimos eso; si no, por género.
-                rol = "Madre" if es_femenino else "Padre"
-                padres_lista.append({
-                    "id": m.id,
-                    "nombre_completo": f"{m.nombres} {m.apellidos}",
-                    "rol": rol,
-                    "edad": m.calcular_edad(),
-                    "genero": m.genero,
-                    "es_cabeza": es_cabeza_familia(m.id, grupo_ids),
-                })
-
-        # Hijos (solo si hay relación explícita)
-        for oid in grupo_ids:
-            if oid in padre_ids:
+            if pid not in miembros_map:
                 continue
-            if any(es_hijo_de(oid, pid) for pid in padre_ids):
-                if oid in miembros_map:
-                    m = miembros_map[oid]
-                    es_femenino = (m.genero or "").lower() in ("femenino", "f", "mujer")
-                    hijos_lista.append({
-                        "id": m.id,
-                        "nombre_completo": f"{m.nombres} {m.apellidos}",
-                        "rol": "Hija" if es_femenino else "Hijo",
-                        "edad": m.calcular_edad(),
-                        "genero": m.genero,
-                        "es_cabeza": False,
-                    })
-
-        # Validación: nuclear real = al menos 1 padre y al menos 1 hijo
+            m = miembros_map[pid]
+            es_femenino = (m.genero or "").lower() in ("femenino", "f", "mujer")
+            es_cabeza = es_cabeza_familia(m.id, grupo_ids)
+            padres_lista.append(construir_datos_persona(
+                m, 
+                "Madre" if es_femenino else "Padre",
+                es_cabeza
+            ))
+        
+        # Buscar hijos directos
+        hijos_ids = obtener_hijos_directos(padre_ids, grupo_ids)
+        
+        for hid in hijos_ids:
+            if hid not in miembros_map:
+                continue
+            m = miembros_map[hid]
+            es_femenino = (m.genero or "").lower() in ("femenino", "f", "mujer")
+            hijos_lista.append(construir_datos_persona(
+                m,
+                "Hija" if es_femenino else "Hijo",
+                False
+            ))
+        
+        # Si no hay hijos, no es familia nuclear
         if not padres_lista or not hijos_lista:
             return None
-
-        # Asegurar cabeza
-        todos = padres_lista + hijos_lista
-        if not any(x["es_cabeza"] for x in todos) and padres_lista:
-            padres_lista[0]["es_cabeza"] = True
-
-        padres_lista.sort(key=lambda x: (0 if x.get("es_cabeza") else 1, -(x["edad"] or 0)))
+        
+        # Ordenar
+        padres_lista.sort(key=lambda x: (0 if x["es_cabeza"] else 1, -(x["edad"] or 0)))
         hijos_lista.sort(key=lambda x: -(x["edad"] or 0))
-
-        return padres_lista, hijos_lista
-
-    def construir_subfamilias_nucleares(grupo_ids):
+        
+        # Asegurar que hay cabeza
+        todos = padres_lista + hijos_lista
+        if not any(p["es_cabeza"] for p in todos):
+            padres_lista[0]["es_cabeza"] = True
+        
+        # Determinar apellido
+        if apellido_default:
+            apellido = apellido_default
+        else:
+            # Usar el apellido del primer padre
+            primer_padre_id = list(padre_ids)[0]
+            if primer_padre_id in miembros_map:
+                apellido = miembros_map[primer_padre_id].apellidos
+            else:
+                apellido = "Familia"
+        
+        # Determinar nombre de familia (por el padre/madre principal)
+        nombre_familia = None
+        for p in padres_lista:
+            if p["es_cabeza"]:
+                nombre_familia = p["nombre_completo"].split()[0]  # Primer nombre
+                break
+        if not nombre_familia and padres_lista:
+            nombre_familia = padres_lista[0]["nombre_completo"].split()[0]
+        
+        return {
+            "apellido": apellido,
+            "nombre_referencia": nombre_familia,  # "Familia de Jhon"
+            "padres": padres_lista,
+            "hijos": hijos_lista,
+            "miembros": padres_lista + hijos_lista,
+            "num_hijos": len(hijos_lista),
+            "padre_ids": padre_ids,  # Para identificar duplicados
+        }
+    
+    def extraer_todas_subfamilias_nucleares(grupo_ids):
         """
-        Devuelve lista de subfamilias nucleares dentro del clan:
-        - por cada pareja (conyuges) que tenga hijos explícitos
-        - también soporta padre/madre soltero con hijos (si existe relación explícita)
+        Extrae TODAS las subfamilias nucleares de un grupo.
+        Cada pareja con hijos = 1 subfamilia.
+        Cada padre/madre soltero con hijos = 1 subfamilia.
         """
         subfamilias = []
-        usados = set()  # evitar duplicados por mismos padres
-
+        parejas_procesadas = set()
+        padres_solteros_procesados = set()
+        
         # 1) Parejas con hijos
-        parejas_grupo = obtener_parejas_en_grupo(grupo_ids)
-        for a, b in parejas_grupo:
-            key = tuple(sorted((a, b)))
-            if key in usados:
+        parejas = obtener_parejas_en_grupo(grupo_ids)
+        for p1, p2 in parejas:
+            key = tuple(sorted([p1, p2]))
+            if key in parejas_procesadas:
                 continue
-            usados.add(key)
-
-            res = construir_nuclear_desde_padres(grupo_ids, {a, b})
-            if res:
-                padres_lista, hijos_lista = res
-                subfamilias.append(( {a, b}, padres_lista, hijos_lista ))
-
-        # 2) Padres/madres solteros con hijos (explícitos)
-        padres_pot = obtener_padres_potenciales(grupo_ids)
-        for p in padres_pot:
-            # Si p es parte de una pareja ya detectada, lo saltamos como "soltero"
-            if any(p in set(pair) for pair in parejas_grupo):
+            
+            sf = construir_familia_nuclear({p1, p2}, grupo_ids)
+            if sf:
+                subfamilias.append(sf)
+                parejas_procesadas.add(key)
+        
+        # 2) Padres/madres solteros (no en pareja) con hijos
+        for pid in grupo_ids:
+            # Si ya es parte de una pareja, saltar
+            es_parte_de_pareja = any(pid in {p1, p2} for p1, p2 in parejas)
+            if es_parte_de_pareja:
                 continue
-
-            res = construir_nuclear_desde_padres(grupo_ids, {p})
-            if res:
-                padres_lista, hijos_lista = res
-                subfamilias.append(( {p}, padres_lista, hijos_lista ))
-
+            
+            if pid in padres_solteros_procesados:
+                continue
+            
+            # Ver si tiene hijos directos
+            hijos = obtener_hijos_directos({pid}, grupo_ids)
+            if hijos:
+                sf = construir_familia_nuclear({pid}, grupo_ids)
+                if sf:
+                    subfamilias.append(sf)
+                    padres_solteros_procesados.add(pid)
+        
         return subfamilias
-
+    
     # ═══════════════════════════════════════════════════════════════════════════
-    # CLASIFICAR GRUPOS EN CATEGORÍAS
+    # CLASIFICAR GRUPOS
     # ═══════════════════════════════════════════════════════════════════════════
     familias_extendidas = []
-    familias_nucleares = []
+    familias_nucleares = []  # ← TODAS las nucleares, incluso las de extendidas
     parejas = []
     
-    # Estadísticas
+    # Para evitar duplicados en nucleares
+    nucleares_agregadas = set()  # Guardamos frozenset de padre_ids
+    
     total_hijos = 0
-    total_abuelos = 0
     
     for grupo_ids in grupos:
         miembros_grupo = [miembros_map[mid] for mid in grupo_ids if mid in miembros_map]
@@ -2650,26 +2561,13 @@ def reporte_relaciones_familiares(request):
         if len(miembros_grupo) < 2:
             continue
         
-        # Apellido principal
+        # Apellido principal del grupo
         apellidos_count = defaultdict(int)
         for m in miembros_grupo:
             apellidos_count[m.apellidos] += 1
         apellido_principal = max(apellidos_count, key=apellidos_count.get)
         
-        # Contar generaciones
-        num_generaciones = contar_generaciones(grupo_ids)
-        
-        # Encontrar parejas
-        parejas_grupo = obtener_parejas_en_grupo(grupo_ids)
-        
-        # Detectar si hay hijos
-        tiene_hijos = tiene_relacion_tipo(grupo_ids, {"hijo", "padre", "madre"})
-
-        
-        # Detectar si hay abuelos
-        tiene_abuelos = tiene_relacion_tipo(grupo_ids, {"abuelo", "bisabuelo", "nieto", "bisnieto"})
-        
-        # Obtener teléfono y dirección
+        # Teléfono y dirección
         telefono_familia = None
         direccion_familia = None
         for m in miembros_grupo:
@@ -2678,81 +2576,48 @@ def reporte_relaciones_familiares(request):
             if hasattr(m, 'direccion') and m.direccion and not direccion_familia:
                 direccion_familia = m.direccion
         
+        # Extraer TODAS las subfamilias nucleares del grupo
+        subfamilias = extraer_todas_subfamilias_nucleares(grupo_ids)
+        parejas_grupo = obtener_parejas_en_grupo(grupo_ids)
+        
         # ═══════════════════════════════════════════════════════════════════════
-        # CLASIFICAR SEGÚN TIPO DE FAMILIA (VERSIÓN B - MOTOR PRIMERO)
+        # AGREGAR TODAS LAS NUCLEARES A LA LISTA (siempre)
         # ═══════════════════════════════════════════════════════════════════════
-
-        # 1) Motor B: detectar subfamilias nucleares reales dentro del grupo
-        subfamilias = construir_subfamilias_nucleares(grupo_ids)
-
-        # 2) Si hay 2+ subfamilias => clan/extendida (aunque no tenga 3 generaciones)
+        for sf in subfamilias:
+            key = frozenset(sf["padre_ids"])
+            if key not in nucleares_agregadas:
+                sf["telefono"] = telefono_familia
+                sf["direccion"] = direccion_familia
+                familias_nucleares.append(sf)
+                nucleares_agregadas.add(key)
+                total_hijos += sf["num_hijos"]
+        
+        # ═══════════════════════════════════════════════════════════════════════
+        # CLASIFICAR EL GRUPO COMPLETO
+        # ═══════════════════════════════════════════════════════════════════════
+        
+        # CASO 1: Múltiples subfamilias = Familia Extendida
         if len(subfamilias) >= 2:
-            miembros_lista = []
-
-            for miembro in miembros_grupo:
-                rol = determinar_rol(miembro.id, grupo_ids, miembro.genero)
-                generacion = determinar_generacion(miembro.id, grupo_ids)
-                es_cabeza = es_cabeza_familia(miembro.id, grupo_ids)
-
-                # stats
-                if rol in ("Abuelo", "Abuela", "Bisabuelo", "Bisabuela"):
-                    total_abuelos += 1
-                elif rol in ("Hijo", "Hija", "Nieto", "Nieta"):
-                    total_hijos += 1
-
-                miembros_lista.append({
-                    "id": miembro.id,
-                    "nombre_completo": f"{miembro.nombres} {miembro.apellidos}",
-                    "rol": rol,
-                    "edad": miembro.calcular_edad(),
-                    "genero": miembro.genero,
-                    "es_cabeza": es_cabeza,
-                    "generacion": generacion,
-                    "relaciones_desc": "",
-                })
-
-            if not any(m["es_cabeza"] for m in miembros_lista):
-                mayor = max(miembros_lista, key=lambda x: x["edad"] or 0)
-                mayor["es_cabeza"] = True
-
-            miembros_lista.sort(key=lambda x: (x["generacion"], -(x["edad"] or 0)))
-
             familias_extendidas.append({
                 "apellido": apellido_principal,
-                "miembros": miembros_lista,
+                "subfamilias": subfamilias,
+                "total_miembros": len(miembros_grupo),
+                "num_nucleos": len(subfamilias),
                 "telefono": telefono_familia,
                 "direccion": direccion_familia,
-                "generaciones": contar_generaciones(grupo_ids),
-                "subfamilias": [{
-                    "padres": padres_lista,
-                    "hijos": hijos_lista,
-                    "num_hijos": len(hijos_lista),
-                } for _, padres_lista, hijos_lista in subfamilias],
             })
-
             continue
-
-        # 3) Si hay 1 subfamilia => nuclear
+        
+        # CASO 2: Una sola subfamilia = Ya se agregó a nucleares, no va a extendidas
         if len(subfamilias) == 1:
-            _, padres_lista, hijos_lista = subfamilias[0]
-
-            familias_nucleares.append({
-                "apellido": apellido_principal,
-                "padres": padres_lista,
-                "hijos": hijos_lista,
-                "miembros": padres_lista + hijos_lista,
-                "num_hijos": len(hijos_lista),
-                "telefono": telefono_familia,
-                "direccion": direccion_familia,
-            })
-            continue
-
-        # 4) Si no hay subfamilias: pareja sin hijos (2 personas cónyuges)
+            continue  # Ya está en familias_nucleares
+        
+        # CASO 3: Solo pareja (sin hijos)
         if len(miembros_grupo) == 2 and parejas_grupo:
             p1_id, p2_id = parejas_grupo[0]
             p1 = miembros_map.get(p1_id)
             p2 = miembros_map.get(p2_id)
-
+            
             if p1 and p2:
                 parejas.append({
                     "persona1": {
@@ -2771,140 +2636,40 @@ def reporte_relaciones_familiares(request):
                     "anios_juntos": None,
                 })
             continue
-
-        # 5) Respaldo: heurística de extendida (solo si el motor no encontró nada)
-        es_extendida = (
-            num_generaciones >= 3 or
-            tiene_abuelos or
-            len(miembros_grupo) >= 6 or
-            tiene_relacion_tipo(grupo_ids, {"tio", "sobrino", "primo"})
-        )
-
-        if es_extendida:
+        
+        # CASO 4: Grupo conectado sin estructura nuclear clara (hermanos, primos, etc.)
+        # Lo mostramos como familia extendida general
+        if len(miembros_grupo) >= 2:
             miembros_lista = []
-
-            for miembro in miembros_grupo:
-                rol = determinar_rol(miembro.id, grupo_ids, miembro.genero)
-                generacion = determinar_generacion(miembro.id, grupo_ids)
-                es_cabeza = es_cabeza_familia(miembro.id, grupo_ids)
-
-                if rol in ("Abuelo", "Abuela", "Bisabuelo", "Bisabuela"):
-                    total_abuelos += 1
-                elif rol in ("Hijo", "Hija", "Nieto", "Nieta"):
-                    total_hijos += 1
-
-                miembros_lista.append({
-                    "id": miembro.id,
-                    "nombre_completo": f"{miembro.nombres} {miembro.apellidos}",
-                    "rol": rol,
-                    "edad": miembro.calcular_edad(),
-                    "genero": miembro.genero,
-                    "es_cabeza": es_cabeza,
-                    "generacion": generacion,
-                    "relaciones_desc": "",
-                })
-
-            if not any(m["es_cabeza"] for m in miembros_lista):
-                mayor = max(miembros_lista, key=lambda x: x["edad"] or 0)
-                mayor["es_cabeza"] = True
-
-            miembros_lista.sort(key=lambda x: (x["generacion"], -(x["edad"] or 0)))
-
+            for m in miembros_grupo:
+                rol = "Familiar"
+                for otro_id in grupo_ids:
+                    if otro_id == m.id:
+                        continue
+                    key = (otro_id, m.id)
+                    if key in relaciones_info:
+                        tipo = relaciones_info[key]["tipo"]
+                        rol = obtener_rol_genero(tipo, m.genero)
+                        break
+                
+                miembros_lista.append(construir_datos_persona(
+                    m, rol, es_cabeza_familia(m.id, grupo_ids)
+                ))
+            
+            miembros_lista.sort(key=lambda x: -(x["edad"] or 0))
+            if not any(x["es_cabeza"] for x in miembros_lista):
+                miembros_lista[0]["es_cabeza"] = True
+            
             familias_extendidas.append({
                 "apellido": apellido_principal,
-                "miembros": miembros_lista,
+                "subfamilias": [],
+                "miembros_generales": miembros_lista,
+                "total_miembros": len(miembros_grupo),
+                "num_nucleos": 0,
                 "telefono": telefono_familia,
                 "direccion": direccion_familia,
-                "generaciones": num_generaciones,
+                "es_grupo_general": True,
             })
-
-        # CASO 3: Familia nuclear (padres + hijos)
-        # CASO 3 (B): Motor inteligente (subfamilias nucleares dentro de un clan)
-        else:
-            subfamilias = construir_subfamilias_nucleares(grupo_ids)
-
-            # Si hay 2+ subfamilias, esto ES extendida (aunque no tenga 3 generaciones)
-            # porque ya hay "familia del hijo" separada de la de los padres.
-            if len(subfamilias) >= 2:
-                # Lo tratamos como extendida (clan)
-                miembros_lista = []
-
-                for miembro in miembros_grupo:
-                    rol = determinar_rol(miembro.id, grupo_ids, miembro.genero)
-                    generacion = determinar_generacion(miembro.id, grupo_ids)
-                    es_cabeza = es_cabeza_familia(miembro.id, grupo_ids)
-
-                    miembros_lista.append({
-                        "id": miembro.id,
-                        "nombre_completo": f"{miembro.nombres} {miembro.apellidos}",
-                        "rol": rol,
-                        "edad": miembro.calcular_edad(),
-                        "genero": miembro.genero,
-                        "es_cabeza": es_cabeza,
-                        "generacion": generacion,
-                        "relaciones_desc": "",
-                    })
-
-                if not any(m["es_cabeza"] for m in miembros_lista):
-                    mayor = max(miembros_lista, key=lambda x: x["edad"] or 0)
-                    mayor["es_cabeza"] = True
-
-                miembros_lista.sort(key=lambda x: (x["generacion"], -(x["edad"] or 0)))
-
-                familias_extendidas.append({
-                    "apellido": apellido_principal,
-                    "miembros": miembros_lista,
-                    "telefono": telefono_familia,
-                    "direccion": direccion_familia,
-                    "generaciones": contar_generaciones(grupo_ids),
-                    # ✅ NUEVO (por si luego quieres renderizarlo en el template)
-                    "subfamilias": [{
-                        "padres": padres_lista,
-                        "hijos": hijos_lista,
-                        "num_hijos": len(hijos_lista),
-                    } for _, padres_lista, hijos_lista in subfamilias],
-                })
-            else:
-                # Si hay 1 subfamilia, entonces sí: familia nuclear clara
-                if subfamilias:
-                    _, padres_lista, hijos_lista = subfamilias[0]
-
-                    familias_nucleares.append({
-                        "apellido": apellido_principal,
-                        "padres": padres_lista,
-                        "hijos": hijos_lista,
-                        "miembros": padres_lista + hijos_lista,
-                        "num_hijos": len(hijos_lista),
-                        "telefono": telefono_familia,
-                        "direccion": direccion_familia,
-                    })
-                else:
-                    # No hay nuclear explícita => si hay pareja sin hijos, cae en "parejas"
-                    # (si no entró ya por CASO 1)
-                    if parejas_grupo:
-                        p1_id, p2_id = parejas_grupo[0]
-                        if p1_id in miembros_map and p2_id in miembros_map:
-                            p1 = miembros_map[p1_id]
-                            p2 = miembros_map[p2_id]
-                            parejas.append({
-                                "persona1": {
-                                    "id": p1.id,
-                                    "nombre_completo": f"{p1.nombres} {p1.apellidos}",
-                                    "edad": p1.calcular_edad(),
-                                    "genero": p1.genero,
-                                },
-                                "persona2": {
-                                    "id": p2.id,
-                                    "nombre_completo": f"{p2.nombres} {p2.apellidos}",
-                                    "edad": p2.calcular_edad(),
-                                    "genero": p2.genero,
-                                },
-                                "telefono": telefono_familia,
-                                "anios_juntos": None,
-                            })
-
-            
-
     
     # ═══════════════════════════════════════════════════════════════════════════
     # APLICAR FILTRO POR TIPO
@@ -2920,7 +2685,7 @@ def reporte_relaciones_familiares(request):
         familias_nucleares = []
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # ORDENAR POR APELLIDO
+    # ORDENAR
     # ═══════════════════════════════════════════════════════════════════════════
     familias_extendidas.sort(key=lambda f: f["apellido"].lower())
     familias_nucleares.sort(key=lambda f: f["apellido"].lower())
@@ -2929,7 +2694,7 @@ def reporte_relaciones_familiares(request):
     # ═══════════════════════════════════════════════════════════════════════════
     # ESTADÍSTICAS
     # ═══════════════════════════════════════════════════════════════════════════
-    total_personas_extendidas = sum(len(f["miembros"]) for f in familias_extendidas)
+    total_personas_extendidas = sum(f.get("total_miembros", 0) for f in familias_extendidas)
     total_personas_nucleares = sum(len(f["miembros"]) for f in familias_nucleares)
     total_personas_parejas = len(parejas) * 2
     
@@ -2939,25 +2704,20 @@ def reporte_relaciones_familiares(request):
     # CONTEXTO
     # ═══════════════════════════════════════════════════════════════════════════
     context = {
-        # Datos principales
         "familias_extendidas": familias_extendidas,
         "familias_nucleares": familias_nucleares,
         "parejas": parejas,
         
-        # Estadísticas generales
         "total_familias_extendidas": len(familias_extendidas),
         "total_familias_nucleares": len(familias_nucleares),
         "total_parejas": len(parejas),
         "total_personas_en_familias": total_personas_extendidas + total_personas_nucleares + total_personas_parejas,
         "total_hijos": total_hijos,
-        "total_abuelos": total_abuelos,
         "total_resultados": total_resultados,
         
-        # Filtros
         "query": query,
         "tipo_filtro": tipo_filtro,
         
-        # Config
         "hoy": hoy,
         "CFG": CFG,
     }
@@ -2967,7 +2727,6 @@ def reporte_relaciones_familiares(request):
         "miembros_app/reportes/reporte_relaciones_familiares.html",
         context
     )
-
 
 # -------------------------------------
 # REPORTE: CUMPLEAÑOS DEL MES
