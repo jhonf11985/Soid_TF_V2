@@ -16,6 +16,22 @@ class EvaluacionUnidad(models.Model):
     Ej: Evaluación Enero 2026 - Unidad Jóvenes.
     """
 
+    asistencia = models.PositiveSmallIntegerField(default=3)
+    participacion = models.PositiveSmallIntegerField(default=3)
+
+    ESTADOS = (
+        ("estable", "Estable"),
+        ("crecimiento", "En crecimiento"),
+        ("irregular", "Asistencia irregular"),
+        ("observacion", "En observación"),
+        ("seguimiento", "En seguimiento"),
+        ("riesgo", "En riesgo"),
+        ("inactivo", "Inactivo"),
+    )
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="estable")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     ESTADO_BORRADOR = "BORRADOR"
     ESTADO_EN_PROGRESO = "EN_PROGRESO"
     ESTADO_CERRADA = "CERRADA"

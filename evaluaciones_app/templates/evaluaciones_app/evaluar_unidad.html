@@ -3,52 +3,365 @@
 
 {% block evaluaciones_content %}
 
+<style>
+  .eval-container {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  
+  .eval-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .eval-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+  }
+  
+  .search-box {
+    position: relative;
+  }
+  
+  .search-box input {
+    padding: 8px 12px 8px 36px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 240px;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--bg-secondary, #fff);
+  }
+  
+  .search-box input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  
+  .search-box::before {
+    content: "🔍";
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    opacity: 0.5;
+  }
+  
+  .eval-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--bg-secondary, #fff);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border: 1px solid var(--border);
+  }
+  
+  .eval-table thead th {
+    background: var(--bg-tertiary, #f8fafc);
+    padding: 14px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #64748b);
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .eval-table tbody tr {
+    transition: background 0.15s;
+  }
+  
+  .eval-table tbody tr:hover {
+    background: var(--bg-hover, #f8fafc);
+  }
+  
+  .eval-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  
+  .eval-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .member-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .member-name {
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+    font-size: 14px;
+  }
+  
+  .member-code {
+    font-size: 12px;
+    color: var(--text-muted, #94a3b8);
+  }
+  
+  .eval-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--bg-secondary, #fff);
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 32px;
+  }
+  
+  .eval-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  
+  .eval-select:hover {
+    border-color: #94a3b8;
+  }
+  
+  .select-score {
+    min-width: 70px;
+    text-align: center;
+  }
+  
+  .select-estado {
+    min-width: 170px;
+  }
+  
+  .eval-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    gap: 12px;
+  }
+  
+  .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary, #374151);
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--bg-secondary, #fff);
+    transition: background 0.2s, border-color 0.2s;
+  }
+  
+  .btn-back:hover {
+    background: var(--bg-tertiary, #f1f5f9);
+    border-color: #94a3b8;
+  }
+  
+  .btn-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border: none;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+  }
+  
+  .btn-save:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(37, 99, 235, 0.35);
+  }
+  
+  .btn-save:active {
+    transform: translateY(0);
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted, #94a3b8);
+  }
+  
+  @media (max-width: 768px) {
+    .eval-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .search-box input {
+      width: 100%;
+    }
+    
+    .eval-table {
+      display: block;
+      overflow-x: auto;
+    }
+    
+    .eval-table thead {
+      display: none;
+    }
+    
+    .eval-table tbody tr {
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .eval-table tbody tr:last-child {
+      border-bottom: none;
+    }
+    
+    .eval-table tbody td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0;
+      border: none;
+    }
+    
+    .eval-table tbody td::before {
+      content: attr(data-label);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary, #64748b);
+      text-transform: uppercase;
+    }
+    
+    .eval-table tbody td:first-child {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+    
+    .eval-table tbody td:first-child::before {
+      display: none;
+    }
+    
+    .eval-actions {
+      flex-direction: column-reverse;
+    }
+    
+    .btn-back, .btn-save {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+
 <form method="post">
   {% csrf_token %}
 
-  <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-    <h2 style="margin:0; font-size:18px;">Evaluar unidad</h2>
-    <input type="text" id="buscador" placeholder="Buscar miembro..." 
-           style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; width:200px;">
-  </div>
+  <div class="eval-container">
+    <div class="eval-header">
+      <h2 class="eval-title">Evaluar unidad</h2>
+      <div class="search-box">
+        <input type="text" id="buscador" placeholder="Buscar miembro...">
+      </div>
+    </div>
 
-  <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif;">
-    <thead>
-      <tr>
-        <th style="text-align:left; padding:10px; border-bottom:2px solid var(--border);">Miembro</th>
-        <th style="text-align:center; padding:10px; border-bottom:2px solid var(--border);">Asistencia</th>
-      </tr>
-    </thead>
+    <table class="eval-table">
+      <thead>
+        <tr>
+          <th style="text-align:left;">Miembro</th>
+          <th style="text-align:center; width:120px;">Asistencia</th>
+          <th style="text-align:center; width:140px;">Participación</th>
+          <th style="text-align:center; width:200px;">Estado</th>
+        </tr>
+      </thead>
 
-    <tbody id="tabla-miembros">
-      {% for mem in membresias %}
-        {% if mem.miembo_fk %}
-          {% with m=mem.miembo_fk %}
-            {% with ev=existentes|get_item:m.id %}
-              <tr class="fila-miembro">
-                <td style="padding:10px; border-bottom:1px solid var(--border);">
-                  <div style="font-weight:700;">{{ m.nombres }} {{ m.apellidos }}</div>
-                  <div class="text-muted" style="font-size:12px;">{{ m.codigo_miembro|default:"" }}</div>
-                </td>
-                <td style="padding:10px; border-bottom:1px solid var(--border); text-align:center;">
-                  <select name="asistencia_{{ m.id }}" style="padding:6px 10px;">
-                    {% for v in "12345" %}
-                      <option value="{{ v }}" {% if ev and ev.asistencia|stringformat:"s" == v %}selected{% endif %}>{{ v }}</option>
-                    {% endfor %}
-                  </select>
-                </td>
-              </tr>
+      <tbody id="tabla-miembros">
+        {% for mem in membresias %}
+          {% if mem.miembo_fk %}
+            {% with m=mem.miembo_fk %}
+              {% with ev=existentes|get_item:m.id %}
+                <tr class="fila-miembro">
+                  <td data-label="">
+                    <div class="member-info">
+                      <span class="member-name">{{ m.nombres }} {{ m.apellidos }}</span>
+                      {% if m.codigo_miembro %}
+                        <span class="member-code">{{ m.codigo_miembro }}</span>
+                      {% endif %}
+                    </div>
+                  </td>
+
+                  <td data-label="Asistencia" style="text-align:center;">
+                    <select name="asistencia_{{ m.id }}" class="eval-select select-score">
+                      {% for v in "12345" %}
+                        <option value="{{ v }}" {% if ev and ev.asistencia|stringformat:"s" == v %}selected{% endif %}>{{ v }}</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+
+                  <td data-label="Participación" style="text-align:center;">
+                    <select name="participacion_{{ m.id }}" class="eval-select select-score">
+                      {% for v in "12345" %}
+                        <option value="{{ v }}" {% if ev and ev.participacion|stringformat:"s" == v %}selected{% endif %}>{{ v }}</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+
+                  <td data-label="Estado" style="text-align:center;">
+                    <select name="estado_{{ m.id }}" class="eval-select select-estado">
+                      <option value="estable" {% if ev and ev.estado == "estable" %}selected{% endif %}>Estable</option>
+                      <option value="crecimiento" {% if ev and ev.estado == "crecimiento" %}selected{% endif %}>En crecimiento</option>
+                      <option value="irregular" {% if ev and ev.estado == "irregular" %}selected{% endif %}>Asistencia irregular</option>
+                      <option value="observacion" {% if ev and ev.estado == "observacion" %}selected{% endif %}>En observación</option>
+                      <option value="seguimiento" {% if ev and ev.estado == "seguimiento" %}selected{% endif %}>En seguimiento</option>
+                      <option value="riesgo" {% if ev and ev.estado == "riesgo" %}selected{% endif %}>En riesgo</option>
+                      <option value="inactivo" {% if ev and ev.estado == "inactivo" %}selected{% endif %}>Inactivo</option>
+                    </select>
+                  </td>
+
+                </tr>
+              {% endwith %}
             {% endwith %}
-          {% endwith %}
-        {% endif %}
-      {% endfor %}
-    </tbody>
-  </table>
+          {% endif %}
+        {% empty %}
+          <tr>
+            <td colspan="4" class="empty-state">
+              No hay miembros en esta unidad
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
-  <div style="margin-top:15px; text-align:right;">
-    <button type="submit" style="padding:8px 16px; border:none; background:#2563eb; color:white; border-radius:6px; cursor:pointer;">
-      Guardar evaluación
-    </button>
+    <div class="eval-actions">
+      <a href="{% url 'evaluaciones:mis_unidades' %}" class="btn-back">
+        ← Volver
+      </a>
+      <button type="submit" class="btn-save">
+        💾 Guardar evaluación
+      </button>
+    </div>
   </div>
 
 </form>
@@ -56,11 +369,16 @@
 <script>
   const input = document.getElementById('buscador');
   const filas = document.querySelectorAll('.fila-miembro');
+  
   input.addEventListener('input', () => {
-    const q = (input.value || '').toLowerCase();
+    const q = (input.value || '').toLowerCase().trim();
+    let visibles = 0;
+    
     filas.forEach(tr => {
       const text = tr.innerText.toLowerCase();
-      tr.style.display = text.includes(q) ? '' : 'none';
+      const visible = text.includes(q);
+      tr.style.display = visible ? '' : 'none';
+      if (visible) visibles++;
     });
   });
 </script>
