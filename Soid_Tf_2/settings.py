@@ -58,6 +58,8 @@ INSTALLED_APPS = [
     "cloudinary_storage",
     'inventario_app',
     'agenda_app',
+    'evaluaciones_app',
+
 
 ]
 

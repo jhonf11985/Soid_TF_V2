@@ -57,6 +57,7 @@ urlpatterns = [
     path("inventario/", include("inventario_app.urls")),
     path("agenda/", include("agenda_app.urls")),
 
+path('evaluaciones/', include('evaluaciones_app.urls')),
 
 ]
 

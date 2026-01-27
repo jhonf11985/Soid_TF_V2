@@ -1,0 +1,39 @@
+{% extends "evaluaciones/base_evaluaciones.html" %}
+
+{% load eval_tags %}
+
+{% block evaluaciones_content %}
+
+  <h2>Unidad: {{ unidad }}</h2>
+  <p><a href="{% url 'evaluaciones:mis_unidades' %}">← Volver</a></p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Miembro</th>
+        <th>Última evaluación</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in miembros %}
+        {% with ev=ultimas|get_item:m.id %}
+        <tr>
+          <td>{{ m }}</td>
+          <td>
+            {% if ev %}
+              ⭐ {{ ev.estrellas }} — A:{{ ev.asistencia }} P:{{ ev.participacion }} E:{{ ev.estado }}
+              <small>({{ ev.creado_en|date:"Y-m-d" }})</small>
+            {% else %}
+              Sin evaluación
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'evaluaciones:evaluar_miembro' unidad.id m.id %}">Evaluar</a>
+          </td>
+        </tr>
+        {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
