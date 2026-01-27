@@ -1,114 +1,161 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.db import transaction
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
-from .forms import EvaluacionMiembroForm
-from .models import EvaluacionMiembro
-
-# Ajusta estos imports si tus modelos se llaman distinto
-from estructura_app.models import Unidad
-from miembros_app.models import Miembro
+from estructura_app.models import Unidad, UnidadCargo, UnidadMembresia
+from .models import EvaluacionUnidad, EvaluacionMiembro
 
 
-def get_unidades_del_lider(user):
+def _get_miembro_from_user(user):
     """
-    Devuelve un queryset de Unidades donde este user es líder.
-    AJUSTA AQUÍ según tu estructura real.
-
-    Ejemplos típicos:
-    - Si tienes Unidad.lider (FK) o Unidad.lideres (M2M)
-    - Si tienes UnidadCargo con relación a User o Miembro
+    Intentamos sacar el Miembro vinculado al User sin adivinar un único nombre.
+    Ajustaremos esto cuando me confirmes el campo real.
     """
+    # 1) user.miembro (común)
+    m = getattr(user, "miembro", None)
+    if m:
+        return m
 
-    # ✅ Opción 1 (si tu Unidad tiene un campo lider (FK a User)):
-    # return Unidad.objects.filter(lider=user).distinct()
+    # 2) user.miembro_fk / user.miembro_vinculado
+    for attr in ("miembro_fk", "miembro_vinculado", "miembro_asociado"):
+        m = getattr(user, attr, None)
+        if m:
+            return m
 
-    # ✅ Opción 2 (si Unidad tiene ManyToMany a User: lideres):
-    # return Unidad.objects.filter(lideres=user).distinct()
+    # 3) user.perfil.miembro (común con perfiles)
+    perfil = getattr(user, "perfil", None)
+    if perfil:
+        m = getattr(perfil, "miembro", None)
+        if m:
+            return m
 
-    # ✅ Opción 3 (si usas UnidadCargo con miembro y tu User se vincula a Miembro):
-    # from estructura_app.models import UnidadCargo
-    # if not hasattr(user, 'miembro'):
-    #     return Unidad.objects.none()
-    # return Unidad.objects.filter(cargos__miembro=user.miembro, cargos__activo=True).distinct()
-
-    # 🔴 Por defecto (para que no reviente): vacío hasta que lo conectes
-    return Unidad.objects.none()
-
-
-def validar_acceso_unidad(user, unidad: Unidad):
-    unidades = get_unidades_del_lider(user)
-    return unidades.filter(id=unidad.id).exists()
+    return None
 
 
-@login_required
-def dashboard(request):
-    return redirect('evaluaciones:mis_unidades')
+def _user_es_lider_de_unidad(user, unidad_id):
+    miembro = _get_miembro_from_user(user)
+    if not miembro:
+        return False
+    return UnidadCargo.objects.filter(
+        unidad_id=unidad_id,
+        miembo_fk=miembro,
+        vigente=True,
+    ).exists()
 
 
 @login_required
 def mis_unidades(request):
-    unidades = get_unidades_del_lider(request.user)
-    return render(request, 'evaluaciones/mis_unidades.html', {'unidades': unidades})
+    miembro = _get_miembro_from_user(request.user)
+    if not miembro:
+        return HttpResponseForbidden(
+            "Este usuario no tiene un miembro vinculado. Vincula el usuario a un miembro para poder evaluar unidades."
+        )
 
-
-@login_required
-def unidad_miembros(request, unidad_id):
-    unidad = get_object_or_404(Unidad, id=unidad_id)
-
-    if not validar_acceso_unidad(request.user, unidad):
-        raise Http404("No tienes acceso a esta unidad.")
-
-    # Ajusta si tu relación de miembros por unidad es distinta
-    miembros = Miembro.objects.filter(unidad=unidad).order_by('id')
-
-    # Última evaluación por miembro (simple)
-    ultimas = {}
-    qs = (
-        EvaluacionMiembro.objects
-        .filter(unidad=unidad)
-        .order_by('miembro_id', '-creado_en')
+    cargos = (
+        UnidadCargo.objects
+        .select_related("unidad", "rol")
+        .filter(miembo_fk=miembro, vigente=True)
+        .order_by("unidad__nombre")
     )
-    # Para no complicar con Subquery ahora, lo hacemos en memoria (suficiente para empezar)
-    for ev in qs:
-        if ev.miembro_id not in ultimas:
-            ultimas[ev.miembro_id] = ev
 
-    return render(request, 'evaluaciones/unidad_miembros.html', {
-        'unidad': unidad,
-        'miembros': miembros,
-        'ultimas': ultimas,
-    })
+    # Sacamos unidades únicas (si tiene varios roles en la misma unidad)
+    unidades_map = {}
+    for c in cargos:
+        if c.unidad_id not in unidades_map:
+            unidades_map[c.unidad_id] = c.unidad
+    unidades = list(unidades_map.values())
+
+    context = {
+        "unidades": unidades,
+    }
+    return render(request, "evaluaciones_app/mis_unidades.html", context)
 
 
 @login_required
-def evaluar_miembro(request, unidad_id, miembro_id):
-    unidad = get_object_or_404(Unidad, id=unidad_id)
+def evaluar_unidad(request, unidad_id):
+    miembro = _get_miembro_from_user(request.user)
+    if not miembro:
+        return HttpResponseForbidden(
+            "Este usuario no tiene un miembro vinculado. Vincula el usuario a un miembro para poder evaluar."
+        )
 
-    if not validar_acceso_unidad(request.user, unidad):
-        raise Http404("No tienes acceso a esta unidad.")
+    # Seguridad: solo líderes de esa unidad
+    if not _user_es_lider_de_unidad(request.user, unidad_id):
+        return HttpResponseForbidden("No tienes permisos para evaluar esta unidad.")
 
-    miembro = get_object_or_404(Miembro, id=miembro_id)
+    unidad = get_object_or_404(Unidad, pk=unidad_id)
 
-    # Protección extra: miembro debe pertenecer a la unidad
-    # Ajusta si tu relación es distinta
-    if getattr(miembro, 'unidad_id', None) != unidad.id:
-        raise Http404("Este miembro no pertenece a esta unidad.")
+    hoy = timezone.localdate()
+    anio = hoy.year
+    mes = hoy.month
 
-    if request.method == 'POST':
-        form = EvaluacionMiembroForm(request.POST)
-        if form.is_valid():
-            ev = form.save(commit=False)
-            ev.unidad = unidad
-            ev.miembro = miembro
-            ev.evaluador = request.user
-            ev.save()
-            return redirect('evaluaciones:unidad_miembros', unidad_id=unidad.id)
-    else:
-        form = EvaluacionMiembroForm()
+    evaluacion_unidad, _created = EvaluacionUnidad.objects.get_or_create(
+        unidad=unidad,
+        anio=anio,
+        mes=mes,
+        defaults={
+            "estado": EvaluacionUnidad.ESTADO_EN_PROGRESO,
+            "creado_por": request.user,
+        }
+    )
 
-    return render(request, 'evaluaciones/evaluar_miembro.html', {
-        'unidad': unidad,
-        'miembro': miembro,
-        'form': form,
-    })
+    # Miembros activos de la unidad
+    membresias = (
+        UnidadMembresia.objects
+        .select_related("miembo_fk", "rol")
+        .filter(unidad=unidad, activo=True)
+        .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
+    )
+
+    # Cargar evaluaciones existentes para este periodo (para editar sin perder)
+    existentes = {
+        em.miembro_id: em
+        for em in EvaluacionMiembro.objects.filter(evaluacion=evaluacion_unidad)
+    }
+
+    if request.method == "POST":
+        # Guardado masivo
+        with transaction.atomic():
+            guardados = 0
+            for memb in membresias:
+                mid = memb.miembo_fk_id
+                a = request.POST.get(f"asistencia_{mid}", "")
+                p = request.POST.get(f"participacion_{mid}", "")
+                e = request.POST.get(f"estado_{mid}", "")
+                obs = (request.POST.get(f"observacion_{mid}", "") or "").strip()
+
+                # Si el líder no tocó nada, lo saltamos (para que sea rápido)
+                if not (a or p or e or obs):
+                    continue
+
+                # Defaults seguros si faltan
+                asistencia = int(a) if a else 3
+                participacion = int(p) if p else 3
+                estado = e if e else EvaluacionMiembro.ESTADO_NORMAL
+
+                EvaluacionMiembro.objects.update_or_create(
+                    evaluacion=evaluacion_unidad,
+                    miembro_id=mid,
+                    defaults={
+                        "asistencia": asistencia,
+                        "participacion": participacion,
+                        "estado": estado,
+                        "observacion": obs[:255],
+                        "evaluado_por": request.user,
+                    }
+                )
+                guardados += 1
+
+        messages.success(request, f"Evaluación guardada. Registros actualizados: {guardados}.")
+        return redirect("evaluaciones_app:evaluar_unidad", unidad_id=unidad_id)
+
+    context = {
+        "unidad": unidad,
+        "evaluacion_unidad": evaluacion_unidad,
+        "membresias": membresias,
+        "existentes": existentes,
+    }
+    return render(request, "evaluaciones_app/evaluar_unidad.html", context)

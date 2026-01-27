@@ -1,0 +1,120 @@
+{% extends 'evaluaciones_app/base_evaluaciones.html' %}
+
+{% block evaluaciones_content %}
+  <div class="page-header">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+      <div>
+        <h2>Evaluar unidad: {{ unidad.nombre }}</h2>
+        <p class="text-muted">Periodo: {{ evaluacion_unidad.mes }}/{{ evaluacion_unidad.anio }}</p>
+      </div>
+
+      <a class="btn" href="{% url 'evaluaciones_app:mis_unidades' %}">
+        <span class="material-icons" style="font-size:18px; vertical-align:middle;">arrow_back</span>
+        Volver
+      </a>
+    </div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="card">
+      <div class="card-body">
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+          <input id="buscador" type="text" placeholder="Buscar miembro..." style="max-width:320px;">
+          <span class="text-muted" style="font-size:13px;">
+            Consejo: puedes evaluar rápido y darle Guardar.
+          </span>
+        </div>
+
+        <div style="overflow:auto;">
+          <table style="width:100%; border-collapse:collapse; min-width:900px;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border);">Miembro</th>
+                <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border);">Asistencia</th>
+                <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border);">Participación</th>
+                <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border);">Estado</th>
+                <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border);">Observación</th>
+                <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border);">⭐ Actual</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-miembros">
+              {% for mem in membresias %}
+                {% with m=mem.miembo_fk %}
+                  {% with ev=existentes|get_item:m.id %}
+                  <tr class="fila-miembro">
+                    <td style="padding:10px; border-bottom:1px solid var(--border);">
+                      <div style="font-weight:700;">{{ m.nombres }} {{ m.apellidos }}</div>
+                      <div class="text-muted" style="font-size:12px;">{{ m.codigo_miembro|default:"" }}</div>
+                    </td>
+
+                    <td style="padding:10px; border-bottom:1px solid var(--border);">
+                      <select name="asistencia_{{ m.id }}">
+                        {% for v in "12345" %}
+                          {% with iv=v|add:"0" %}
+                          <option value="{{ v }}" {% if ev and ev.asistencia == v|add:"0"|int %}selected{% endif %}>{{ v }}</option>
+                          {% endwith %}
+                        {% endfor %}
+                      </select>
+                    </td>
+
+                    <td style="padding:10px; border-bottom:1px solid var(--border);">
+                      <select name="participacion_{{ m.id }}">
+                        {% for v in "12345" %}
+                          <option value="{{ v }}" {% if ev and ev.participacion == v|add:"0"|int %}selected{% endif %}>{{ v }}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+
+                    <td style="padding:10px; border-bottom:1px solid var(--border);">
+                      <select name="estado_{{ m.id }}">
+                        <option value="NORMAL" {% if ev and ev.estado == "NORMAL" %}selected{% endif %}>Normal</option>
+                        <option value="EN_RIESGO" {% if ev and ev.estado == "EN_RIESGO" %}selected{% endif %}>En riesgo</option>
+                        <option value="AUSENTE" {% if ev and ev.estado == "AUSENTE" %}selected{% endif %}>Ausente</option>
+                      </select>
+                    </td>
+
+                    <td style="padding:10px; border-bottom:1px solid var(--border);">
+                      <input type="text" name="observacion_{{ m.id }}" value="{% if ev %}{{ ev.observacion }}{% endif %}" maxlength="255" style="width:100%;">
+                    </td>
+
+                    <td style="padding:10px; border-bottom:1px solid var(--border);">
+                      {% if ev %}
+                        {{ ev.estrellas }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endwith %}
+                {% endwith %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+          <button class="btn btn-primary" type="submit">
+            Guardar evaluación
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </form>
+
+  <script>
+    // buscador simple (no toca tu CSS)
+    const input = document.getElementById('buscador');
+    const filas = document.querySelectorAll('.fila-miembro');
+    input.addEventListener('input', () => {
+      const q = (input.value || '').toLowerCase();
+      filas.forEach(tr => {
+        const text = tr.innerText.toLowerCase();
+        tr.style.display = text.includes(q) ? '' : 'none';
+      });
+    });
+  </script>
+{% endblock %}
