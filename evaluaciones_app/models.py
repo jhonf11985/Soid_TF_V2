@@ -1,59 +1,77 @@
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
+from datetime import date
 
+from miembros_app.models import Miembro
+from estructura_app.models import Unidad
 
 
 def current_year():
- return timezone.localdate().year
+    return date.today().year
+
 
 def current_month():
-    return timezone.localdate().month
+    return date.today().month
+
 
 class EvaluacionUnidad(models.Model):
     """
-    Una evaluación 'por período' para una unidad.
-    Ej: Evaluación Enero 2026 - Unidad Jóvenes.
+    Evaluación por período para una unidad.
+    Ej: Enero 2026 - Unidad Jóvenes.
     """
 
-    asistencia = models.PositiveSmallIntegerField(default=3)
-    participacion = models.PositiveSmallIntegerField(default=3)
-
-    ESTADOS = (
-        ("estable", "Estable"),
-        ("crecimiento", "En crecimiento"),
-        ("irregular", "Asistencia irregular"),
-        ("observacion", "En observación"),
-        ("seguimiento", "En seguimiento"),
-        ("riesgo", "En riesgo"),
-        ("inactivo", "Inactivo"),
-    )
-    estado = models.CharField(max_length=20, choices=ESTADOS, default="estable")
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    # ===== Workflow de la evaluación (estado del proceso)
     ESTADO_BORRADOR = "BORRADOR"
     ESTADO_EN_PROGRESO = "EN_PROGRESO"
     ESTADO_CERRADA = "CERRADA"
 
-    ESTADOS = (
+    ESTADOS_WORKFLOW = (
         (ESTADO_BORRADOR, "Borrador"),
         (ESTADO_EN_PROGRESO, "En progreso"),
         (ESTADO_CERRADA, "Cerrada"),
     )
 
-    unidad = models.ForeignKey(
-        "estructura_app.Unidad",
-        on_delete=models.CASCADE,
-        related_name="evaluaciones",
+    # ===== Diagnóstico general (opcional, pero útil)
+    DIAG_ESTABLE = "estable"
+    DIAG_CRECIMIENTO = "crecimiento"
+    DIAG_IRREGULAR = "irregular"
+    DIAG_OBSERVACION = "observacion"
+    DIAG_SEGUIMIENTO = "seguimiento"
+    DIAG_RIESGO = "riesgo"
+    DIAG_INACTIVO = "inactivo"
+
+    DIAGNOSTICOS = (
+        (DIAG_ESTABLE, "Estable"),
+        (DIAG_CRECIMIENTO, "En crecimiento"),
+        (DIAG_IRREGULAR, "Asistencia irregular"),
+        (DIAG_OBSERVACION, "En observación"),
+        (DIAG_SEGUIMIENTO, "En seguimiento"),
+        (DIAG_RIESGO, "En riesgo"),
+        (DIAG_INACTIVO, "Inactivo"),
     )
 
-    # Periodo simple para agrupar y hacer reportes
+    unidad = models.ForeignKey(
+        Unidad,
+        on_delete=models.CASCADE,
+        related_name="evaluaciones_unidad",
+    )
 
     anio = models.PositiveIntegerField(default=current_year)
     mes = models.PositiveSmallIntegerField(default=current_month)
 
-    estado = models.CharField(max_length=20, choices=ESTADOS, default=ESTADO_BORRADOR)
+    # Estado del proceso
+    estado_workflow = models.CharField(
+        max_length=20,
+        choices=ESTADOS_WORKFLOW,
+        default=ESTADO_BORRADOR,
+    )
+
+    # Diagnóstico general (esto NO es 1-5; es semántico)
+    diagnostico = models.CharField(
+        max_length=20,
+        choices=DIAGNOSTICOS,
+        default=DIAG_ESTABLE,
+    )
 
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -66,7 +84,7 @@ class EvaluacionUnidad(models.Model):
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
-
+    observaciones = models.TextField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Evaluación de unidad"
@@ -80,11 +98,123 @@ class EvaluacionUnidad(models.Model):
         ]
         indexes = [
             models.Index(fields=["unidad", "anio", "mes"]),
-            models.Index(fields=["estado"]),
+            models.Index(fields=["estado_workflow"]),
+            models.Index(fields=["diagnostico"]),
         ]
 
     def __str__(self):
         return f"Evaluación {self.mes:02d}/{self.anio} - {self.unidad}"
+
+
+class EvaluacionMiembro(models.Model):
+    """
+    Evaluación de un miembro dentro de una unidad, ligada a un período (opcional)
+    o simplemente a una fecha.
+    """
+
+    unidad = models.ForeignKey(
+        Unidad,
+        on_delete=models.CASCADE,
+        related_name="evaluaciones_miembros",
+    )
+    miembro = models.ForeignKey(
+        Miembro,
+        on_delete=models.CASCADE,
+        related_name="evaluaciones",
+    )
+
+    # (Opcional, pero recomendado): vincular la evaluación del miembro al período
+    evaluacion_unidad = models.ForeignKey(
+        EvaluacionUnidad,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="detalle_miembros",
+    )
+
+    # =========================
+    # DIMENSIONES SOID (1 a 5)
+    # =========================
+    asistencia = models.PositiveSmallIntegerField(default=3)
+    participacion = models.PositiveSmallIntegerField(default=3)
+    compromiso = models.PositiveSmallIntegerField(default=3)
+    actitud = models.PositiveSmallIntegerField(default=3)
+    integracion = models.PositiveSmallIntegerField(default=3)
+    liderazgo = models.PositiveSmallIntegerField(default=3)
+
+    # =========================
+    # RESULTADOS CALCULADOS
+    # =========================
+    score_soid = models.DecimalField(max_digits=4, decimal_places=2, default=0)
+    clasificacion = models.CharField(max_length=50, blank=True, null=True)
+
+    observaciones = models.TextField(blank=True, null=True)
+    fecha = models.DateField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Evaluación de miembro"
+        verbose_name_plural = "Evaluaciones de miembros"
+        ordering = ["-fecha"]
+        constraints = [
+            # Evita duplicar evaluaciones del mismo miembro el mismo día para la misma unidad
+            models.UniqueConstraint(
+                fields=["unidad", "miembro", "fecha"],
+                name="uniq_eval_miembro_unidad_fecha",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["unidad", "miembro", "fecha"]),
+        ]
+
+    def calcular_score(self):
+        score = (
+            self.asistencia * 0.20 +
+            self.participacion * 0.20 +
+            self.compromiso * 0.20 +
+            self.actitud * 0.15 +
+            self.integracion * 0.15 +
+            self.liderazgo * 0.10
+        )
+        return round(score, 2)
+
+    def calcular_clasificacion(self):
+        score = float(self.score_soid)
+
+        # Reglas inteligentes base
+        if self.liderazgo >= 4 and self.compromiso >= 4 and self.asistencia >= 3:
+            return "🟣 Líder potencial"
+
+        if self.asistencia <= 2 and self.integracion <= 2:
+            return "🔴 En riesgo"
+
+        if self.asistencia >= 4 and self.participacion <= 2:
+            return "🟠 Presente pero pasivo"
+
+        if 2.5 <= score < 3.5:
+            return "🟡 En desarrollo"
+
+        if score >= 4.2:
+            return "🟢 Comprometido"
+
+        # fallback por score
+        if score >= 4.5:
+            return "🟢 Excelente"
+        elif score >= 3.5:
+            return "🔵 Bueno"
+        elif score >= 2.5:
+            return "🟡 Regular"
+        elif score >= 1.5:
+            return "🟠 Bajo"
+        else:
+            return "🔴 Crítico"
+
+    def save(self, *args, **kwargs):
+        self.score_soid = self.calcular_score()
+        self.clasificacion = self.calcular_clasificacion()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.miembro} - {self.unidad} ({self.fecha})"
 
 
 class EvaluacionMiembro(models.Model):

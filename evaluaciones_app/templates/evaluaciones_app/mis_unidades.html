@@ -1,34 +1,330 @@
 {% extends 'evaluaciones_app/base_evaluaciones.html' %}
 
 {% block evaluaciones_content %}
-  <div class="page-header">
-    <h2>Mis unidades para evaluar</h2>
-    <p class="text-muted">Aquí solo aparecen las unidades donde tienes un cargo vigente.</p>
-  </div>
+<style>
+  .unidades-header {
+    margin-bottom: 24px;
+  }
+  .unidades-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary, #1f2937);
+    margin: 0 0 6px 0;
+  }
+  .unidades-header p {
+    color: var(--text-muted, #6b7280);
+    font-size: 14px;
+    margin: 0;
+  }
 
-  {% if not unidades %}
-    <div class="card">
-      <div class="card-body">
-        <p>No tienes unidades asignadas como líder.</p>
+  .unidad-card {
+    background: #fff;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .unidad-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-color: #d1d5db;
+  }
+  .unidad-card:last-child {
+    margin-bottom: 0;
+  }
+
+  .unidad-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  @media (max-width: 640px) {
+    .unidad-content {
+      flex-direction: column;
+      gap: 16px;
+    }
+  }
+
+  .unidad-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .unidad-nombre {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-primary, #1f2937);
+    margin-bottom: 4px;
+  }
+
+  .unidad-ruta {
+    font-size: 13px;
+    color: var(--text-muted, #6b7280);
+    margin-bottom: 12px;
+  }
+
+  .unidad-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .stat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .stat-badge.estado {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  .stat-badge.progreso {
+    background: #ede9fe;
+    color: #5b21b6;
+  }
+
+  .progress-section {
+    margin-bottom: 14px;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-muted, #6b7280);
+    margin-bottom: 6px;
+  }
+  .progress-bar-container {
+    width: 100%;
+    max-width: 280px;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.4s ease;
+  }
+  .progress-bar-fill.low { background: linear-gradient(90deg, #ef4444, #f87171); }
+  .progress-bar-fill.mid { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .progress-bar-fill.high { background: linear-gradient(90deg, #10b981, #34d399); }
+  .progress-bar-fill.complete { background: linear-gradient(90deg, #6366f1, #818cf8); }
+
+  .alertas-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .alerta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .alerta-item.riesgo {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+  .alerta-item.lideres {
+    background: #faf5ff;
+    color: #7c3aed;
+  }
+  .alerta-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .alerta-dot.riesgo { background: #ef4444; }
+  .alerta-dot.lideres { background: #8b5cf6; }
+
+  .unidad-action {
+    flex-shrink: 0;
+  }
+  @media (max-width: 640px) {
+    .unidad-action {
+      width: 100%;
+    }
+    .unidad-action .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  .btn-eval {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-eval.empezar {
+    background: #dc2626;
+    color: #fff;
+  }
+  .btn-eval.empezar:hover {
+    background: #b91c1c;
+  }
+  .btn-eval.continuar {
+    background: #f59e0b;
+    color: #fff;
+  }
+  .btn-eval.continuar:hover {
+    background: #d97706;
+  }
+  .btn-eval.completado {
+    background: #10b981;
+    color: #fff;
+  }
+  .btn-eval.completado:hover {
+    background: #059669;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: #fff;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+  }
+  .empty-state-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    background: #f3f4f6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .empty-state-icon svg {
+    width: 32px;
+    height: 32px;
+    color: #9ca3af;
+  }
+  .empty-state p {
+    color: var(--text-muted, #6b7280);
+    font-size: 15px;
+    margin: 0;
+  }
+</style>
+
+<div class="unidades-header">
+  <h2>Mis unidades para evaluar</h2>
+  <p>Aquí solo aparecen las unidades donde tienes un cargo vigente.</p>
+</div>
+
+{% if not unidades_info %}
+  <div class="empty-state">
+    <div class="empty-state-icon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+      </svg>
+    </div>
+    <p>No tienes unidades asignadas como líder.</p>
+  </div>
+{% else %}
+  {% for item in unidades_info %}
+    {% with u=item.unidad %}
+    <div class="unidad-card">
+      <div class="unidad-content">
+        
+        <div class="unidad-info">
+          <div class="unidad-nombre">{{ u.nombre }}</div>
+          <div class="unidad-ruta">{{ u.ruta }}</div>
+
+          <div class="unidad-stats">
+            <span class="stat-badge estado">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              {{ item.estado_txt }}
+            </span>
+            <span class="stat-badge progreso">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              {{ item.evaluados }}/{{ item.total }} evaluados
+            </span>
+          </div>
+
+          <div class="progress-section">
+            <div class="progress-label">
+              <span>Progreso de evaluación</span>
+              <span><strong>{{ item.porcentaje }}%</strong></span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill {% if item.porcentaje == 100 %}complete{% elif item.porcentaje >= 70 %}high{% elif item.porcentaje >= 30 %}mid{% else %}low{% endif %}" 
+                   style="width: {{ item.porcentaje }}%;"></div>
+            </div>
+          </div>
+
+          <div class="alertas-row">
+            {% if item.en_riesgo > 0 %}
+            <span class="alerta-item riesgo">
+              <span class="alerta-dot riesgo"></span>
+              {{ item.en_riesgo }} en riesgo
+            </span>
+            {% endif %}
+            {% if item.lideres > 0 %}
+            <span class="alerta-item lideres">
+              <span class="alerta-dot lideres"></span>
+              {{ item.lideres }} líderes potenciales
+            </span>
+            {% endif %}
+            {% if item.en_riesgo == 0 and item.lideres == 0 %}
+            <span class="alerta-item" style="background:#f0fdf4; color:#15803d;">
+              <span class="alerta-dot" style="background:#22c55e;"></span>
+              Sin alertas
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="unidad-action">
+          {% if item.accion == "Empezar" %}
+            <a class="btn-eval empezar" href="{% url 'evaluaciones_app:evaluar_unidad' u.id %}">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Empezar
+            </a>
+          {% elif item.accion == "Continuar" %}
+            <a class="btn-eval continuar" href="{% url 'evaluaciones_app:evaluar_unidad' u.id %}">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Continuar
+            </a>
+          {% else %}
+            <a class="btn-eval completado" href="{% url 'evaluaciones_app:evaluar_unidad' u.id %}">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+              Ver resultados
+            </a>
+          {% endif %}
+        </div>
+
       </div>
     </div>
-  {% else %}
-    <div class="card">
-      <div class="card-body">
-        <ul style="list-style:none; padding-left:0; margin:0;">
-          {% for u in unidades %}
-            <li style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border);">
-              <div>
-                <div style="font-weight:700;">{{ u.nombre }}</div>
-                <div class="text-muted" style="font-size:13px;">{{ u.ruta }}</div>
-              </div>
-              <a class="btn btn-primary" href="{% url 'evaluaciones_app:evaluar_unidad' u.id %}">
-                Evaluar
-              </a>
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
-    </div>
-  {% endif %}
+    {% endwith %}
+  {% endfor %}
+{% endif %}
 {% endblock %}

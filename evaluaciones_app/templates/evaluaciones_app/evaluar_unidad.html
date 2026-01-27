@@ -4,383 +4,894 @@
 {% block evaluaciones_content %}
 
 <style>
-  .eval-container {
-    max-width: 1000px;
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+  }
+
+  .eval-app {
+    max-width: 500px;
     margin: 0 auto;
+    padding: 16px;
   }
-  
-  .eval-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
+
+  /* Progress Header */
+  .progress-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .progress-text {
+    font-size: 14px;
+    color: var(--text-secondary, #64748b);
+    margin-bottom: 12px;
+  }
+
+  .progress-text strong {
+    color: var(--text-primary, #1f2937);
+  }
+
+  .progress-bar {
+    height: 6px;
+    background: var(--border, #e2e8f0);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  /* Member Card */
+  .member-card {
+    background: var(--bg-secondary, #fff);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid var(--border, #e2e8f0);
+    padding: 24px;
     margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
   }
-  
-  .eval-title {
-    margin: 0;
+
+  .member-header {
+    text-align: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+    margin-bottom: 24px;
+  }
+
+  .member-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 28px;
+    color: var(--primary);
+  }
+
+  .member-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .member-name {
     font-size: 20px;
     font-weight: 600;
     color: var(--text-primary, #1f2937);
+    margin: 0 0 4px;
   }
-  
-  .search-box {
-    position: relative;
-  }
-  
-  .search-box input {
-    padding: 8px 12px 8px 36px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    width: 240px;
-    font-size: 14px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    background: var(--bg-secondary, #fff);
-  }
-  
-  .search-box input:focus {
-    outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-  }
-  
-  .search-box::before {
-    content: "🔍";
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 14px;
-    opacity: 0.5;
-  }
-  
-  .eval-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    background: var(--bg-secondary, #fff);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    border: 1px solid var(--border);
-  }
-  
-  .eval-table thead th {
-    background: var(--bg-tertiary, #f8fafc);
-    padding: 14px 16px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary, #64748b);
-    border-bottom: 1px solid var(--border);
-  }
-  
-  .eval-table tbody tr {
-    transition: background 0.15s;
-  }
-  
-  .eval-table tbody tr:hover {
-    background: var(--bg-hover, #f8fafc);
-  }
-  
-  .eval-table tbody td {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }
-  
-  .eval-table tbody tr:last-child td {
-    border-bottom: none;
-  }
-  
-  .member-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  
-  .member-name {
-    font-weight: 600;
-    color: var(--text-primary, #1f2937);
-    font-size: 14px;
-  }
-  
+
   .member-code {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-muted, #94a3b8);
   }
-  
-  .eval-select {
-    padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
+
+  /* Rating Groups */
+  .rating-group {
+    margin-bottom: 20px;
+  }
+
+  .rating-label {
     font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary, #64748b);
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .rating-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .rating-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid var(--border, #e2e8f0);
     background: var(--bg-secondary, #fff);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-secondary, #64748b);
     cursor: pointer;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding-right: 32px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  
-  .eval-select:focus {
-    outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+
+  .rating-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: scale(1.08);
   }
-  
-  .eval-select:hover {
-    border-color: #94a3b8;
+
+  .rating-btn.selected {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
   }
-  
-  .select-score {
-    min-width: 70px;
-    text-align: center;
-  }
-  
-  .select-estado {
-    min-width: 170px;
-  }
-  
-  .eval-actions {
+
+  /* Rating descriptions */
+  .rating-desc {
     display: flex;
     justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted, #94a3b8);
+    margin-top: 6px;
+    padding: 0 4px;
+  }
+
+  /* Estado Select */
+  .estado-group {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border, #e2e8f0);
+  }
+
+  .estado-select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    font-size: 15px;
+    background: var(--bg-secondary, #fff);
+    cursor: pointer;
+    transition: border-color 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+  }
+
+  .estado-select:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+
+  /* Navigation */
+  .nav-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
     align-items: center;
-    margin-top: 20px;
-    padding-top: 16px;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .nav-btn.prev {
+    background: var(--bg-secondary, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    color: var(--text-primary, #374151);
+  }
+
+  .nav-btn.prev:hover:not(:disabled) {
+    background: var(--bg-tertiary, #f1f5f9);
+  }
+
+  .nav-btn.next {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    color: white;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+
+  .nav-btn.next:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  }
+
+  .nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  /* Actions */
+  .eval-actions {
+    display: flex;
     gap: 12px;
   }
-  
+
   .btn-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 16px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    text-decoration: none;
+    flex: 1;
+    padding: 14px;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    background: var(--bg-secondary, #fff);
     color: var(--text-primary, #374151);
     font-size: 14px;
     font-weight: 500;
-    background: var(--bg-secondary, #fff);
-    transition: background 0.2s, border-color 0.2s;
+    text-decoration: none;
+    text-align: center;
+    transition: background 0.2s;
   }
-  
+
   .btn-back:hover {
     background: var(--bg-tertiary, #f1f5f9);
-    border-color: #94a3b8;
   }
-  
+
   .btn-save {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 20px;
+    flex: 2;
+    padding: 14px;
     border: none;
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--success), #059669);
     color: white;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 15px;
+    font-weight: 600;
     cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   }
-  
+
   .btn-save:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(37, 99, 235, 0.35);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
   }
-  
-  .btn-save:active {
-    transform: translateY(0);
+
+  /* Member dots navigation */
+  .member-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    max-width: 100%;
+    padding: 0 10px;
   }
-  
+
+  .member-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border, #e2e8f0);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    padding: 0;
+  }
+
+  .member-dot:hover {
+    background: #94a3b8;
+    transform: scale(1.2);
+  }
+
+  .member-dot.current {
+    background: var(--primary);
+    transform: scale(1.3);
+  }
+
+  .member-dot.completed {
+    background: var(--success);
+  }
+
+  /* Hidden inputs container */
+  .hidden-inputs {
+    display: none;
+  }
+
+  /* Empty state */
   .empty-state {
     text-align: center;
-    padding: 40px 20px;
+    padding: 60px 20px;
     color: var(--text-muted, #94a3b8);
   }
-  
-  @media (max-width: 768px) {
-    .eval-header {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    
-    .search-box input {
-      width: 100%;
-    }
-    
-    .eval-table {
-      display: block;
-      overflow-x: auto;
-    }
-    
-    .eval-table thead {
-      display: none;
-    }
-    
-    .eval-table tbody tr {
-      display: flex;
-      flex-direction: column;
-      padding: 16px;
-      gap: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    
-    .eval-table tbody tr:last-child {
-      border-bottom: none;
-    }
-    
-    .eval-table tbody td {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0;
-      border: none;
-    }
-    
-    .eval-table tbody td::before {
-      content: attr(data-label);
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-secondary, #64748b);
-      text-transform: uppercase;
-    }
-    
-    .eval-table tbody td:first-child {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 4px;
-    }
-    
-    .eval-table tbody td:first-child::before {
-      display: none;
-    }
-    
-    .eval-actions {
-      flex-direction: column-reverse;
-    }
-    
-    .btn-back, .btn-save {
-      width: 100%;
-      justify-content: center;
-    }
+
+  .empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  /* Lista de miembros (vista alternativa) */
+  .view-toggle {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .toggle-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg-secondary, #fff);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary, #64748b);
+  }
+
+  .toggle-btn:first-child {
+    border-radius: 8px 0 0 8px;
+  }
+
+  .toggle-btn:last-child {
+    border-radius: 0 8px 8px 0;
+    border-left: none;
+  }
+
+  .toggle-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+  }
+
+  /* Lista compacta */
+  .members-list {
+    display: none;
+    background: var(--bg-secondary, #fff);
+    border-radius: 12px;
+    border: 1px solid var(--border, #e2e8f0);
+    overflow: hidden;
+  }
+
+  .members-list.visible {
+    display: block;
+  }
+
+  .member-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .member-list-item:last-child {
+    border-bottom: none;
+  }
+
+  .member-list-item:hover {
+    background: var(--bg-hover, #f8fafc);
+  }
+
+  .member-list-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .member-list-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--primary);
+  }
+
+  .member-list-name {
+    font-weight: 500;
+    color: var(--text-primary, #1f2937);
+    font-size: 14px;
+  }
+
+  .member-list-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .status-badge.completed {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .slider-view {
+    display: block;
+  }
+
+  .slider-view.hidden {
+    display: none;
   }
 </style>
 
-<form method="post">
+<form method="post" id="evalForm">
   {% csrf_token %}
 
-  <div class="eval-container">
-    <div class="eval-header">
-      <h2 class="eval-title">Evaluar unidad</h2>
-      <div class="search-box">
-        <input type="text" id="buscador" placeholder="Buscar miembro...">
+  <div class="eval-app">
+    
+    {% if membresias %}
+    
+    <!-- Progress Header -->
+    <div class="progress-header">
+      <div class="progress-text">
+        Evaluando <strong><span id="currentNum">1</span></strong> de <strong><span id="totalNum">{{ membresias|length }}</span></strong> miembros
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
       </div>
     </div>
 
-    <table class="eval-table">
-      <thead>
-        <tr>
-          <th style="text-align:left;">Miembro</th>
-          <th style="text-align:center; width:120px;">Asistencia</th>
-          <th style="text-align:center; width:140px;">Participación</th>
-          <th style="text-align:center; width:200px;">Estado</th>
-        </tr>
-      </thead>
+    <!-- View Toggle -->
+    <div class="view-toggle">
+      <button type="button" class="toggle-btn active" data-view="slider">
+        👤 Uno a uno
+      </button>
+      <button type="button" class="toggle-btn" data-view="list">
+        📋 Ver lista
+      </button>
+    </div>
 
-      <tbody id="tabla-miembros">
-        {% for mem in membresias %}
-          {% if mem.miembo_fk %}
-            {% with m=mem.miembo_fk %}
-              {% with ev=existentes|get_item:m.id %}
-                <tr class="fila-miembro">
-                  <td data-label="">
-                    <div class="member-info">
-                      <span class="member-name">{{ m.nombres }} {{ m.apellidos }}</span>
-                      {% if m.codigo_miembro %}
-                        <span class="member-code">{{ m.codigo_miembro }}</span>
-                      {% endif %}
-                    </div>
-                  </td>
+    <!-- Member Dots -->
+    <div class="member-dots" id="memberDots"></div>
 
-                  <td data-label="Asistencia" style="text-align:center;">
-                    <select name="asistencia_{{ m.id }}" class="eval-select select-score">
-                      {% for v in "12345" %}
-                        <option value="{{ v }}" {% if ev and ev.asistencia|stringformat:"s" == v %}selected{% endif %}>{{ v }}</option>
-                      {% endfor %}
-                    </select>
-                  </td>
+    <!-- Slider View -->
+    <div class="slider-view" id="sliderView">
+      <!-- Member Card (populated by JS) -->
+      <div class="member-card" id="memberCard">
+        <div class="member-header">
+          <div class="member-avatar" id="memberAvatar">👤</div>
+          <h3 class="member-name" id="memberName">Cargando...</h3>
+          <span class="member-code" id="memberCode"></span>
+        </div>
 
-                  <td data-label="Participación" style="text-align:center;">
-                    <select name="participacion_{{ m.id }}" class="eval-select select-score">
-                      {% for v in "12345" %}
-                        <option value="{{ v }}" {% if ev and ev.participacion|stringformat:"s" == v %}selected{% endif %}>{{ v }}</option>
-                      {% endfor %}
-                    </select>
-                  </td>
+        <!-- Ratings -->
+        <div class="rating-group">
+          <label class="rating-label">Asistencia</label>
+          <div class="rating-buttons" data-field="asistencia">
+            <button type="button" class="rating-btn" data-value="1">1</button>
+            <button type="button" class="rating-btn" data-value="2">2</button>
+            <button type="button" class="rating-btn" data-value="3">3</button>
+            <button type="button" class="rating-btn" data-value="4">4</button>
+            <button type="button" class="rating-btn" data-value="5">5</button>
+          </div>
+          <div class="rating-desc"><span>Baja</span><span>Excelente</span></div>
+        </div>
 
-                  <td data-label="Estado" style="text-align:center;">
-                    <select name="estado_{{ m.id }}" class="eval-select select-estado">
-                      <option value="estable" {% if ev and ev.estado == "estable" %}selected{% endif %}>Estable</option>
-                      <option value="crecimiento" {% if ev and ev.estado == "crecimiento" %}selected{% endif %}>En crecimiento</option>
-                      <option value="irregular" {% if ev and ev.estado == "irregular" %}selected{% endif %}>Asistencia irregular</option>
-                      <option value="observacion" {% if ev and ev.estado == "observacion" %}selected{% endif %}>En observación</option>
-                      <option value="seguimiento" {% if ev and ev.estado == "seguimiento" %}selected{% endif %}>En seguimiento</option>
-                      <option value="riesgo" {% if ev and ev.estado == "riesgo" %}selected{% endif %}>En riesgo</option>
-                      <option value="inactivo" {% if ev and ev.estado == "inactivo" %}selected{% endif %}>Inactivo</option>
-                    </select>
-                  </td>
+        <div class="rating-group">
+          <label class="rating-label">Participación</label>
+          <div class="rating-buttons" data-field="participacion">
+            <button type="button" class="rating-btn" data-value="1">1</button>
+            <button type="button" class="rating-btn" data-value="2">2</button>
+            <button type="button" class="rating-btn" data-value="3">3</button>
+            <button type="button" class="rating-btn" data-value="4">4</button>
+            <button type="button" class="rating-btn" data-value="5">5</button>
+          </div>
+          <div class="rating-desc"><span>Baja</span><span>Excelente</span></div>
+        </div>
 
-                </tr>
-              {% endwith %}
-            {% endwith %}
-          {% endif %}
-        {% empty %}
-          <tr>
-            <td colspan="4" class="empty-state">
-              No hay miembros en esta unidad
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        <div class="rating-group">
+          <label class="rating-label">Compromiso</label>
+          <div class="rating-buttons" data-field="compromiso">
+            <button type="button" class="rating-btn" data-value="1">1</button>
+            <button type="button" class="rating-btn" data-value="2">2</button>
+            <button type="button" class="rating-btn" data-value="3">3</button>
+            <button type="button" class="rating-btn" data-value="4">4</button>
+            <button type="button" class="rating-btn" data-value="5">5</button>
+          </div>
+          <div class="rating-desc"><span>Bajo</span><span>Excelente</span></div>
+        </div>
 
+        <div class="rating-group">
+          <label class="rating-label">Actitud</label>
+          <div class="rating-buttons" data-field="actitud">
+            <button type="button" class="rating-btn" data-value="1">1</button>
+            <button type="button" class="rating-btn" data-value="2">2</button>
+            <button type="button" class="rating-btn" data-value="3">3</button>
+            <button type="button" class="rating-btn" data-value="4">4</button>
+            <button type="button" class="rating-btn" data-value="5">5</button>
+          </div>
+          <div class="rating-desc"><span>Negativa</span><span>Excelente</span></div>
+        </div>
+
+        <div class="rating-group">
+          <label class="rating-label">Integración</label>
+          <div class="rating-buttons" data-field="integracion">
+            <button type="button" class="rating-btn" data-value="1">1</button>
+            <button type="button" class="rating-btn" data-value="2">2</button>
+            <button type="button" class="rating-btn" data-value="3">3</button>
+            <button type="button" class="rating-btn" data-value="4">4</button>
+            <button type="button" class="rating-btn" data-value="5">5</button>
+          </div>
+          <div class="rating-desc"><span>Baja</span><span>Excelente</span></div>
+        </div>
+
+        <div class="rating-group">
+          <label class="rating-label">Liderazgo</label>
+          <div class="rating-buttons" data-field="liderazgo">
+            <button type="button" class="rating-btn" data-value="1">1</button>
+            <button type="button" class="rating-btn" data-value="2">2</button>
+            <button type="button" class="rating-btn" data-value="3">3</button>
+            <button type="button" class="rating-btn" data-value="4">4</button>
+            <button type="button" class="rating-btn" data-value="5">5</button>
+          </div>
+          <div class="rating-desc"><span>Bajo</span><span>Excelente</span></div>
+        </div>
+
+        <!-- Estado -->
+        <div class="estado-group">
+          <label class="rating-label">Estado general</label>
+          <select class="estado-select" id="estadoSelect">
+            <option value="estable">✓ Estable</option>
+            <option value="crecimiento">📈 En crecimiento</option>
+            <option value="irregular">⚠️ Asistencia irregular</option>
+            <option value="observacion">👁️ En observación</option>
+            <option value="seguimiento">🔄 En seguimiento</option>
+            <option value="riesgo">⚡ En riesgo</option>
+            <option value="inactivo">💤 Inactivo</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Navigation Buttons -->
+      <div class="nav-buttons">
+        <button type="button" class="nav-btn prev" id="prevBtn">
+          ← Anterior
+        </button>
+        <button type="button" class="nav-btn next" id="nextBtn">
+          Siguiente →
+        </button>
+      </div>
+    </div>
+
+    <!-- List View -->
+    <div class="members-list" id="listView"></div>
+
+    <!-- Actions -->
     <div class="eval-actions">
       <a href="{% url 'evaluaciones:mis_unidades' %}" class="btn-back">
         ← Volver
       </a>
       <button type="submit" class="btn-save">
-        💾 Guardar evaluación
+        💾 Guardar todo
       </button>
     </div>
-  </div>
 
+    <!-- Hidden inputs container -->
+    <div class="hidden-inputs" id="hiddenInputs"></div>
+
+    {% else %}
+    
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <p>No hay miembros en esta unidad</p>
+      <a href="{% url 'evaluaciones:mis_unidades' %}" class="btn-back" style="display: inline-block; margin-top: 16px;">
+        ← Volver
+      </a>
+    </div>
+    
+    {% endif %}
+
+  </div>
 </form>
 
+{% if membresias %}
 <script>
-  const input = document.getElementById('buscador');
-  const filas = document.querySelectorAll('.fila-miembro');
-  
-  input.addEventListener('input', () => {
-    const q = (input.value || '').toLowerCase().trim();
-    let visibles = 0;
-    
-    filas.forEach(tr => {
-      const text = tr.innerText.toLowerCase();
-      const visible = text.includes(q);
-      tr.style.display = visible ? '' : 'none';
-      if (visible) visibles++;
-    });
+(function() {
+  // Data from Django
+  const members = [
+    {% for mem in membresias %}
+      {% if mem.miembo_fk %}
+        {% with m=mem.miembo_fk %}
+          {% with ev=existentes|get_item:m.id %}
+          {
+            id: {{ m.id }},
+            nombre: "{{ m.nombres }} {{ m.apellidos }}",
+            codigo: "{{ m.codigo_miembro|default:'' }}",
+            foto: "{% if m.foto_perfil %}{{ m.foto_perfil.url }}{% endif %}",
+            valores: {
+              asistencia: {{ ev.asistencia|default:1 }},
+              participacion: {{ ev.participacion|default:1 }},
+              compromiso: {{ ev.compromiso|default:1 }},
+              actitud: {{ ev.actitud|default:1 }},
+              integracion: {{ ev.integracion|default:1 }},
+              liderazgo: {{ ev.liderazgo|default:1 }},
+              estado: "{{ ev.estado|default:'estable' }}"
+            }
+          },
+          {% endwith %}
+        {% endwith %}
+      {% endif %}
+    {% endfor %}
+  ];
+
+  const fields = ['asistencia', 'participacion', 'compromiso', 'actitud', 'integracion', 'liderazgo'];
+  let currentIndex = 0;
+  let evaluations = {};
+
+  // Initialize evaluations from existing data
+  members.forEach(m => {
+    evaluations[m.id] = { ...m.valores };
   });
+
+  // DOM Elements
+  const memberCard = document.getElementById('memberCard');
+  const memberName = document.getElementById('memberName');
+  const memberCode = document.getElementById('memberCode');
+  const memberAvatar = document.getElementById('memberAvatar');
+  const estadoSelect = document.getElementById('estadoSelect');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const currentNum = document.getElementById('currentNum');
+  const totalNum = document.getElementById('totalNum');
+  const progressFill = document.getElementById('progressFill');
+  const memberDots = document.getElementById('memberDots');
+  const hiddenInputs = document.getElementById('hiddenInputs');
+  const listView = document.getElementById('listView');
+  const sliderView = document.getElementById('sliderView');
+
+  // Initialize
+  function init() {
+    totalNum.textContent = members.length;
+    createDots();
+    createListView();
+    createHiddenInputs();
+    renderMember();
+    setupEventListeners();
+  }
+
+  // Create navigation dots
+  function createDots() {
+    memberDots.innerHTML = members.map((m, i) => 
+      `<button type="button" class="member-dot" data-index="${i}" title="${m.nombre}"></button>`
+    ).join('');
+  }
+
+  // Create list view
+  function createListView() {
+    listView.innerHTML = members.map((m, i) => `
+      <div class="member-list-item" data-index="${i}">
+        <div class="member-list-info">
+          <div class="member-list-avatar">
+            ${m.foto ? `<img src="${m.foto}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : '👤'}
+          </div>
+          <span class="member-list-name">${m.nombre}</span>
+        </div>
+        <div class="member-list-status">
+          <span class="status-badge pending" data-member="${m.id}">Pendiente</span>
+          <span style="color: var(--text-muted);">→</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Create hidden inputs for form submission
+  function createHiddenInputs() {
+    let html = '';
+    members.forEach(m => {
+      fields.forEach(f => {
+        html += `<input type="hidden" name="${f}_${m.id}" id="input_${f}_${m.id}" value="${evaluations[m.id][f]}">`;
+      });
+      html += `<input type="hidden" name="estado_${m.id}" id="input_estado_${m.id}" value="${evaluations[m.id].estado}">`;
+    });
+    hiddenInputs.innerHTML = html;
+  }
+
+  // Render current member
+  function renderMember() {
+    const m = members[currentIndex];
+    const ev = evaluations[m.id];
+
+    // Update header
+    memberName.textContent = m.nombre;
+    memberCode.textContent = m.codigo || '';
+    memberAvatar.innerHTML = m.foto ? 
+      `<img src="${m.foto}" alt="${m.nombre}">` : '👤';
+
+    // Update ratings
+    fields.forEach(field => {
+      const container = document.querySelector(`[data-field="${field}"]`);
+      container.querySelectorAll('.rating-btn').forEach(btn => {
+        btn.classList.toggle('selected', parseInt(btn.dataset.value) === ev[field]);
+      });
+    });
+
+    // Update estado
+    estadoSelect.value = ev.estado;
+
+    // Update navigation
+    currentNum.textContent = currentIndex + 1;
+    prevBtn.disabled = currentIndex === 0;
+    nextBtn.textContent = currentIndex === members.length - 1 ? '✓ Finalizar' : 'Siguiente →';
+
+    // Update progress
+    const progress = ((currentIndex + 1) / members.length) * 100;
+    progressFill.style.width = progress + '%';
+
+    // Update dots
+    document.querySelectorAll('.member-dot').forEach((dot, i) => {
+      dot.classList.toggle('current', i === currentIndex);
+      dot.classList.toggle('completed', isCompleted(members[i].id));
+    });
+
+    // Update list badges
+    updateListBadges();
+  }
+
+  function isCompleted(memberId) {
+    // Consider completed if at least one field has been interacted with
+    const ev = evaluations[memberId];
+    return fields.some(f => ev[f] > 1) || ev.estado !== 'estable';
+  }
+
+  function updateListBadges() {
+    members.forEach(m => {
+      const badge = document.querySelector(`.status-badge[data-member="${m.id}"]`);
+      if (badge) {
+        if (isCompleted(m.id)) {
+          badge.textContent = 'Completado';
+          badge.classList.remove('pending');
+          badge.classList.add('completed');
+        } else {
+          badge.textContent = 'Pendiente';
+          badge.classList.remove('completed');
+          badge.classList.add('pending');
+        }
+      }
+    });
+  }
+
+  // Save current values to hidden inputs
+  function saveCurrentValues() {
+    const m = members[currentIndex];
+    fields.forEach(f => {
+      document.getElementById(`input_${f}_${m.id}`).value = evaluations[m.id][f];
+    });
+    document.getElementById(`input_estado_${m.id}`).value = evaluations[m.id].estado;
+  }
+
+  // Event listeners
+  function setupEventListeners() {
+    // Rating buttons
+    document.querySelectorAll('.rating-buttons').forEach(container => {
+      container.addEventListener('click', (e) => {
+        const btn = e.target.closest('.rating-btn');
+        if (!btn) return;
+
+        const field = container.dataset.field;
+        const value = parseInt(btn.dataset.value);
+        const m = members[currentIndex];
+
+        evaluations[m.id][field] = value;
+        saveCurrentValues();
+
+        container.querySelectorAll('.rating-btn').forEach(b => {
+          b.classList.toggle('selected', parseInt(b.dataset.value) === value);
+        });
+
+        updateListBadges();
+        updateDots();
+      });
+    });
+
+    // Estado select
+    estadoSelect.addEventListener('change', () => {
+      const m = members[currentIndex];
+      evaluations[m.id].estado = estadoSelect.value;
+      saveCurrentValues();
+      updateListBadges();
+      updateDots();
+    });
+
+    // Navigation
+    prevBtn.addEventListener('click', () => {
+      if (currentIndex > 0) {
+        currentIndex--;
+        renderMember();
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentIndex < members.length - 1) {
+        currentIndex++;
+        renderMember();
+      }
+    });
+
+    // Dots navigation
+    memberDots.addEventListener('click', (e) => {
+      const dot = e.target.closest('.member-dot');
+      if (!dot) return;
+      currentIndex = parseInt(dot.dataset.index);
+      renderMember();
+    });
+
+    // List item click
+    listView.addEventListener('click', (e) => {
+      const item = e.target.closest('.member-list-item');
+      if (!item) return;
+      currentIndex = parseInt(item.dataset.index);
+      
+      // Switch to slider view
+      document.querySelectorAll('.toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === 'slider');
+      });
+      sliderView.classList.remove('hidden');
+      listView.classList.remove('visible');
+      
+      renderMember();
+    });
+
+    // View toggle
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        document.querySelectorAll('.toggle-btn').forEach(b => {
+          b.classList.toggle('active', b === btn);
+        });
+        
+        if (view === 'list') {
+          sliderView.classList.add('hidden');
+          listView.classList.add('visible');
+        } else {
+          sliderView.classList.remove('hidden');
+          listView.classList.remove('visible');
+        }
+      });
+    });
+  }
+
+  function updateDots() {
+    document.querySelectorAll('.member-dot').forEach((dot, i) => {
+      dot.classList.toggle('completed', isCompleted(members[i].id));
+    });
+  }
+
+  // Start
+  init();
+})();
 </script>
+{% endif %}
 
 {% endblock %}
