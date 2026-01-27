@@ -11,21 +11,31 @@ from .models import EvaluacionUnidad, EvaluacionMiembro
 
 def _get_miembro_from_user(user):
     """
-    Intentamos sacar el Miembro vinculado al User sin adivinar un único nombre.
-    Ajustaremos esto cuando me confirmes el campo real.
+    Devuelve el Miembro vinculado al User.
+
+    En tu sistema, el vínculo real es: Miembro.usuario (FK/OneToOne hacia User).
     """
-    # 1) user.miembro (común)
+    # ✅ 1) VÍNCULO REAL EN TU MODELO: Miembro.usuario
+    try:
+        from miembros_app.models import Miembro
+        m = Miembro.objects.filter(usuario=user).first()
+        if m:
+            return m
+    except Exception:
+        pass
+
+    # 2) user.miembro (si en algún momento existiera)
     m = getattr(user, "miembro", None)
     if m:
         return m
 
-    # 2) user.miembro_fk / user.miembro_vinculado
+    # 3) otros nombres posibles (fallback)
     for attr in ("miembro_fk", "miembro_vinculado", "miembro_asociado"):
         m = getattr(user, attr, None)
         if m:
             return m
 
-    # 3) user.perfil.miembro (común con perfiles)
+    # 4) user.perfil.miembro (si usas perfiles)
     perfil = getattr(user, "perfil", None)
     if perfil:
         m = getattr(perfil, "miembro", None)
@@ -33,6 +43,7 @@ def _get_miembro_from_user(user):
             return m
 
     return None
+
 
 
 def _user_es_lider_de_unidad(user, unidad_id):
@@ -48,6 +59,17 @@ def _user_es_lider_de_unidad(user, unidad_id):
 
 @login_required
 def mis_unidades(request):
+
+    # DEBUG - quitar después
+    print("DEBUG user:", request.user, "| ID:", request.user.id)
+    from miembros_app.models import Miembro
+    test = Miembro.objects.filter(usuario_id=request.user.id).first()
+    print("DEBUG miembro:", test)
+    # FIN DEBUG
+    
+
+
+
     miembro = _get_miembro_from_user(request.user)
     if not miembro:
         return HttpResponseForbidden(
