@@ -739,20 +739,7 @@
       {% endif %}
 
       <!-- Estado espiritual (condicional) -->
-      {% if perfil.usar_estado_espiritual %}
-      <div class="estado-group">
-        <label class="rating-label">Estado espiritual</label>
-        <select class="estado-select" id="estadoSelect">
-          <option value="ESTABLE">✓ Estable</option>
-          <option value="EN_CRECIMIENTO">📈 En crecimiento</option>
-          <option value="EN_PROCESO">🔄 En proceso</option>
-          <option value="INESTABLE">⚠️ Inestable</option>
-          <option value="EN_RIESGO">⚡ En riesgo</option>
-          <option value="CRITICO">🔴 Crítico</option>
-          <option value="AUSENTE">💤 Ausente</option>
-        </select>
-      </div>
-      {% endif %}
+
     </div>
 
     <!-- Navigation Buttons -->
@@ -821,7 +808,8 @@
         integracion: {{ item.integracion|default:3 }},
         liderazgo: 3,
         madurez_espiritual: {{ item.madurez_espiritual|default:3 }},
-        estado: "{{ item.estado_espiritual|default:'ESTABLE' }}"
+       
+
       }
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
@@ -838,7 +826,7 @@
     {% if perfil.usar_madurez_espiritual %}'madurez_espiritual',{% endif %}
   ];
 
-  const usarEstado = {% if perfil.usar_estado_espiritual %}true{% else %}false{% endif %};
+  
   
   // Descripciones dinámicas
   const ratingDescriptions = {
@@ -893,7 +881,13 @@
     }
   };
   
+  // Encontrar el primer miembro pendiente (no guardado)
   let currentIndex = 0;
+  const firstPendingIndex = members.findIndex(m => !m.saved);
+  if (firstPendingIndex !== -1) {
+    currentIndex = firstPendingIndex;
+  }
+  
   let evaluations = {};
   let isSaving = false;
 
@@ -905,12 +899,20 @@
       dirty: false
     };
   });
+  
+  // Debug: mostrar estado inicial
+  console.log('Estado inicial de evaluaciones:', members.map(m => ({
+    nombre: m.nombre,
+    saved: m.saved,
+    itemId: m.itemId
+  })));
+  console.log('Iniciando en índice:', currentIndex);
 
   // DOM Elements
   const memberName = document.getElementById('memberName');
   const memberCode = document.getElementById('memberCode');
   const memberAvatar = document.getElementById('memberAvatar');
-  const estadoSelect = document.getElementById('estadoSelect');
+  
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
   const currentNum = document.getElementById('currentNum');
@@ -949,11 +951,19 @@
     isSaving = true;
     showSaving(true);
 
+    // Construir data explícitamente (sin spread para evitar campos innecesarios)
     const data = {
       evaluacion_id: EVALUACION_ID,
       miembro_id: memberId,
       item_id: m.itemId,
-      ...ev
+      asistencia: ev.asistencia,
+      participacion: ev.participacion,
+      compromiso: ev.compromiso,
+      actitud: ev.actitud,
+      integracion: ev.integracion,
+      liderazgo: ev.liderazgo || 3,
+      madurez_espiritual: ev.madurez_espiritual,
+      observacion: ev.observacion || ''
     };
 
     try {
@@ -971,10 +981,12 @@
       if (result.success) {
         ev.saved = true;
         ev.dirty = false;
+        console.log('✅ Guardado exitoso:', {miembro_id: memberId, item_id: m.itemId, result});
         updateCompletionState();
         showToast('✓ ' + m.nombre.split(' ')[0] + ' guardado');
         return true;
       } else {
+        console.error('❌ Error al guardar:', result);
         showToast('Error: ' + (result.error || 'No se pudo guardar'), 'error');
         return false;
       }
@@ -1074,10 +1086,7 @@
       }
     });
 
-    // Update estado
-    if (usarEstado && estadoSelect) {
-      estadoSelect.value = ev.estado;
-    }
+ 
 
     // Update rating descriptions
     updateAllRatingDescriptions();
@@ -1140,14 +1149,6 @@
       });
     });
 
-    // Estado select
-    if (estadoSelect) {
-      estadoSelect.addEventListener('change', () => {
-        const m = members[currentIndex];
-        evaluations[m.id].estado = estadoSelect.value;
-        evaluations[m.id].dirty = true;
-      });
-    }
 
     // Previous button
     prevBtn.addEventListener('click', () => {

@@ -14,29 +14,59 @@ class EvaluacionPerfilUnidad(models.Model):
     - Organizacional: asistencia, participación, compromiso, actitud, integración (1-5)
     - Espiritual: madurez espiritual (1-5) + estado espiritual (semántico)
     """
+
     # =========================
-    # TIEMPO / PERIODICIDAD
+    # MODO DE EVALUACIÓN
+    # =========================
+    MODO_AUTOMATICO = "AUTO"
+    MODO_LIBRE = "LIBRE"
+
+    MODOS = (
+        (MODO_AUTOMATICO, "Automático"),
+        (MODO_LIBRE, "Libre"),
+    )
+
+    # =========================
+    # FRECUENCIA (solo aplica en modo AUTO)
     # =========================
     FREQ_MENSUAL = "MENSUAL"
     FREQ_TRIMESTRAL = "TRIMESTRAL"
     FREQ_SEMESTRAL = "SEMESTRAL"
     FREQ_ANUAL = "ANUAL"
-    FREQ_LIBRE = "LIBRE"
 
     FRECUENCIAS = (
         (FREQ_MENSUAL, "Mensual"),
         (FREQ_TRIMESTRAL, "Trimestral"),
         (FREQ_SEMESTRAL, "Semestral"),
         (FREQ_ANUAL, "Anual"),
-        (FREQ_LIBRE, "Libre"),
     )
-    creado_en = models.DateTimeField(auto_now_add=True)
+
+    unidad = models.OneToOneField(
+        "estructura_app.Unidad",
+        on_delete=models.CASCADE,
+        related_name="perfil_evaluacion",
+    )
+
+    modo = models.CharField(
+        max_length=10,
+        choices=MODOS,
+        default=MODO_AUTOMATICO,
+        help_text="AUTO: crea períodos según frecuencia. LIBRE: el líder crea cuando quiera."
+    )
+
+    # Solo se usa si modo = AUTO
+    frecuencia = models.CharField(
+        max_length=12,
+        choices=FRECUENCIAS,
+        default=FREQ_MENSUAL,
+        help_text="Solo aplica en modo Automático."
+    )
+    dia_cierre = models.PositiveSmallIntegerField(
+        default=28,
+        help_text="Día del mes para cerrar evaluaciones (1-28)."
+    )
+
     usar_pesos = models.BooleanField(default=False)
-
-    frecuencia = models.CharField(max_length=12, choices=FRECUENCIAS, default=FREQ_MENSUAL)
-    dia_cierre = models.PositiveSmallIntegerField(default=28)
-
-    auto_crear_periodo = models.BooleanField(default=True)
     permitir_editar_cerrada = models.BooleanField(default=False)
 
     # =========================
@@ -47,33 +77,14 @@ class EvaluacionPerfilUnidad(models.Model):
     usar_compromiso = models.BooleanField(default=True)
     usar_actitud = models.BooleanField(default=True)
     usar_integracion = models.BooleanField(default=True)
+    usar_liderazgo = models.BooleanField(default=True)
 
     usar_madurez_espiritual = models.BooleanField(default=True)
     usar_estado_espiritual = models.BooleanField(default=True)
 
-    # En la sección DIMENSIONES ACTIVAS
-    usar_liderazgo = models.BooleanField(default=True)
-
-    # En la sección de pesos ORGANIZACIONAL
-    
-
-    MODO_MENSUAL = "MENSUAL"
-    MODO_LIBRE = "LIBRE"
-
-    MODOS = (
-        (MODO_MENSUAL, "Mensual"),
-        (MODO_LIBRE, "Libre"),
-    )
-
-    unidad = models.OneToOneField(
-        "estructura_app.Unidad",
-        on_delete=models.CASCADE,
-        related_name="perfil_evaluacion",
-    )
-
-    modo = models.CharField(max_length=10, choices=MODOS, default=MODO_MENSUAL)
-
-        # Pesos ORGANIZACIONAL
+    # =========================
+    # PESOS ORGANIZACIONAL
+    # =========================
     w_asistencia = models.PositiveIntegerField(default=20)
     w_participacion = models.PositiveIntegerField(default=15)
     w_compromiso = models.PositiveIntegerField(default=15)
@@ -82,14 +93,28 @@ class EvaluacionPerfilUnidad(models.Model):
     w_madurez_espiritual = models.PositiveIntegerField(default=20)
     w_liderazgo = models.PositiveIntegerField(default=10)
 
-
     # El estado espiritual es semántico (no lleva peso; sirve como diagnóstico/bandera)
     excluir_evaluador = models.BooleanField(default=True)
 
+    creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Perfil de evaluación"
+        verbose_name_plural = "Perfiles de evaluación"
 
     def __str__(self):
         return f"Perfil evaluación - {self.unidad}"
+
+    @property
+    def es_automatico(self):
+        """Helper para verificar si el modo es automático."""
+        return self.modo == self.MODO_AUTOMATICO
+
+    @property
+    def es_libre(self):
+        """Helper para verificar si el modo es libre."""
+        return self.modo == self.MODO_LIBRE
 
 
 def current_year():
@@ -253,7 +278,8 @@ class EvaluacionMiembro(models.Model):
     compromiso = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
     actitud = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
     integracion = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
-    liderazgo = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3) 
+    liderazgo = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
+
     # ESPIRITUAL
     madurez_espiritual = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
     estado_espiritual = models.CharField(
@@ -308,8 +334,7 @@ class EvaluacionMiembro(models.Model):
         - Promedio simple de dimensiones activas (sin pesos por ahora)
         - Penalización por estado espiritual (AUSENTE / EN_RIESGO / CRITICO)
         """
-
-        perfil = self.evaluacion.perfil  # ✅ aquí está el perfil real
+        perfil = self.evaluacion.perfil
 
         valores = []
 
@@ -327,7 +352,7 @@ class EvaluacionMiembro(models.Model):
         if perfil.usar_madurez_espiritual:
             valores.append(self.madurez_espiritual)
         if perfil.usar_liderazgo:
-             valores.append(self.liderazgo)  # 👈 AGREGAR    
+            valores.append(self.liderazgo)
 
         # Si por alguna razón no hay dimensiones activas
         if not valores:

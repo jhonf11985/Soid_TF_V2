@@ -10,7 +10,7 @@ from miembros_app.models import Miembro
 from .forms import EvaluacionPerfilUnidadForm
 import json
 from django.http import JsonResponse
-from .models import EvaluacionUnidad, EvaluacionMiembro
+from .models import EvaluacionUnidad, EvaluacionMiembro, EvaluacionPerfilUnidad
 from estructura_app.models import Unidad, UnidadCargo, UnidadMembresia
 from django.views.decorators.http import require_POST
 
@@ -111,7 +111,7 @@ def mis_unidades(request):
 
         # ✅ estado + acción según progreso (no según promedio)
         if not evaluacion:
-            estado_txt = "📝 Sin evaluación creada"
+            estado_txt = "🔒 Sin evaluación creada"
             accion = "Empezar"
         elif evaluados == 0:
             estado_txt = "🟡 Sin iniciar"
@@ -208,10 +208,7 @@ def evaluar_unidad(request, unidad_id):
 
             # ===== BLOQUE ESPIRITUAL =====
             item.madurez_espiritual = int(request.POST.get(f"madurez_espiritual_{m.id}", 3))
-            item.estado_espiritual = request.POST.get(
-                f"estado_espiritual_{m.id}",
-                EvaluacionMiembro.ESTADO_ESTABLE,
-            )
+
 
             # Observación
             item.observacion = request.POST.get(f"observacion_{m.id}", "")
@@ -355,17 +352,13 @@ def ver_resultados_unidad(request, evaluacion_id):
     return render(request, "evaluaciones_app/resultados_unidad.html", context)
 
 
-# Agregar esta vista a views.py
-# Asegúrate de tener estos imports al inicio del archivo:
-# import json
-# from django.http import JsonResponse
-
 @login_required
 @require_POST
 @csrf_protect
 def guardar_evaluacion_miembro(request):
     """
     Vista AJAX para guardar la evaluación de un miembro individual.
+    CORREGIDO: Ya no requiere estado_espiritual del frontend
     """
     try:
         data = json.loads(request.body)
@@ -404,14 +397,18 @@ def guardar_evaluacion_miembro(request):
         if hasattr(item, 'liderazgo'):
             item.liderazgo = int(data.get('liderazgo', 3))
         
-        # Campos espirituales
+        # Campo espiritual numérico
         item.madurez_espiritual = int(data.get('madurez_espiritual', 3))
-        item.estado_espiritual = data.get('estado', 'ESTABLE')
+        
+        # CORREGIDO: estado_espiritual se mantiene con su valor actual o default
+        # Ya no lo tomamos del frontend - se queda como ESTABLE por defecto
+        # Si quieres que se pueda cambiar desde el perfil, puedes agregar lógica aquí
+        # item.estado_espiritual ya tiene su default en el modelo
         
         # Observación (opcional)
         item.observacion = data.get('observacion', '') or ''
         
-        # Marcar quién evaluó
+        # Marcar quién evaluó - CRÍTICO para detectar si ya fue evaluado
         item.evaluado_por = request.user
         
         # Recalcular puntaje y guardar
@@ -421,7 +418,8 @@ def guardar_evaluacion_miembro(request):
         return JsonResponse({
             'success': True,
             'puntaje_general': item.puntaje_general,
-            'miembro_id': miembro_id
+            'miembro_id': miembro_id,
+            'item_id': item_id
         })
         
     except json.JSONDecodeError:

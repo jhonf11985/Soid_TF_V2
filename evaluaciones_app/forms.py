@@ -9,7 +9,6 @@ class EvaluacionPerfilUnidadForm(forms.ModelForm):
             "modo",
             "frecuencia",
             "dia_cierre",
-            "auto_crear_periodo",
             "permitir_editar_cerrada",
             "excluir_evaluador",
 
@@ -18,24 +17,22 @@ class EvaluacionPerfilUnidadForm(forms.ModelForm):
             "usar_compromiso",
             "usar_actitud",
             "usar_integracion",
+            "usar_liderazgo",
             "usar_madurez_espiritual",
             "usar_estado_espiritual",
-                       "usar_liderazgo",
-                       "usar_pesos",
-
+            "usar_pesos",
 
             "w_asistencia",
             "w_participacion",
             "w_compromiso",
             "w_actitud",
             "w_integracion",
+            "w_liderazgo",
             "w_madurez_espiritual",
-                       "w_liderazgo",
         ]
         widgets = {
             "dia_cierre": forms.NumberInput(attrs={"min": 1, "max": 28}),
         }
-
 
     def clean(self):
         cleaned_data = super().clean()
@@ -58,7 +55,6 @@ class EvaluacionPerfilUnidadForm(forms.ModelForm):
             )
 
         return cleaned_data
-    
 
 
 class EvaluacionMiembroForm(forms.ModelForm):
@@ -70,6 +66,7 @@ class EvaluacionMiembroForm(forms.ModelForm):
             "compromiso",
             "actitud",
             "integracion",
+            "liderazgo",
             "madurez_espiritual",
             "estado_espiritual",
             "observacion",

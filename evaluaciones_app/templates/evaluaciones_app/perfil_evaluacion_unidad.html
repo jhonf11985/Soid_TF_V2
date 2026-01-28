@@ -297,7 +297,6 @@
     font-size: 14px;
     font-weight: 600;
     text-align: center;
-    background: #fff;
   }
   .weight-field input:focus {
     outline: none;
@@ -323,6 +322,14 @@
     font-size: 13px;
     color: #92400e;
     line-height: 1.5;
+  }
+
+  .info-banner.info-blue {
+    background: var(--accent-light);
+    border-color: #93c5fd;
+  }
+  .info-banner.info-blue p {
+    color: #1e40af;
   }
 
   .form-actions {
@@ -363,6 +370,61 @@
     background: #f8fafc;
     border-color: #cbd5e1;
   }
+
+  /* Campos deshabilitados visualmente */
+  .field-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* Modo cards */
+  .modo-selector {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .modo-card {
+    background: #fafbfc;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .modo-card:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .modo-card.active {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+  .modo-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+  }
+  .modo-card .modo-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+  }
+  .modo-card .modo-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .modo-card .modo-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  @media (max-width: 560px) {
+    .modo-selector { grid-template-columns: 1fr; }
+  }
 </style>
 
 <!-- HEADER -->
@@ -375,43 +437,72 @@
 <form method="post">
   {% csrf_token %}
 
-  <!-- TIEMPO Y REGLAS -->
+  <!-- MODO DE EVALUACIÓN -->
   <div class="section">
     <div class="section-header">
       <h2>
-        <span class="icon" style="background:#eff6ff; color:#3b82f6;">⏱️</span>
-        Tiempo y reglas
+        <span class="icon" style="background:#eff6ff; color:#3b82f6;">🎯</span>
+        Modo de evaluación
       </h2>
-      <span class="tag">Periodo / Control</span>
+      <span class="tag">Cómo funciona</span>
     </div>
     <div class="section-body">
-      <div class="grid grid-3" style="margin-bottom: 20px;">
-        <div class="field-group">
-          <label>Modo</label>
-          {{ form.modo }}
-          <span class="hint">"Mensual" crea periodos por mes. "Libre" no fuerza periodos.</span>
+      <div class="modo-selector">
+        <label class="modo-card" id="card-auto">
+          <input type="radio" name="modo" value="AUTO" {% if form.modo.value == 'AUTO' or not form.modo.value %}checked{% endif %}>
+          <div class="modo-icon">🔄</div>
+          <div class="modo-title">Automático</div>
+          <div class="modo-desc">SOID crea períodos según la frecuencia configurada (mensual, trimestral, etc.)</div>
+        </label>
+        <label class="modo-card" id="card-libre">
+          <input type="radio" name="modo" value="LIBRE" {% if form.modo.value == 'LIBRE' %}checked{% endif %}>
+          <div class="modo-icon">✋</div>
+          <div class="modo-title">Libre</div>
+          <div class="modo-desc">El líder crea evaluaciones cuando lo necesite, sin restricción de fechas</div>
+        </label>
+      </div>
+
+      <!-- Campos que solo aplican en modo AUTO -->
+      <div id="campos-auto">
+        <div class="info-banner info-blue">
+          <span class="icon">ℹ️</span>
+          <p>En modo <strong>Automático</strong>, SOID creará períodos de evaluación según la frecuencia y día de cierre configurados.</p>
         </div>
-        <div class="field-group">
-          <label>Frecuencia</label>
-          {{ form.frecuencia }}
-          <span class="hint">Cada cuánto se evalúa esta unidad.</span>
-        </div>
-        <div class="field-group">
-          <label>Día de cierre (1–28)</label>
-          {{ form.dia_cierre }}
-          <span class="hint">Recomendación: 28 para evitar meses cortos.</span>
+        <div class="grid grid-2">
+          <div class="field-group">
+            <label>Frecuencia</label>
+            {{ form.frecuencia }}
+            <span class="hint">Cada cuánto se crea un nuevo período de evaluación.</span>
+          </div>
+          <div class="field-group">
+            <label>Día de cierre (1–28)</label>
+            {{ form.dia_cierre }}
+            <span class="hint">Día del mes para cerrar evaluaciones. Recomendado: 28.</span>
+          </div>
         </div>
       </div>
 
-      <div class="grid grid-3">
-        <label class="toggle-card">
-          {{ form.auto_crear_periodo }}
-          <div class="toggle-content">
-            <div class="toggle-label">🔄 Auto-crear periodos</div>
-            <div class="toggle-hint">SOID puede crear el periodo automáticamente</div>
-          </div>
-        </label>
+      <!-- Info para modo libre -->
+      <div id="info-libre" style="display: none;">
+        <div class="info-banner info-blue">
+          <span class="icon">✋</span>
+          <p>En modo <strong>Libre</strong>, tú decides cuándo crear evaluaciones. No hay períodos automáticos ni restricciones de fecha.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <!-- REGLAS ADICIONALES -->
+  <div class="section">
+    <div class="section-header">
+      <h2>
+        <span class="icon" style="background:#ecfdf5; color:#10b981;">⚙️</span>
+        Reglas adicionales
+      </h2>
+      <span class="tag">Control</span>
+    </div>
+    <div class="section-body">
+      <div class="grid grid-3">
         <label class="toggle-card">
           {{ form.permitir_editar_cerrada }}
           <div class="toggle-content">
@@ -427,14 +518,14 @@
             <div class="toggle-hint">El líder no aparece en su propia evaluación</div>
           </div>
         </label>
+
         <label class="toggle-card">
-        {{ form.usar_pesos }}
-        <div class="toggle-content">
+          {{ form.usar_pesos }}
+          <div class="toggle-content">
             <div class="toggle-label">⚖️ Usar pesos en el score</div>
             <div class="toggle-hint">Si está apagado, SOID calcula por promedio simple</div>
-        </div>
+          </div>
         </label>
-
       </div>
     </div>
   </div>
@@ -475,9 +566,9 @@
           </div>
           <div class="dimension-group-body">
             <label class="dimension-item">{{ form.usar_madurez_espiritual }} <span>🤲 Madurez espiritual (1–5)</span></label>
-            <label class="dimension-item">{{ form.usar_estado_espiritual }} <span>🧭 Estado espiritual (semántico)</span></label>
+          
             <div class="dimension-note">
-              Estados recomendados: 🟢 Estable · 🌱 En crecimiento · 🧩 En proceso · 🌊 Inestable · ⚠️ En riesgo · 🔴 Crítico · ⚫ Ausente
+             
             </div>
           </div>
         </div>
@@ -487,8 +578,6 @@
 
   <!-- PESOS -->
   <div class="section" id="section-pesos" style="display:none;">
-
-
     <div class="section-header">
       <h2>
         <span class="icon" style="background:#fef3c7; color:#d97706;">⚖️</span>
@@ -499,7 +588,7 @@
     <div class="section-body">
       <div class="info-banner">
         <span class="icon">💡</span>
-        <p>Si no usarás score, puedes dejar estos pesos como están o en 0. <strong>Recomendación:</strong> que la suma total sea 1.00 (100%).</p>
+        <p>Si no usarás score, puedes dejar estos pesos como están o en 0. <strong>Recomendación:</strong> que la suma total sea 100%.</p>
       </div>
 
       <div class="weights-grid">
@@ -524,10 +613,10 @@
           {{ form.w_integracion }}
         </div>
         <div class="weight-field">
-        <label>👑 Liderazgo</label>
-        {{ form.w_liderazgo }}
+          <label>👑 Liderazgo</label>
+          {{ form.w_liderazgo }}
         </div>
-         <div class="weight-field">
+        <div class="weight-field">
           <label>🤲 Madurez espiritual</label>
           {{ form.w_madurez_espiritual }}
         </div>
@@ -543,8 +632,48 @@
 </form>
 
 <script>
-function calcularTotalPesos() {
-  const campos = [
+document.addEventListener("DOMContentLoaded", function () {
+  // ========== MODO SELECTOR ==========
+  const cardAuto = document.getElementById("card-auto");
+  const cardLibre = document.getElementById("card-libre");
+  const camposAuto = document.getElementById("campos-auto");
+  const infoLibre = document.getElementById("info-libre");
+  const radioAuto = cardAuto.querySelector('input[type="radio"]');
+  const radioLibre = cardLibre.querySelector('input[type="radio"]');
+
+  function updateModo() {
+    const esAuto = radioAuto.checked;
+
+    // Visual
+    cardAuto.classList.toggle("active", esAuto);
+    cardLibre.classList.toggle("active", !esAuto);
+
+    // Mostrar/ocultar campos
+    camposAuto.style.display = esAuto ? "block" : "none";
+    infoLibre.style.display = esAuto ? "none" : "block";
+  }
+
+  radioAuto.addEventListener("change", updateModo);
+  radioLibre.addEventListener("change", updateModo);
+  updateModo(); // Estado inicial
+
+  // ========== PESOS TOGGLE ==========
+  const checkboxPesos = document.getElementById("id_usar_pesos");
+  const pesosSection = document.getElementById("section-pesos");
+
+  function togglePesos() {
+    if (checkboxPesos && pesosSection) {
+      pesosSection.style.display = checkboxPesos.checked ? "block" : "none";
+    }
+  }
+
+  if (checkboxPesos) {
+    checkboxPesos.addEventListener("change", togglePesos);
+    togglePesos();
+  }
+
+  // ========== VALIDAR SUMA PESOS ==========
+  const camposPesos = [
     "id_w_asistencia",
     "id_w_participacion",
     "id_w_compromiso",
@@ -554,47 +683,27 @@ function calcularTotalPesos() {
     "id_w_liderazgo",
   ];
 
-  let total = 0;
+  function calcularTotalPesos() {
+    let total = 0;
+    camposPesos.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value) {
+        total += parseInt(el.value) || 0;
+      }
+    });
+    return total;
+  }
 
-  campos.forEach(id => {
-    const el = document.getElementById(id);
-    if (el && el.value) {
-      total += parseInt(el.value) || 0;
-    }
-  });
-
-  return total;
-}
-
-document.querySelectorAll('#section-pesos input[type="number"]').forEach(input => {
-
-  input.addEventListener("input", function () {
-    const total = calcularTotalPesos();
-
-    if (total > 100) {
-      alert("⚠️ La suma de los pesos no puede superar 100%");
-      this.value = 0; // opcional: resetear el último campo
-    }
+  document.querySelectorAll('#section-pesos input[type="number"]').forEach(input => {
+    input.addEventListener("input", function () {
+      const total = calcularTotalPesos();
+      if (total > 100) {
+        alert("⚠️ La suma de los pesos no puede superar 100%");
+        this.value = 0;
+      }
+    });
   });
 });
 </script>
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const checkbox = document.getElementById("id_usar_pesos");
-  const pesosSection = document.getElementById("section-pesos");
-
-  function togglePesos() {
-    if (checkbox && pesosSection) {
-      pesosSection.style.display = checkbox.checked ? "block" : "none";
-    }
-  }
-
-  if (checkbox) {
-    checkbox.addEventListener("change", togglePesos);
-    togglePesos(); // estado inicial
-  }
-});
-</script>
-
 
 {% endblock %}
