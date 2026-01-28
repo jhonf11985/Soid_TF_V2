@@ -1,5 +1,4 @@
 {% extends "evaluaciones_app/base_evaluaciones.html" %}
-{% load eval_tags %}
 
 {% block evaluaciones_content %}
 
@@ -473,7 +472,7 @@
   }
 </style>
 
-{% if perfil and perfil.actualizado_en and perfil.actualizado_en == perfil.created_at %}
+{% if perfil_es_default %}
 <div style="background:#fffbeb; border:1px solid #f59e0b; color:#92400e; padding:12px 14px; border-radius:10px; margin-bottom:14px;">
   <strong>⚠️ Recomendación:</strong> esta unidad está usando el <strong>perfil por defecto</strong>.
   Te sugerimos configurarlo antes de evaluar para definir tiempo, campos y reglas.
@@ -491,12 +490,12 @@
 
   <div class="eval-app">
     
-    {% if membresias %}
+    {% if items %}
     
     <!-- Progress Header -->
     <div class="progress-header">
       <div class="progress-text">
-        Evaluando <strong><span id="currentNum">1</span></strong> de <strong><span id="totalNum">{{ membresias|length }}</span></strong> miembros
+        Evaluando <strong><span id="currentNum">1</span></strong> de <strong><span id="totalNum">{{ items|length }}</span></strong> miembros
       </div>
       <div class="progress-bar">
         <div class="progress-fill" id="progressFill" style="width: 0%"></div>
@@ -526,8 +525,9 @@
           <span class="member-code" id="memberCode"></span>
         </div>
 
-        <!-- Ratings -->
-        <div class="rating-group">
+        <!-- Ratings condicionales según perfil -->
+        {% if perfil.usar_asistencia %}
+        <div class="rating-group" data-campo="asistencia">
           <label class="rating-label">Asistencia</label>
           <div class="rating-buttons" data-field="asistencia">
             <button type="button" class="rating-btn" data-value="1">1</button>
@@ -538,8 +538,10 @@
           </div>
           <div class="rating-desc-dynamic" data-field="asistencia"></div>
         </div>
+        {% endif %}
 
-        <div class="rating-group">
+        {% if perfil.usar_participacion %}
+        <div class="rating-group" data-campo="participacion">
           <label class="rating-label">Participación</label>
           <div class="rating-buttons" data-field="participacion">
             <button type="button" class="rating-btn" data-value="1">1</button>
@@ -550,8 +552,10 @@
           </div>
           <div class="rating-desc-dynamic" data-field="participacion"></div>
         </div>
+        {% endif %}
 
-        <div class="rating-group">
+        {% if perfil.usar_compromiso %}
+        <div class="rating-group" data-campo="compromiso">
           <label class="rating-label">Compromiso</label>
           <div class="rating-buttons" data-field="compromiso">
             <button type="button" class="rating-btn" data-value="1">1</button>
@@ -562,8 +566,10 @@
           </div>
           <div class="rating-desc-dynamic" data-field="compromiso"></div>
         </div>
+        {% endif %}
 
-        <div class="rating-group">
+        {% if perfil.usar_actitud %}
+        <div class="rating-group" data-campo="actitud">
           <label class="rating-label">Actitud</label>
           <div class="rating-buttons" data-field="actitud">
             <button type="button" class="rating-btn" data-value="1">1</button>
@@ -574,8 +580,10 @@
           </div>
           <div class="rating-desc-dynamic" data-field="actitud"></div>
         </div>
+        {% endif %}
 
-        <div class="rating-group">
+        {% if perfil.usar_integracion %}
+        <div class="rating-group" data-campo="integracion">
           <label class="rating-label">Integración</label>
           <div class="rating-buttons" data-field="integracion">
             <button type="button" class="rating-btn" data-value="1">1</button>
@@ -586,8 +594,10 @@
           </div>
           <div class="rating-desc-dynamic" data-field="integracion"></div>
         </div>
+        {% endif %}
 
-        <div class="rating-group">
+        {% if perfil.usar_liderazgo %}
+        <div class="rating-group" data-campo="liderazgo">
           <label class="rating-label">Liderazgo</label>
           <div class="rating-buttons" data-field="liderazgo">
             <button type="button" class="rating-btn" data-value="1">1</button>
@@ -598,10 +608,26 @@
           </div>
           <div class="rating-desc-dynamic" data-field="liderazgo"></div>
         </div>
+        {% endif %}
 
-        <!-- Estado -->
+        {% if perfil.usar_madurez_espiritual %}
+        <div class="rating-group" data-campo="madurez_espiritual">
+          <label class="rating-label">Madurez Espiritual</label>
+          <div class="rating-buttons" data-field="madurez_espiritual">
+            <button type="button" class="rating-btn" data-value="1">1</button>
+            <button type="button" class="rating-btn" data-value="2">2</button>
+            <button type="button" class="rating-btn" data-value="3">3</button>
+            <button type="button" class="rating-btn" data-value="4">4</button>
+            <button type="button" class="rating-btn" data-value="5">5</button>
+          </div>
+          <div class="rating-desc-dynamic" data-field="madurez_espiritual"></div>
+        </div>
+        {% endif %}
+
+        <!-- Estado espiritual (condicional) -->
+        {% if perfil.usar_estado_espiritual %}
         <div class="estado-group">
-          <label class="rating-label">Estado general</label>
+          <label class="rating-label">Estado espiritual</label>
           <select class="estado-select" id="estadoSelect">
             <option value="estable">✓ Estable</option>
             <option value="crecimiento">📈 En crecimiento</option>
@@ -612,6 +638,7 @@
             <option value="inactivo">💤 Inactivo</option>
           </select>
         </div>
+        {% endif %}
       </div>
 
       <!-- Navigation Buttons -->
@@ -630,7 +657,7 @@
 
     <!-- Actions -->
     <div class="eval-actions">
-      <a href="{% url 'evaluaciones:mis_unidades' %}" class="btn-back">
+      <a href="{% url 'evaluaciones_app:mis_unidades' %}" class="btn-back">
         ← Volver
       </a>
       <button type="submit" class="btn-save">
@@ -646,7 +673,7 @@
     <div class="empty-state">
       <div class="empty-state-icon">📋</div>
       <p>No hay miembros en esta unidad</p>
-      <a href="{% url 'evaluaciones:mis_unidades' %}" class="btn-back" style="display: inline-block; margin-top: 16px;">
+      <a href="{% url 'evaluaciones_app:mis_unidades' %}" class="btn-back" style="display: inline-block; margin-top: 16px;">
         ← Volver
       </a>
     </div>
@@ -656,37 +683,43 @@
   </div>
 </form>
 
-{% if membresias %}
+{% if items %}
 <script>
 (function() {
   // Data from Django
   const members = [
-    {% for mem in membresias %}
-      {% if mem.miembo_fk %}
-        {% with m=mem.miembo_fk %}
-          {% with ev=existentes|get_item:m.id %}
-          {
-            id: {{ m.id }},
-            nombre: "{{ m.nombres }} {{ m.apellidos }}",
-            codigo: "{{ m.codigo_miembro|default:'' }}",
-            foto: "{% if m.foto_perfil %}{{ m.foto_perfil.url }}{% endif %}",
-            valores: {
-              asistencia: {{ ev.asistencia|default:1 }},
-              participacion: {{ ev.participacion|default:1 }},
-              compromiso: {{ ev.compromiso|default:1 }},
-              actitud: {{ ev.actitud|default:1 }},
-              integracion: {{ ev.integracion|default:1 }},
-              liderazgo: {{ ev.liderazgo|default:1 }},
-              estado: "{{ ev.estado|default:'estable' }}"
-            }
-          },
-          {% endwith %}
-        {% endwith %}
-      {% endif %}
+    {% for item in items %}
+    {
+      id: {{ item.miembro.id }},
+      nombre: "{{ item.miembro.nombres }} {{ item.miembro.apellidos }}",
+      codigo: "{{ item.miembro.codigo_miembro|default:'' }}",
+      foto: "{% if item.miembro.foto_perfil %}{{ item.miembro.foto_perfil.url }}{% endif %}",
+      valores: {
+        asistencia: {{ item.asistencia|default:3 }},
+        participacion: {{ item.participacion|default:3 }},
+        compromiso: {{ item.compromiso|default:3 }},
+        actitud: {{ item.actitud|default:3 }},
+        integracion: {{ item.integracion|default:3 }},
+        liderazgo: {{ item.liderazgo|default:3 }},
+        madurez_espiritual: {{ item.madurez_espiritual|default:3 }},
+        estado: "{{ item.estado_espiritual|default:'estable' }}"
+      }
+    }{% if not forloop.last %},{% endif %}
     {% endfor %}
   ];
 
-  const fields = ['asistencia', 'participacion', 'compromiso', 'actitud', 'integracion', 'liderazgo'];
+  // Campos activos según perfil (dinámico desde Django)
+  const fields = [
+    {% if perfil.usar_asistencia %}'asistencia',{% endif %}
+    {% if perfil.usar_participacion %}'participacion',{% endif %}
+    {% if perfil.usar_compromiso %}'compromiso',{% endif %}
+    {% if perfil.usar_actitud %}'actitud',{% endif %}
+    {% if perfil.usar_integracion %}'integracion',{% endif %}
+    {% if perfil.usar_liderazgo %}'liderazgo',{% endif %}
+    {% if perfil.usar_madurez_espiritual %}'madurez_espiritual',{% endif %}
+  ];
+
+  const usarEstado = {% if perfil.usar_estado_espiritual %}true{% else %}false{% endif %};
   
   // Descripciones dinámicas por campo y nivel
   const ratingDescriptions = {
@@ -731,6 +764,13 @@
       3: 'Regular - Liderazgo ocasional',
       4: 'Bueno - Buen líder',
       5: 'Excelente - Líder nato'
+    },
+    madurez_espiritual: {
+      1: 'Inicial - Recién comenzando',
+      2: 'En desarrollo - Creciendo',
+      3: 'Moderada - Estable',
+      4: 'Avanzada - Maduro',
+      5: 'Plena - Muy maduro espiritualmente'
     }
   };
   
@@ -797,10 +837,14 @@
   function createHiddenInputs() {
     let html = '';
     members.forEach(m => {
+      // Solo crear inputs para campos activos
       fields.forEach(f => {
         html += `<input type="hidden" name="${f}_${m.id}" id="input_${f}_${m.id}" value="${evaluations[m.id][f]}">`;
       });
-      html += `<input type="hidden" name="estado_${m.id}" id="input_estado_${m.id}" value="${evaluations[m.id].estado}">`;
+      // Estado solo si está activo
+      if (usarEstado) {
+        html += `<input type="hidden" name="estado_espiritual_${m.id}" id="input_estado_${m.id}" value="${evaluations[m.id].estado}">`;
+      }
     });
     hiddenInputs.innerHTML = html;
   }
@@ -816,16 +860,20 @@
     memberAvatar.innerHTML = m.foto ? 
       `<img src="${m.foto}" alt="${m.nombre}">` : '👤';
 
-    // Update ratings
+    // Update ratings (solo campos activos)
     fields.forEach(field => {
       const container = document.querySelector(`[data-field="${field}"]`);
-      container.querySelectorAll('.rating-btn').forEach(btn => {
-        btn.classList.toggle('selected', parseInt(btn.dataset.value) === ev[field]);
-      });
+      if (container) {
+        container.querySelectorAll('.rating-btn').forEach(btn => {
+          btn.classList.toggle('selected', parseInt(btn.dataset.value) === ev[field]);
+        });
+      }
     });
 
-    // Update estado
-    estadoSelect.value = ev.estado;
+    // Update estado (si está activo)
+    if (usarEstado && estadoSelect) {
+      estadoSelect.value = ev.estado;
+    }
 
     // Update rating descriptions
     updateAllRatingDescriptions();
@@ -850,9 +898,9 @@
   }
 
   function isCompleted(memberId) {
-    // Consider completed if at least one field has been interacted with
     const ev = evaluations[memberId];
-    return fields.some(f => ev[f] > 1) || ev.estado !== 'estable';
+    // Considera completado si al menos un campo ha sido modificado
+    return fields.some(f => ev[f] !== 3) || (usarEstado && ev.estado !== 'estable');
   }
 
   function updateListBadges() {
@@ -876,9 +924,17 @@
   function saveCurrentValues() {
     const m = members[currentIndex];
     fields.forEach(f => {
-      document.getElementById(`input_${f}_${m.id}`).value = evaluations[m.id][f];
+      const input = document.getElementById(`input_${f}_${m.id}`);
+      if (input) {
+        input.value = evaluations[m.id][f];
+      }
     });
-    document.getElementById(`input_estado_${m.id}`).value = evaluations[m.id].estado;
+    if (usarEstado) {
+      const inputEstado = document.getElementById(`input_estado_${m.id}`);
+      if (inputEstado) {
+        inputEstado.value = evaluations[m.id].estado;
+      }
+    }
   }
 
   // Event listeners
@@ -908,14 +964,16 @@
       });
     });
 
-    // Estado select
-    estadoSelect.addEventListener('change', () => {
-      const m = members[currentIndex];
-      evaluations[m.id].estado = estadoSelect.value;
-      saveCurrentValues();
-      updateListBadges();
-      updateDots();
-    });
+    // Estado select (solo si existe)
+    if (estadoSelect) {
+      estadoSelect.addEventListener('change', () => {
+        const m = members[currentIndex];
+        evaluations[m.id].estado = estadoSelect.value;
+        saveCurrentValues();
+        updateListBadges();
+        updateDots();
+      });
+    }
 
     // Navigation
     prevBtn.addEventListener('click', () => {

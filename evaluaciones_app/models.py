@@ -50,6 +50,11 @@ class EvaluacionPerfilUnidad(models.Model):
     usar_madurez_espiritual = models.BooleanField(default=True)
     usar_estado_espiritual = models.BooleanField(default=True)
 
+    # En la sección DIMENSIONES ACTIVAS
+    usar_liderazgo = models.BooleanField(default=True)
+
+    # En la sección de pesos ORGANIZACIONAL
+    w_liderazgo = models.DecimalField(max_digits=4, decimal_places=2, default=0.10)
 
     MODO_MENSUAL = "MENSUAL"
     MODO_LIBRE = "LIBRE"

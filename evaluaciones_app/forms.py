@@ -20,6 +20,7 @@ class EvaluacionPerfilUnidadForm(forms.ModelForm):
             "usar_integracion",
             "usar_madurez_espiritual",
             "usar_estado_espiritual",
+                       "usar_liderazgo",
 
             "w_asistencia",
             "w_participacion",
@@ -27,6 +28,7 @@ class EvaluacionPerfilUnidadForm(forms.ModelForm):
             "w_actitud",
             "w_integracion",
             "w_madurez_espiritual",
+                       "w_liderazgo",
         ]
         widgets = {
             "dia_cierre": forms.NumberInput(attrs={"min": 1, "max": 28}),

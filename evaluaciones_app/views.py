@@ -98,23 +98,25 @@ def mis_unidades(request):
         if evaluacion:
             qs = EvaluacionMiembro.objects.filter(evaluacion=evaluacion)
 
-        evaluados = qs.count()
+        # ✅ SOLO cuentan como evaluados los que ya fueron guardados (tienen evaluado_por)
+        evaluados = qs.filter(evaluado_por__isnull=False).count()
         pendientes = max(total - evaluados, 0)
         porcentaje = int((evaluados / total) * 100) if total else 0
 
-        promedio = qs.aggregate(avg=Avg("puntaje_general"))["avg"] if evaluacion else None
-
-        # Semáforo simple basado en promedio (puedes cambiar reglas luego)
-        if promedio is None:
-            estado_txt = "⚪ Sin datos"
-        elif promedio >= 4:
-            estado_txt = "🟢 Saludable"
-        elif promedio >= 3:
-            estado_txt = "🟡 En desarrollo"
+        # ✅ estado + acción según progreso (no según promedio)
+        if not evaluacion:
+            estado_txt = "📝 Sin evaluación creada"
+            accion = "Empezar"
+        elif evaluados == 0:
+            estado_txt = "🟡 Sin iniciar"
+            accion = "Empezar"
+        elif evaluados < total:
+            estado_txt = "🟠 En progreso"
+            accion = "Continuar"
         else:
-            estado_txt = "🔴 En riesgo"
+            estado_txt = "🟢 Completada"
+            accion = "Completado"
 
-        accion = "Empezar" if evaluados == 0 else "Continuar"
 
         unidades_info.append({
             "unidad": u,
@@ -124,7 +126,7 @@ def mis_unidades(request):
             "evaluados": evaluados,
             "pendientes": pendientes,
             "porcentaje": porcentaje,
-            "promedio": promedio,
+          
             "estado_txt": estado_txt,
             "accion": accion,
         })
@@ -149,7 +151,6 @@ from .models import EvaluacionUnidad, EvaluacionMiembro, EvaluacionPerfilUnidad
 
 # usa tu helper existente _get_miembro_from_user y _user_es_lider_de_unidad
 
-
 @login_required
 @permission_required("evaluaciones_app.add_evaluacionmiembro", raise_exception=True)
 @require_http_methods(["GET", "POST"])
@@ -158,8 +159,11 @@ from .models import EvaluacionUnidad, EvaluacionMiembro, EvaluacionPerfilUnidad
 def evaluar_unidad(request, unidad_id):
     unidad = get_object_or_404(Unidad, id=unidad_id)
 
-    # Buscar o crear perfil de evaluación
-    perfil, _ = EvaluacionPerfilUnidad.objects.get_or_create(unidad=unidad)
+    # ✅ Buscar o crear perfil de evaluación (UNA sola vez)
+    perfil, perfil_creado = EvaluacionPerfilUnidad.objects.get_or_create(unidad=unidad)
+
+    # ✅ Si se acaba de crear, seguro es perfil por defecto
+    perfil_es_default = perfil_creado
 
     # Buscar o crear evaluación del mes actual
     hoy = timezone.now()
@@ -174,7 +178,6 @@ def evaluar_unidad(request, unidad_id):
         membresias_unidad__unidad=unidad,
         estado_miembro="activo",
     ).distinct()
-
 
     # Crear registros si no existen
     for m in miembros:
@@ -220,6 +223,7 @@ def evaluar_unidad(request, unidad_id):
         "evaluacion": evaluacion,
         "items": items,
         "perfil": perfil,
+        "perfil_es_default": perfil_es_default,
     }
 
     return render(request, "evaluaciones_app/evaluar_unidad.html", contexto)
