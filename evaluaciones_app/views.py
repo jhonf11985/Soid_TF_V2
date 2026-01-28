@@ -6,6 +6,8 @@ from django.db import transaction
 from django.http import HttpResponseForbidden
 from datetime import date
 from django.db.models import Avg
+from miembros_app.models import Miembro
+from .forms import EvaluacionPerfilUnidadForm
 
 from .models import EvaluacionUnidad, EvaluacionMiembro
 from estructura_app.models import Unidad, UnidadCargo, UnidadMembresia
@@ -55,7 +57,6 @@ def _user_es_lider_de_unidad(user, unidad_id):
         vigente=True,
     ).exists()
 
-
 @login_required
 def mis_unidades(request):
     miembro = _get_miembro_from_user(request.user)
@@ -71,7 +72,6 @@ def mis_unidades(request):
         .order_by("unidad__nombre")
     )
 
-    # Unidades únicas (si tiene varios roles en la misma unidad)
     unidades_map = {}
     for c in cargos:
         if c.unidad_id not in unidades_map:
@@ -81,60 +81,51 @@ def mis_unidades(request):
     hoy = date.today()
     anio, mes = hoy.year, hoy.month
 
-    def estado_global_unidad(promedio, porcentaje_riesgo):
-        if promedio is None:
-            return ("⚪ Sin datos", "sin_datos")
-
-        if porcentaje_riesgo >= 20:
-            return ("🔴 En riesgo", "riesgo")
-
-        if promedio >= 4.0:
-            return ("🟢 Saludable", "saludable")
-        if promedio >= 3.0:
-            return ("🟡 En desarrollo", "desarrollo")
-        return ("🔴 En riesgo", "riesgo")
-
-    estados_riesgo = ["riesgo", "inactivo", "seguimiento", "observacion", "irregular"]
-
     unidades_info = []
 
     for u in unidades:
+        perfil, _ = EvaluacionPerfilUnidad.objects.get_or_create(unidad=u)
+
         evaluacion = EvaluacionUnidad.objects.filter(unidad=u, anio=anio, mes=mes).first()
-        total = UnidadMembresia.objects.filter(unidad=u).count()
+
+        membresias_qs = UnidadMembresia.objects.filter(unidad=u)
+        if perfil.excluir_evaluador:
+            membresias_qs = membresias_qs.exclude(miembo_fk=miembro)
+
+        total = membresias_qs.count()
 
         qs = EvaluacionMiembro.objects.none()
         if evaluacion:
             qs = EvaluacionMiembro.objects.filter(evaluacion=evaluacion)
 
         evaluados = qs.count()
+        pendientes = max(total - evaluados, 0)
         porcentaje = int((evaluados / total) * 100) if total else 0
+
         promedio = qs.aggregate(avg=Avg("puntaje_general"))["avg"] if evaluacion else None
-        en_riesgo = qs.filter(estado__in=estados_riesgo).count() if evaluacion else 0
-        lideres = 0
 
-        porcentaje_riesgo = int((en_riesgo / total) * 100) if total else 0
-        estado_txt, estado_key = estado_global_unidad(promedio, porcentaje_riesgo)
-
-        if not evaluacion or evaluados == 0:
-            accion = "Empezar"
+        # Semáforo simple basado en promedio (puedes cambiar reglas luego)
+        if promedio is None:
+            estado_txt = "⚪ Sin datos"
+        elif promedio >= 4:
+            estado_txt = "🟢 Saludable"
+        elif promedio >= 3:
+            estado_txt = "🟡 En desarrollo"
         else:
-            estado_workflow = getattr(evaluacion, "estado_workflow", None)
-            if estado_workflow and hasattr(EvaluacionUnidad, "ESTADO_CERRADA") and estado_workflow == EvaluacionUnidad.ESTADO_CERRADA:
-                accion = "Ver resultados"
-            else:
-                accion = "Continuar"
+            estado_txt = "🔴 En riesgo"
+
+        accion = "Empezar" if evaluados == 0 else "Continuar"
 
         unidades_info.append({
             "unidad": u,
+            "perfil": perfil,
             "evaluacion": evaluacion,
             "total": total,
             "evaluados": evaluados,
+            "pendientes": pendientes,
             "porcentaje": porcentaje,
             "promedio": promedio,
             "estado_txt": estado_txt,
-            "estado_key": estado_key,
-            "en_riesgo": en_riesgo,
-            "lideres": lideres,
             "accion": accion,
         })
 
@@ -146,6 +137,19 @@ def mis_unidades(request):
     return render(request, "evaluaciones_app/mis_unidades.html", context)
 
 
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, permission_required
+from django.db import transaction
+from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+
+from estructura_app.models import Unidad, UnidadMembresia
+from .models import EvaluacionUnidad, EvaluacionMiembro, EvaluacionPerfilUnidad
+
+# usa tu helper existente _get_miembro_from_user y _user_es_lider_de_unidad
+
+
 @login_required
 @permission_required("evaluaciones_app.add_evaluacionmiembro", raise_exception=True)
 @require_http_methods(["GET", "POST"])
@@ -154,64 +158,96 @@ def mis_unidades(request):
 def evaluar_unidad(request, unidad_id):
     unidad = get_object_or_404(Unidad, id=unidad_id)
 
-    membresias = (
-        UnidadMembresia.objects
-        .select_related("miembo_fk")
-        .filter(unidad=unidad)
-    )
+    # Buscar o crear perfil de evaluación
+    perfil, _ = EvaluacionPerfilUnidad.objects.get_or_create(unidad=unidad)
 
-    evaluacion, created = EvaluacionUnidad.objects.get_or_create(
+    # Buscar o crear evaluación del mes actual
+    hoy = timezone.now()
+    evaluacion, _ = EvaluacionUnidad.objects.get_or_create(
         unidad=unidad,
-        anio=date.today().year,
-        mes=date.today().month,
-        defaults={
-            "estado_workflow": EvaluacionUnidad.ESTADO_EN_PROGRESO,
-            "creado_por": request.user,
-        }
+        anio=hoy.year,
+        mes=hoy.month,
+        defaults={"perfil": perfil, "creado_por": request.user},
     )
 
-    # ✅ Campo correcto: "evaluacion" (no "evaluacion_unidad")
-    existentes = {
-        ev.miembro.id: ev
-        for ev in EvaluacionMiembro.objects.filter(evaluacion=evaluacion)
-    }
+    miembros = Miembro.objects.filter(
+        membresias_unidad__unidad=unidad,
+        estado_miembro="activo",
+    ).distinct()
+
+
+    # Crear registros si no existen
+    for m in miembros:
+        EvaluacionMiembro.objects.get_or_create(
+            evaluacion=evaluacion,
+            miembro=m,
+        )
 
     if request.method == "POST":
-        for mem in membresias:
-            if not mem.miembo_fk:
-                continue
+        for m in miembros:
+            item = EvaluacionMiembro.objects.get(
+                evaluacion=evaluacion,
+                miembro=m,
+            )
 
-            m = mem.miembo_fk
+            # ===== BLOQUE ORGANIZACIONAL =====
+            item.asistencia = int(request.POST.get(f"asistencia_{m.id}", 3))
+            item.participacion = int(request.POST.get(f"participacion_{m.id}", 3))
+            item.compromiso = int(request.POST.get(f"compromiso_{m.id}", 3))
+            item.actitud = int(request.POST.get(f"actitud_{m.id}", 3))
+            item.integracion = int(request.POST.get(f"integracion_{m.id}", 3))
 
-            # ✅ Solo los campos que existen en tu modelo
-            asistencia = int(request.POST.get(f"asistencia_{m.id}", 3))
-            participacion = int(request.POST.get(f"participacion_{m.id}", 3))
-            estado = request.POST.get(f"estado_{m.id}", "estable")
+            # ===== BLOQUE ESPIRITUAL =====
+            item.madurez_espiritual = int(request.POST.get(f"madurez_espiritual_{m.id}", 3))
+            item.estado_espiritual = request.POST.get(
+                f"estado_espiritual_{m.id}",
+                EvaluacionMiembro.ESTADO_ESTABLE,
+            )
 
-            ev = existentes.get(m.id)
+            # Observación
+            item.observacion = request.POST.get(f"observacion_{m.id}", "")
 
-            if ev:
-                ev.asistencia = asistencia
-                ev.participacion = participacion
-                ev.estado = estado
-                ev.save()
-            else:
-                # ✅ Campo correcto: "evaluacion" (no "evaluacion_unidad")
-                EvaluacionMiembro.objects.create(
-                    evaluacion=evaluacion,
-                    miembro=m,
-                    asistencia=asistencia,
-                    participacion=participacion,
-                    estado=estado,
-                )
+            item.evaluado_por = request.user
+            item.save()
 
+        messages.success(request, "✅ Evaluación guardada correctamente.")
         return redirect("evaluaciones_app:evaluar_unidad", unidad_id=unidad.id)
+
+    items = EvaluacionMiembro.objects.filter(evaluacion=evaluacion).select_related("miembro")
 
     contexto = {
         "unidad": unidad,
-        "membresias": membresias,
-        "existentes": existentes,
         "evaluacion": evaluacion,
+        "items": items,
+        "perfil": perfil,
     }
 
     return render(request, "evaluaciones_app/evaluar_unidad.html", contexto)
+
+
+
+@login_required
+def perfil_evaluacion_unidad(request, unidad_id):
+    unidad = get_object_or_404(Unidad, id=unidad_id)
+
+        # Ejemplo: validar que el usuario sea líder de la unidad
+    miembro = getattr(request.user, "miembro", None)
+    if not miembro:
+        return HttpResponseForbidden("No tienes permiso para configurar esta unidad.")
+
+    perfil, _ = EvaluacionPerfilUnidad.objects.get_or_create(unidad=unidad)
+
+    if request.method == "POST":
+        form = EvaluacionPerfilUnidadForm(request.POST, instance=perfil)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "✅ Perfil de evaluación actualizado.")
+            return redirect("evaluaciones_app:perfil_evaluacion_unidad", unidad_id=unidad.id)
+    else:
+        form = EvaluacionPerfilUnidadForm(instance=perfil)
+
+    return render(request, "evaluaciones_app/perfil_evaluacion_unidad.html", {
+        "unidad": unidad,
+        "perfil": perfil,
+        "form": form,
+    })

@@ -1,9 +1,89 @@
+from datetime import date
+
 from django.conf import settings
 from django.db import models
-from datetime import date
 
 from miembros_app.models import Miembro
 from estructura_app.models import Unidad
+
+
+class EvaluacionPerfilUnidad(models.Model):
+    """
+    Perfil de evaluación por UNIDAD (configura pesos y reglas).
+    Perfil mixto:
+    - Organizacional: asistencia, participación, compromiso, actitud, integración (1-5)
+    - Espiritual: madurez espiritual (1-5) + estado espiritual (semántico)
+    """
+    # =========================
+    # TIEMPO / PERIODICIDAD
+    # =========================
+    FREQ_MENSUAL = "MENSUAL"
+    FREQ_TRIMESTRAL = "TRIMESTRAL"
+    FREQ_SEMESTRAL = "SEMESTRAL"
+    FREQ_ANUAL = "ANUAL"
+    FREQ_LIBRE = "LIBRE"
+
+    FRECUENCIAS = (
+        (FREQ_MENSUAL, "Mensual"),
+        (FREQ_TRIMESTRAL, "Trimestral"),
+        (FREQ_SEMESTRAL, "Semestral"),
+        (FREQ_ANUAL, "Anual"),
+        (FREQ_LIBRE, "Libre"),
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    frecuencia = models.CharField(max_length=12, choices=FRECUENCIAS, default=FREQ_MENSUAL)
+    dia_cierre = models.PositiveSmallIntegerField(default=28)
+
+    auto_crear_periodo = models.BooleanField(default=True)
+    permitir_editar_cerrada = models.BooleanField(default=False)
+
+    # =========================
+    # DIMENSIONES ACTIVAS
+    # =========================
+    usar_asistencia = models.BooleanField(default=True)
+    usar_participacion = models.BooleanField(default=True)
+    usar_compromiso = models.BooleanField(default=True)
+    usar_actitud = models.BooleanField(default=True)
+    usar_integracion = models.BooleanField(default=True)
+
+    usar_madurez_espiritual = models.BooleanField(default=True)
+    usar_estado_espiritual = models.BooleanField(default=True)
+
+
+    MODO_MENSUAL = "MENSUAL"
+    MODO_LIBRE = "LIBRE"
+
+    MODOS = (
+        (MODO_MENSUAL, "Mensual"),
+        (MODO_LIBRE, "Libre"),
+    )
+
+    unidad = models.OneToOneField(
+        "estructura_app.Unidad",
+        on_delete=models.CASCADE,
+        related_name="perfil_evaluacion",
+    )
+
+    modo = models.CharField(max_length=10, choices=MODOS, default=MODO_MENSUAL)
+
+    # Pesos ORGANIZACIONAL
+    w_asistencia = models.DecimalField(max_digits=4, decimal_places=2, default=0.18)
+    w_participacion = models.DecimalField(max_digits=4, decimal_places=2, default=0.18)
+    w_compromiso = models.DecimalField(max_digits=4, decimal_places=2, default=0.18)
+    w_actitud = models.DecimalField(max_digits=4, decimal_places=2, default=0.13)
+    w_integracion = models.DecimalField(max_digits=4, decimal_places=2, default=0.13)
+
+    # Peso ESPIRITUAL (numérico)
+    w_madurez_espiritual = models.DecimalField(max_digits=4, decimal_places=2, default=0.20)
+
+    # El estado espiritual es semántico (no lleva peso; sirve como diagnóstico/bandera)
+    excluir_evaluador = models.BooleanField(default=True)
+
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Perfil evaluación - {self.unidad}"
 
 
 def current_year():
@@ -31,7 +111,14 @@ class EvaluacionUnidad(models.Model):
         (ESTADO_CERRADA, "Cerrada"),
     )
 
-    # ===== Diagnóstico general (opcional, pero útil)
+    perfil = models.ForeignKey(
+        "evaluaciones_app.EvaluacionPerfilUnidad",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    # ===== Diagnóstico general de la unidad (semántico, opcional)
     DIAG_ESTABLE = "estable"
     DIAG_CRECIMIENTO = "crecimiento"
     DIAG_IRREGULAR = "irregular"
@@ -59,14 +146,12 @@ class EvaluacionUnidad(models.Model):
     anio = models.PositiveIntegerField(default=current_year)
     mes = models.PositiveSmallIntegerField(default=current_month)
 
-    # Estado del proceso
     estado_workflow = models.CharField(
         max_length=20,
         choices=ESTADOS_WORKFLOW,
         default=ESTADO_BORRADOR,
     )
 
-    # Diagnóstico general (esto NO es 1-5; es semántico)
     diagnostico = models.CharField(
         max_length=20,
         choices=DIAGNOSTICOS,
@@ -108,121 +193,13 @@ class EvaluacionUnidad(models.Model):
 
 class EvaluacionMiembro(models.Model):
     """
-    Evaluación de un miembro dentro de una unidad, ligada a un período (opcional)
-    o simplemente a una fecha.
+    Evaluación individual de un miembro dentro de una EvaluacionUnidad (período).
+    Perfil mixto:
+    - Organizacional: asistencia, participación, compromiso, actitud, integración (1-5)
+    - Espiritual: madurez espiritual (1-5) + estado espiritual (semántico)
     """
 
-    unidad = models.ForeignKey(
-        Unidad,
-        on_delete=models.CASCADE,
-        related_name="evaluaciones_miembros",
-    )
-    miembro = models.ForeignKey(
-        Miembro,
-        on_delete=models.CASCADE,
-        related_name="evaluaciones",
-    )
-
-    # (Opcional, pero recomendado): vincular la evaluación del miembro al período
-    evaluacion_unidad = models.ForeignKey(
-        EvaluacionUnidad,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="detalle_miembros",
-    )
-
-    # =========================
-    # DIMENSIONES SOID (1 a 5)
-    # =========================
-    asistencia = models.PositiveSmallIntegerField(default=3)
-    participacion = models.PositiveSmallIntegerField(default=3)
-    compromiso = models.PositiveSmallIntegerField(default=3)
-    actitud = models.PositiveSmallIntegerField(default=3)
-    integracion = models.PositiveSmallIntegerField(default=3)
-    liderazgo = models.PositiveSmallIntegerField(default=3)
-
-    # =========================
-    # RESULTADOS CALCULADOS
-    # =========================
-    score_soid = models.DecimalField(max_digits=4, decimal_places=2, default=0)
-    clasificacion = models.CharField(max_length=50, blank=True, null=True)
-
-    observaciones = models.TextField(blank=True, null=True)
-    fecha = models.DateField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Evaluación de miembro"
-        verbose_name_plural = "Evaluaciones de miembros"
-        ordering = ["-fecha"]
-        constraints = [
-            # Evita duplicar evaluaciones del mismo miembro el mismo día para la misma unidad
-            models.UniqueConstraint(
-                fields=["unidad", "miembro", "fecha"],
-                name="uniq_eval_miembro_unidad_fecha",
-            )
-        ]
-        indexes = [
-            models.Index(fields=["unidad", "miembro", "fecha"]),
-        ]
-
-    def calcular_score(self):
-        score = (
-            self.asistencia * 0.20 +
-            self.participacion * 0.20 +
-            self.compromiso * 0.20 +
-            self.actitud * 0.15 +
-            self.integracion * 0.15 +
-            self.liderazgo * 0.10
-        )
-        return round(score, 2)
-
-    def calcular_clasificacion(self):
-        score = float(self.score_soid)
-
-        # Reglas inteligentes base
-        if self.liderazgo >= 4 and self.compromiso >= 4 and self.asistencia >= 3:
-            return "🟣 Líder potencial"
-
-        if self.asistencia <= 2 and self.integracion <= 2:
-            return "🔴 En riesgo"
-
-        if self.asistencia >= 4 and self.participacion <= 2:
-            return "🟠 Presente pero pasivo"
-
-        if 2.5 <= score < 3.5:
-            return "🟡 En desarrollo"
-
-        if score >= 4.2:
-            return "🟢 Comprometido"
-
-        # fallback por score
-        if score >= 4.5:
-            return "🟢 Excelente"
-        elif score >= 3.5:
-            return "🔵 Bueno"
-        elif score >= 2.5:
-            return "🟡 Regular"
-        elif score >= 1.5:
-            return "🟠 Bajo"
-        else:
-            return "🔴 Crítico"
-
-    def save(self, *args, **kwargs):
-        self.score_soid = self.calcular_score()
-        self.clasificacion = self.calcular_clasificacion()
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.miembro} - {self.unidad} ({self.fecha})"
-
-
-class EvaluacionMiembro(models.Model):
-    """
-    Evaluación individual de un miembro dentro de una EvaluacionUnidad.
-    """
-
-    # 1-5 (estrellas)
+    # 1-5
     PUNTAJES = (
         (1, "1"),
         (2, "2"),
@@ -231,14 +208,23 @@ class EvaluacionMiembro(models.Model):
         (5, "5"),
     )
 
-    ESTADO_NORMAL = "NORMAL"
+    # Estado espiritual (semántico)
+    ESTADO_ESTABLE = "ESTABLE"
+    ESTADO_EN_CRECIMIENTO = "EN_CRECIMIENTO"
+    ESTADO_EN_PROCESO = "EN_PROCESO"
+    ESTADO_INESTABLE = "INESTABLE"
     ESTADO_EN_RIESGO = "EN_RIESGO"
+    ESTADO_CRITICO = "CRITICO"
     ESTADO_AUSENTE = "AUSENTE"
 
-    ESTADOS = (
-        (ESTADO_NORMAL, "Normal"),
-        (ESTADO_EN_RIESGO, "En riesgo"),
-        (ESTADO_AUSENTE, "Ausente"),
+    ESTADOS_ESPIRITUALES = (
+        (ESTADO_ESTABLE, "🟢 Estable"),
+        (ESTADO_EN_CRECIMIENTO, "🌱 En crecimiento"),
+        (ESTADO_EN_PROCESO, "🧩 En proceso"),
+        (ESTADO_INESTABLE, "🌊 Inestable"),
+        (ESTADO_EN_RIESGO, "⚠️ En riesgo"),
+        (ESTADO_CRITICO, "🔴 Crítico"),
+        (ESTADO_AUSENTE, "⚫ Ausente"),
     )
 
     evaluacion = models.ForeignKey(
@@ -250,16 +236,27 @@ class EvaluacionMiembro(models.Model):
     )
 
     miembro = models.ForeignKey(
-        "miembros_app.Miembro",
+        Miembro,
         on_delete=models.PROTECT,
         related_name="evaluaciones",
     )
 
+    # ORGANIZACIONAL
     asistencia = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
     participacion = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default=ESTADO_NORMAL)
+    compromiso = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
+    actitud = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
+    integracion = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
 
-    # Guardamos un resumen rápido (1-5) para ranking/estadísticas sin recalcular siempre.
+    # ESPIRITUAL
+    madurez_espiritual = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
+    estado_espiritual = models.CharField(
+        max_length=20,
+        choices=ESTADOS_ESPIRITUALES,
+        default=ESTADO_ESTABLE,
+    )
+
+    # Resumen rápido (1-5)
     puntaje_general = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
 
     observacion = models.CharField(max_length=255, blank=True, default="")
@@ -288,7 +285,7 @@ class EvaluacionMiembro(models.Model):
         indexes = [
             models.Index(fields=["evaluacion"]),
             models.Index(fields=["miembro"]),
-            models.Index(fields=["estado"]),
+            models.Index(fields=["estado_espiritual"]),
             models.Index(fields=["puntaje_general"]),
         ]
 
@@ -302,14 +299,23 @@ class EvaluacionMiembro(models.Model):
     def recalcular_puntaje_general(self):
         """
         Regla base (simple y útil):
-        - Promedio de asistencia y participación
-        - Penalización si está EN_RIESGO o AUSENTE
+        - Promedio de 5 organizacionales + madurez espiritual
+        - Penalización por estado espiritual (AUSENTE / EN_RIESGO / CRITICO)
         """
-        base = round((self.asistencia + self.participacion) / 2)
+        base = round(
+            (
+                self.asistencia +
+                self.participacion +
+                self.compromiso +
+                self.actitud +
+                self.integracion +
+                self.madurez_espiritual
+            ) / 6
+        )
 
-        if self.estado == self.ESTADO_AUSENTE:
+        if self.estado_espiritual == self.ESTADO_AUSENTE:
             base = max(1, base - 2)
-        elif self.estado == self.ESTADO_EN_RIESGO:
+        elif self.estado_espiritual in (self.ESTADO_EN_RIESGO, self.ESTADO_CRITICO):
             base = max(1, base - 1)
 
         self.puntaje_general = int(min(5, max(1, base)))

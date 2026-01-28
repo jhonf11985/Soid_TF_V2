@@ -145,14 +145,41 @@
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
   }
 
-  /* Rating descriptions */
-  .rating-desc {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: var(--text-muted, #94a3b8);
-    margin-top: 6px;
-    padding: 0 4px;
+  /* Rating descriptions - Dynamic */
+  .rating-desc-dynamic {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    transition: all 0.25s ease;
+    min-height: 28px;
+  }
+
+  .rating-desc-dynamic.level-1 {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  .rating-desc-dynamic.level-2 {
+    background: #fff7ed;
+    color: #ea580c;
+  }
+
+  .rating-desc-dynamic.level-3 {
+    background: #fefce8;
+    color: #ca8a04;
+  }
+
+  .rating-desc-dynamic.level-4 {
+    background: #f0fdf4;
+    color: #16a34a;
+  }
+
+  .rating-desc-dynamic.level-5 {
+    background: #ecfdf5;
+    color: #059669;
   }
 
   /* Estado Select */
@@ -446,6 +473,19 @@
   }
 </style>
 
+{% if perfil and perfil.actualizado_en and perfil.actualizado_en == perfil.created_at %}
+<div style="background:#fffbeb; border:1px solid #f59e0b; color:#92400e; padding:12px 14px; border-radius:10px; margin-bottom:14px;">
+  <strong>⚠️ Recomendación:</strong> esta unidad está usando el <strong>perfil por defecto</strong>.
+  Te sugerimos configurarlo antes de evaluar para definir tiempo, campos y reglas.
+  <div style="margin-top:10px;">
+    <a href="{% url 'evaluaciones_app:perfil_evaluacion_unidad' unidad.id %}"
+       style="display:inline-block; padding:8px 12px; border-radius:8px; background:#111827; color:#fff; text-decoration:none; font-weight:700;">
+      ⚙️ Configurar perfil ahora
+    </a>
+  </div>
+</div>
+{% endif %}
+
 <form method="post" id="evalForm">
   {% csrf_token %}
 
@@ -496,7 +536,7 @@
             <button type="button" class="rating-btn" data-value="4">4</button>
             <button type="button" class="rating-btn" data-value="5">5</button>
           </div>
-          <div class="rating-desc"><span>Baja</span><span>Excelente</span></div>
+          <div class="rating-desc-dynamic" data-field="asistencia"></div>
         </div>
 
         <div class="rating-group">
@@ -508,7 +548,7 @@
             <button type="button" class="rating-btn" data-value="4">4</button>
             <button type="button" class="rating-btn" data-value="5">5</button>
           </div>
-          <div class="rating-desc"><span>Baja</span><span>Excelente</span></div>
+          <div class="rating-desc-dynamic" data-field="participacion"></div>
         </div>
 
         <div class="rating-group">
@@ -520,7 +560,7 @@
             <button type="button" class="rating-btn" data-value="4">4</button>
             <button type="button" class="rating-btn" data-value="5">5</button>
           </div>
-          <div class="rating-desc"><span>Bajo</span><span>Excelente</span></div>
+          <div class="rating-desc-dynamic" data-field="compromiso"></div>
         </div>
 
         <div class="rating-group">
@@ -532,7 +572,7 @@
             <button type="button" class="rating-btn" data-value="4">4</button>
             <button type="button" class="rating-btn" data-value="5">5</button>
           </div>
-          <div class="rating-desc"><span>Negativa</span><span>Excelente</span></div>
+          <div class="rating-desc-dynamic" data-field="actitud"></div>
         </div>
 
         <div class="rating-group">
@@ -544,7 +584,7 @@
             <button type="button" class="rating-btn" data-value="4">4</button>
             <button type="button" class="rating-btn" data-value="5">5</button>
           </div>
-          <div class="rating-desc"><span>Baja</span><span>Excelente</span></div>
+          <div class="rating-desc-dynamic" data-field="integracion"></div>
         </div>
 
         <div class="rating-group">
@@ -556,7 +596,7 @@
             <button type="button" class="rating-btn" data-value="4">4</button>
             <button type="button" class="rating-btn" data-value="5">5</button>
           </div>
-          <div class="rating-desc"><span>Bajo</span><span>Excelente</span></div>
+          <div class="rating-desc-dynamic" data-field="liderazgo"></div>
         </div>
 
         <!-- Estado -->
@@ -647,6 +687,53 @@
   ];
 
   const fields = ['asistencia', 'participacion', 'compromiso', 'actitud', 'integracion', 'liderazgo'];
+  
+  // Descripciones dinámicas por campo y nivel
+  const ratingDescriptions = {
+    asistencia: {
+      1: 'Muy baja - Casi no asiste',
+      2: 'Baja - Asiste poco',
+      3: 'Regular - Asiste a veces',
+      4: 'Buena - Asiste frecuentemente',
+      5: 'Excelente - Asiste siempre'
+    },
+    participacion: {
+      1: 'Nula - No participa',
+      2: 'Baja - Participa poco',
+      3: 'Regular - Participa a veces',
+      4: 'Buena - Participa activamente',
+      5: 'Excelente - Muy participativo'
+    },
+    compromiso: {
+      1: 'Muy bajo - Sin compromiso',
+      2: 'Bajo - Poco comprometido',
+      3: 'Regular - Compromiso moderado',
+      4: 'Alto - Muy comprometido',
+      5: 'Excelente - Totalmente comprometido'
+    },
+    actitud: {
+      1: 'Negativa - Actitud problemática',
+      2: 'Pasiva - Actitud indiferente',
+      3: 'Neutral - Actitud aceptable',
+      4: 'Positiva - Buena actitud',
+      5: 'Excelente - Actitud ejemplar'
+    },
+    integracion: {
+      1: 'Nula - No se integra',
+      2: 'Baja - Le cuesta integrarse',
+      3: 'Regular - Se integra a veces',
+      4: 'Buena - Bien integrado',
+      5: 'Excelente - Totalmente integrado'
+    },
+    liderazgo: {
+      1: 'Nulo - Sin liderazgo',
+      2: 'Bajo - Poco liderazgo',
+      3: 'Regular - Liderazgo ocasional',
+      4: 'Bueno - Buen líder',
+      5: 'Excelente - Líder nato'
+    }
+  };
+  
   let currentIndex = 0;
   let evaluations = {};
 
@@ -740,6 +827,9 @@
     // Update estado
     estadoSelect.value = ev.estado;
 
+    // Update rating descriptions
+    updateAllRatingDescriptions();
+
     // Update navigation
     currentNum.textContent = currentIndex + 1;
     prevBtn.disabled = currentIndex === 0;
@@ -809,6 +899,9 @@
         container.querySelectorAll('.rating-btn').forEach(b => {
           b.classList.toggle('selected', parseInt(b.dataset.value) === value);
         });
+
+        // Update the description for this field
+        updateRatingDescription(field, value);
 
         updateListBadges();
         updateDots();
@@ -885,6 +978,27 @@
   function updateDots() {
     document.querySelectorAll('.member-dot').forEach((dot, i) => {
       dot.classList.toggle('completed', isCompleted(members[i].id));
+    });
+  }
+
+  // Update rating description text and color
+  function updateRatingDescription(field, value) {
+    const descEl = document.querySelector(`.rating-desc-dynamic[data-field="${field}"]`);
+    if (descEl && ratingDescriptions[field]) {
+      descEl.textContent = ratingDescriptions[field][value] || '';
+      // Remove all level classes
+      descEl.classList.remove('level-1', 'level-2', 'level-3', 'level-4', 'level-5');
+      // Add current level class
+      descEl.classList.add(`level-${value}`);
+    }
+  }
+
+  // Update all rating descriptions for current member
+  function updateAllRatingDescriptions() {
+    const m = members[currentIndex];
+    const ev = evaluations[m.id];
+    fields.forEach(field => {
+      updateRatingDescription(field, ev[field]);
     });
   }
 

@@ -1,0 +1,530 @@
+{% extends "evaluaciones_app/base_evaluaciones.html" %}
+
+{% block evaluaciones_content %}
+<style>
+  :root {
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --accent: #3b82f6;
+    --accent-light: #eff6ff;
+    --success: #10b981;
+    --success-light: #ecfdf5;
+    --warning: #f59e0b;
+    --warning-light: #fffbeb;
+  }
+
+  .page-header {
+    background: linear-gradient(135deg, var(--text-primary) 0%, #1e293b 100%);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 50%;
+  }
+  .page-header .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(4px);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .page-header h1 {
+    margin: 0 0 6px 0;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .page-header p {
+    margin: 0;
+    opacity: 0.8;
+    font-size: 14px;
+  }
+
+  .section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(to bottom, #fafbfc, #fff);
+  }
+  .section-header h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-header h2 .icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .section-header .tag {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+  .section-body {
+    padding: 22px;
+  }
+
+  .grid {
+    display: grid;
+    gap: 18px;
+  }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+  @media (max-width: 800px) {
+    .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+  }
+  .field-group label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 8px;
+  }
+  .field-group input,
+  .field-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: #fff;
+    transition: all 0.2s;
+  }
+  .field-group input:focus,
+  .field-group select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+  .field-group .hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+
+  .toggle-card {
+    background: #fafbfc;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .toggle-card:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .toggle-card input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .toggle-card .toggle-content {
+    flex: 1;
+  }
+  .toggle-card .toggle-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toggle-card .toggle-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .dimension-group {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .dimension-group-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(to bottom, #f8fafc, #fff);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dimension-group-header .emoji {
+    font-size: 20px;
+  }
+  .dimension-group-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+  .dimension-group-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dimension-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #fafbfc;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .dimension-item:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+  }
+  .dimension-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+  }
+  .dimension-item span {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .dimension-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 8px 14px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  .weights-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 700px) {
+    .weights-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 480px) {
+    .weights-grid { grid-template-columns: 1fr; }
+  }
+
+  .weight-field {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .weight-field label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .weight-field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    background: #fff;
+  }
+  .weight-field input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--warning-light);
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+    margin-bottom: 18px;
+  }
+  .info-banner .icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .info-banner p {
+    margin: 0;
+    font-size: 13px;
+    color: #92400e;
+    line-height: 1.5;
+  }
+
+  .form-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 8px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--text-primary);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: #1e293b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(15,23,42,0.25);
+  }
+  .btn-secondary {
+    background: #fff;
+    color: var(--text-primary);
+    border: 1.5px solid var(--border);
+  }
+  .btn-secondary:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+</style>
+
+<!-- HEADER -->
+<div class="page-header">
+  <span class="badge">⚙️ Configuración del motor</span>
+  <h1>Perfil de evaluación</h1>
+  <p>Unidad: <strong>{{ unidad.nombre }}</strong></p>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <!-- TIEMPO Y REGLAS -->
+  <div class="section">
+    <div class="section-header">
+      <h2>
+        <span class="icon" style="background:#eff6ff; color:#3b82f6;">⏱️</span>
+        Tiempo y reglas
+      </h2>
+      <span class="tag">Periodo / Control</span>
+    </div>
+    <div class="section-body">
+      <div class="grid grid-3" style="margin-bottom: 20px;">
+        <div class="field-group">
+          <label>Modo</label>
+          {{ form.modo }}
+          <span class="hint">"Mensual" crea periodos por mes. "Libre" no fuerza periodos.</span>
+        </div>
+        <div class="field-group">
+          <label>Frecuencia</label>
+          {{ form.frecuencia }}
+          <span class="hint">Cada cuánto se evalúa esta unidad.</span>
+        </div>
+        <div class="field-group">
+          <label>Día de cierre (1–28)</label>
+          {{ form.dia_cierre }}
+          <span class="hint">Recomendación: 28 para evitar meses cortos.</span>
+        </div>
+      </div>
+
+      <div class="grid grid-3">
+        <label class="toggle-card">
+          {{ form.auto_crear_periodo }}
+          <div class="toggle-content">
+            <div class="toggle-label">🔄 Auto-crear periodos</div>
+            <div class="toggle-hint">SOID puede crear el periodo automáticamente</div>
+          </div>
+        </label>
+
+        <label class="toggle-card">
+          {{ form.permitir_editar_cerrada }}
+          <div class="toggle-content">
+            <div class="toggle-label">✏️ Editar evaluación cerrada</div>
+            <div class="toggle-hint">No recomendado después de cerrar</div>
+          </div>
+        </label>
+
+        <label class="toggle-card">
+          {{ form.excluir_evaluador }}
+          <div class="toggle-content">
+            <div class="toggle-label">🚫 Excluir al evaluador</div>
+            <div class="toggle-hint">El líder no aparece en su propia evaluación</div>
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAMPOS A EVALUAR -->
+  <div class="section">
+    <div class="section-header">
+      <h2>
+        <span class="icon" style="background:#ecfdf5; color:#10b981;">🧩</span>
+        Campos a evaluar
+      </h2>
+      <span class="tag">Activar / Desactivar</span>
+    </div>
+    <div class="section-body">
+      <div class="grid grid-2">
+        <!-- Organizacional -->
+        <div class="dimension-group">
+          <div class="dimension-group-header">
+            <span class="emoji">🏢</span>
+            <h3>Dimensiones Organizacionales</h3>
+          </div>
+          <div class="dimension-group-body">
+            <label class="dimension-item">{{ form.usar_asistencia }} <span>🕒 Asistencia</span></label>
+            <label class="dimension-item">{{ form.usar_participacion }} <span>🤝 Participación</span></label>
+            <label class="dimension-item">{{ form.usar_compromiso }} <span>✅ Compromiso</span></label>
+            <label class="dimension-item">{{ form.usar_actitud }} <span>😄 Actitud</span></label>
+            <label class="dimension-item">{{ form.usar_integracion }} <span>🧩 Integración</span></label>
+            <div class="dimension-note">Estas dimensiones se puntúan del 1 al 5</div>
+          </div>
+        </div>
+
+        <!-- Espiritual -->
+        <div class="dimension-group">
+          <div class="dimension-group-header">
+            <span class="emoji">🙏</span>
+            <h3>Dimensiones Espirituales</h3>
+          </div>
+          <div class="dimension-group-body">
+            <label class="dimension-item">{{ form.usar_madurez_espiritual }} <span>🤲 Madurez espiritual (1–5)</span></label>
+            <label class="dimension-item">{{ form.usar_estado_espiritual }} <span>🧭 Estado espiritual (semántico)</span></label>
+            <div class="dimension-note">
+              Estados recomendados: 🟢 Estable · 🌱 En crecimiento · 🧩 En proceso · 🌊 Inestable · ⚠️ En riesgo · 🔴 Crítico · ⚫ Ausente
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PESOS -->
+  <div class="section">
+    <div class="section-header">
+      <h2>
+        <span class="icon" style="background:#fef3c7; color:#d97706;">⚖️</span>
+        Pesos para score
+      </h2>
+      <span class="tag">Opcional</span>
+    </div>
+    <div class="section-body">
+      <div class="info-banner">
+        <span class="icon">💡</span>
+        <p>Si no usarás score, puedes dejar estos pesos como están o en 0. <strong>Recomendación:</strong> que la suma total sea 1.00 (100%).</p>
+      </div>
+
+      <div class="weights-grid">
+        <div class="weight-field">
+          <label>🕒 Asistencia</label>
+          {{ form.w_asistencia }}
+        </div>
+        <div class="weight-field">
+          <label>🤝 Participación</label>
+          {{ form.w_participacion }}
+        </div>
+        <div class="weight-field">
+          <label>✅ Compromiso</label>
+          {{ form.w_compromiso }}
+        </div>
+        <div class="weight-field">
+          <label>😄 Actitud</label>
+          {{ form.w_actitud }}
+        </div>
+        <div class="weight-field">
+          <label>🧩 Integración</label>
+          {{ form.w_integracion }}
+        </div>
+        <div class="weight-field">
+          <label>🤲 Madurez espiritual</label>
+          {{ form.w_madurez_espiritual }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCIONES -->
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">💾 Guardar perfil</button>
+    <a class="btn btn-secondary" href="{% url 'evaluaciones_app:mis_unidades' %}">↩️ Volver</a>
+  </div>
+</form>
+
+{% endblock %}
