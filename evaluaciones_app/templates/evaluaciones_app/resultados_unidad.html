@@ -1,0 +1,189 @@
+{% extends "evaluaciones_app/base_evaluaciones.html" %}
+
+{% block evaluaciones_content %}
+<style>
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .head {
+    background: #0f172a; color:#fff; border-radius: 14px;
+    padding: 18px 18px; margin-bottom: 16px;
+  }
+  .head h1 { margin:0; font-size: 20px; }
+  .head p { margin:6px 0 0 0; opacity:.85; font-size: 13px; }
+
+  .cards { display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 900px){ .cards{ grid-template-columns: repeat(2, 1fr);} }
+  @media (max-width: 520px){ .cards{ grid-template-columns: 1fr;} }
+
+  .card {
+    background:#fff; border:1px solid #e2e8f0; border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .card .k { font-size: 11px; color:#64748b; text-transform: uppercase; letter-spacing: .3px; font-weight: 700; }
+  .card .v { font-size: 20px; font-weight: 800; margin-top: 4px; color:#0f172a; }
+  .card .s { font-size: 12px; color:#64748b; margin-top: 2px; }
+
+  .panel { background:#fff; border:1px solid #e2e8f0; border-radius: 12px; overflow:hidden; margin-bottom: 14px; }
+  .panel-h { padding: 12px 14px; border-bottom:1px solid #e2e8f0; background:#fafbfc; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .panel-h h2 { margin:0; font-size: 14px; font-weight: 800; color:#0f172a; }
+  .panel-b { padding: 14px; }
+
+  table { width:100%; border-collapse: collapse; }
+  th, td { border-bottom:1px solid #e2e8f0; padding: 10px 10px; text-align:left; font-size: 13px; }
+  th { background:#f8fafc; font-size: 11px; text-transform: uppercase; letter-spacing:.3px; color:#64748b; }
+
+  .badge { display:inline-flex; align-items:center; gap:6px; font-weight: 800; padding: 4px 10px; border-radius: 999px; font-size: 12px; border:1px solid #e2e8f0; }
+  .b5{ background:#ecfdf5; color:#047857; border-color:#a7f3d0;}
+  .b4{ background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;}
+  .b3{ background:#fffbeb; color:#92400e; border-color:#fde68a;}
+  .b2{ background:#fff7ed; color:#9a3412; border-color:#fdba74;}
+  .b1{ background:#fef2f2; color:#b91c1c; border-color:#fecaca;}
+
+  .actions { display:flex; gap:10px; flex-wrap: wrap; }
+  .btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding: 10px 14px; border-radius: 10px; font-weight: 800;
+    border:1px solid #e2e8f0; background:#fff; color:#0f172a;
+    text-decoration:none; font-size: 13px;
+  }
+  .btn-primary { background:#0f172a; color:#fff; border-color:#0f172a; }
+  .btn-primary:hover { opacity:.92; }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <h1>Resultados de evaluación</h1>
+    <p>
+      Unidad: <strong>{{ unidad.nombre }}</strong> ·
+      Periodo: <strong>{{ evaluacion.mes }}/{{ evaluacion.anio }}</strong>
+    </p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="k">Total miembros</div>
+      <div class="v">{{ total }}</div>
+      <div class="s">Registros en esta evaluación</div>
+    </div>
+    <div class="card">
+      <div class="k">Evaluados</div>
+      <div class="v">{{ evaluados }}</div>
+      <div class="s">Con puntaje general</div>
+    </div>
+    <div class="card">
+      <div class="k">Pendientes</div>
+      <div class="v">{{ pendientes }}</div>
+      <div class="s">Aún sin completar</div>
+    </div>
+    <div class="card">
+      <div class="k">Promedio general</div>
+      <div class="v">{% if promedios.avg_puntaje %}{{ promedios.avg_puntaje|floatformat:1 }}{% else %}—{% endif %}</div>
+      <div class="s">Rango 1–5</div>
+    </div>
+  </div>
+<div class="panel">
+  <div class="panel-h">
+    <h2>Balance general</h2>
+  </div>
+  <div class="panel-b">
+    <div style="font-size:16px; font-weight:900; margin-bottom:8px;">
+      {{ semaforo.0 }} {{ semaforo.1 }}
+    </div>
+    <div style="color:#64748b; margin-bottom:12px;">
+      {{ semaforo.2 }}
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div>
+        <div style="font-weight:900; margin-bottom:6px;">✅ Fortalezas</div>
+        <ul style="margin:0; padding-left:18px;">
+          {% for n, v in fortalezas %}
+            <li>{{ n }} ({{ v|floatformat:1 }})</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div>
+        <div style="font-weight:900; margin-bottom:6px;">⚠️ Oportunidades</div>
+        <ul style="margin:0; padding-left:18px;">
+          {% for n, v in oportunidades %}
+            <li>{{ n }} ({{ v|floatformat:1 }})</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="panel">
+    <div class="panel-h">
+      <h2>Distribución de puntajes</h2>
+      <div class="actions">
+        <a class="btn btn-primary" href="{% url 'evaluaciones_app:evaluar_unidad' unidad.id %}">✍️ Seguir evaluando</a>
+        <a class="btn" href="{% url 'evaluaciones_app:mis_unidades' %}">↩️ Volver</a>
+      </div>
+    </div>
+    <div class="panel-b">
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <span class="badge b5">⭐ 5: {{ distribucion.5 }}</span>
+        <span class="badge b4">🔵 4: {{ distribucion.4 }}</span>
+        <span class="badge b3">🟡 3: {{ distribucion.3 }}</span>
+        <span class="badge b2">🟠 2: {{ distribucion.2 }}</span>
+        <span class="badge b1">🔴 1: {{ distribucion.1 }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h">
+      <h2>Detalle por miembro</h2>
+      <span style="font-size:12px; color:#64748b;">(valores 1–5)</span>
+    </div>
+    <div class="panel-b" style="padding:0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Miembro</th>
+            <th>Asis.</th>
+            <th>Part.</th>
+            <th>Comp.</th>
+            <th>Act.</th>
+            <th>Int.</th>
+            <th>Mad.</th>
+            <th>Puntaje</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in items %}
+          <tr>
+            <td>
+              {{ it.miembro }}
+            </td>
+            <td>{{ it.asistencia }}</td>
+            <td>{{ it.participacion }}</td>
+            <td>{{ it.compromiso }}</td>
+            <td>{{ it.actitud }}</td>
+            <td>{{ it.integracion }}</td>
+            <td>{{ it.madurez_espiritual }}</td>
+            <td>
+              {% if it.puntaje_general %}
+                {% if it.puntaje_general >= 5 %}<span class="badge b5">⭐ {{ it.puntaje_general }}</span>
+                {% elif it.puntaje_general == 4 %}<span class="badge b4">🔵 {{ it.puntaje_general }}</span>
+                {% elif it.puntaje_general == 3 %}<span class="badge b3">🟡 {{ it.puntaje_general }}</span>
+                {% elif it.puntaje_general == 2 %}<span class="badge b2">🟠 {{ it.puntaje_general }}</span>
+                {% else %}<span class="badge b1">🔴 {{ it.puntaje_general }}</span>
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" style="padding:16px; color:#64748b;">No hay registros para este periodo.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

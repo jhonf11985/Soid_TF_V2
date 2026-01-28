@@ -427,6 +427,14 @@
             <div class="toggle-hint">El líder no aparece en su propia evaluación</div>
           </div>
         </label>
+        <label class="toggle-card">
+        {{ form.usar_pesos }}
+        <div class="toggle-content">
+            <div class="toggle-label">⚖️ Usar pesos en el score</div>
+            <div class="toggle-hint">Si está apagado, SOID calcula por promedio simple</div>
+        </div>
+        </label>
+
       </div>
     </div>
   </div>
@@ -478,7 +486,9 @@
   </div>
 
   <!-- PESOS -->
-  <div class="section">
+  <div class="section" id="section-pesos" style="display:none;">
+
+
     <div class="section-header">
       <h2>
         <span class="icon" style="background:#fef3c7; color:#d97706;">⚖️</span>
@@ -531,5 +541,60 @@
     <a class="btn btn-secondary" href="{% url 'evaluaciones_app:mis_unidades' %}">↩️ Volver</a>
   </div>
 </form>
+
+<script>
+function calcularTotalPesos() {
+  const campos = [
+    "id_w_asistencia",
+    "id_w_participacion",
+    "id_w_compromiso",
+    "id_w_actitud",
+    "id_w_integracion",
+    "id_w_madurez_espiritual",
+    "id_w_liderazgo",
+  ];
+
+  let total = 0;
+
+  campos.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value) {
+      total += parseInt(el.value) || 0;
+    }
+  });
+
+  return total;
+}
+
+document.querySelectorAll('#section-pesos input[type="number"]').forEach(input => {
+
+  input.addEventListener("input", function () {
+    const total = calcularTotalPesos();
+
+    if (total > 100) {
+      alert("⚠️ La suma de los pesos no puede superar 100%");
+      this.value = 0; // opcional: resetear el último campo
+    }
+  });
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const checkbox = document.getElementById("id_usar_pesos");
+  const pesosSection = document.getElementById("section-pesos");
+
+  function togglePesos() {
+    if (checkbox && pesosSection) {
+      pesosSection.style.display = checkbox.checked ? "block" : "none";
+    }
+  }
+
+  if (checkbox) {
+    checkbox.addEventListener("change", togglePesos);
+    togglePesos(); // estado inicial
+  }
+});
+</script>
+
 
 {% endblock %}

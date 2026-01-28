@@ -12,4 +12,5 @@ urlpatterns = [
         views.perfil_evaluacion_unidad,
         name="perfil_evaluacion_unidad",
     ),
+     path("unidad/<int:evaluacion_id>/resultados/", views.ver_resultados_unidad, name="ver_resultados_unidad"),
 ]

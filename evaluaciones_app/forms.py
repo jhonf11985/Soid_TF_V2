@@ -21,6 +21,8 @@ class EvaluacionPerfilUnidadForm(forms.ModelForm):
             "usar_madurez_espiritual",
             "usar_estado_espiritual",
                        "usar_liderazgo",
+                       "usar_pesos",
+
 
             "w_asistencia",
             "w_participacion",
@@ -33,6 +35,30 @@ class EvaluacionPerfilUnidadForm(forms.ModelForm):
         widgets = {
             "dia_cierre": forms.NumberInput(attrs={"min": 1, "max": 28}),
         }
+
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        pesos = [
+            cleaned_data.get("w_asistencia", 0),
+            cleaned_data.get("w_participacion", 0),
+            cleaned_data.get("w_compromiso", 0),
+            cleaned_data.get("w_actitud", 0),
+            cleaned_data.get("w_integracion", 0),
+            cleaned_data.get("w_madurez_espiritual", 0),
+            cleaned_data.get("w_liderazgo", 0),
+        ]
+
+        total = sum(pesos)
+
+        if total > 100:
+            raise forms.ValidationError(
+                f"La suma de los pesos no puede superar 100%. Actualmente es {total}%."
+            )
+
+        return cleaned_data
+    
 
 
 class EvaluacionMiembroForm(forms.ModelForm):

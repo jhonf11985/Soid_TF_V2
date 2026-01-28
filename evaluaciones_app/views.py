@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.db import transaction
 from django.http import HttpResponseForbidden
 from datetime import date
-from django.db.models import Avg
+from django.db.models import Avg,Count
 from miembros_app.models import Miembro
 from .forms import EvaluacionPerfilUnidadForm
 
@@ -86,7 +86,12 @@ def mis_unidades(request):
     for u in unidades:
         perfil, _ = EvaluacionPerfilUnidad.objects.get_or_create(unidad=u)
 
-        evaluacion = EvaluacionUnidad.objects.filter(unidad=u, anio=anio, mes=mes).first()
+        evaluacion, _ = EvaluacionUnidad.objects.get_or_create(
+            unidad=u,
+            anio=anio,
+            mes=mes,
+            defaults={"perfil": perfil, "creado_por": request.user},
+        )
 
         membresias_qs = UnidadMembresia.objects.filter(unidad=u)
         if perfil.excluir_evaluador:
@@ -211,11 +216,12 @@ def evaluar_unidad(request, unidad_id):
             item.observacion = request.POST.get(f"observacion_{m.id}", "")
 
             item.evaluado_por = request.user
+            item.recalcular_puntaje_general()
+
             item.save()
 
         messages.success(request, "✅ Evaluación guardada correctamente.")
         return redirect("evaluaciones_app:evaluar_unidad", unidad_id=unidad.id)
-
     items = EvaluacionMiembro.objects.filter(evaluacion=evaluacion).select_related("miembro")
 
     contexto = {
@@ -255,3 +261,94 @@ def perfil_evaluacion_unidad(request, unidad_id):
         "perfil": perfil,
         "form": form,
     })
+
+
+
+
+@login_required
+def ver_resultados_unidad(request, evaluacion_id):
+    evaluacion = get_object_or_404(
+        EvaluacionUnidad.objects.select_related("unidad", "perfil"),
+        id=evaluacion_id
+    )
+
+    items = (
+        EvaluacionMiembro.objects
+        .filter(evaluacion=evaluacion)
+        .select_related("miembro")
+        .order_by("miembro__nombres", "miembro__apellidos")
+    )
+
+    total = items.count()
+    evaluados = items.exclude(puntaje_general__isnull=True).count()
+    pendientes = total - evaluados
+
+    # Promedios (solo si hay registros)
+    promedios = items.aggregate(
+        avg_asistencia=Avg("asistencia"),
+        avg_participacion=Avg("participacion"),
+        avg_compromiso=Avg("compromiso"),
+        avg_actitud=Avg("actitud"),
+        avg_integracion=Avg("integracion"),
+        avg_madurez=Avg("madurez_espiritual"),
+        avg_puntaje=Avg("puntaje_general"),
+    )
+
+    # Distribución de puntaje 1–5
+    dist = (
+        items.values("puntaje_general")
+        .annotate(c=Count("id"))
+        .order_by("puntaje_general")
+    )
+    dist_map = {d["puntaje_general"]: d["c"] for d in dist}
+    distribucion = {
+        5: dist_map.get(5, 0),
+        4: dist_map.get(4, 0),
+        3: dist_map.get(3, 0),
+        2: dist_map.get(2, 0),
+        1: dist_map.get(1, 0),
+    }
+    avg_puntaje = promedios.get("avg_puntaje") or 0
+
+    if avg_puntaje >= 4.2:
+        semaforo = ("🟢", "Fuerte", "La unidad está sólida y estable.")
+    elif avg_puntaje >= 3.6:
+        semaforo = ("🔵", "Bien", "La unidad va bien, con detalles a fortalecer.")
+    elif avg_puntaje >= 3.0:
+        semaforo = ("🟡", "En proceso", "La unidad necesita ajustes para mejorar consistencia.")
+    elif avg_puntaje >= 2.5:
+        semaforo = ("🟠", "Débil", "Hay señales de debilidad. Requiere seguimiento cercano.")
+    else:
+        semaforo = ("🔴", "Crítica", "Se recomienda intervención y plan inmediato.")
+
+    dim_proms = [
+        ("Asistencia", promedios.get("avg_asistencia")),
+        ("Participación", promedios.get("avg_participacion")),
+        ("Compromiso", promedios.get("avg_compromiso")),
+        ("Actitud", promedios.get("avg_actitud")),
+        ("Integración", promedios.get("avg_integracion")),
+        ("Madurez", promedios.get("avg_madurez")),
+    ]
+
+    # Filtrar None y ordenar
+    dim_proms = [(n, v) for n, v in dim_proms if v is not None]
+    dim_proms_sorted = sorted(dim_proms, key=lambda x: x[1], reverse=True)
+
+    fortalezas = dim_proms_sorted[:2]
+    oportunidades = sorted(dim_proms, key=lambda x: x[1])[:2]
+
+    context = {
+        "evaluacion": evaluacion,
+        "unidad": evaluacion.unidad,
+        "perfil": evaluacion.perfil,
+        "items": items,
+        "total": total,
+        "evaluados": evaluados,
+        "pendientes": pendientes,
+        "promedios": promedios,
+        "distribucion": distribucion,
+           "semaforo": semaforo,
+   "fortalezas": fortalezas,
+   "oportunidades": oportunidades,
+    }
+    return render(request, "evaluaciones_app/resultados_unidad.html", context)

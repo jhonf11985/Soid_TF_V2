@@ -31,6 +31,7 @@ class EvaluacionPerfilUnidad(models.Model):
         (FREQ_LIBRE, "Libre"),
     )
     creado_en = models.DateTimeField(auto_now_add=True)
+    usar_pesos = models.BooleanField(default=False)
 
     frecuencia = models.CharField(max_length=12, choices=FRECUENCIAS, default=FREQ_MENSUAL)
     dia_cierre = models.PositiveSmallIntegerField(default=28)
@@ -72,15 +73,15 @@ class EvaluacionPerfilUnidad(models.Model):
 
     modo = models.CharField(max_length=10, choices=MODOS, default=MODO_MENSUAL)
 
-    # Pesos ORGANIZACIONAL
-    w_asistencia = models.DecimalField(max_digits=4, decimal_places=2, default=0.18)
-    w_participacion = models.DecimalField(max_digits=4, decimal_places=2, default=0.18)
-    w_compromiso = models.DecimalField(max_digits=4, decimal_places=2, default=0.18)
-    w_actitud = models.DecimalField(max_digits=4, decimal_places=2, default=0.13)
-    w_integracion = models.DecimalField(max_digits=4, decimal_places=2, default=0.13)
+        # Pesos ORGANIZACIONAL
+    w_asistencia = models.PositiveIntegerField(default=20)
+    w_participacion = models.PositiveIntegerField(default=15)
+    w_compromiso = models.PositiveIntegerField(default=15)
+    w_actitud = models.PositiveIntegerField(default=10)
+    w_integracion = models.PositiveIntegerField(default=10)
+    w_madurez_espiritual = models.PositiveIntegerField(default=20)
+    w_liderazgo = models.PositiveIntegerField(default=10)
 
-    # Peso ESPIRITUAL (numérico)
-    w_madurez_espiritual = models.DecimalField(max_digits=4, decimal_places=2, default=0.20)
 
     # El estado espiritual es semántico (no lleva peso; sirve como diagnóstico/bandera)
     excluir_evaluador = models.BooleanField(default=True)
@@ -304,24 +305,40 @@ class EvaluacionMiembro(models.Model):
     def recalcular_puntaje_general(self):
         """
         Regla base (simple y útil):
-        - Promedio de 5 organizacionales + madurez espiritual
+        - Promedio simple de dimensiones activas (sin pesos por ahora)
         - Penalización por estado espiritual (AUSENTE / EN_RIESGO / CRITICO)
         """
-        base = round(
-            (
-                self.asistencia +
-                self.participacion +
-                self.compromiso +
-                self.actitud +
-                self.integracion +
-                self.madurez_espiritual
-            ) / 6
-        )
 
-        if self.estado_espiritual == self.ESTADO_AUSENTE:
-            base = max(1, base - 2)
-        elif self.estado_espiritual in (self.ESTADO_EN_RIESGO, self.ESTADO_CRITICO):
-            base = max(1, base - 1)
+        perfil = self.evaluacion.perfil  # ✅ aquí está el perfil real
+
+        valores = []
+
+        # Solo incluir campos que estén activos en el perfil
+        if perfil.usar_asistencia:
+            valores.append(self.asistencia)
+        if perfil.usar_participacion:
+            valores.append(self.participacion)
+        if perfil.usar_compromiso:
+            valores.append(self.compromiso)
+        if perfil.usar_actitud:
+            valores.append(self.actitud)
+        if perfil.usar_integracion:
+            valores.append(self.integracion)
+        if perfil.usar_madurez_espiritual:
+            valores.append(self.madurez_espiritual)
+
+        # Si por alguna razón no hay dimensiones activas
+        if not valores:
+            base = 1
+        else:
+            base = round(sum(valores) / len(valores))
+
+        # Penalización por estado espiritual (solo si está activo)
+        if perfil.usar_estado_espiritual:
+            if self.estado_espiritual == self.ESTADO_AUSENTE:
+                base = max(1, base - 2)
+            elif self.estado_espiritual in (self.ESTADO_EN_RIESGO, self.ESTADO_CRITICO):
+                base = max(1, base - 1)
 
         self.puntaje_general = int(min(5, max(1, base)))
 
