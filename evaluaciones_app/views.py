@@ -8,10 +8,11 @@ from datetime import date
 from django.db.models import Avg,Count
 from miembros_app.models import Miembro
 from .forms import EvaluacionPerfilUnidadForm
-
+import json
+from django.http import JsonResponse
 from .models import EvaluacionUnidad, EvaluacionMiembro
 from estructura_app.models import Unidad, UnidadCargo, UnidadMembresia
-
+from django.views.decorators.http import require_POST
 
 def _get_miembro_from_user(user):
     """
@@ -352,3 +353,88 @@ def ver_resultados_unidad(request, evaluacion_id):
    "oportunidades": oportunidades,
     }
     return render(request, "evaluaciones_app/resultados_unidad.html", context)
+
+
+# Agregar esta vista a views.py
+# Asegúrate de tener estos imports al inicio del archivo:
+# import json
+# from django.http import JsonResponse
+
+@login_required
+@require_POST
+@csrf_protect
+def guardar_evaluacion_miembro(request):
+    """
+    Vista AJAX para guardar la evaluación de un miembro individual.
+    """
+    try:
+        data = json.loads(request.body)
+        
+        evaluacion_id = data.get('evaluacion_id')
+        miembro_id = data.get('miembro_id')
+        item_id = data.get('item_id')
+        
+        if not all([evaluacion_id, miembro_id, item_id]):
+            return JsonResponse({
+                'success': False,
+                'error': 'Faltan datos requeridos'
+            }, status=400)
+        
+        # Buscar el item de evaluación
+        try:
+            item = EvaluacionMiembro.objects.get(
+                id=item_id,
+                evaluacion_id=evaluacion_id,
+                miembro_id=miembro_id
+            )
+        except EvaluacionMiembro.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': f'Evaluación no encontrada'
+            }, status=404)
+        
+        # Actualizar campos organizacionales
+        item.asistencia = int(data.get('asistencia', 3))
+        item.participacion = int(data.get('participacion', 3))
+        item.compromiso = int(data.get('compromiso', 3))
+        item.actitud = int(data.get('actitud', 3))
+        item.integracion = int(data.get('integracion', 3))
+        
+        # Liderazgo - solo si existe el campo en el modelo
+        if hasattr(item, 'liderazgo'):
+            item.liderazgo = int(data.get('liderazgo', 3))
+        
+        # Campos espirituales
+        item.madurez_espiritual = int(data.get('madurez_espiritual', 3))
+        item.estado_espiritual = data.get('estado', 'ESTABLE')
+        
+        # Observación (opcional)
+        item.observacion = data.get('observacion', '') or ''
+        
+        # Marcar quién evaluó
+        item.evaluado_por = request.user
+        
+        # Recalcular puntaje y guardar
+        item.recalcular_puntaje_general()
+        item.save()
+        
+        return JsonResponse({
+            'success': True,
+            'puntaje_general': item.puntaje_general,
+            'miembro_id': miembro_id
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'JSON inválido'
+        }, status=400)
+        
+    except Exception as e:
+        import traceback
+        print(f"Error en guardar_evaluacion_miembro: {e}")
+        print(traceback.format_exc())
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

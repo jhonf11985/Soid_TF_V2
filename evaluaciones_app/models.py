@@ -55,7 +55,7 @@ class EvaluacionPerfilUnidad(models.Model):
     usar_liderazgo = models.BooleanField(default=True)
 
     # En la sección de pesos ORGANIZACIONAL
-    w_liderazgo = models.DecimalField(max_digits=4, decimal_places=2, default=0.10)
+    
 
     MODO_MENSUAL = "MENSUAL"
     MODO_LIBRE = "LIBRE"
@@ -253,7 +253,7 @@ class EvaluacionMiembro(models.Model):
     compromiso = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
     actitud = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
     integracion = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
-
+    liderazgo = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3) 
     # ESPIRITUAL
     madurez_espiritual = models.PositiveSmallIntegerField(choices=PUNTAJES, default=3)
     estado_espiritual = models.CharField(
@@ -326,6 +326,8 @@ class EvaluacionMiembro(models.Model):
             valores.append(self.integracion)
         if perfil.usar_madurez_espiritual:
             valores.append(self.madurez_espiritual)
+        if perfil.usar_liderazgo:
+             valores.append(self.liderazgo)  # 👈 AGREGAR    
 
         # Si por alguna razón no hay dimensiones activas
         if not valores:

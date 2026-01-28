@@ -261,10 +261,11 @@
   .eval-actions {
     display: flex;
     gap: 12px;
+    flex-direction: column;
   }
 
-  .btn-back {
-    flex: 1;
+  .btn-continue-later {
+    width: 100%;
     padding: 14px;
     border: 1px solid var(--border, #e2e8f0);
     border-radius: 12px;
@@ -272,30 +273,41 @@
     color: var(--text-primary, #374151);
     font-size: 14px;
     font-weight: 500;
-    text-decoration: none;
-    text-align: center;
+    cursor: pointer;
     transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 
-  .btn-back:hover {
+  .btn-continue-later:hover {
     background: var(--bg-tertiary, #f1f5f9);
   }
 
-  .btn-save {
-    flex: 2;
-    padding: 14px;
+  .btn-finish {
+    width: 100%;
+    padding: 16px;
     border: none;
     border-radius: 12px;
     background: linear-gradient(135deg, var(--success), #059669);
     color: white;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    display: none;
   }
 
-  .btn-save:hover {
+  .btn-finish.visible {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-finish:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
   }
@@ -334,11 +346,6 @@
 
   .member-dot.completed {
     background: var(--success);
-  }
-
-  /* Hidden inputs container */
-  .hidden-inputs {
-    display: none;
   }
 
   /* Empty state */
@@ -470,6 +477,100 @@
   .slider-view.hidden {
     display: none;
   }
+
+  /* Toast notifications */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #1f2937;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  .toast.success {
+    background: #059669;
+  }
+
+  .toast.error {
+    background: #dc2626;
+  }
+
+  /* Saving indicator */
+  .saving-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    font-size: 13px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    z-index: 1000;
+  }
+
+  .saving-indicator.visible {
+    display: flex;
+  }
+
+  .saving-indicator .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #e2e8f0;
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Completion banner */
+  .completion-banner {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    border: 1px solid #6ee7b7;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    text-align: center;
+    display: none;
+  }
+
+  .completion-banner.visible {
+    display: block;
+  }
+
+  .completion-banner h3 {
+    color: #065f46;
+    margin: 0 0 4px;
+    font-size: 16px;
+  }
+
+  .completion-banner p {
+    color: #047857;
+    margin: 0;
+    font-size: 14px;
+  }
 </style>
 
 {% if perfil_es_default %}
@@ -485,230 +586,248 @@
 </div>
 {% endif %}
 
-<form method="post" id="evalForm">
-  {% csrf_token %}
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
 
-  <div class="eval-app">
-    
-    {% if items %}
-    
-    <!-- Progress Header -->
-    <div class="progress-header">
-      <div class="progress-text">
-        Evaluando <strong><span id="currentNum">1</span></strong> de <strong><span id="totalNum">{{ items|length }}</span></strong> miembros
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-      </div>
-    </div>
+<!-- Saving indicator -->
+<div class="saving-indicator" id="savingIndicator">
+  <div class="spinner"></div>
+  <span>Guardando...</span>
+</div>
 
-    <!-- View Toggle -->
-    <div class="view-toggle">
-      <button type="button" class="toggle-btn active" data-view="slider">
-        👤 Uno a uno
-      </button>
-      <button type="button" class="toggle-btn" data-view="list">
-        📋 Ver lista
-      </button>
-    </div>
-
-    <!-- Member Dots -->
-    <div class="member-dots" id="memberDots"></div>
-
-    <!-- Slider View -->
-    <div class="slider-view" id="sliderView">
-      <!-- Member Card (populated by JS) -->
-      <div class="member-card" id="memberCard">
-        <div class="member-header">
-          <div class="member-avatar" id="memberAvatar">👤</div>
-          <h3 class="member-name" id="memberName">Cargando...</h3>
-          <span class="member-code" id="memberCode"></span>
-        </div>
-
-        <!-- Ratings condicionales según perfil -->
-        {% if perfil.usar_asistencia %}
-        <div class="rating-group" data-campo="asistencia">
-          <label class="rating-label">Asistencia</label>
-          <div class="rating-buttons" data-field="asistencia">
-            <button type="button" class="rating-btn" data-value="1">1</button>
-            <button type="button" class="rating-btn" data-value="2">2</button>
-            <button type="button" class="rating-btn" data-value="3">3</button>
-            <button type="button" class="rating-btn" data-value="4">4</button>
-            <button type="button" class="rating-btn" data-value="5">5</button>
-          </div>
-          <div class="rating-desc-dynamic" data-field="asistencia"></div>
-        </div>
-        {% endif %}
-
-        {% if perfil.usar_participacion %}
-        <div class="rating-group" data-campo="participacion">
-          <label class="rating-label">Participación</label>
-          <div class="rating-buttons" data-field="participacion">
-            <button type="button" class="rating-btn" data-value="1">1</button>
-            <button type="button" class="rating-btn" data-value="2">2</button>
-            <button type="button" class="rating-btn" data-value="3">3</button>
-            <button type="button" class="rating-btn" data-value="4">4</button>
-            <button type="button" class="rating-btn" data-value="5">5</button>
-          </div>
-          <div class="rating-desc-dynamic" data-field="participacion"></div>
-        </div>
-        {% endif %}
-
-        {% if perfil.usar_compromiso %}
-        <div class="rating-group" data-campo="compromiso">
-          <label class="rating-label">Compromiso</label>
-          <div class="rating-buttons" data-field="compromiso">
-            <button type="button" class="rating-btn" data-value="1">1</button>
-            <button type="button" class="rating-btn" data-value="2">2</button>
-            <button type="button" class="rating-btn" data-value="3">3</button>
-            <button type="button" class="rating-btn" data-value="4">4</button>
-            <button type="button" class="rating-btn" data-value="5">5</button>
-          </div>
-          <div class="rating-desc-dynamic" data-field="compromiso"></div>
-        </div>
-        {% endif %}
-
-        {% if perfil.usar_actitud %}
-        <div class="rating-group" data-campo="actitud">
-          <label class="rating-label">Actitud</label>
-          <div class="rating-buttons" data-field="actitud">
-            <button type="button" class="rating-btn" data-value="1">1</button>
-            <button type="button" class="rating-btn" data-value="2">2</button>
-            <button type="button" class="rating-btn" data-value="3">3</button>
-            <button type="button" class="rating-btn" data-value="4">4</button>
-            <button type="button" class="rating-btn" data-value="5">5</button>
-          </div>
-          <div class="rating-desc-dynamic" data-field="actitud"></div>
-        </div>
-        {% endif %}
-
-        {% if perfil.usar_integracion %}
-        <div class="rating-group" data-campo="integracion">
-          <label class="rating-label">Integración</label>
-          <div class="rating-buttons" data-field="integracion">
-            <button type="button" class="rating-btn" data-value="1">1</button>
-            <button type="button" class="rating-btn" data-value="2">2</button>
-            <button type="button" class="rating-btn" data-value="3">3</button>
-            <button type="button" class="rating-btn" data-value="4">4</button>
-            <button type="button" class="rating-btn" data-value="5">5</button>
-          </div>
-          <div class="rating-desc-dynamic" data-field="integracion"></div>
-        </div>
-        {% endif %}
-
-        {% if perfil.usar_liderazgo %}
-        <div class="rating-group" data-campo="liderazgo">
-          <label class="rating-label">Liderazgo</label>
-          <div class="rating-buttons" data-field="liderazgo">
-            <button type="button" class="rating-btn" data-value="1">1</button>
-            <button type="button" class="rating-btn" data-value="2">2</button>
-            <button type="button" class="rating-btn" data-value="3">3</button>
-            <button type="button" class="rating-btn" data-value="4">4</button>
-            <button type="button" class="rating-btn" data-value="5">5</button>
-          </div>
-          <div class="rating-desc-dynamic" data-field="liderazgo"></div>
-        </div>
-        {% endif %}
-
-        {% if perfil.usar_madurez_espiritual %}
-        <div class="rating-group" data-campo="madurez_espiritual">
-          <label class="rating-label">Madurez Espiritual</label>
-          <div class="rating-buttons" data-field="madurez_espiritual">
-            <button type="button" class="rating-btn" data-value="1">1</button>
-            <button type="button" class="rating-btn" data-value="2">2</button>
-            <button type="button" class="rating-btn" data-value="3">3</button>
-            <button type="button" class="rating-btn" data-value="4">4</button>
-            <button type="button" class="rating-btn" data-value="5">5</button>
-          </div>
-          <div class="rating-desc-dynamic" data-field="madurez_espiritual"></div>
-        </div>
-        {% endif %}
-
-        <!-- Estado espiritual (condicional) -->
-        {% if perfil.usar_estado_espiritual %}
-        <div class="estado-group">
-          <label class="rating-label">Estado espiritual</label>
-          <select class="estado-select" id="estadoSelect">
-            <option value="estable">✓ Estable</option>
-            <option value="crecimiento">📈 En crecimiento</option>
-            <option value="irregular">⚠️ Asistencia irregular</option>
-            <option value="observacion">👁️ En observación</option>
-            <option value="seguimiento">🔄 En seguimiento</option>
-            <option value="riesgo">⚡ En riesgo</option>
-            <option value="inactivo">💤 Inactivo</option>
-          </select>
-        </div>
-        {% endif %}
-      </div>
-
-      <!-- Navigation Buttons -->
-      <div class="nav-buttons">
-        <button type="button" class="nav-btn prev" id="prevBtn">
-          ← Anterior
-        </button>
-        <button type="button" class="nav-btn next" id="nextBtn">
-          Siguiente →
-        </button>
-      </div>
-    </div>
-
-    <!-- List View -->
-    <div class="members-list" id="listView"></div>
-
-    <!-- Actions -->
-    <div class="eval-actions">
-      <a href="{% url 'evaluaciones_app:mis_unidades' %}" class="btn-back">
-        ← Volver
-      </a>
-      <button type="submit" class="btn-save">
-        💾 Guardar todo
-      </button>
-    </div>
-
-    <!-- Hidden inputs container -->
-    <div class="hidden-inputs" id="hiddenInputs"></div>
-
-    {% else %}
-    
-    <div class="empty-state">
-      <div class="empty-state-icon">📋</div>
-      <p>No hay miembros en esta unidad</p>
-      <a href="{% url 'evaluaciones_app:mis_unidades' %}" class="btn-back" style="display: inline-block; margin-top: 16px;">
-        ← Volver
-      </a>
-    </div>
-    
-    {% endif %}
-
+<div class="eval-app">
+  
+  {% if items %}
+  
+  <!-- Completion Banner -->
+  <div class="completion-banner" id="completionBanner">
+    <h3>🎉 ¡Evaluación completada!</h3>
+    <p>Has evaluado a todos los miembros de esta unidad</p>
   </div>
-</form>
+  
+  <!-- Progress Header -->
+  <div class="progress-header">
+    <div class="progress-text">
+      Evaluando <strong><span id="currentNum">1</span></strong> de <strong><span id="totalNum">{{ items|length }}</span></strong> miembros
+      · <span id="completedCount">0</span> completados
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <!-- View Toggle -->
+  <div class="view-toggle">
+    <button type="button" class="toggle-btn active" data-view="slider">
+      👤 Uno a uno
+    </button>
+    <button type="button" class="toggle-btn" data-view="list">
+      📋 Ver lista
+    </button>
+  </div>
+
+  <!-- Member Dots -->
+  <div class="member-dots" id="memberDots"></div>
+
+  <!-- Slider View -->
+  <div class="slider-view" id="sliderView">
+    <!-- Member Card (populated by JS) -->
+    <div class="member-card" id="memberCard">
+      <div class="member-header">
+        <div class="member-avatar" id="memberAvatar">👤</div>
+        <h3 class="member-name" id="memberName">Cargando...</h3>
+        <span class="member-code" id="memberCode"></span>
+      </div>
+
+      <!-- Ratings condicionales según perfil -->
+      {% if perfil.usar_asistencia %}
+      <div class="rating-group" data-campo="asistencia">
+        <label class="rating-label">Asistencia</label>
+        <div class="rating-buttons" data-field="asistencia">
+          <button type="button" class="rating-btn" data-value="1">1</button>
+          <button type="button" class="rating-btn" data-value="2">2</button>
+          <button type="button" class="rating-btn" data-value="3">3</button>
+          <button type="button" class="rating-btn" data-value="4">4</button>
+          <button type="button" class="rating-btn" data-value="5">5</button>
+        </div>
+        <div class="rating-desc-dynamic" data-field="asistencia"></div>
+      </div>
+      {% endif %}
+
+      {% if perfil.usar_participacion %}
+      <div class="rating-group" data-campo="participacion">
+        <label class="rating-label">Participación</label>
+        <div class="rating-buttons" data-field="participacion">
+          <button type="button" class="rating-btn" data-value="1">1</button>
+          <button type="button" class="rating-btn" data-value="2">2</button>
+          <button type="button" class="rating-btn" data-value="3">3</button>
+          <button type="button" class="rating-btn" data-value="4">4</button>
+          <button type="button" class="rating-btn" data-value="5">5</button>
+        </div>
+        <div class="rating-desc-dynamic" data-field="participacion"></div>
+      </div>
+      {% endif %}
+
+      {% if perfil.usar_compromiso %}
+      <div class="rating-group" data-campo="compromiso">
+        <label class="rating-label">Compromiso</label>
+        <div class="rating-buttons" data-field="compromiso">
+          <button type="button" class="rating-btn" data-value="1">1</button>
+          <button type="button" class="rating-btn" data-value="2">2</button>
+          <button type="button" class="rating-btn" data-value="3">3</button>
+          <button type="button" class="rating-btn" data-value="4">4</button>
+          <button type="button" class="rating-btn" data-value="5">5</button>
+        </div>
+        <div class="rating-desc-dynamic" data-field="compromiso"></div>
+      </div>
+      {% endif %}
+
+      {% if perfil.usar_actitud %}
+      <div class="rating-group" data-campo="actitud">
+        <label class="rating-label">Actitud</label>
+        <div class="rating-buttons" data-field="actitud">
+          <button type="button" class="rating-btn" data-value="1">1</button>
+          <button type="button" class="rating-btn" data-value="2">2</button>
+          <button type="button" class="rating-btn" data-value="3">3</button>
+          <button type="button" class="rating-btn" data-value="4">4</button>
+          <button type="button" class="rating-btn" data-value="5">5</button>
+        </div>
+        <div class="rating-desc-dynamic" data-field="actitud"></div>
+      </div>
+      {% endif %}
+
+      {% if perfil.usar_integracion %}
+      <div class="rating-group" data-campo="integracion">
+        <label class="rating-label">Integración</label>
+        <div class="rating-buttons" data-field="integracion">
+          <button type="button" class="rating-btn" data-value="1">1</button>
+          <button type="button" class="rating-btn" data-value="2">2</button>
+          <button type="button" class="rating-btn" data-value="3">3</button>
+          <button type="button" class="rating-btn" data-value="4">4</button>
+          <button type="button" class="rating-btn" data-value="5">5</button>
+        </div>
+        <div class="rating-desc-dynamic" data-field="integracion"></div>
+      </div>
+      {% endif %}
+
+      {% if perfil.usar_liderazgo %}
+      <div class="rating-group" data-campo="liderazgo">
+        <label class="rating-label">Liderazgo</label>
+        <div class="rating-buttons" data-field="liderazgo">
+          <button type="button" class="rating-btn" data-value="1">1</button>
+          <button type="button" class="rating-btn" data-value="2">2</button>
+          <button type="button" class="rating-btn" data-value="3">3</button>
+          <button type="button" class="rating-btn" data-value="4">4</button>
+          <button type="button" class="rating-btn" data-value="5">5</button>
+        </div>
+        <div class="rating-desc-dynamic" data-field="liderazgo"></div>
+      </div>
+      {% endif %}
+
+      {% if perfil.usar_madurez_espiritual %}
+      <div class="rating-group" data-campo="madurez_espiritual">
+        <label class="rating-label">Madurez Espiritual</label>
+        <div class="rating-buttons" data-field="madurez_espiritual">
+          <button type="button" class="rating-btn" data-value="1">1</button>
+          <button type="button" class="rating-btn" data-value="2">2</button>
+          <button type="button" class="rating-btn" data-value="3">3</button>
+          <button type="button" class="rating-btn" data-value="4">4</button>
+          <button type="button" class="rating-btn" data-value="5">5</button>
+        </div>
+        <div class="rating-desc-dynamic" data-field="madurez_espiritual"></div>
+      </div>
+      {% endif %}
+
+      <!-- Estado espiritual (condicional) -->
+      {% if perfil.usar_estado_espiritual %}
+      <div class="estado-group">
+        <label class="rating-label">Estado espiritual</label>
+        <select class="estado-select" id="estadoSelect">
+          <option value="ESTABLE">✓ Estable</option>
+          <option value="EN_CRECIMIENTO">📈 En crecimiento</option>
+          <option value="EN_PROCESO">🔄 En proceso</option>
+          <option value="INESTABLE">⚠️ Inestable</option>
+          <option value="EN_RIESGO">⚡ En riesgo</option>
+          <option value="CRITICO">🔴 Crítico</option>
+          <option value="AUSENTE">💤 Ausente</option>
+        </select>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="nav-buttons">
+      <button type="button" class="nav-btn prev" id="prevBtn">
+        ← Anterior
+      </button>
+      <button type="button" class="nav-btn next" id="nextBtn">
+        Guardar y continuar →
+      </button>
+    </div>
+  </div>
+
+  <!-- List View -->
+  <div class="members-list" id="listView"></div>
+
+  <!-- Actions -->
+  <div class="eval-actions">
+    <button type="button" class="btn-finish" id="btnFinish">
+      ✓ Finalizar evaluación
+    </button>
+    <button type="button" class="btn-continue-later" id="btnContinueLater">
+      💾 Guardar y continuar después
+    </button>
+  </div>
+
+  {% else %}
+  
+  <div class="empty-state">
+    <div class="empty-state-icon">📋</div>
+    <p>No hay miembros en esta unidad</p>
+    <a href="{% url 'evaluaciones_app:mis_unidades' %}" class="btn-continue-later" style="display: inline-block; margin-top: 16px; text-decoration: none;">
+      ← Volver
+    </a>
+  </div>
+  
+  {% endif %}
+
+</div>
 
 {% if items %}
 <script>
 (function() {
+  // Config
+  const CSRF_TOKEN = '{{ csrf_token }}';
+  const SAVE_URL = '{% url "evaluaciones_app:guardar_evaluacion_miembro" %}';
+  const BACK_URL = '{% url "evaluaciones_app:mis_unidades" %}';
+  const RESULTS_URL = '{% url "evaluaciones_app:ver_resultados_unidad" evaluacion.id %}';
+  const EVALUACION_ID = {{ evaluacion.id }};
+
   // Data from Django
   const members = [
     {% for item in items %}
     {
       id: {{ item.miembro.id }},
-      nombre: "{{ item.miembro.nombres }} {{ item.miembro.apellidos }}",
-      codigo: "{{ item.miembro.codigo_miembro|default:'' }}",
+      itemId: {{ item.id }},
+      nombre: "{{ item.miembro.nombres|escapejs }} {{ item.miembro.apellidos|escapejs }}",
+      codigo: "{{ item.miembro.codigo_miembro|default:''|escapejs }}",
       foto: "{% if item.miembro.foto_perfil %}{{ item.miembro.foto_perfil.url }}{% endif %}",
+      saved: {% if item.evaluado_por %}true{% else %}false{% endif %},
       valores: {
         asistencia: {{ item.asistencia|default:3 }},
         participacion: {{ item.participacion|default:3 }},
         compromiso: {{ item.compromiso|default:3 }},
         actitud: {{ item.actitud|default:3 }},
         integracion: {{ item.integracion|default:3 }},
-        liderazgo: {{ item.liderazgo|default:3 }},
+        liderazgo: 3,
         madurez_espiritual: {{ item.madurez_espiritual|default:3 }},
-        estado: "{{ item.estado_espiritual|default:'estable' }}"
+        estado: "{{ item.estado_espiritual|default:'ESTABLE' }}"
       }
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
   ];
 
-  // Campos activos según perfil (dinámico desde Django)
+  // Campos activos según perfil
   const fields = [
     {% if perfil.usar_asistencia %}'asistencia',{% endif %}
     {% if perfil.usar_participacion %}'participacion',{% endif %}
@@ -721,7 +840,7 @@
 
   const usarEstado = {% if perfil.usar_estado_espiritual %}true{% else %}false{% endif %};
   
-  // Descripciones dinámicas por campo y nivel
+  // Descripciones dinámicas
   const ratingDescriptions = {
     asistencia: {
       1: 'Muy baja - Casi no asiste',
@@ -776,14 +895,18 @@
   
   let currentIndex = 0;
   let evaluations = {};
+  let isSaving = false;
 
   // Initialize evaluations from existing data
   members.forEach(m => {
-    evaluations[m.id] = { ...m.valores };
+    evaluations[m.id] = { 
+      ...m.valores,
+      saved: m.saved,
+      dirty: false
+    };
   });
 
   // DOM Elements
-  const memberCard = document.getElementById('memberCard');
   const memberName = document.getElementById('memberName');
   const memberCode = document.getElementById('memberCode');
   const memberAvatar = document.getElementById('memberAvatar');
@@ -792,26 +915,121 @@
   const nextBtn = document.getElementById('nextBtn');
   const currentNum = document.getElementById('currentNum');
   const totalNum = document.getElementById('totalNum');
+  const completedCount = document.getElementById('completedCount');
   const progressFill = document.getElementById('progressFill');
   const memberDots = document.getElementById('memberDots');
-  const hiddenInputs = document.getElementById('hiddenInputs');
   const listView = document.getElementById('listView');
   const sliderView = document.getElementById('sliderView');
+  const btnFinish = document.getElementById('btnFinish');
+  const btnContinueLater = document.getElementById('btnContinueLater');
+  const toast = document.getElementById('toast');
+  const savingIndicator = document.getElementById('savingIndicator');
+  const completionBanner = document.getElementById('completionBanner');
+
+  // Toast notification
+  function showToast(message, type = 'success') {
+    toast.textContent = message;
+    toast.className = 'toast ' + type;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  // Saving indicator
+  function showSaving(show) {
+    savingIndicator.classList.toggle('visible', show);
+  }
+
+  // Save single member via AJAX
+  async function saveMember(memberId) {
+    if (isSaving) return false;
+    
+    const m = members.find(x => x.id === memberId);
+    const ev = evaluations[memberId];
+    
+    isSaving = true;
+    showSaving(true);
+
+    const data = {
+      evaluacion_id: EVALUACION_ID,
+      miembro_id: memberId,
+      item_id: m.itemId,
+      ...ev
+    };
+
+    try {
+      const response = await fetch(SAVE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': CSRF_TOKEN
+        },
+        body: JSON.stringify(data)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        ev.saved = true;
+        ev.dirty = false;
+        updateCompletionState();
+        showToast('✓ ' + m.nombre.split(' ')[0] + ' guardado');
+        return true;
+      } else {
+        showToast('Error: ' + (result.error || 'No se pudo guardar'), 'error');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error saving:', error);
+      showToast('Error de conexión', 'error');
+      return false;
+    } finally {
+      isSaving = false;
+      showSaving(false);
+    }
+  }
+
+  // Check completion state
+  function getCompletedCount() {
+    return members.filter(m => evaluations[m.id].saved).length;
+  }
+
+  function isAllCompleted() {
+    return getCompletedCount() === members.length;
+  }
+
+  function updateCompletionState() {
+    const completed = getCompletedCount();
+    completedCount.textContent = completed;
+    
+    // Update progress bar based on completed
+    const progress = (completed / members.length) * 100;
+    progressFill.style.width = progress + '%';
+    
+    // Show/hide finish button
+    btnFinish.classList.toggle('visible', isAllCompleted());
+    
+    // Show completion banner
+    completionBanner.classList.toggle('visible', isAllCompleted());
+    
+    // Update dots
+    updateDots();
+    updateListBadges();
+  }
 
   // Initialize
   function init() {
     totalNum.textContent = members.length;
     createDots();
     createListView();
-    createHiddenInputs();
     renderMember();
     setupEventListeners();
+    updateCompletionState();
   }
 
   // Create navigation dots
   function createDots() {
     memberDots.innerHTML = members.map((m, i) => 
-      `<button type="button" class="member-dot" data-index="${i}" title="${m.nombre}"></button>`
+      `<button type="button" class="member-dot${evaluations[m.id].saved ? ' completed' : ''}" data-index="${i}" title="${m.nombre}"></button>`
     ).join('');
   }
 
@@ -826,27 +1044,13 @@
           <span class="member-list-name">${m.nombre}</span>
         </div>
         <div class="member-list-status">
-          <span class="status-badge pending" data-member="${m.id}">Pendiente</span>
+          <span class="status-badge ${evaluations[m.id].saved ? 'completed' : 'pending'}" data-member="${m.id}">
+            ${evaluations[m.id].saved ? 'Completado' : 'Pendiente'}
+          </span>
           <span style="color: var(--text-muted);">→</span>
         </div>
       </div>
     `).join('');
-  }
-
-  // Create hidden inputs for form submission
-  function createHiddenInputs() {
-    let html = '';
-    members.forEach(m => {
-      // Solo crear inputs para campos activos
-      fields.forEach(f => {
-        html += `<input type="hidden" name="${f}_${m.id}" id="input_${f}_${m.id}" value="${evaluations[m.id][f]}">`;
-      });
-      // Estado solo si está activo
-      if (usarEstado) {
-        html += `<input type="hidden" name="estado_espiritual_${m.id}" id="input_estado_${m.id}" value="${evaluations[m.id].estado}">`;
-      }
-    });
-    hiddenInputs.innerHTML = html;
   }
 
   // Render current member
@@ -860,7 +1064,7 @@
     memberAvatar.innerHTML = m.foto ? 
       `<img src="${m.foto}" alt="${m.nombre}">` : '👤';
 
-    // Update ratings (solo campos activos)
+    // Update ratings
     fields.forEach(field => {
       const container = document.querySelector(`[data-field="${field}"]`);
       if (container) {
@@ -870,7 +1074,7 @@
       }
     });
 
-    // Update estado (si está activo)
+    // Update estado
     if (usarEstado && estadoSelect) {
       estadoSelect.value = ev.estado;
     }
@@ -881,60 +1085,36 @@
     // Update navigation
     currentNum.textContent = currentIndex + 1;
     prevBtn.disabled = currentIndex === 0;
-    nextBtn.textContent = currentIndex === members.length - 1 ? '✓ Finalizar' : 'Siguiente →';
-
-    // Update progress
-    const progress = ((currentIndex + 1) / members.length) * 100;
-    progressFill.style.width = progress + '%';
+    
+    // Update next button text
+    if (currentIndex === members.length - 1) {
+      nextBtn.textContent = ev.saved ? '✓ Guardado' : 'Guardar ✓';
+    } else {
+      nextBtn.textContent = 'Guardar y continuar →';
+    }
 
     // Update dots
     document.querySelectorAll('.member-dot').forEach((dot, i) => {
       dot.classList.toggle('current', i === currentIndex);
-      dot.classList.toggle('completed', isCompleted(members[i].id));
     });
-
-    // Update list badges
-    updateListBadges();
-  }
-
-  function isCompleted(memberId) {
-    const ev = evaluations[memberId];
-    // Considera completado si al menos un campo ha sido modificado
-    return fields.some(f => ev[f] !== 3) || (usarEstado && ev.estado !== 'estable');
   }
 
   function updateListBadges() {
     members.forEach(m => {
       const badge = document.querySelector(`.status-badge[data-member="${m.id}"]`);
       if (badge) {
-        if (isCompleted(m.id)) {
-          badge.textContent = 'Completado';
-          badge.classList.remove('pending');
-          badge.classList.add('completed');
-        } else {
-          badge.textContent = 'Pendiente';
-          badge.classList.remove('completed');
-          badge.classList.add('pending');
-        }
+        const saved = evaluations[m.id].saved;
+        badge.textContent = saved ? 'Completado' : 'Pendiente';
+        badge.classList.toggle('completed', saved);
+        badge.classList.toggle('pending', !saved);
       }
     });
   }
 
-  // Save current values to hidden inputs
-  function saveCurrentValues() {
-    const m = members[currentIndex];
-    fields.forEach(f => {
-      const input = document.getElementById(`input_${f}_${m.id}`);
-      if (input) {
-        input.value = evaluations[m.id][f];
-      }
+  function updateDots() {
+    document.querySelectorAll('.member-dot').forEach((dot, i) => {
+      dot.classList.toggle('completed', evaluations[members[i].id].saved);
     });
-    if (usarEstado) {
-      const inputEstado = document.getElementById(`input_estado_${m.id}`);
-      if (inputEstado) {
-        inputEstado.value = evaluations[m.id].estado;
-      }
-    }
   }
 
   // Event listeners
@@ -950,32 +1130,26 @@
         const m = members[currentIndex];
 
         evaluations[m.id][field] = value;
-        saveCurrentValues();
+        evaluations[m.id].dirty = true;
 
         container.querySelectorAll('.rating-btn').forEach(b => {
           b.classList.toggle('selected', parseInt(b.dataset.value) === value);
         });
 
-        // Update the description for this field
         updateRatingDescription(field, value);
-
-        updateListBadges();
-        updateDots();
       });
     });
 
-    // Estado select (solo si existe)
+    // Estado select
     if (estadoSelect) {
       estadoSelect.addEventListener('change', () => {
         const m = members[currentIndex];
         evaluations[m.id].estado = estadoSelect.value;
-        saveCurrentValues();
-        updateListBadges();
-        updateDots();
+        evaluations[m.id].dirty = true;
       });
     }
 
-    // Navigation
+    // Previous button
     prevBtn.addEventListener('click', () => {
       if (currentIndex > 0) {
         currentIndex--;
@@ -983,8 +1157,14 @@
       }
     });
 
-    nextBtn.addEventListener('click', () => {
-      if (currentIndex < members.length - 1) {
+    // Next button - Save and advance
+    nextBtn.addEventListener('click', async () => {
+      const m = members[currentIndex];
+      
+      // Save current member
+      const saved = await saveMember(m.id);
+      
+      if (saved && currentIndex < members.length - 1) {
         currentIndex++;
         renderMember();
       }
@@ -1031,27 +1211,38 @@
         }
       });
     });
-  }
 
-  function updateDots() {
-    document.querySelectorAll('.member-dot').forEach((dot, i) => {
-      dot.classList.toggle('completed', isCompleted(members[i].id));
+    // Continue later button
+    btnContinueLater.addEventListener('click', async () => {
+      const m = members[currentIndex];
+      
+      // Save current if dirty
+      if (evaluations[m.id].dirty) {
+        await saveMember(m.id);
+      }
+      
+      // Redirect back
+      window.location.href = BACK_URL;
+    });
+
+    // Finish button
+    btnFinish.addEventListener('click', () => {
+      if (isAllCompleted()) {
+        window.location.href = RESULTS_URL;
+      }
     });
   }
 
-  // Update rating description text and color
+  // Rating descriptions
   function updateRatingDescription(field, value) {
     const descEl = document.querySelector(`.rating-desc-dynamic[data-field="${field}"]`);
     if (descEl && ratingDescriptions[field]) {
       descEl.textContent = ratingDescriptions[field][value] || '';
-      // Remove all level classes
       descEl.classList.remove('level-1', 'level-2', 'level-3', 'level-4', 'level-5');
-      // Add current level class
       descEl.classList.add(`level-${value}`);
     }
   }
 
-  // Update all rating descriptions for current member
   function updateAllRatingDescriptions() {
     const m = members[currentIndex];
     const ev = evaluations[m.id];
