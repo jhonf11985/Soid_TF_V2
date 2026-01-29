@@ -176,6 +176,10 @@ class EvaluacionUnidad(models.Model):
 
     anio = models.PositiveIntegerField(default=current_year)
     mes = models.PositiveSmallIntegerField(default=current_month)
+    numero_secuencia = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Secuencia para múltiples evaluaciones en modo libre (1, 2, 3...)"
+    )
 
     estado_workflow = models.CharField(
         max_length=20,
@@ -208,8 +212,8 @@ class EvaluacionUnidad(models.Model):
         ordering = ["-anio", "-mes", "unidad__nombre"]
         constraints = [
             models.UniqueConstraint(
-                fields=["unidad", "anio", "mes"],
-                name="uniq_evaluacion_unidad_anio_mes",
+                fields=["unidad", "anio", "mes", "numero_secuencia"],
+                name="uniq_evaluacion_unidad_periodo_secuencia",
             )
         ]
         indexes = [
@@ -219,7 +223,23 @@ class EvaluacionUnidad(models.Model):
         ]
 
     def __str__(self):
+        if self.numero_secuencia > 1:
+            return f"Evaluación {self.mes:02d}/{self.anio} #{self.numero_secuencia} - {self.unidad}"
         return f"Evaluación {self.mes:02d}/{self.anio} - {self.unidad}"
+
+    def save(self, *args, **kwargs):
+        # Auto-calcular numero_secuencia en modo libre si es nuevo registro
+        if not self.pk:
+            perfil = getattr(self.unidad, 'perfil_evaluacion', None)
+            if perfil and perfil.es_libre:
+                # Obtener el máximo numero_secuencia para esta unidad/año/mes
+                max_seq = EvaluacionUnidad.objects.filter(
+                    unidad=self.unidad,
+                    anio=self.anio,
+                    mes=self.mes
+                ).aggregate(models.Max('numero_secuencia'))['numero_secuencia__max']
+                self.numero_secuencia = (max_seq or 0) + 1
+        super().save(*args, **kwargs)
 
 
 class EvaluacionMiembro(models.Model):
