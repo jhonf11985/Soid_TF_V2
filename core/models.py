@@ -374,3 +374,61 @@ class UserEngagement(models.Model):
         self.save()
         
         return {'is_first_login': is_first, 'days_absent': days_absent, 'login_count': self.login_count}
+
+
+# core/models.py
+
+import secrets
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
+
+class DocumentoCompartido(models.Model):
+    token = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        blank=True,  # permite dejarlo vacío en el admin
+    )
+
+    titulo = models.CharField(max_length=200, blank=True)
+    descripcion = models.TextField(blank=True)
+
+    archivo = models.FileField(upload_to="docs_compartidos/")
+
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="documentos_creados",
+    )
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    expira_en = models.DateTimeField(null=True, blank=True)
+
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return f"{self.titulo or 'Documento'} - {self.token[:8] if self.token else 'sin-token'}"
+
+    @property
+    def esta_expirado(self):
+        if not self.activo:
+            return True
+        if self.expira_en and timezone.now() > self.expira_en:
+            return True
+        return False
+
+    @classmethod
+    def generar_token(cls):
+        return secrets.token_urlsafe(32)
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = self.generar_token()
+        super().save(*args, **kwargs)
+

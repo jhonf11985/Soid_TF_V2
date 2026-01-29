@@ -62,9 +62,9 @@ def _user_es_lider_de_unidad(user, unidad_id):
 def mis_unidades(request):
     miembro = _get_miembro_from_user(request.user)
     if not miembro:
-        return HttpResponseForbidden(
-            "Este usuario no tiene un miembro vinculado. Vincula el usuario a un miembro para poder evaluar unidades."
-        )
+        return render(request, "evaluaciones_app/error_sin_miembro.html", status=403)
+
+
 
     cargos = (
         UnidadCargo.objects

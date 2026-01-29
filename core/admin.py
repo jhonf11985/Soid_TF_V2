@@ -23,3 +23,12 @@ class ConfiguracionSistemaAdmin(admin.ModelAdmin):
         if ConfiguracionSistema.objects.exists():
             return False
         return super().has_add_permission(request)
+
+from .models import DocumentoCompartido
+
+
+@admin.register(DocumentoCompartido)
+class DocumentoCompartidoAdmin(admin.ModelAdmin):
+    list_display = ("titulo", "token", "activo", "creado_en", "expira_en", "creado_por")
+    search_fields = ("titulo", "token")
+    list_filter = ("activo",)        
