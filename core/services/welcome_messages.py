@@ -6,6 +6,7 @@ Simple, humano, sin gamificación.
 
 import random
 from django.utils import timezone
+from core.services.evaluation_suggestions import EvaluationSuggestionService
 
 
 class WelcomeMessageService:
@@ -205,11 +206,27 @@ class WelcomeMessageService:
                 mensaje = random.choice(cls.MENSAJES_HORA[periodo]).format(nombre=nombre)
                 tipo = periodo
                 icono = cls._get_time_icon(periodo)
+
+        # 4️⃣ Sugerencia de evaluación (si aplica)
+        sugerencia_eval = EvaluationSuggestionService.get_suggestion_for_user(user)
+        if sugerencia_eval:
+            unidad = sugerencia_eval.get("unidad_nombre")
+            unidad_id = sugerencia_eval.get("unidad_id")
+
+            # Guardamos info útil para el template (link y texto)
+            extra = {
+                "tipo": "evaluacion",
+                "texto": f"📊 Te sugerimos evaluar la unidad <b>{unidad}</b>",
+                "url": f"/evaluaciones/unidad/{unidad_id}/evaluar/",
+            }
         
-        # 4️⃣ Chiste (20% probabilidad)
-        if random.random() < 0.2:
+        
+    
+           
+        # 5️⃣ Chiste (20% probabilidad) - solo si no hay sugerencia ya
+        if extra is None and random.random() < 0.2:
             extra = random.choice(cls.CHISTES_BIBLICOS)
-        
+
         return {
             'mensaje': mensaje or random.choice(cls.MENSAJES_NORMALES).format(nombre=nombre),
             'tipo': tipo,
