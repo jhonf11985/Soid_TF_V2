@@ -104,8 +104,13 @@ def mis_unidades(request):
         if evaluacion:
             qs = EvaluacionMiembro.objects.filter(evaluacion=evaluacion)
 
+
+
         # ✅ SOLO cuentan como evaluados los que ya fueron guardados (tienen evaluado_por)
         evaluados = qs.filter(evaluado_por__isnull=False).count()
+        # ✅ detectar si hay evaluación en proceso
+        hay_progreso = evaluados > 0 or evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_EN_PROGRESO
+
         pendientes = max(total - evaluados, 0)
         porcentaje = int((evaluados / total) * 100) if total else 0
 
@@ -132,7 +137,8 @@ def mis_unidades(request):
             "evaluados": evaluados,
             "pendientes": pendientes,
             "porcentaje": porcentaje,
-          
+              "bloquear_configuracion": hay_progreso,
+
             "estado_txt": estado_txt,
             "accion": accion,
         })
@@ -209,17 +215,31 @@ def evaluar_unidad(request, unidad_id):
             # ===== BLOQUE ESPIRITUAL =====
             item.madurez_espiritual = int(request.POST.get(f"madurez_espiritual_{m.id}", 3))
 
-
             # Observación
             item.observacion = request.POST.get(f"observacion_{m.id}", "")
 
             item.evaluado_por = request.user
             item.recalcular_puntaje_general()
-
             item.save()
+
+        # ✅ Actualizar workflow de la evaluación según progreso real (DENTRO del POST)
+        total_items = EvaluacionMiembro.objects.filter(evaluacion=evaluacion).count()
+        total_evaluados = EvaluacionMiembro.objects.filter(
+            evaluacion=evaluacion,
+            evaluado_por__isnull=False
+        ).count()
+
+        if total_evaluados > 0 and evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_BORRADOR:
+            evaluacion.estado_workflow = EvaluacionUnidad.ESTADO_EN_PROGRESO
+            evaluacion.save(update_fields=["estado_workflow"])
+
+        if total_items > 0 and total_items == total_evaluados:
+            evaluacion.estado_workflow = EvaluacionUnidad.ESTADO_CERRADA
+            evaluacion.save(update_fields=["estado_workflow"])
 
         messages.success(request, "✅ Evaluación guardada correctamente.")
         return redirect("evaluaciones_app:evaluar_unidad", unidad_id=unidad.id)
+
     items = EvaluacionMiembro.objects.filter(evaluacion=evaluacion).select_related("miembro")
 
     contexto = {
@@ -415,6 +435,34 @@ def guardar_evaluacion_miembro(request):
         item.recalcular_puntaje_general()
         item.save()
         
+        # ✅ Actualizar workflow de la evaluación (BORRADOR -> EN_PROGRESO -> CERRADA)
+        evaluacion = item.evaluacion
+
+        if evaluacion and evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_CERRADA:
+            return JsonResponse({
+                'success': False,
+                'error': 'Esta evaluación está cerrada. Debes reabrirla para editar.'
+            }, status=403)
+
+
+        # Si era borrador y ya se guardó al menos un miembro, pasa a EN_PROGRESO
+        if evaluacion and evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_BORRADOR:
+            evaluacion.estado_workflow = EvaluacionUnidad.ESTADO_EN_PROGRESO
+            evaluacion.save(update_fields=["estado_workflow"])
+
+        # Si ya se evaluaron todos, pasa a CERRADA
+        if evaluacion:
+            total_items = EvaluacionMiembro.objects.filter(evaluacion=evaluacion).count()
+            total_evaluados = EvaluacionMiembro.objects.filter(
+                evaluacion=evaluacion,
+                evaluado_por__isnull=False
+            ).count()
+
+            if total_items > 0 and total_items == total_evaluados:
+                evaluacion.estado_workflow = EvaluacionUnidad.ESTADO_CERRADA
+                evaluacion.save(update_fields=["estado_workflow"])
+
+
         return JsonResponse({
             'success': True,
             'puntaje_general': item.puntaje_general,
