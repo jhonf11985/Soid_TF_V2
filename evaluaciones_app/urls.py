@@ -16,4 +16,9 @@ urlpatterns = [
     # 👇 NUEVA URL para guardar via AJAX
     path('api/guardar-miembro/', views.guardar_evaluacion_miembro, name='guardar_evaluacion_miembro'),
      path("unidad/<int:evaluacion_id>/resultados/", views.ver_resultados_unidad, name="ver_resultados_unidad"),
+
+
+        path('evaluacion/<int:evaluacion_id>/cerrar/', views.cerrar_evaluacion_unidad, name='cerrar_evaluacion_unidad'),
+    path('evaluacion/<int:evaluacion_id>/reabrir/', views.reabrir_evaluacion_unidad, name='reabrir_evaluacion_unidad'),
+
 ]

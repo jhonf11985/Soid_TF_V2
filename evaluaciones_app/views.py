@@ -114,20 +114,37 @@ def mis_unidades(request):
         pendientes = max(total - evaluados, 0)
         porcentaje = int((evaluados / total) * 100) if total else 0
 
-        # ✅ estado + acción según progreso (no según promedio)
+        
+        # ✅ Estado (workflow manda)
         if not evaluacion:
             estado_txt = "🔒 Sin evaluación creada"
-            accion = "Empezar"
+        elif evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_CERRADA:
+            estado_txt = "🟢 Completada"
         elif evaluados == 0:
             estado_txt = "🟡 Sin iniciar"
-            accion = "Empezar"
-        elif evaluados < total:
+        else:
+            # incluye el caso 100% pero reabierta (EN_PROGRESO)
             estado_txt = "🟠 En progreso"
+
+        # ✅ Acción (considera workflow + progreso)
+        if not evaluacion or evaluados == 0:
+            accion = "Empezar"
+        elif evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_CERRADA:
+            # Solo mostrar "Completado" si realmente está cerrada
+            accion = "Completado"
+        elif evaluados < total:
             accion = "Continuar"
         else:
-            estado_txt = "🟢 Completada"
-            accion = "Completado"
+            # 100% evaluados pero EN_PROGRESO (fue reabierta) → permitir continuar/editar
+            accion = "Continuar"
 
+        # ✅ Detectar si fue reabierta (100% pero no cerrada)
+        reabierta = (
+            evaluacion and 
+            evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_EN_PROGRESO and 
+            evaluados == total and 
+            total > 0
+        )
 
         unidades_info.append({
             "unidad": u,
@@ -137,8 +154,8 @@ def mis_unidades(request):
             "evaluados": evaluados,
             "pendientes": pendientes,
             "porcentaje": porcentaje,
-              "bloquear_configuracion": hay_progreso,
-
+            "bloquear_configuracion": hay_progreso,
+            "reabierta": reabierta,
             "estado_txt": estado_txt,
             "accion": accion,
         })
@@ -378,7 +395,6 @@ def ver_resultados_unidad(request, evaluacion_id):
 def guardar_evaluacion_miembro(request):
     """
     Vista AJAX para guardar la evaluación de un miembro individual.
-    CORREGIDO: Ya no requiere estado_espiritual del frontend
     """
     try:
         data = json.loads(request.body)
@@ -395,7 +411,9 @@ def guardar_evaluacion_miembro(request):
         
         # Buscar el item de evaluación
         try:
-            item = EvaluacionMiembro.objects.get(
+            item = EvaluacionMiembro.objects.select_related(
+                'evaluacion', 'evaluacion__perfil', 'evaluacion__unidad'
+            ).get(
                 id=item_id,
                 evaluacion_id=evaluacion_id,
                 miembro_id=miembro_id
@@ -406,6 +424,21 @@ def guardar_evaluacion_miembro(request):
                 'error': f'Evaluación no encontrada'
             }, status=404)
         
+        evaluacion = item.evaluacion
+        
+        # ✅ PRIMERO: Verificar si está cerrada ANTES de intentar guardar
+        if evaluacion and evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_CERRADA:
+            return JsonResponse({
+                'success': False,
+                'error': 'Esta evaluación está cerrada. Debes reabrirla para editar.'
+            }, status=403)
+        
+        # ✅ Asegurar que la evaluación tenga perfil
+        if evaluacion and not evaluacion.perfil:
+            perfil, _ = EvaluacionPerfilUnidad.objects.get_or_create(unidad=evaluacion.unidad)
+            evaluacion.perfil = perfil
+            evaluacion.save(update_fields=["perfil"])
+        
         # Actualizar campos organizacionales
         item.asistencia = int(data.get('asistencia', 3))
         item.participacion = int(data.get('participacion', 3))
@@ -413,55 +446,29 @@ def guardar_evaluacion_miembro(request):
         item.actitud = int(data.get('actitud', 3))
         item.integracion = int(data.get('integracion', 3))
         
-        # Liderazgo - solo si existe el campo en el modelo
+        # Liderazgo
         if hasattr(item, 'liderazgo'):
             item.liderazgo = int(data.get('liderazgo', 3))
         
         # Campo espiritual numérico
         item.madurez_espiritual = int(data.get('madurez_espiritual', 3))
         
-        # CORREGIDO: estado_espiritual se mantiene con su valor actual o default
-        # Ya no lo tomamos del frontend - se queda como ESTABLE por defecto
-        # Si quieres que se pueda cambiar desde el perfil, puedes agregar lógica aquí
-        # item.estado_espiritual ya tiene su default en el modelo
-        
         # Observación (opcional)
         item.observacion = data.get('observacion', '') or ''
         
-        # Marcar quién evaluó - CRÍTICO para detectar si ya fue evaluado
+        # Marcar quién evaluó
         item.evaluado_por = request.user
         
-        # Recalcular puntaje y guardar
-        item.recalcular_puntaje_general()
+        # Guardar (recalcula puntaje automáticamente en save())
         item.save()
         
-        # ✅ Actualizar workflow de la evaluación (BORRADOR -> EN_PROGRESO -> CERRADA)
-        evaluacion = item.evaluacion
-
-        if evaluacion and evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_CERRADA:
-            return JsonResponse({
-                'success': False,
-                'error': 'Esta evaluación está cerrada. Debes reabrirla para editar.'
-            }, status=403)
-
-
-        # Si era borrador y ya se guardó al menos un miembro, pasa a EN_PROGRESO
+        # ✅ Actualizar workflow: BORRADOR -> EN_PROGRESO
         if evaluacion and evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_BORRADOR:
             evaluacion.estado_workflow = EvaluacionUnidad.ESTADO_EN_PROGRESO
             evaluacion.save(update_fields=["estado_workflow"])
 
-        # Si ya se evaluaron todos, pasa a CERRADA
-        if evaluacion:
-            total_items = EvaluacionMiembro.objects.filter(evaluacion=evaluacion).count()
-            total_evaluados = EvaluacionMiembro.objects.filter(
-                evaluacion=evaluacion,
-                evaluado_por__isnull=False
-            ).count()
-
-            if total_items > 0 and total_items == total_evaluados:
-                evaluacion.estado_workflow = EvaluacionUnidad.ESTADO_CERRADA
-                evaluacion.save(update_fields=["estado_workflow"])
-
+        # ✅ NO cerrar automáticamente al 100% - dejar que el usuario decida
+        # Esto evita el problema de que se cierre cuando reabres y guardas
 
         return JsonResponse({
             'success': True,
@@ -484,3 +491,58 @@ def guardar_evaluacion_miembro(request):
             'success': False,
             'error': str(e)
         }, status=500)
+    
+
+@login_required
+@require_POST
+@csrf_protect
+def reabrir_evaluacion_unidad(request, evaluacion_id):
+    """
+    Reabre una evaluación cerrada:
+    CERRADA -> EN_PROGRESO
+    """
+    evaluacion = get_object_or_404(EvaluacionUnidad, id=evaluacion_id)
+
+    # ✅ Seguridad mínima (luego la hacemos más estricta si quieres):
+    # Solo el creador o superusuario (puedes cambiar esta regla)
+    if not (request.user.is_superuser or evaluacion.creado_por_id == request.user.id):
+        return HttpResponseForbidden("No tienes permiso para reabrir esta evaluación.")
+
+    # Solo reabrir si está cerrada
+    if evaluacion.estado_workflow != EvaluacionUnidad.ESTADO_CERRADA:
+        messages.info(request, "Esta evaluación no está cerrada, no hace falta reabrirla.")
+        return redirect("evaluaciones_app:ver_resultados_unidad", evaluacion_id=evaluacion.id)
+
+    # ✅ Reabrir: pasa a EN_PROGRESO
+    evaluacion.estado_workflow = EvaluacionUnidad.ESTADO_EN_PROGRESO
+    evaluacion.save(update_fields=["estado_workflow"])
+
+    messages.success(request, "✅ Evaluación reabierta. Puedes seguir editándola.")
+    return redirect("evaluaciones_app:evaluar_unidad", unidad_id=evaluacion.unidad_id)
+
+
+@login_required
+@require_POST
+@csrf_protect
+def cerrar_evaluacion_unidad(request, evaluacion_id):
+    """
+    Cierra una evaluación manualmente:
+    EN_PROGRESO -> CERRADA
+    """
+    evaluacion = get_object_or_404(EvaluacionUnidad, id=evaluacion_id)
+
+    # Seguridad: solo el creador o superusuario
+    if not (request.user.is_superuser or evaluacion.creado_por_id == request.user.id):
+        return HttpResponseForbidden("No tienes permiso para cerrar esta evaluación.")
+
+    # Solo cerrar si está en progreso
+    if evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_CERRADA:
+        messages.info(request, "Esta evaluación ya está cerrada.")
+        return redirect("evaluaciones_app:ver_resultados_unidad", evaluacion_id=evaluacion.id)
+
+    # ✅ Cerrar evaluación
+    evaluacion.estado_workflow = EvaluacionUnidad.ESTADO_CERRADA
+    evaluacion.save(update_fields=["estado_workflow"])
+
+    messages.success(request, "✅ Evaluación cerrada correctamente.")
+    return redirect("evaluaciones_app:ver_resultados_unidad", evaluacion_id=evaluacion.id)

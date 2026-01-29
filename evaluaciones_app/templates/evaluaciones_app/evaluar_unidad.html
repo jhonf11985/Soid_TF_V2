@@ -788,6 +788,7 @@
   const SAVE_URL = '{% url "evaluaciones_app:guardar_evaluacion_miembro" %}';
   const BACK_URL = '{% url "evaluaciones_app:mis_unidades" %}';
   const RESULTS_URL = '{% url "evaluaciones_app:ver_resultados_unidad" evaluacion.id %}';
+  const CLOSE_URL = '{% url "evaluaciones_app:cerrar_evaluacion_unidad" evaluacion.id %}';
   const EVALUACION_ID = {{ evaluacion.id }};
 
   // Data from Django
@@ -1226,10 +1227,23 @@
       window.location.href = BACK_URL;
     });
 
-    // Finish button
-    btnFinish.addEventListener('click', () => {
+    // Finish button - Cerrar evaluación via POST
+    btnFinish.addEventListener('click', async () => {
       if (isAllCompleted()) {
-        window.location.href = RESULTS_URL;
+        // Crear form dinámico para hacer POST a cerrar_evaluacion_unidad
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = CLOSE_URL;
+        
+        // Agregar CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = CSRF_TOKEN;
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
       }
     });
   }

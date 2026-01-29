@@ -334,25 +334,42 @@ class EvaluacionMiembro(models.Model):
         - Promedio simple de dimensiones activas (sin pesos por ahora)
         - Penalización por estado espiritual (AUSENTE / EN_RIESGO / CRITICO)
         """
-        perfil = self.evaluacion.perfil
+        # Obtener perfil de forma segura
+        perfil = None
+        if self.evaluacion:
+            perfil = self.evaluacion.perfil
 
         valores = []
 
-        # Solo incluir campos que estén activos en el perfil
-        if perfil.usar_asistencia:
-            valores.append(self.asistencia)
-        if perfil.usar_participacion:
-            valores.append(self.participacion)
-        if perfil.usar_compromiso:
-            valores.append(self.compromiso)
-        if perfil.usar_actitud:
-            valores.append(self.actitud)
-        if perfil.usar_integracion:
-            valores.append(self.integracion)
-        if perfil.usar_madurez_espiritual:
-            valores.append(self.madurez_espiritual)
-        if perfil.usar_liderazgo:
-            valores.append(self.liderazgo)
+        # Si no hay perfil, usar todas las dimensiones por defecto
+        if perfil is None:
+            valores = [
+                self.asistencia,
+                self.participacion,
+                self.compromiso,
+                self.actitud,
+                self.integracion,
+                self.madurez_espiritual,
+                self.liderazgo,
+            ]
+            usar_estado_espiritual = True
+        else:
+            # Solo incluir campos que estén activos en el perfil
+            if perfil.usar_asistencia:
+                valores.append(self.asistencia)
+            if perfil.usar_participacion:
+                valores.append(self.participacion)
+            if perfil.usar_compromiso:
+                valores.append(self.compromiso)
+            if perfil.usar_actitud:
+                valores.append(self.actitud)
+            if perfil.usar_integracion:
+                valores.append(self.integracion)
+            if perfil.usar_madurez_espiritual:
+                valores.append(self.madurez_espiritual)
+            if perfil.usar_liderazgo:
+                valores.append(self.liderazgo)
+            usar_estado_espiritual = perfil.usar_estado_espiritual
 
         # Si por alguna razón no hay dimensiones activas
         if not valores:
@@ -361,7 +378,7 @@ class EvaluacionMiembro(models.Model):
             base = round(sum(valores) / len(valores))
 
         # Penalización por estado espiritual (solo si está activo)
-        if perfil.usar_estado_espiritual:
+        if usar_estado_espiritual:
             if self.estado_espiritual == self.ESTADO_AUSENTE:
                 base = max(1, base - 2)
             elif self.estado_espiritual in (self.ESTADO_EN_RIESGO, self.ESTADO_CRITICO):
