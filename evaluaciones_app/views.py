@@ -87,12 +87,42 @@ def mis_unidades(request):
     for u in unidades:
         perfil, _ = EvaluacionPerfilUnidad.objects.get_or_create(unidad=u)
 
-        evaluacion, _ = EvaluacionUnidad.objects.get_or_create(
+        # ✅ Lógica según modo
+        if perfil.es_libre:
+            # Modo LIBRE: buscar la evaluación activa más reciente (no cerrada)
+            evaluacion = EvaluacionUnidad.objects.filter(
+                unidad=u,
+                anio=anio,
+                mes=mes,
+                estado_workflow__in=[
+                    EvaluacionUnidad.ESTADO_BORRADOR,
+                    EvaluacionUnidad.ESTADO_EN_PROGRESO
+                ]
+            ).order_by('-numero_secuencia').first()
+
+            # Contar evaluaciones cerradas del período
+            evaluaciones_cerradas = EvaluacionUnidad.objects.filter(
+                unidad=u,
+                anio=anio,
+                mes=mes,
+                estado_workflow=EvaluacionUnidad.ESTADO_CERRADA
+            ).count()
+        else:
+            # Modo AUTO: una sola evaluación por período
+            evaluacion, _ = EvaluacionUnidad.objects.get_or_create(
+                unidad=u,
+                anio=anio,
+                mes=mes,
+                numero_secuencia=1,
+                defaults={"perfil": perfil, "creado_por": request.user},
+            )
+            evaluaciones_cerradas = 0
+
+        # ✅ Contar evaluaciones cerradas (para historial)
+        total_cerradas = EvaluacionUnidad.objects.filter(
             unidad=u,
-            anio=anio,
-            mes=mes,
-            defaults={"perfil": perfil, "creado_por": request.user},
-        )
+            estado_workflow=EvaluacionUnidad.ESTADO_CERRADA
+        ).count()
 
         membresias_qs = UnidadMembresia.objects.filter(unidad=u)
         if perfil.excluir_evaluador:
@@ -109,7 +139,7 @@ def mis_unidades(request):
         # ✅ SOLO cuentan como evaluados los que ya fueron guardados (tienen evaluado_por)
         evaluados = qs.filter(evaluado_por__isnull=False).count()
         # ✅ detectar si hay evaluación en proceso
-        hay_progreso = evaluados > 0 or evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_EN_PROGRESO
+        hay_progreso = evaluados > 0 or (evaluacion and evaluacion.estado_workflow == EvaluacionUnidad.ESTADO_EN_PROGRESO)
 
         pendientes = max(total - evaluados, 0)
         porcentaje = int((evaluados / total) * 100) if total else 0
@@ -158,6 +188,8 @@ def mis_unidades(request):
             "reabierta": reabierta,
             "estado_txt": estado_txt,
             "accion": accion,
+            "es_modo_libre": perfil.es_libre,
+            "evaluaciones_cerradas": total_cerradas,
         })
 
     context = {
@@ -185,7 +217,7 @@ from .models import EvaluacionUnidad, EvaluacionMiembro, EvaluacionPerfilUnidad
 @require_http_methods(["GET", "POST"])
 @csrf_protect
 @transaction.atomic
-def evaluar_unidad(request, unidad_id):
+def evaluar_unidad(request, unidad_id, evaluacion_id=None):
     unidad = get_object_or_404(Unidad, id=unidad_id)
 
     # ✅ Buscar o crear perfil de evaluación (UNA sola vez)
@@ -194,14 +226,41 @@ def evaluar_unidad(request, unidad_id):
     # ✅ Si se acaba de crear, seguro es perfil por defecto
     perfil_es_default = perfil_creado
 
-    # Buscar o crear evaluación del mes actual
     hoy = timezone.now()
-    evaluacion, _ = EvaluacionUnidad.objects.get_or_create(
-        unidad=unidad,
-        anio=hoy.year,
-        mes=hoy.month,
-        defaults={"perfil": perfil, "creado_por": request.user},
-    )
+
+    # ✅ Si viene evaluacion_id, cargar esa evaluación específica
+    if evaluacion_id:
+        evaluacion = get_object_or_404(EvaluacionUnidad, id=evaluacion_id, unidad=unidad)
+    elif perfil.es_libre:
+        # Modo LIBRE: buscar evaluación activa (no cerrada) o crear nueva
+        evaluacion = EvaluacionUnidad.objects.filter(
+            unidad=unidad,
+            anio=hoy.year,
+            mes=hoy.month,
+            estado_workflow__in=[
+                EvaluacionUnidad.ESTADO_BORRADOR,
+                EvaluacionUnidad.ESTADO_EN_PROGRESO
+            ]
+        ).order_by('-numero_secuencia').first()
+
+        if not evaluacion:
+            # Crear nueva evaluación (el save() auto-calcula numero_secuencia)
+            evaluacion = EvaluacionUnidad.objects.create(
+                unidad=unidad,
+                anio=hoy.year,
+                mes=hoy.month,
+                perfil=perfil,
+                creado_por=request.user,
+            )
+    else:
+        # Modo AUTO: una sola evaluación por período
+        evaluacion, _ = EvaluacionUnidad.objects.get_or_create(
+            unidad=unidad,
+            anio=hoy.year,
+            mes=hoy.month,
+            numero_secuencia=1,
+            defaults={"perfil": perfil, "creado_por": request.user},
+        )
 
     miembros = Miembro.objects.filter(
         membresias_unidad__unidad=unidad,
@@ -546,3 +605,65 @@ def cerrar_evaluacion_unidad(request, evaluacion_id):
 
     messages.success(request, "✅ Evaluación cerrada correctamente.")
     return redirect("evaluaciones_app:ver_resultados_unidad", evaluacion_id=evaluacion.id)
+
+
+@login_required
+def listar_evaluaciones_unidad(request, unidad_id):
+    """
+    Lista todas las evaluaciones de una unidad (útil para modo libre).
+    """
+    unidad = get_object_or_404(Unidad, id=unidad_id)
+    perfil, _ = EvaluacionPerfilUnidad.objects.get_or_create(unidad=unidad)
+
+    evaluaciones = EvaluacionUnidad.objects.filter(
+        unidad=unidad
+    ).order_by('-anio', '-mes', '-numero_secuencia')
+
+    evaluaciones_cerradas = evaluaciones.filter(
+        estado_workflow=EvaluacionUnidad.ESTADO_CERRADA
+    ).count()
+
+    evaluaciones_activas = evaluaciones.filter(
+        estado_workflow__in=[
+            EvaluacionUnidad.ESTADO_BORRADOR,
+            EvaluacionUnidad.ESTADO_EN_PROGRESO
+        ]
+    ).count()
+
+    context = {
+        "unidad": unidad,
+        "perfil": perfil,
+        "evaluaciones": evaluaciones,
+        "evaluaciones_cerradas": evaluaciones_cerradas,
+        "evaluaciones_activas": evaluaciones_activas,
+    }
+    return render(request, "evaluaciones_app/listar_evaluaciones_unidad.html", context)
+
+
+@login_required
+@require_POST
+@csrf_protect
+def crear_nueva_evaluacion_libre(request, unidad_id):
+    """
+    Crea una nueva evaluación en modo libre para la unidad.
+    """
+    unidad = get_object_or_404(Unidad, id=unidad_id)
+    perfil, _ = EvaluacionPerfilUnidad.objects.get_or_create(unidad=unidad)
+
+    if not perfil.es_libre:
+        messages.error(request, "Esta unidad está en modo automático. No puedes crear evaluaciones manualmente.")
+        return redirect("evaluaciones_app:mis_unidades")
+
+    hoy = timezone.now()
+
+    # Crear nueva evaluación (el save() auto-calcula numero_secuencia)
+    evaluacion = EvaluacionUnidad.objects.create(
+        unidad=unidad,
+        anio=hoy.year,
+        mes=hoy.month,
+        perfil=perfil,
+        creado_por=request.user,
+    )
+
+    messages.success(request, f"✅ Nueva evaluación #{evaluacion.numero_secuencia} creada.")
+    return redirect("evaluaciones_app:evaluar_unidad", unidad_id=unidad.id, evaluacion_id=evaluacion.id)

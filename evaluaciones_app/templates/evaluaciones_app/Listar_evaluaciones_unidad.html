@@ -1,0 +1,544 @@
+{% extends "evaluaciones_app/base_evaluaciones.html" %}
+{% load static %}
+
+{% block title %}Historial de Evaluaciones - {{ unidad.nombre }}{% endblock %}
+
+{% block evaluaciones_content %}
+<style>
+  .historial-header {
+    margin-bottom: 24px;
+  }
+  .historial-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary, #1f2937);
+    margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .historial-header p {
+    color: var(--text-muted, #6b7280);
+    font-size: 14px;
+    margin: 0;
+  }
+  .modo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .modo-badge.libre {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+  }
+  .modo-badge.auto {
+    background: #e5e7eb;
+    color: #374151;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  @media (max-width: 640px) {
+    .header-actions {
+      width: 100%;
+    }
+    .header-actions .btn-action {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+
+  .btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-action.primary {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff;
+  }
+  .btn-action.primary:hover {
+    background: linear-gradient(135deg, #4f46e5, #4338ca);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+  .btn-action.secondary {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  .btn-action.secondary:hover {
+    background: #e5e7eb;
+  }
+
+  /* Stats Cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 640px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .stat-card {
+    background: #fff;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+  .stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+  }
+  .stat-card .stat-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .stat-card.total .stat-icon {
+    background: #ede9fe;
+    color: #7c3aed;
+  }
+  .stat-card.cerradas .stat-icon {
+    background: #d1fae5;
+    color: #059669;
+  }
+  .stat-card.activas .stat-icon {
+    background: #fef3c7;
+    color: #d97706;
+  }
+  .stat-card .stat-number {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-card.total .stat-number { color: #7c3aed; }
+  .stat-card.cerradas .stat-number { color: #059669; }
+  .stat-card.activas .stat-number { color: #d97706; }
+  .stat-card .stat-label {
+    font-size: 13px;
+    color: var(--text-muted, #6b7280);
+  }
+
+  /* Evaluaciones List */
+  .evaluaciones-container {
+    background: #fff;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .evaluaciones-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+  }
+  .evaluaciones-header svg {
+    width: 18px;
+    height: 18px;
+    color: #6b7280;
+  }
+
+  .evaluacion-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.15s;
+    gap: 16px;
+  }
+  .evaluacion-item:last-child {
+    border-bottom: none;
+  }
+  .evaluacion-item:hover {
+    background: #f9fafb;
+  }
+
+  .eval-periodo {
+    min-width: 100px;
+  }
+  .eval-periodo .periodo-text {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-primary, #1f2937);
+  }
+  .eval-periodo .secuencia-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+
+  .eval-estado {
+    min-width: 120px;
+  }
+  .estado-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .estado-badge.cerrada {
+    background: #d1fae5;
+    color: #059669;
+  }
+  .estado-badge.progreso {
+    background: #fef3c7;
+    color: #d97706;
+  }
+  .estado-badge.borrador {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+  .estado-badge .estado-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .estado-badge.cerrada .estado-dot { background: #10b981; }
+  .estado-badge.progreso .estado-dot { background: #f59e0b; }
+  .estado-badge.borrador .estado-dot { background: #9ca3af; }
+
+  .eval-meta {
+    flex: 1;
+    min-width: 0;
+  }
+  .eval-meta .meta-creador {
+    font-size: 14px;
+    color: var(--text-primary, #1f2937);
+    margin-bottom: 2px;
+  }
+  .eval-meta .meta-fecha {
+    font-size: 12px;
+    color: var(--text-muted, #6b7280);
+  }
+
+  .eval-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-icon:hover {
+    border-color: #d1d5db;
+    color: #374151;
+    background: #f9fafb;
+  }
+  .btn-icon.primary:hover {
+    border-color: #6366f1;
+    color: #6366f1;
+    background: #eef2ff;
+  }
+  .btn-icon.success:hover {
+    border-color: #10b981;
+    color: #10b981;
+    background: #ecfdf5;
+  }
+  .btn-icon.warning:hover {
+    border-color: #f59e0b;
+    color: #f59e0b;
+    background: #fffbeb;
+  }
+  .btn-icon.danger:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: #fef2f2;
+  }
+  .btn-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Empty State */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+  }
+  .empty-state-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .empty-state-icon svg {
+    width: 40px;
+    height: 40px;
+    color: #9ca3af;
+  }
+  .empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+    margin: 0 0 8px 0;
+  }
+  .empty-state p {
+    color: var(--text-muted, #6b7280);
+    font-size: 14px;
+    margin: 0 0 20px 0;
+  }
+
+  @media (max-width: 768px) {
+    .evaluacion-item {
+      flex-wrap: wrap;
+    }
+    .eval-periodo {
+      min-width: auto;
+    }
+    .eval-estado {
+      min-width: auto;
+    }
+    .eval-meta {
+      width: 100%;
+      order: 3;
+      margin-top: 8px;
+    }
+    .eval-actions {
+      margin-left: auto;
+    }
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 historial-header">
+  <div>
+    <h2>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      Historial de Evaluaciones
+    </h2>
+    <p>
+      {{ unidad.nombre }}
+      {% if perfil.es_libre %}
+        <span class="modo-badge libre">
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+          </svg>
+          Modo Libre
+        </span>
+      {% else %}
+        <span class="modo-badge auto">
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Modo Automático
+        </span>
+      {% endif %}
+    </p>
+  </div>
+  <div class="header-actions">
+    {% if perfil.es_libre %}
+    <form method="post" action="{% url 'evaluaciones_app:crear_nueva_evaluacion_libre' unidad.id %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn-action primary">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Nueva Evaluación
+      </button>
+    </form>
+    {% endif %}
+    <a href="{% url 'evaluaciones_app:mis_unidades' %}" class="btn-action secondary">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      Volver
+    </a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card total">
+    <div class="stat-icon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+    </div>
+    <div class="stat-number">{{ evaluaciones.count }}</div>
+    <div class="stat-label">Total Evaluaciones</div>
+  </div>
+  <div class="stat-card cerradas">
+    <div class="stat-icon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <div class="stat-number">{{ evaluaciones_cerradas|default:0 }}</div>
+    <div class="stat-label">Cerradas</div>
+  </div>
+  <div class="stat-card activas">
+    <div class="stat-icon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <div class="stat-number">{{ evaluaciones_activas|default:0 }}</div>
+    <div class="stat-label">En Progreso</div>
+  </div>
+</div>
+
+<!-- Lista de Evaluaciones -->
+<div class="evaluaciones-container">
+  <div class="evaluaciones-header">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+    </svg>
+    Todas las Evaluaciones
+  </div>
+
+  {% if evaluaciones %}
+    {% for eval in evaluaciones %}
+    <div class="evaluacion-item">
+      <div class="eval-periodo">
+        <div class="periodo-text">{{ eval.mes|stringformat:"02d" }}/{{ eval.anio }}</div>
+        {% if eval.numero_secuencia > 1 %}
+          <div class="secuencia-badge"># {{ eval.numero_secuencia }}</div>
+        {% endif %}
+      </div>
+
+      <div class="eval-estado">
+        {% if eval.estado_workflow == 'CERRADA' %}
+          <span class="estado-badge cerrada">
+            <span class="estado-dot"></span>
+            Cerrada
+          </span>
+        {% elif eval.estado_workflow == 'EN_PROGRESO' %}
+          <span class="estado-badge progreso">
+            <span class="estado-dot"></span>
+            En Progreso
+          </span>
+        {% else %}
+          <span class="estado-badge borrador">
+            <span class="estado-dot"></span>
+            Borrador
+          </span>
+        {% endif %}
+      </div>
+
+      <div class="eval-meta">
+        <div class="meta-creador">
+          {% if eval.creado_por %}
+            {{ eval.creado_por.get_full_name|default:eval.creado_por.username }}
+          {% else %}
+            Sin asignar
+          {% endif %}
+        </div>
+        <div class="meta-fecha">{{ eval.creado_en|date:"d M Y, H:i" }}</div>
+      </div>
+
+      <div class="eval-actions">
+        {% if eval.estado_workflow == 'CERRADA' %}
+          <a href="{% url 'evaluaciones_app:ver_resultados_unidad' eval.id %}" 
+             class="btn-icon primary" title="Ver Resultados">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </a>
+          <form method="post" action="{% url 'evaluaciones_app:reabrir_evaluacion_unidad' eval.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-icon warning" title="Reabrir">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+              </svg>
+            </button>
+          </form>
+        {% else %}
+          <a href="{% url 'evaluaciones_app:evaluar_unidad_especifica' unidad.id eval.id %}" 
+             class="btn-icon success" title="Continuar Evaluando">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+          </a>
+          {% if eval.estado_workflow == 'EN_PROGRESO' %}
+          <form method="post" action="{% url 'evaluaciones_app:cerrar_evaluacion_unidad' eval.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-icon danger" title="Cerrar Evaluación">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </button>
+          </form>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+      </div>
+      <h3>Sin evaluaciones</h3>
+      <p>No hay evaluaciones registradas para esta unidad.</p>
+      {% if perfil.es_libre %}
+      <form method="post" action="{% url 'evaluaciones_app:crear_nueva_evaluacion_libre' unidad.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-action primary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Crear Primera Evaluación
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
