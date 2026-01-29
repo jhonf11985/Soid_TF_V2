@@ -18,4 +18,5 @@ urlpatterns = [
     path("unidad/<int:unidad_id>/evaluaciones/", views.listar_evaluaciones_unidad, name="listar_evaluaciones_unidad"),
     path("unidad/<int:unidad_id>/nueva-evaluacion/", views.crear_nueva_evaluacion_libre, name="crear_nueva_evaluacion_libre"),
     path("unidad/<int:unidad_id>/evaluar/<int:evaluacion_id>/", views.evaluar_unidad, name="evaluar_unidad_especifica"),
+    path("radar/", views.radar_unidad, name="radar_unidad"),
 ]

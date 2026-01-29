@@ -231,6 +231,9 @@ def evaluar_unidad(request, unidad_id, evaluacion_id=None):
     # ✅ Si viene evaluacion_id, cargar esa evaluación específica
     if evaluacion_id:
         evaluacion = get_object_or_404(EvaluacionUnidad, id=evaluacion_id, unidad=unidad)
+
+
+
     elif perfil.es_libre:
         # Modo LIBRE: buscar evaluación activa (no cerrada) o crear nueva
         evaluacion = EvaluacionUnidad.objects.filter(
@@ -385,6 +388,7 @@ def ver_resultados_unidad(request, evaluacion_id):
         avg_actitud=Avg("actitud"),
         avg_integracion=Avg("integracion"),
         avg_madurez=Avg("madurez_espiritual"),
+         avg_liderazgo=Avg("liderazgo"),
         avg_puntaje=Avg("puntaje_general"),
     )
 
@@ -422,6 +426,7 @@ def ver_resultados_unidad(request, evaluacion_id):
         ("Actitud", promedios.get("avg_actitud")),
         ("Integración", promedios.get("avg_integracion")),
         ("Madurez", promedios.get("avg_madurez")),
+         ("Liderazgo", promedios.get("avg_liderazgo")),
     ]
 
     # Filtrar None y ordenar
@@ -667,3 +672,147 @@ def crear_nueva_evaluacion_libre(request, unidad_id):
 
     messages.success(request, f"✅ Nueva evaluación #{evaluacion.numero_secuencia} creada.")
     return redirect("evaluaciones_app:evaluar_unidad", unidad_id=unidad.id, evaluacion_id=evaluacion.id)
+
+from django.db.models import Q
+
+from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from django.db.models import Q
+
+from estructura_app.models import Unidad, UnidadCargo
+from .models import EvaluacionUnidad, EvaluacionMiembro
+
+
+@login_required
+def radar_unidad(request):
+    """
+    Radar de decisiones (lista): nombres + métrica clave según filtro.
+    Usa automáticamente última evaluación cerrada (si no hay, la más reciente).
+    """
+
+    miembro = _get_miembro_from_user(request.user)
+    if not miembro and not request.user.is_superuser:
+        return HttpResponseForbidden(
+            "Este usuario no tiene un miembro vinculado. Vincula el usuario a un miembro para poder usar el radar."
+        )
+
+    # Unidades accesibles
+    if request.user.is_superuser:
+        unidades = Unidad.objects.all().order_by("nombre")
+    else:
+        cargos = (
+            UnidadCargo.objects
+            .select_related("unidad")
+            .filter(miembo_fk=miembro, vigente=True)
+            .order_by("unidad__nombre")
+        )
+        unidades_map = {}
+        for c in cargos:
+            if c.unidad_id not in unidades_map:
+                unidades_map[c.unidad_id] = c.unidad
+        unidades = list(unidades_map.values())
+
+    unidad_id = request.GET.get("unidad")
+    filtro = request.GET.get("filtro", "top_liderazgo")
+    top_n = int(request.GET.get("top", 15))
+
+    unidad = None
+    evaluacion = None
+    rows = []
+    total_evaluados = 0
+
+    # Umbrales (ajústalos)
+    TH_AYUDA = 2.6
+    TH_BAJA = 2.5
+
+    # Definición de filtros: (label_metrica, campo_metrica, order_by, extra_filter)
+    filtros_def = {
+        "top_liderazgo": ("Liderazgo", "liderazgo", ["-liderazgo", "-puntaje_general"], Q(liderazgo__isnull=False)),
+        "mas_asiste": ("Asistencia", "asistencia", ["-asistencia", "-puntaje_general"], Q()),
+        "mas_comprometidos": ("Compromiso", "compromiso", ["-compromiso", "-puntaje_general"], Q()),
+        "mas_participa": ("Participación", "participacion", ["-participacion", "-puntaje_general"], Q()),
+        "mejor_actitud": ("Actitud", "actitud", ["-actitud", "-puntaje_general"], Q()),
+        "mejor_integracion": ("Integración", "integracion", ["-integracion", "-puntaje_general"], Q()),
+        "mayor_madurez": ("Madurez", "madurez_espiritual", ["-madurez_espiritual", "-puntaje_general"], Q()),
+        "necesitan_apoyo": (
+            "Motivo",
+            None,
+            ["puntaje_general", "asistencia", "integracion"],
+            Q(puntaje_general__lte=TH_AYUDA) | Q(asistencia__lte=TH_BAJA) | Q(integracion__lte=TH_BAJA) | Q(participacion__lte=TH_BAJA),
+        ),
+        "top_puntaje": ("Puntaje", "puntaje_general", ["-puntaje_general"], Q()),
+    }
+
+    if unidad_id:
+        unidad = get_object_or_404(Unidad, id=unidad_id)
+
+        if not request.user.is_superuser and not _user_es_lider_de_unidad(request.user, unidad.id):
+            return HttpResponseForbidden("No tienes permiso para ver el radar de esta unidad.")
+
+        # Evaluación automática (última cerrada o última)
+        evaluaciones_qs = (
+            EvaluacionUnidad.objects
+            .filter(unidad=unidad)
+            .order_by("-anio", "-mes", "-numero_secuencia")
+        )
+        evaluacion = evaluaciones_qs.filter(
+            estado_workflow=EvaluacionUnidad.ESTADO_CERRADA
+        ).first() or evaluaciones_qs.first()
+
+        if evaluacion:
+            qs = (
+                EvaluacionMiembro.objects
+                .filter(evaluacion=evaluacion, evaluado_por__isnull=False)
+                .select_related("miembro")
+            )
+
+            total_evaluados = qs.count()
+
+            # aplicar filtro
+            label_metrica, campo_metrica, ordering, extra_q = filtros_def.get(
+                filtro, filtros_def["top_liderazgo"]
+            )
+
+            if extra_q:
+                qs = qs.filter(extra_q)
+
+            qs = qs.order_by(*ordering)[:top_n]
+
+            # construir filas “listas”
+            for it in qs:
+                metrica_val = None
+                if campo_metrica:
+                    metrica_val = getattr(it, campo_metrica, None)
+
+                motivo = ""
+                if filtro == "necesitan_apoyo":
+                    razones = []
+                    if it.puntaje_general is not None and it.puntaje_general <= TH_AYUDA:
+                        razones.append("Puntaje bajo")
+                    if it.asistencia is not None and it.asistencia <= TH_BAJA:
+                        razones.append("Baja asistencia")
+                    if it.integracion is not None and it.integracion <= TH_BAJA:
+                        razones.append("Baja integración")
+                    if it.participacion is not None and it.participacion <= TH_BAJA:
+                        razones.append("Baja participación")
+                    motivo = ", ".join(razones) if razones else "Revisar"
+
+                rows.append({
+                    "miembro": it.miembro,
+                    "puntaje": it.puntaje_general,
+                    "metrica_label": label_metrica,
+                    "metrica_val": metrica_val,
+                    "motivo": motivo,
+                })
+
+    context = {
+        "unidades": unidades,
+        "unidad": unidad,
+        "evaluacion": evaluacion,
+        "filtro": filtro,
+        "top_n": top_n,
+        "total_evaluados": total_evaluados,
+        "rows": rows,
+    }
+    return render(request, "evaluaciones_app/radar_unidad.html", context)

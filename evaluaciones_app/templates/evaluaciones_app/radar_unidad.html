@@ -1,0 +1,125 @@
+{% extends "evaluaciones_app/base_evaluaciones.html" %}
+{% block evaluaciones_content %}
+
+<style>
+  .card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:14px}
+  .muted{opacity:.7}
+  .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+  .select{border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:8px 10px;background:#fff;min-width:240px}
+  .btn{display:inline-flex;gap:8px;align-items:center;border:1px solid rgba(0,0,0,.12);padding:8px 12px;border-radius:12px;background:#fff;cursor:pointer;text-decoration:none}
+  .btn:hover{background:#f7f7f7}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:10px;border-top:1px solid rgba(0,0,0,.06);text-align:left;font-size:14px}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;opacity:.7}
+  .badge{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid rgba(0,0,0,.10);background:#fafafa;font-size:12px}
+</style>
+
+<div class="card">
+  <h2 style="margin:0 0 8px 0;">🧠 Radar (decisiones)</h2>
+  <div class="muted">Aquí solo ves listas para decidir. Para detalles, entra a Resultados.</div>
+
+  <form method="get" class="filters" style="margin-top:12px;">
+    <div>
+      <div class="muted" style="font-size:12px;margin-bottom:4px;">Unidad</div>
+      <select name="unidad" class="select"
+              onchange="location.href='{% url 'evaluaciones_app:radar_unidad' %}?unidad=' + this.value;">
+        <option value="">— Selecciona —</option>
+        {% for u in unidades %}
+          <option value="{{ u.id }}" {% if unidad and u.id == unidad.id %}selected{% endif %}>{{ u.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <div class="muted" style="font-size:12px;margin-bottom:4px;">Qué buscas</div>
+      <select name="filtro" class="select" {% if not unidad %}disabled{% endif %} onchange="this.form.submit()">
+        <option value="top_liderazgo" {% if filtro == "top_liderazgo" %}selected{% endif %}>🧭 Posibles líderes (Top liderazgo)</option>
+        <option value="mas_asiste" {% if filtro == "mas_asiste" %}selected{% endif %}>📌 Los que más asisten</option>
+        <option value="mas_comprometidos" {% if filtro == "mas_comprometidos" %}selected{% endif %}>💪 Los más comprometidos</option>
+        <option value="mas_participa" {% if filtro == "mas_participa" %}selected{% endif %}>🙋 Los que más participan</option>
+        <option value="mejor_actitud" {% if filtro == "mejor_actitud" %}selected{% endif %}>🙂 Mejor actitud</option>
+        <option value="mejor_integracion" {% if filtro == "mejor_integracion" %}selected{% endif %}>🤝 Mejor integración</option>
+        <option value="mayor_madurez" {% if filtro == "mayor_madurez" %}selected{% endif %}>🙏 Mayor madurez</option>
+        <option value="necesitan_apoyo" {% if filtro == "necesitan_apoyo" %}selected{% endif %}>🩺 Necesitan apoyo</option>
+        <option value="top_puntaje" {% if filtro == "top_puntaje" %}selected{% endif %}>🌟 Top puntaje general</option>
+      </select>
+    </div>
+
+    <div>
+      <div class="muted" style="font-size:12px;margin-bottom:4px;">Top</div>
+      <select name="top" class="select" {% if not unidad %}disabled{% endif %} onchange="this.form.submit()">
+        <option value="10" {% if top_n == 10 %}selected{% endif %}>10</option>
+        <option value="15" {% if top_n == 15 %}selected{% endif %}>15</option>
+        <option value="25" {% if top_n == 25 %}selected{% endif %}>25</option>
+      </select>
+    </div>
+
+    {% if unidad and evaluacion %}
+      <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
+        <a class="btn" href="{% url 'evaluaciones_app:ver_resultados_unidad' unidad.id %}">📊 Ver resultados</a>
+        <a class="btn" href="{% url 'evaluaciones_app:radar_unidad' %}?unidad={{ unidad.id }}">Reiniciar</a>
+      </div>
+    {% endif %}
+  </form>
+</div>
+
+{% if unidad %}
+  <div class="card" style="margin-top:14px;">
+    {% if evaluacion %}
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+        <div>
+          <div style="font-weight:800;">{{ unidad.nombre }}</div>
+          <div class="muted" style="font-size:12px;">
+            Usando evaluación: {{ evaluacion.anio }}/{{ evaluacion.mes }} · #{{ evaluacion.numero_secuencia }} · {{ evaluacion.estado_workflow }}
+          </div>
+        </div>
+        <div class="muted">Evaluados: <b>{{ total_evaluados }}</b></div>
+      </div>
+
+      {% if rows %}
+        <table>
+          <thead>
+            <tr>
+              <th>Miembro</th>
+              <th>Métrica</th>
+              <th>Puntaje</th>
+              <th>Nota</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td><b>{{ r.miembro.nombres }} {{ r.miembro.apellidos }}</b></td>
+
+                <td>
+                  {% if filtro == "necesitan_apoyo" %}
+                    <span class="badge">{{ r.motivo }}</span>
+                  {% else %}
+                    <span class="badge">{{ r.metrica_label }}: <b>{{ r.metrica_val }}</b></span>
+                  {% endif %}
+                </td>
+
+                <td><span class="badge">{{ r.puntaje }}</span></td>
+
+                <td class="muted" style="font-size:12px;">
+                  {% if filtro == "top_liderazgo" and r.metrica_val is None %}
+                    Sin dato de liderazgo
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="muted" style="padding:14px 0;">No hay resultados con ese filtro (o aún no hay evaluados).</div>
+      {% endif %}
+
+    {% else %}
+      <div class="muted">Esta unidad aún no tiene evaluaciones.</div>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% endblock %}
