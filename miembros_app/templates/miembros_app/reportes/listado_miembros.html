@@ -160,10 +160,13 @@
     <span class="material-icons">print</span>
     Imprimir
 </a>
-                <a href="{% url 'miembros_app:exportar_miembros_excel' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
-                    <span class="material-icons">download</span>
-                    Exportar Excel
-                </a>
+
+<button type="button" onclick="soidCompartirListadoMiembrosWhatsApp()">
+  <span class="material-icons">whatsapp</span>
+  Compartir link PDF (WhatsApp)
+</button>
+
+
                 <a href="{% url 'miembros_app:listado_miembros_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
                     <span class="material-icons">mail</span>
                     Enviar por correo
@@ -1938,5 +1941,57 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<script>
+function soidGetCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
+async function soidCompartirListadoMiembrosWhatsApp() {
+  try {
+    // 1) Endpoint (AJAX) que crea DocumentoCompartido + PDF + link
+    // IMPORTANTE: este name debe coincidir con el que pusiste en urls.py
+    const endpoint = "{% url 'miembros_app:listado_miembros_compartir' %}";
+
+    // 2) Mantener los filtros actuales del listado
+    const qs = window.location.search || "";
+
+    // 3) POST con CSRF
+    const csrftoken = soidGetCookie("csrftoken");
+
+    const res = await fetch(endpoint + qs, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrftoken,
+        "X-Requested-With": "XMLHttpRequest"
+      }
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      alert(data.error || "No se pudo generar el link.");
+      return;
+    }
+
+    const link = data.link;
+
+    // 4) Mensaje listo para WhatsApp
+    const msg = `Te comparto el PDF del listado de miembros (SOID):\n${link}\n\n(El enlace expira según configuración.)`;
+    const waUrl = "https://wa.me/?text=" + encodeURIComponent(msg);
+
+    // 5) Abrir WhatsApp (web o app)
+    window.open(waUrl, "_blank");
+
+  } catch (e) {
+    alert("Error generando el link o abriendo WhatsApp.");
+    console.error(e);
+  }
+}
+</script>
+
 
 {% endblock %}

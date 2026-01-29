@@ -74,6 +74,13 @@ urlpatterns = [
 ),
 
 path(
+    "miembros/listado/compartir/",
+    views.listado_miembros_crear_link_publico,
+    name="listado_miembros_compartir",
+),
+
+
+path(
     "nuevos-creyentes/ficha/<int:pk>/",
     views.nuevo_creyente_ficha,
     name="nuevo_creyente_ficha"

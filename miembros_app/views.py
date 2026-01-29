@@ -14,7 +14,8 @@ from .forms import EnviarFichaMiembroEmailForm
 import tempfile
 import subprocess   # ← ESTE
 from .models import Miembro, MiembroRelacion, RazonSalidaMiembro, sync_familia_inteligente_por_relacion
-
+from core.models import DocumentoCompartido
+from django.core.files.base import ContentFile
 from .forms import MiembroForm, MiembroRelacionForm,NuevoCreyenteForm,MiembroSalidaForm, MiembroReingresoForm
 import platform   # ← ESTE FALTABA
 from core.utils_config import get_edad_minima_miembro_oficial
@@ -716,6 +717,85 @@ def miembro_lista(request):
         context,
     )
 
+
+@login_required
+@require_GET
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def miembro_lista_pdf(request):
+    """
+    Vista PDF del listado de miembros.
+    Reutiliza EXACTAMENTE la misma lógica que miembro_lista.
+    """
+
+    miembros_base = Miembro.objects.filter(nuevo_creyente=False)
+    miembros, filtros_context = filtrar_miembros(request, miembros_base)
+
+    edad_minima = get_edad_minima_miembro_oficial()
+
+    context = {
+        "miembros": miembros,
+        "EDAD_MINIMA_MIEMBRO_OFICIAL": edad_minima,
+        "modo_pdf": True,  # 👈 clave
+    }
+    context.update(filtros_context)
+
+    return render(
+        request,
+        "miembros_app/reportes/listado_miembros.html",
+        context,
+    )
+
+
+
+@login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+@require_POST
+def listado_miembros_crear_link_publico(request):
+    """
+    Crea un DocumentoCompartido (PDF) del listado de miembros usando
+    la URL REAL (con filtros) y devuelve el link público.
+    """
+    # ✅ Construir la URL del reporte imprimible (la que ya tienes para "Imprimir")
+    filtros = request.GET.urlencode()
+    base_url = request.build_absolute_uri(reverse("miembros_app:reporte_listado_miembros"))
+    url_completa = base_url + (f"?{filtros}" if filtros else "")
+
+    try:
+        # ✅ Generar PDF idéntico al navegador
+        pdf_bytes = generar_pdf_desde_url(url_completa)  # (ya lo tienes en tu views.py)
+
+        # ✅ Crear registro de documento compartido
+        doc = DocumentoCompartido(
+            titulo="Listado de miembros",
+            descripcion="Listado generado desde SOID",
+            creado_por=request.user,
+            expira_en=timezone.now() + timedelta(days=7),  # cámbialo si quieres
+            activo=True,
+        )
+
+        # Guardar archivo en el FileField
+        nombre_archivo = "listado_miembros.pdf"
+        doc.archivo.save(nombre_archivo, ContentFile(pdf_bytes), save=True)
+
+        # ✅ Link público
+     
+        
+        link_publico = request.build_absolute_uri(
+            reverse("docs:ver", kwargs={"token": doc.token})
+        )
+
+
+        return JsonResponse({
+            "ok": True,
+            "link": link_publico,
+            "token": doc.token,
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            "ok": False,
+            "error": str(e),
+        }, status=400)
 # -------------------------------------
 # NOTIFICACIÓN POR CORREO: NUEVO MIEMBRO
 # -------------------------------------
