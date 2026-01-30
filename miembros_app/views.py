@@ -28,7 +28,7 @@ import os
 from django.core.files.storage import default_storage
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from core.utils_chrome import get_chrome_executable
+
 # Configuración de Chrome/Chromium (ruta opcional)
 from openpyxl import Workbook
 from datetime import date, timedelta, datetime
@@ -58,8 +58,11 @@ from django.views.decorators.http import require_POST, require_GET
 from django.views.generic import DetailView, UpdateView
 from django.views.decorators.http import require_http_methods
 from urllib.parse import quote
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
 
-
+from io import BytesIO
+from django.template.loader import render_to_string
 
 
 @login_required
@@ -751,51 +754,69 @@ def miembro_lista_pdf(request):
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 @require_POST
 def listado_miembros_crear_link_publico(request):
-    """
-    Crea un DocumentoCompartido (PDF) del listado de miembros usando
-    la URL REAL (con filtros) y devuelve el link público.
-    """
-    # ✅ Construir la URL del reporte imprimible (la que ya tienes para "Imprimir")
-    filtros = request.GET.urlencode()
-    base_url = request.build_absolute_uri(reverse("miembros_app:reporte_listado_miembros"))
-    url_completa = base_url + (f"?{filtros}" if filtros else "")
-
     try:
-        # ✅ Generar PDF idéntico al navegador
-        pdf_bytes = generar_pdf_desde_url(url_completa)  # (ya lo tienes en tu views.py)
+        miembros = Miembro.objects.filter(activo=True)
 
-        # ✅ Crear registro de documento compartido
+        q = request.GET.get("q", "").strip()
+        if q:
+            miembros = miembros.filter(
+                Q(nombres__icontains=q) |
+                Q(apellidos__icontains=q) |
+                Q(cedula__icontains=q)
+            )
+
+        estado = request.GET.get("estado", "")
+        if estado:
+            miembros = miembros.filter(estado_membresia=estado)
+
+        genero = request.GET.get("genero", "")
+        if genero:
+            miembros = miembros.filter(genero=genero)
+
+        bautizado = request.GET.get("bautizado", "")
+        if bautizado == "1":
+            miembros = miembros.filter(bautizado_confirmado=True)
+        elif bautizado == "0":
+            miembros = miembros.filter(bautizado_confirmado=False)
+
+        html_string = render_to_string(
+            "miembros_app/reportes/reporte_listado_miembros.html",
+            {
+                "miembros": miembros,
+                "modo_pdf": True,
+                "query": q,
+                "estado": estado,
+                "genero_filtro": genero,
+                "bautizado": bautizado,
+            },
+            request=request
+        )
+
+        # ✅ Render-friendly: xhtml2pdf
+        pdf_bytes = generar_pdf_desde_html(html_string)
+
         doc = DocumentoCompartido(
             titulo="Listado de miembros",
             descripcion="Listado generado desde SOID",
             creado_por=request.user,
-            expira_en=timezone.now() + timedelta(days=7),  # cámbialo si quieres
+            expira_en=timezone.now() + timedelta(days=7),
             activo=True,
         )
+        doc.archivo.save("listado_miembros.pdf", ContentFile(pdf_bytes), save=True)
 
-        # Guardar archivo en el FileField
-        nombre_archivo = "listado_miembros.pdf"
-        doc.archivo.save(nombre_archivo, ContentFile(pdf_bytes), save=True)
-
-        # ✅ Link público
-     
-        
         link_publico = request.build_absolute_uri(
             reverse("docs:ver", kwargs={"token": doc.token})
         )
 
-
-        return JsonResponse({
-            "ok": True,
-            "link": link_publico,
-            "token": doc.token,
-        })
+        return JsonResponse({"ok": True, "link": link_publico, "token": doc.token})
 
     except Exception as e:
-        return JsonResponse({
-            "ok": False,
-            "error": str(e),
-        }, status=400)
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"ok": False, "error": str(e)}, status=400)
+
+
+
 # -------------------------------------
 # NOTIFICACIÓN POR CORREO: NUEVO MIEMBRO
 # -------------------------------------
@@ -3472,86 +3493,70 @@ def generar_pdf_ficha_miembro(miembro):
 @login_required
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def listado_miembros_enviar_email(request):
-
     """
-    Genera un PDF EXACTO del listado de miembros usando la URL real
-    y lo envía por correo.
+    Genera un PDF del listado de miembros y lo envía por correo.
     """
-    config = ConfiguracionSistema.load()
-
-    # Obtener los filtros actuales
-    filtros = request.GET.urlencode()
     base_url = request.build_absolute_uri(reverse("miembros_app:reporte_listado_miembros"))
-
-    # Construir URL completa con filtros
+    filtros = request.GET.urlencode()
     url_completa = base_url + (f"?{filtros}" if filtros else "")
-
-    # Datos iniciales del formulario
-    email_default = config.email_oficial or settings.DEFAULT_FROM_EMAIL
-    asunto_default = "Listado general de miembros"
-    mensaje_default = f"Adjunto el listado general de miembros de {config.nombre_iglesia or 'nuestra iglesia'}."
 
     if request.method == "POST":
         form = EnviarFichaMiembroEmailForm(request.POST)
         if form.is_valid():
             destinatario = form.cleaned_data["destinatario"]
-            asunto = form.cleaned_data["asunto"] or asunto_default
-            mensaje = form.cleaned_data["mensaje"] or mensaje_default
+            asunto = form.cleaned_data.get("asunto") or "Listado de miembros - SOID"
+            mensaje = form.cleaned_data.get("mensaje") or ""
 
             try:
-                # GENERAR PDF USANDO LA URL REAL
-                pdf_bytes = generar_pdf_desde_url(url_completa)
-
-                # Cuerpo del correo
-                body_html = (
-                    f"<p>{mensaje}</p>"
-                    "<p style='margin-top:16px;'>Bendiciones,<br><strong>Soid_Tf_2</strong></p>"
+                # ══════════════════════════════════════════════════════════
+                # CAMBIO: Generar PDF con xhtml2pdf en lugar de Chrome
+                # ══════════════════════════════════════════════════════════
+                miembros = Miembro.objects.filter(activo=True).select_related()
+                
+                # Aplicar mismos filtros
+                q = request.GET.get('q', '').strip()
+                if q:
+                    miembros = miembros.filter(
+                        Q(nombres__icontains=q) |
+                        Q(apellidos__icontains=q) |
+                        Q(cedula__icontains=q)
+                    )
+                
+                estado = request.GET.get('estado', '')
+                if estado:
+                    miembros = miembros.filter(estado_membresia=estado)
+                
+                html_string = render_to_string(
+                    "miembros_app/reportes/reporte_listado_miembros.html",
+                    {"miembros": miembros, "modo_pdf": True},
+                    request=request
                 )
+                pdf_bytes = generar_pdf_desde_html(html_string)
+                # ══════════════════════════════════════════════════════════
 
-                # Enviar correo con adjunto
                 enviar_correo_sistema(
-                    subject=asunto,
-                    heading="Listado general de miembros",
-                    body_html=body_html,
-                    destinatarios=destinatario,
-                    meta_text="Correo enviado desde Soid_Tf_2",
-                    extra_context={"CFG": config},
+                    asunto=asunto,
+                    mensaje=mensaje,
+                    destinatarios=[destinatario],
                     adjuntos=[("listado_miembros.pdf", pdf_bytes)],
                 )
 
-                messages.success(
-                    request, f"Correo enviado correctamente a {destinatario}"
-                )
+                messages.success(request, f"Correo enviado a {destinatario}")
                 return redirect("miembros_app:reporte_listado_miembros")
 
             except Exception as e:
-                messages.error(request, f"No se pudo enviar el correo: {e}")
+                messages.error(request, f"Error al enviar: {e}")
                 return redirect("miembros_app:reporte_listado_miembros")
-
     else:
-        form = EnviarFichaMiembroEmailForm(
-            initial={
-                "destinatario": email_default,
-                "asunto": asunto_default,
-                "mensaje": mensaje_default,
-            }
-        )
+        form = EnviarFichaMiembroEmailForm()
 
-    return render(
-        request,
-        "core/enviar_email.html",
-        {
-            "form": form,
-            "titulo_pagina": "Enviar listado por correo",
-            "descripcion": "Se generará un PDF idéntico al de impresión usando Chrome Headless.",
-            "objeto_label": "Listado general de miembros",
-            "url_cancelar": reverse("miembros_app:reporte_listado_miembros"),
-            "adjunto_auto_nombre": "listado_miembros.pdf",
-        },
-    )
-
-
-
+    return render(request, "miembros_app/email/enviar_listado_form.html", {
+        "form": form,
+        "titulo": "Enviar listado de miembros por correo",
+        "descripcion": "Se generará un PDF del listado actual.",
+        "url_cancelar": reverse("miembros_app:reporte_listado_miembros"),
+        "adjunto_auto_nombre": "listado_miembros.pdf",
+    })
 
 def generar_pdf_listado_miembros(request, miembros, filtros_context):
     """
@@ -3590,142 +3595,9 @@ def generar_pdf_listado_miembros(request, miembros, filtros_context):
         f.write(pdf_file.getvalue())
 
     return ruta_pdf
-def generar_pdf_chrome_headless(request, html_content):
-    """
-    Genera un PDF en memoria usando Chrome Headless.
-    El resultado es idéntico al PDF que genera el navegador.
-    """
-    chrome_path = get_chrome_path()
-
-    # Crear archivo HTML temporal
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as html_temp:
-        html_temp.write(html_content.encode("utf-8"))
-        html_temp_path = html_temp.name
-
-    # Archivo PDF temporal (salida)
-    pdf_temp_path = html_temp_path.replace(".html", ".pdf")
-
-    comando = [
-        chrome_path,
-        "--headless",
-        "--disable-gpu",
-        f"--print-to-pdf={pdf_temp_path}",
-        html_temp_path,
-    ]
-
-    resultado = subprocess.run(
-        comando,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-
-    if resultado.returncode != 0:
-        raise RuntimeError(
-            f"Error ejecutando Chrome Headless (código {resultado.returncode}): {resultado.stderr}"
-        )
-
-    with open(pdf_temp_path, "rb") as f:
-        pdf_bytes = f.read()
-
-    os.remove(html_temp_path)
-    os.remove(pdf_temp_path)
-
-    return pdf_bytes
-def generar_pdf_desde_url(url):
-    """
-    Genera un PDF desde una URL real usando Chrome Headless.
-    El PDF es idéntico al generado desde 'Imprimir → Guardar como PDF'.
-    """
-    chrome_path = get_chrome_path()
-
-    # Crear archivo PDF temporal
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as pdf_temp:
-        pdf_temp_path = pdf_temp.name
-
-    comando = [
-        chrome_path,
-        "--headless",
-        "--disable-gpu",
-        f"--print-to-pdf={pdf_temp_path}",
-        url,  # aquí va la URL, no html_temp_path
-    ]
-
-    resultado = subprocess.run(
-        comando,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-
-    if resultado.returncode != 0:
-        raise RuntimeError(
-            f"Error ejecutando Chrome Headless (código {resultado.returncode}): {resultado.stderr}"
-        )
-
-    with open(pdf_temp_path, "rb") as f:
-        pdf_bytes = f.read()
-
-    os.remove(pdf_temp_path)
-
-    return pdf_bytes
 
 
-def get_chrome_path():
-    """
-    Devuelve una ruta válida al ejecutable de Chrome/Chromium.
-    Orden de prioridad:
-    1) settings.CHROME_PATH
-    2) variable de entorno CHROME_PATH
-    3) detección automática (rutas típicas y ejecutables conocidos)
-    """
-    global CHROME_PATH
 
-    # 1) Si ya está resuelto y existe, úsalo
-    if CHROME_PATH and os.path.exists(CHROME_PATH):
-        return CHROME_PATH
-
-    # 2) Revisar settings.CHROME_PATH
-    settings_path = getattr(settings, "CHROME_PATH", "") or ""
-    if settings_path and os.path.exists(settings_path):
-        CHROME_PATH = settings_path
-        return CHROME_PATH
-
-    # 3) Revisar variable de entorno CHROME_PATH
-    env_path = os.environ.get("CHROME_PATH")
-    if env_path and os.path.exists(env_path):
-        CHROME_PATH = env_path
-        return CHROME_PATH
-
-    # 4) Detección automática según sistema operativo
-    system = platform.system()
-
-    candidatos = []
-    if system == "Windows":
-        candidatos = [
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-            shutil.which("chrome"),
-            shutil.which("msedge"),  # Edge (Chromium) también sirve
-        ]
-    else:
-        candidatos = [
-            shutil.which("google-chrome"),
-            shutil.which("google-chrome-stable"),
-            shutil.which("chromium"),
-            shutil.which("chromium-browser"),
-        ]
-
-    for ruta in candidatos:
-        if ruta and os.path.exists(ruta):
-            CHROME_PATH = ruta
-            return CHROME_PATH
-
-    # 5) Si no se encuentra nada, error real
-    raise RuntimeError(
-        "No se encontró Chrome/Chromium. "
-        "Instálalo o define CHROME_PATH en settings.py o en variables de entorno."
-    )
 @login_required
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def nuevos_creyentes_enviar_email(request):
@@ -4943,3 +4815,5 @@ def obtener_relaciones_organizadas_simple(miembro):
         lista.sort(key=lambda r: orden.get(r["tipo"], 99))
     
     return familia_nuclear, familia_origen, familia_extendida, familia_politica
+
+

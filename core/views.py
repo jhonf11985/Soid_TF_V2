@@ -32,6 +32,7 @@ from django.contrib.auth.models import Group
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 
 User = get_user_model()
 
@@ -882,3 +883,35 @@ def editar_usuario(request, user_id):
         "modo_edicion": True,
     }
     return render(request, "core/usuarios/crear_usuario.html", context)
+
+
+@require_POST
+def listado_miembros_compartir(request):
+    try:
+        miembros = Miembro.objects.all()
+
+        # Renderizar HTML del listado
+        html = render_to_string("miembros_app/listado_miembros.html", {
+            "miembros": miembros,
+        })
+
+        # ⚠️ aquí no generamos PDF aún (para evitar errores de WeasyPrint)
+        contenido = ContentFile(html.encode("utf-8"))
+
+        token = get_random_string(32)
+
+        doc = DocumentoCompartido.objects.create(
+            nombre="Listado de miembros",
+            archivo=contenido,
+            token=token,
+            creado_por=request.user,
+        )
+
+        link = request.build_absolute_uri(
+            reverse("miembros_app:ver_doc_publico", args=[token])
+        )
+
+        return JsonResponse({"ok": True, "link": link})
+
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)})
