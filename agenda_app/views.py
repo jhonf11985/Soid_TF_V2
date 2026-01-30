@@ -161,3 +161,131 @@ def actividad_delete(request, pk):
         return redirect(f"{redirect('agenda_app:agenda_anual').url}?year={year}")
 
     return render(request, "agenda_app/actividad_confirm_delete.html", {"actividad": actividad})
+
+from datetime import datetime, timedelta
+from django.http import HttpResponse
+from django.utils import timezone
+
+
+def _ics_escape(value: str) -> str:
+    """
+    Escapar texto para ICS (RFC 5545):
+    - \  -> \\
+    - ;  -> \;
+    - ,  -> \,
+    - saltos de línea -> \n
+    """
+    if value is None:
+        return ""
+    value = str(value)
+    value = value.replace("\\", "\\\\")
+    value = value.replace(";", "\\;")
+    value = value.replace(",", "\\,")
+    value = value.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\\n")
+    return value
+
+
+from datetime import timezone as dt_timezone
+
+def _dt_utc_str(dt: datetime) -> str:
+    """
+    Formato UTC para ICS: YYYYMMDDTHHMMSSZ
+    """
+    dt_utc = dt.astimezone(dt_timezone.utc)
+    return dt_utc.strftime("%Y%m%dT%H%M%SZ")
+
+
+def calendario_ics(request):
+    """
+    Calendario ICS público (solo lectura) para actividades de SOID.
+    Los miembros agregan este link a Google Calendar / iPhone / Outlook.
+    """
+    hoy = timezone.localdate()
+
+    # Básico: solo futuras y programadas
+    actividades = (
+        Actividad.objects
+        .filter(fecha__gte=hoy)
+        .order_by("fecha", "hora_inicio", "titulo")
+    )
+
+    now_utc_stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//SOID//Agenda Iglesia//ES",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:SOID - Agenda",
+        "X-WR-TIMEZONE:America/Santo_Domingo",
+
+    ]
+
+    for a in actividades:
+        # UID estable por actividad
+        uid = f"soid-actividad-{a.id}@soid"
+
+        summary = _ics_escape(a.titulo)
+        description = _ics_escape(a.descripcion or "")
+        location = _ics_escape(a.lugar or "")
+
+        # Estado
+        # PROGRAMADA -> CONFIRMED
+        # CANCELADA -> CANCELLED
+        status = "CONFIRMED"
+        if a.estado == Actividad.Estado.CANCELADA:
+            status = "CANCELLED"
+
+        # Si no hay hora, lo tratamos como "all-day event"
+        if not a.hora_inicio:
+            dtstart = a.fecha.strftime("%Y%m%d")
+            # En eventos de día completo, DTEND suele ser el día siguiente
+            dtend = (a.fecha + timedelta(days=1)).strftime("%Y%m%d")
+
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"UID:{uid}",
+                f"DTSTAMP:{now_utc_stamp}",
+                f"LAST-MODIFIED:{now_utc_stamp}",
+                f"SUMMARY:{summary}",
+                f"DESCRIPTION:{description}",
+                f"LOCATION:{location}",
+                f"STATUS:{status}",
+                f"DTSTART;VALUE=DATE:{dtstart}",
+                f"DTEND;VALUE=DATE:{dtend}",
+                "END:VEVENT",
+            ])
+        else:
+            # Evento con hora: crear datetimes aware (zona local del proyecto)
+            tz = timezone.get_current_timezone()
+            inicio_local = timezone.make_aware(datetime.combine(a.fecha, a.hora_inicio), tz)
+
+            if a.hora_fin:
+                fin_local = timezone.make_aware(datetime.combine(a.fecha, a.hora_fin), tz)
+            else:
+                # Si no hay fin, por defecto +1 hora
+                fin_local = inicio_local + timedelta(hours=1)
+
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"UID:{uid}",
+                f"DTSTAMP:{now_utc_stamp}",
+                f"LAST-MODIFIED:{now_utc_stamp}",
+                f"SUMMARY:{summary}",
+                f"DESCRIPTION:{description}",
+                f"LOCATION:{location}",
+                f"STATUS:{status}",
+                f"DTSTART:{inicio_local.strftime('%Y%m%dT%H%M%S')}",
+                f"DTEND:{fin_local.strftime('%Y%m%dT%H%M%S')}",
+
+                "END:VEVENT",
+            ])
+
+    lines.append("END:VCALENDAR")
+
+    content = "\r\n".join(lines) + "\r\n"
+    response = HttpResponse(content, content_type="text/calendar; charset=utf-8")
+    response["Content-Disposition"] = "inline; filename=soid_agenda.ics"
+    response["Cache-Control"] = "no-cache"
+    return response

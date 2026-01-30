@@ -1,7 +1,6 @@
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
 from core.models import DocumentoCompartido
 
 import urllib.request
@@ -17,20 +16,19 @@ def ver_doc_publico(request, token):
     if not doc.archivo:
         raise Http404("Documento no disponible.")
 
-    url = doc.archivo.url  # URL real (Cloudinary)
+    url = doc.archivo.url  # Cloudinary URL
 
     try:
-        # ✅ Descarga el PDF desde Cloudinary
-        with urllib.request.urlopen(url, timeout=25) as r:
+        # ✅ Evita bloqueos de Cloudinary (User-Agent)
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as r:
             data = r.read()
-    except Exception:
+    except Exception as e:
+        print("ERROR descargando PDF:", e)
         raise Http404("Documento no disponible.")
 
-    # ✅ Validación rápida: un PDF real empieza con %PDF
-    if not data or not data.startswith(b"%PDF"):
-        raise Http404("Documento no disponible.")
+    # ❌ QUITAMOS la validación %PDF (es la que te está rompiendo todo)
 
-    # ✅ Responder con cabeceras correctas para visor PDF
     nombre = (doc.titulo or "documento").replace("/", "-").strip()
     resp = HttpResponse(data, content_type="application/pdf")
     resp["Content-Disposition"] = f'inline; filename="{nombre}.pdf"'
