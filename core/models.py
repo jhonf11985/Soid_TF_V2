@@ -1,5 +1,5 @@
 from django.db import models
-
+from cloudinary_storage.storage import RawMediaCloudinaryStorage
 
 class Module(models.Model):
     """
@@ -394,7 +394,12 @@ class DocumentoCompartido(models.Model):
     titulo = models.CharField(max_length=200, blank=True)
     descripcion = models.TextField(blank=True)
 
-    archivo = models.FileField(upload_to="docs_compartidos/")
+    
+
+    archivo = models.FileField(
+        upload_to="docs_compartidos/",
+        storage=RawMediaCloudinaryStorage()
+    )
 
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
