@@ -1,82 +1,56 @@
-<!DOCTYPE html>
+{% load static %}
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>SOID · Agenda de la Iglesia</title>
+  <meta charset="utf-8">
+  <title>SOID · Agenda</title>
 
-  <!-- ✅ Open Graph para WhatsApp -->
-  <meta property="og:title" content="SOID · Agenda de la Iglesia Torre Fuerte">
-  <meta property="og:description" content="Sincroniza el calendario oficial de la iglesia con tu celular y recibe automáticamente todos los eventos.">
+  <!-- ✅ WhatsApp preview -->
+  <meta property="og:title" content="SOID · Agenda de la Iglesia">
+  <meta property="og:description" content="Sincroniza el calendario oficial y recibe automáticamente todos los eventos.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ request.build_absolute_uri }}">
-  <meta property="og:image" content="https://soid-tf-v2.onrender.com/static/img/soid_logo.png">
-
-  <!-- Opcional: Twitter -->
-  <meta name="twitter:card" content="summary_large_image">
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'core/logo/soid_banner_og.png' %}">
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f8f9fa;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .card {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.08);
-      padding: 30px;
-      max-width: 420px;
-      text-align: center;
-    }
-    h1 {
-      font-size: 20px;
-      margin-bottom: 10px;
-      color: #017e84;
-    }
-    p {
-      font-size: 14px;
-      color: #555;
-      margin-bottom: 20px;
-    }
-    .btn {
-      background: #017e84;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    .link {
-      margin-top: 12px;
-      font-size: 12px;
-      color: #888;
-      word-break: break-all;
-    }
+    body{font-family:system-ui; background:#f8f9fa; margin:0; padding:24px;}
+    .wrap{max-width:520px; margin:0 auto;}
+    .card{background:#fff; border:1px solid #dee2e6; border-radius:12px; padding:18px;}
+    .top{display:flex; align-items:center; gap:12px; margin-bottom:12px;}
+    .logo{width:54px; height:54px; border-radius:12px; background:#f8f9fa; border:1px solid #e9ecef; padding:6px;}
+    h1{font-size:18px; margin:0;}
+    p{color:#495057; font-size:14px; line-height:1.4;}
+    .btn{border:none; border-radius:8px; padding:10px 14px; background:#017e84; color:#fff; font-weight:600; cursor:pointer;}
+    .link{margin-top:12px; padding:10px; background:#f8f9fa; border:1px dashed #dee2e6; border-radius:8px; font-size:12px; word-break:break-all;}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>📅 Agenda de la Iglesia</h1>
-    <p>Sincroniza el calendario oficial de la iglesia con tu celular y recibe automáticamente todos los eventos.</p>
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <img class="logo" src="{% static 'core/logo/soid_logo.png' %}" alt="SOID">
+        <div>
+          <h1>SOID · Agenda de la Iglesia</h1>
+          <div style="font-size:12px; color:#6c757d;">Calendario oficial (suscripción)</div>
+        </div>
+      </div>
 
-    <button class="btn" onclick="copiar()">🔗 Copiar enlace del calendario</button>
+      <p>Pulsa para copiar el enlace del calendario y añadirlo en tu Google Calendar o iPhone.</p>
 
-    <div class="link" id="link">
-      {{ request.scheme }}://{{ request.get_host }}{% url 'agenda_app:calendario_ics' %}
+      <button class="btn" id="btnCopiar">🔗 Copiar enlace del calendario</button>
+
+      <div class="link" id="icsLink">
+        {{ request.scheme }}://{{ request.get_host }}{% url 'agenda_app:calendario_ics' %}
+      </div>
     </div>
   </div>
 
   <script>
-    function copiar() {
-      const url = document.getElementById("link").innerText;
-      navigator.clipboard.writeText(url);
-      alert("✅ Enlace copiado");
-    }
+    document.getElementById("btnCopiar").addEventListener("click", function(){
+      const url = document.getElementById("icsLink").innerText.trim();
+      navigator.clipboard.writeText(url).then(() => alert("✅ Enlace copiado."))
+      .catch(() => alert("❌ No se pudo copiar. Copia el enlace manualmente."));
+    });
   </script>
 </body>
 </html>
