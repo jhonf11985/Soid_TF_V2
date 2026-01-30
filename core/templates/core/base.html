@@ -424,25 +424,61 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
-
-<!-- Service Worker -->
+<!-- Service Worker + Auto-renovación Push -->
 <script>
 (function () {
   if (!("serviceWorker" in navigator)) return;
 
-  window.addEventListener("load", function () {
-    navigator.serviceWorker
-      .register("/sw.js", { scope: "/" })
-      .then((reg) => {
-        console.log("✅ SW registrado con scope:", reg.scope);
-      })
-      .catch((err) => {
-        console.warn("❌ Error registrando SW:", err);
-      });
+  window.addEventListener("load", async function () {
+    try {
+      const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      console.log("✅ SW registrado con scope:", reg.scope);
+
+      // =============================================
+      // AUTO-RENOVAR SUSCRIPCIÓN PUSH
+      // Mantiene actualizado_en fresco en el servidor
+      // =============================================
+      setTimeout(async () => {
+        // Solo si el usuario ya dio permiso
+        if (Notification.permission !== "granted") return;
+        if (!("PushManager" in window)) return;
+
+        try {
+          const swReg = await navigator.serviceWorker.ready;
+          const subscription = await swReg.pushManager.getSubscription();
+
+          if (subscription) {
+            const csrfToken =
+              document.querySelector('meta[name="csrf-token"]')?.content ||
+              document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+              (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "";
+
+            const response = await fetch("/notificaciones/push/subscribe/", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken,
+              },
+              body: JSON.stringify(subscription.toJSON()),
+            });
+
+            if (response.ok) {
+              console.log("[Push] ✅ Suscripción renovada");
+            }
+          }
+        } catch (e) {
+          // Silencioso - no interrumpir experiencia
+          console.warn("[Push] Renovación fallida:", e.message);
+        }
+      }, 3000);
+
+    } catch (err) {
+      console.warn("❌ Error registrando SW:", err);
+    }
   });
 })();
 </script>
-
 
 <!-- Bottom Nav "Más" menu -->
 <script>
