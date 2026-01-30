@@ -112,24 +112,42 @@ def task_recordatorios_agenda():
             continue
 
         # Destinatarios
-        destinatarios = _usuarios_de_unidad(a.unidad) if a.unidad_id else []
+        # ✅ BROADCAST: enviar a TODAS las suscripciones activas
+        subs = PushSubscription.objects.filter(activo=True)
 
-        # Si no hay destinatarios, marcamos como enviado para no repetir bucles
-        if not destinatarios:
+        if not subs.exists():
             rec.enviado_en = timezone.now()
             rec.save(update_fields=["enviado_en"])
             marcados += 1
             continue
 
-        for user in destinatarios:
-            r = _enviar_push_a_usuario(
-                user,
-                "⏰ Recordatorio SOID",
-                f"En {minutos_antes} min: {a.titulo}",
-                url="/agenda/"
-            )
-            enviados += r["enviados"]
-            errores += r["errores"]
+        payload = json.dumps({
+            "title": "⏰ Recordatorio SOID",
+            "body": f"En {minutos_antes} min: {a.titulo}",
+            "url": "/agenda/",
+        })
+
+        vapid_private = getattr(settings, "VAPID_PRIVATE_KEY", "")
+        vapid_subject = getattr(settings, "VAPID_CLAIMS_SUBJECT", "mailto:admin@example.com")
+
+        for s in subs:
+            try:
+                webpush(
+                    subscription_info={
+                        "endpoint": s.endpoint,
+                        "keys": {"p256dh": s.p256dh, "auth": s.auth},
+                    },
+                    data=payload,
+                    vapid_private_key=vapid_private,
+                    vapid_claims={"sub": vapid_subject},
+                )
+                enviados += 1
+            except WebPushException as e:
+                errores += 1
+                if e.response and e.response.status_code in [404, 410]:
+                    s.activo = False
+                    s.save(update_fields=["activo", "actualizado_en"])
+
 
         rec.enviado_en = timezone.now()
         rec.save(update_fields=["enviado_en"])
