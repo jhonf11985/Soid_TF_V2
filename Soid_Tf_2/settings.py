@@ -257,3 +257,8 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+
+CRON_TOKEN = "soid_motor_secreto_2026"
+
+
+
