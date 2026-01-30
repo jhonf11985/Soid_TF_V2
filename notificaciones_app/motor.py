@@ -31,3 +31,9 @@ def ejecutar_motor() -> List[MotorResultado]:
             resultados.append(MotorResultado(nombre=nombre, ok=False, detalle={"error": str(e)}))
 
     return resultados
+
+
+
+# Registrar tareas
+from agenda_app.cron import task_recordatorios_agenda
+registrar_task("recordatorios_agenda", task_recordatorios_agenda)
