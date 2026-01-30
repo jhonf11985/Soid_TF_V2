@@ -289,3 +289,8 @@ def calendario_ics(request):
     response["Content-Disposition"] = "inline; filename=soid_agenda.ics"
     response["Cache-Control"] = "no-cache"
     return response
+
+from django.shortcuts import render
+
+def calendario_info(request):
+    return render(request, "agenda_app/calendario_info.html")

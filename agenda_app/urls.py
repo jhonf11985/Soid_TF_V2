@@ -12,5 +12,7 @@ urlpatterns = [
     path("actividad/<int:pk>/editar/", views.actividad_update, name="actividad_update"),
     path("actividad/<int:pk>/eliminar/", views.actividad_delete, name="actividad_delete"),
     path("calendario.ics", views.calendario_ics, name="calendario_ics"),
+    path("calendario/", views.calendario_info, name="calendario_info"),
+
 
 ]
