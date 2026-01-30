@@ -5,6 +5,7 @@ class NotificacionesAppConfig(AppConfig):
     name = "notificaciones_app"
 
     def ready(self):
+        import notificaciones_app.signals  # <-- Agregar esta línea
         from notificaciones_app.motor import registrar_task
         from agenda_app.cron import task_recordatorios_agenda
 
