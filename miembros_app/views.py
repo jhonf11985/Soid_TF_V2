@@ -58,8 +58,8 @@ from django.views.decorators.http import require_POST, require_GET
 from django.views.generic import DetailView, UpdateView
 from django.views.decorators.http import require_http_methods
 from urllib.parse import quote
-from weasyprint import HTML, CSS
-from weasyprint.text.fonts import FontConfiguration
+
+
 from miembros_app.pdf_reportlab import generar_pdf_listado_miembros_reportlab
 
 from io import BytesIO
