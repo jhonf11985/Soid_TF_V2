@@ -1,6 +1,8 @@
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from core.models import DocumentoCompartido
+
 
 def ver_doc_publico(request, token):
     """
