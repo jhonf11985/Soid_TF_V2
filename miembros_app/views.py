@@ -4817,3 +4817,14 @@ def obtener_relaciones_organizadas_simple(miembro):
     return familia_nuclear, familia_origen, familia_extendida, familia_politica
 
 
+from io import BytesIO
+from xhtml2pdf import pisa
+
+def generar_pdf_desde_html(html_string):
+    result = BytesIO()
+    status = pisa.CreatePDF(html_string, dest=result)
+
+    if status.err:
+        raise Exception("xhtml2pdf no pudo generar el PDF")
+
+    return result.getvalue()
