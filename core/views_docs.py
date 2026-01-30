@@ -2,7 +2,8 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 
-from docs.models import DocumentoCompartido  # ajusta si tu app se llama distinto
+from core.models import DocumentoCompartido
+
 
 def ver_doc_publico(request, token):
     doc = get_object_or_404(DocumentoCompartido, token=token, activo=True)
