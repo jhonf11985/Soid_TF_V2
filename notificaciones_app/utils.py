@@ -103,3 +103,26 @@ def enviar_push_notification(suscripcion, titulo, mensaje, url="/", badge_count=
     except Exception as e:
         logger.error(f"[Push] Error inesperado: {e}")
         return False
+
+from .models import PushSubscription  # ✅ asegúrate de tener este modelo
+
+def enviar_push_a_usuario(usuario, titulo, mensaje, url="/", badge_count=0):
+    subs = PushSubscription.objects.filter(user=usuario, activo=True)
+
+    enviados = 0
+    errores = 0
+
+    for s in subs:
+        ok = enviar_push_notification(
+            suscripcion=s,
+            titulo=titulo,
+            mensaje=mensaje,
+            url=url,
+            badge_count=badge_count
+        )
+        if ok:
+            enviados += 1
+        else:
+            errores += 1
+
+    return {"enviados": enviados, "errores": errores, "subs": subs.count()}
