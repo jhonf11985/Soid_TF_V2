@@ -1,10 +1,6 @@
-# core/views_docs.py
-
-from django.http import FileResponse, Http404
-from django.shortcuts import get_object_or_404
-
-from .models import DocumentoCompartido
-
+from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
 
 def ver_doc_publico(request, token):
     """
@@ -14,12 +10,14 @@ def ver_doc_publico(request, token):
     - no expirado
     - archivo existente
     """
-    doc = get_object_or_404(DocumentoCompartido, token=token)
+    doc = get_object_or_404(DocumentoCompartido, token=token, activo=True)
 
-    if doc.esta_expirado or not doc.archivo:
+    # Si expira_en es None, no expira. Si existe, se valida.
+    if doc.expira_en and timezone.now() > doc.expira_en:
         raise Http404("Documento no disponible.")
 
-    # Mostrar inline en el navegador (si quieres forzar descarga, lo cambiamos luego)
-    response = FileResponse(doc.archivo.open("rb"), content_type="application/pdf")
-    response["Content-Disposition"] = 'inline; filename="documento.pdf"'
-    return response
+    if not doc.archivo:
+        raise Http404("Documento no disponible.")
+
+    # ✅ En Render + Cloudinary: lo más estable es redirigir al archivo
+    return redirect(doc.archivo.url)
