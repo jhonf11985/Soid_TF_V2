@@ -11,11 +11,19 @@ from notificaciones_app.models import PushSubscription
 from agenda_app.models import Actividad, ActividadRecordatorio
 
 
+import pytz
+
 def _actividad_datetime_inicio(a: Actividad):
-    # fecha (DateField) + hora_inicio (TimeField opcional)
+    tz = pytz.timezone("America/Santo_Domingo")
+
     hora = a.hora_inicio or datetime.strptime("08:00", "%H:%M").time()
-    dt = datetime.combine(a.fecha, hora)
-    return timezone.make_aware(dt, timezone.get_current_timezone())
+    dt_local = datetime.combine(a.fecha, hora)
+
+    # Interpretar la fecha/hora como local (RD)
+    dt_local = tz.localize(dt_local)
+
+    # Convertir a UTC (para compararla con timezone.now())
+    return dt_local.astimezone(pytz.UTC)
 
 
 def _usuarios_de_unidad(unidad):
