@@ -25,3 +25,10 @@ class ActividadAdmin(admin.ModelAdmin):
             "fields": ("lugar", "responsable_texto", "descripcion")
         }),
     )
+
+from .models import ActividadRecordatorio
+
+@admin.register(ActividadRecordatorio)
+class ActividadRecordatorioAdmin(admin.ModelAdmin):
+    list_display = ['actividad', 'minutos_antes', 'enviado_en', 'creado_en']
+    list_filter = ['minutos_antes', 'enviado_en']
