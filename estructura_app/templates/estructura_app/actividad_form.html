@@ -2,381 +2,305 @@
 {% load static %}
 
 {% block title %}
-    {% if actividad %}
-        {{ actividad.titulo }} · Actividades
-    {% else %}
-        Nueva actividad · {{ unidad.nombre }}
-    {% endif %}
+    {% if actividad %}{{ actividad.titulo }}{% else %}Nueva actividad{% endif %} · {{ unidad.nombre }}
 {% endblock %}
 
 {% block estructura_content %}
 
-<form method="post" class="odoo-form">
+<form method="post" class="activity-form" id="activityForm">
     {% csrf_token %}
 
     <!-- ══════════════════════════════════════════════════════════════════
-         BARRA SUPERIOR (Control Bar)
+         HEADER COMPACTO
          ══════════════════════════════════════════════════════════════════ -->
-    <div class="odoo-control-bar">
-        <div class="odoo-control-left">
-            <a href="{% url 'estructura_app:unidad_actividades' unidad.pk %}" class="odoo-breadcrumb-link">
-                <span class="material-icons">arrow_back</span>
-                Actividades
-            </a>
-            <span class="odoo-breadcrumb-sep">/</span>
-            <span class="odoo-breadcrumb-current">
-                {% if actividad %}Editar{% else %}Nueva{% endif %}
-            </span>
-
-            {% if not actividad %}
-            <span class="odoo-new-badge">Nuevo</span>
-            {% endif %}
+    <header class="form-header">
+        <a href="{% url 'estructura_app:unidad_actividades' unidad.pk %}" class="back-link">
+            <span class="material-icons">arrow_back</span>
+            <span>{{ unidad.nombre }}</span>
+        </a>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                <span class="material-icons">check</span>
+                <span>Guardar</span>
+            </button>
         </div>
+    </header>
 
-        <div class="odoo-control-right">
-            <div class="odoo-member-code">
-                <span class="material-icons">event</span>
-                {% if actividad %}ID {{ actividad.id }}{% else %}Nueva{% endif %}
-            </div>
-        </div>
+    <!-- ══════════════════════════════════════════════════════════════════
+         TOGGLE MODO RÁPIDO
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="quick-mode-toggle">
+        <label class="toggle-switch">
+            <input type="checkbox" id="quickMode" checked>
+            <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">Registro rápido</span>
+        <span class="toggle-hint">Solo lo esencial</span>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════════
          CONTENIDO PRINCIPAL
          ══════════════════════════════════════════════════════════════════ -->
-    <div class="odoo-form-container">
+    <div class="form-content">
 
-        <!-- ÁREA PRINCIPAL DEL FORMULARIO -->
-        <div class="odoo-form-main">
+        <!-- ═══════════════════════════════════════════════════════════════
+             SECCIÓN: INFORMACIÓN BÁSICA (siempre visible)
+             ═══════════════════════════════════════════════════════════════ -->
+        <section class="form-section section-main">
+            
+            <!-- Tipo de actividad - Pills compactos -->
+            <div class="type-selector">
+                {% for value, label in form.tipo.field.choices %}
+                    {% if value %}
+                    <label class="type-pill" data-type="{{ value|lower }}">
+                        <input type="radio" name="tipo" value="{{ value }}"
+                            {% if form.tipo.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}>
+                        <span class="pill-icon material-icons">
+                            {% if value|lower == 'reunion' %}groups
+                            {% elif value|lower == 'culto' %}church
+                            {% elif value|lower == 'evangelismo' %}campaign
+                            {% elif value|lower == 'capacitacion' %}school
+                            {% elif value|lower == 'servicio' %}volunteer_activism
+                            {% else %}event{% endif %}
+                        </span>
+                        <span class="pill-label">{{ label }}</span>
+                    </label>
+                    {% endif %}
+                {% endfor %}
+            </div>
 
-            <!-- ─────────────────────────────────────────────────────────
-                 HEADER: Icono + Título + Campos principales
-                 ───────────────────────────────────────────────────────── -->
-            <div class="odoo-form-header">
+            <!-- Título -->
+            <div class="field-group field-title">
+                <input type="text"
+                       name="titulo"
+                       id="{{ form.titulo.id_for_label }}"
+                       value="{{ form.titulo.value|default:'' }}"
+                       placeholder="¿Qué actividad es?"
+                       class="input-title"
+                       required
+                       autocomplete="off">
+            </div>
 
-                <!-- Icono de la actividad -->
-                <div class="odoo-avatar-section">
-                    <div class="odoo-avatar odoo-avatar-activity">
-                        <span class="material-icons" id="activity-icon">event</span>
+            <!-- Fecha y Lugar en línea -->
+            <div class="field-row">
+                <div class="field-group field-date">
+                    <span class="field-icon material-icons">event</span>
+                    <input type="date"
+                           name="fecha"
+                           id="{{ form.fecha.id_for_label }}"
+                           value="{{ form.fecha.value|default:'' }}"
+                           required>
+                </div>
+                
+                <div class="field-group field-location" data-optional>
+                    <span class="field-icon material-icons">location_on</span>
+                    <input type="text"
+                           name="lugar"
+                           id="{{ form.lugar.id_for_label }}"
+                           value="{{ form.lugar.value|default:'' }}"
+                           placeholder="Lugar (opcional)">
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             SECCIÓN: PARTICIPANTES (accordion expandido por defecto)
+             ═══════════════════════════════════════════════════════════════ -->
+        <section class="form-section accordion-section" data-accordion="participantes">
+            <button type="button" class="accordion-header" aria-expanded="true">
+                <div class="accordion-title">
+                    <span class="material-icons accordion-icon">groups</span>
+                    <span>Participantes</span>
+                    <span class="accordion-badge" id="participantCount">0</span>
+                </div>
+                <span class="material-icons accordion-arrow">expand_more</span>
+            </button>
+            
+            <div class="accordion-content expanded">
+                <!-- Toolbar: Búsqueda + QR -->
+                <div class="participants-toolbar">
+                    <div class="participants-search">
+                        <span class="material-icons">search</span>
+                        <input type="text" 
+                               id="searchParticipants" 
+                               placeholder="Buscar miembro..."
+                               autocomplete="off">
+                    </div>
+                    
+                    <div class="toolbar-actions">
+                        <button type="button" class="btn-qr" id="btnScanQR">
+                            <span class="material-icons">qr_code_scanner</span>
+                            <span class="btn-qr-label">Escanear</span>
+                        </button>
+                        <button type="button" class="btn-icon" id="selectAll" title="Seleccionar todos">
+                            <span class="material-icons">check_box</span>
+                        </button>
+                        <button type="button" class="btn-icon" id="selectNone" title="Quitar todos">
+                            <span class="material-icons">check_box_outline_blank</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Modal Scanner QR -->
+                <div class="qr-modal" id="qrModal">
+                    <div class="qr-modal-content">
+                        <div class="qr-modal-header">
+                            <h3>
+                                <span class="material-icons">qr_code_scanner</span>
+                                Escanear asistencia
+                            </h3>
+                            <button type="button" class="btn-close" id="btnCloseQR">
+                                <span class="material-icons">close</span>
+                            </button>
+                        </div>
+                        
+                        <div class="qr-scanner-container">
+                            <video id="qrVideo" playsinline></video>
+                            <div class="qr-overlay">
+                                <div class="qr-frame"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="qr-scanned-list" id="scannedList">
+                            <div class="scanned-header">
+                                <span class="material-icons">people</span>
+                                <span>Escaneados: <strong id="scannedCount">0</strong></span>
+                            </div>
+                            <div class="scanned-items" id="scannedItems"></div>
+                        </div>
+                        
+                        <div class="qr-modal-footer">
+                            <button type="button" class="btn-secondary" id="btnDoneQR">
+                                <span class="material-icons">check</span>
+                                Listo
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Info principal -->
-                <div class="odoo-header-info">
+                <!-- Chips de seleccionados -->
+                <div class="selected-chips" id="selectedChips">
+                    <div class="empty-chips" id="emptyChips">
+                        <span class="material-icons">touch_app</span>
+                        <span>Toca para seleccionar</span>
+                    </div>
+                </div>
 
-                    <!-- Radio: Tipo de Actividad -->
-                    <div class="odoo-radio-group">
-                        {% for value, label in form.tipo.field.choices %}
+                <!-- Grid de disponibles -->
+                <div class="participants-grid" id="participantsGrid">
+                    {{ form.participantes }}
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             SECCIÓN: RESPONSABLE (accordion colapsado, opcional)
+             ═══════════════════════════════════════════════════════════════ -->
+        <section class="form-section accordion-section optional-section" data-accordion="responsable">
+            <button type="button" class="accordion-header" aria-expanded="false">
+                <div class="accordion-title">
+                    <span class="material-icons accordion-icon">person</span>
+                    <span>Responsable</span>
+                    <span class="accordion-value" id="responsableValue">Sin asignar</span>
+                </div>
+                <span class="material-icons accordion-arrow">expand_more</span>
+            </button>
+            
+            <div class="accordion-content">
+                <div class="field-group">
+                    <select name="responsable" id="{{ form.responsable.id_for_label }}" class="input-select">
+                        <option value="">Sin responsable asignado</option>
+                        {% for value, label in form.responsable.field.choices %}
                             {% if value %}
-                            <label class="odoo-radio">
-                                <input type="radio" name="tipo" value="{{ value }}"
-                                    {% if form.tipo.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}>
-                                <span>{{ label }}</span>
-                            </label>
+                            <option value="{{ value }}" {% if form.responsable.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
+                                {{ label }}
+                            </option>
                             {% endif %}
                         {% endfor %}
-                    </div>
-
-                    <!-- Título grande -->
-                    <div class="odoo-name-field">
-                        <input type="text"
-                               name="titulo"
-                               id="{{ form.titulo.id_for_label }}"
-                               value="{{ form.titulo.value|default:'' }}"
-                               placeholder="Título de la actividad"
-                               class="odoo-name-input"
-                               required>
-                    </div>
-
-                    <!-- Campos de info rápida -->
-                    <div class="odoo-quick-fields">
-                        <div class="odoo-quick-field">
-                            <span class="material-icons">calendar_today</span>
-                            <input type="date"
-                                   name="fecha"
-                                   id="{{ form.fecha.id_for_label }}"
-                                   value="{{ form.fecha.value|default:'' }}"
-                                   class="odoo-quick-input"
-                                   required>
-                        </div>
-                        <div class="odoo-quick-field">
-                            <span class="material-icons">location_on</span>
-                            <input type="text"
-                                   name="lugar"
-                                   id="{{ form.lugar.id_for_label }}"
-                                   value="{{ form.lugar.value|default:'' }}"
-                                   placeholder="Lugar del evento"
-                                   class="odoo-quick-input">
-                        </div>
-                        <div class="odoo-quick-field">
-                            <span class="material-icons">person</span>
-                            <select name="responsable" id="{{ form.responsable.id_for_label }}" class="odoo-quick-select">
-                                <option value="">Seleccionar responsable...</option>
-                                {% for value, label in form.responsable.field.choices %}
-                                    {% if value %}
-                                    <option value="{{ value }}" {% if form.responsable.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
-                                        {{ label }}
-                                    </option>
-                                    {% endif %}
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
+                    </select>
                 </div>
             </div>
+        </section>
 
-            <!-- ─────────────────────────────────────────────────────────
-                 BODY: Campos en dos columnas estilo Odoo
-                 ───────────────────────────────────────────────────────── -->
-            <div class="odoo-form-body">
-
-                <!-- Columna Izquierda -->
-                <div class="odoo-form-column">
-
-                    <div class="odoo-field">
-                        <label class="odoo-label">Unidad</label>
-                        <span class="odoo-field-text">
-                            <span class="odoo-status-badge odoo-status-info">{{ unidad.nombre }}</span>
-                        </span>
+        <!-- ═══════════════════════════════════════════════════════════════
+             SECCIÓN: IMPACTO (accordion colapsado, opcional)
+             ═══════════════════════════════════════════════════════════════ -->
+        <section class="form-section accordion-section optional-section" data-accordion="impacto">
+            <button type="button" class="accordion-header" aria-expanded="false">
+                <div class="accordion-title">
+                    <span class="material-icons accordion-icon">insights</span>
+                    <span>Métricas de impacto</span>
+                </div>
+                <span class="material-icons accordion-arrow">expand_more</span>
+            </button>
+            
+            <div class="accordion-content">
+                <div class="impact-fields">
+                    <div class="field-group field-number">
+                        <label>Oyentes / Invitados</label>
+                        <input type="number"
+                               name="oyentes"
+                               value="{{ form.oyentes.value|default:0 }}"
+                               min="0">
                     </div>
-
-                </div>
-
-                <!-- Columna Derecha -->
-                <div class="odoo-form-column">
-
-                    <div class="odoo-field">
-                        <label class="odoo-label">Estado</label>
-                        <span class="odoo-field-text">
-                            {% if actividad %}
-                                <span class="odoo-status-badge odoo-status-active">Registrada</span>
-                            {% else %}
-                                <span class="odoo-status-badge odoo-status-pending">Pendiente</span>
-                            {% endif %}
-                        </span>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- ─────────────────────────────────────────────────────────
-                 TABS: Pestañas inferiores estilo Odoo
-                 ───────────────────────────────────────────────────────── -->
-            <div class="odoo-tabs-section">
-
-                <!-- Tab buttons -->
-                <div class="odoo-tabs-bar">
-                    <button type="button" class="odoo-tab active" data-tab="participantes">
-                        <span class="material-icons">groups</span>
-                        Participantes
-                        <span class="odoo-tab-badge" id="tab-participants-badge">0</span>
-                    </button>
-                    <button type="button" class="odoo-tab" data-tab="impacto">
-                <span class="material-icons">insights</span>
-                    Impacto
-                </button>
-
-                    <button type="button" class="odoo-tab" data-tab="notas">
-                        <span class="material-icons">notes</span>
-                        Notas
-                    </button>
-                </div>
-
-                <!-- Tab contents -->
-                <div class="odoo-tabs-content">
-
-                    <!-- TAB: Participantes -->
-                    <div class="odoo-tab-panel active" id="tab-participantes">
-                        
-                        <!-- Toolbar compacto -->
-                        <div class="participants-toolbar">
-                            <div class="participants-search-box">
-                                <span class="material-icons">search</span>
-                                <input type="text" 
-                                       id="participants-search" 
-                                       placeholder="Buscar miembro...">
-                            </div>
-                            
-                            <div class="participants-actions">
-                                <button type="button" class="btn-action" id="btn-select-all" title="Seleccionar todos">
-                                    <span class="material-icons">check_box</span>
-                                    Todos
-                                </button>
-                                <button type="button" class="btn-action" id="btn-select-none" title="Quitar selección">
-                                    <span class="material-icons">check_box_outline_blank</span>
-                                    Ninguno
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Contenedor principal de participantes -->
-                        <div class="participants-container" id="participants-grid">
-                            
-                            <!-- Panel: Seleccionados -->
-                            <div class="participants-panel participants-selected-panel">
-                                <div class="panel-header">
-                                    <div class="panel-title">
-                                        <span class="material-icons">check_circle</span>
-                                        <span>Seleccionados</span>
-                                    </div>
-                                    <span class="panel-count" id="selected-count">0</span>
-                                </div>
-                                <div class="panel-body" id="selected-list">
-                                    <div class="empty-state" id="empty-selected">
-                                        <span class="material-icons">person_add</span>
-                                        <span>Selecciona participantes de la lista</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Panel: Disponibles -->
-                            <div class="participants-panel participants-available-panel">
-                                <div class="panel-header">
-                                    <div class="panel-title">
-                                        <span class="material-icons">people_outline</span>
-                                        <span>Disponibles</span>
-                                    </div>
-                                    <span class="panel-count" id="available-count">0</span>
-                                </div>
-                                <div class="panel-body participants-grid" id="available-list">
-                                    {{ form.participantes }}
-                                </div>
-                            </div>
-                            
-                        </div>
-
-                        <p class="participants-hint">
-                            <span class="material-icons">info</span>
-                            Solo aparecen miembros asignados a esta unidad
-                        </p>
-                    </div>
-                        <div class="odoo-tab-panel" id="tab-impacto">
-                            <div class="impact-grid">
-
-<div class="odoo-field impact-field">
-    <label class="odoo-label">Oyentes (invitados)</label>
-    <input type="number"
-           name="oyentes"
-           value="{{ form.oyentes.value|default:0 }}"
-           min="0"
-           class="odoo-input">
-    <small class="impact-hint"></small>
-</div>
-
-<div class="odoo-field impact-field">
-  <label class="odoo-label">Nuevos creyentes</label>
-  <input type="number" name="nuevos_creyentes" min="0"
-         value="{{ form.nuevos_creyentes.value|default:0 }}"
-         class="odoo-input">
-  <small class="impact-hint"></small>
-</div>
-
-
-
-
-
-                                <div class="impact-field impact-field-full">
-                                    <label class="odoo-label">Observaciones</label>
-                                    <textarea name="observaciones_impacto"
-                                    rows="3"
-                                    class="odoo-textarea"
-                                    placeholder="Describe brevemente lo ocurrido...">{{ form.observaciones_impacto.value|default:'' }}</textarea>
-
-                                    <small class="impact-hint">Contexto breve (qué ocurrió, casos especiales, etc.).</small>
-                                </div>
-
-                            </div>
-                        </div>
-
-                    <!-- TAB: Notas -->
-                    <div class="odoo-tab-panel" id="tab-notas">
-                        <div class="odoo-field odoo-field-full">
-                            <textarea name="notas" id="{{ form.notas.id_for_label }}"
-                                      rows="6" class="odoo-textarea"
-                                      placeholder="Notas adicionales sobre la actividad...">{{ form.notas.value|default:'' }}</textarea>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- ══════════════════════════════════════════════════════════════════
-             PANEL LATERAL (Chatter / Acciones)
-             ══════════════════════════════════════════════════════════════════ -->
-        <div class="odoo-form-aside">
-
-            <!-- Botones de acción -->
-            <div class="odoo-aside-actions">
-                {% if actividad %}
-                    <button type="submit" class="odoo-btn odoo-btn-primary">
-                        <span class="material-icons">save</span>
-                        Guardar cambios
-                    </button>
-                {% else %}
-                    <button type="submit" name="guardar" value="1" class="odoo-btn odoo-btn-primary">
-                        <span class="material-icons">check</span>
-                        Guardar
-                    </button>
-                    <button type="submit" name="guardar_y_nuevo" value="1" class="odoo-btn odoo-btn-secondary">
-                        <span class="material-icons">add</span>
-                        Guardar y nuevo
-                    </button>
-                {% endif %}
-                <a href="{% url 'estructura_app:unidad_actividades' unidad.pk %}" class="odoo-btn odoo-btn-secondary">
-                    Descartar
-                </a>
-            </div>
-
-            <!-- Info rápida -->
-            <div class="odoo-aside-info">
-                <div class="odoo-info-item">
-                    <span class="odoo-info-label">Unidad</span>
-                    <span class="odoo-info-value">{{ unidad.nombre }}</span>
-                </div>
-                <div class="odoo-info-item">
-                    <span class="odoo-info-label">Estado</span>
-                    {% if actividad %}
-                        <span class="odoo-info-badge">Registrada</span>
-                    {% else %}
-                        <span class="odoo-info-badge odoo-badge-pending">Nueva</span>
-                    {% endif %}
-                </div>
-                {% if actividad %}
-                <div class="odoo-info-item">
-                    <span class="odoo-info-label">Creado</span>
-                    <span class="odoo-info-value">{{ actividad.creado_en|date:'d/m/Y' }}</span>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Tips -->
-            <div class="odoo-aside-tips">
-                <h4 class="odoo-aside-title">Consejos</h4>
-                <ul class="odoo-tips-list">
-                    <li>Selecciona los participantes para llevar control de asistencia</li>
-                    <li>El responsable será notificado de la actividad</li>
-                </ul>
-            </div>
-
-            <!-- Actividad reciente -->
-            {% if actividad %}
-            <div class="odoo-aside-activity">
-                <h4 class="odoo-aside-title">Actividad</h4>
-                <div class="odoo-activity-item">
-                    <div class="odoo-activity-avatar">
-                        <span class="material-icons">person</span>
-                    </div>
-                    <div class="odoo-activity-content">
-                        <span class="odoo-activity-text">Última actualización</span>
-                        <span class="odoo-activity-date">{{ actividad.actualizado_en|date:'d/m/Y H:i' }}</span>
+                    
+                    <div class="field-group field-number">
+                        <label>Nuevos creyentes</label>
+                        <input type="number"
+                               name="nuevos_creyentes"
+                               value="{{ form.nuevos_creyentes.value|default:0 }}"
+                               min="0">
                     </div>
                 </div>
+                
+                <div class="field-group">
+                    <label>Observaciones</label>
+                    <textarea name="observaciones_impacto"
+                              rows="2"
+                              placeholder="Algo destacable de la actividad...">{{ form.observaciones_impacto.value|default:'' }}</textarea>
+                </div>
             </div>
-            {% endif %}
-        </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             SECCIÓN: NOTAS (accordion colapsado, opcional)
+             ═══════════════════════════════════════════════════════════════ -->
+        <section class="form-section accordion-section optional-section" data-accordion="notas">
+            <button type="button" class="accordion-header" aria-expanded="false">
+                <div class="accordion-title">
+                    <span class="material-icons accordion-icon">notes</span>
+                    <span>Notas adicionales</span>
+                </div>
+                <span class="material-icons accordion-arrow">expand_more</span>
+            </button>
+            
+            <div class="accordion-content">
+                <div class="field-group">
+                    <textarea name="notas"
+                              id="{{ form.notas.id_for_label }}"
+                              rows="3"
+                              placeholder="Notas internas, recordatorios, etc...">{{ form.notas.value|default:'' }}</textarea>
+                </div>
+            </div>
+        </section>
+
     </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         FOOTER FIJO (móvil)
+         ══════════════════════════════════════════════════════════════════ -->
+    <footer class="form-footer">
+        <a href="{% url 'estructura_app:unidad_actividades' unidad.pk %}" class="btn-secondary">
+            Cancelar
+        </a>
+        <button type="submit" class="btn-primary">
+            <span class="material-icons">check</span>
+            Guardar
+        </button>
+    </footer>
+
 </form>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
@@ -384,936 +308,956 @@
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
-   VARIABLES
+   VARIABLES - Manteniendo tu paleta Odoo
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-    --odoo-primary: #714B67;
-    --odoo-primary-dark: #5a3c52;
-    --odoo-text: #212529;
-    --odoo-text-muted: #6c757d;
-    --odoo-border: #dee2e6;
-    --odoo-bg: #f8f9fa;
-    --odoo-success: #28a745;
-    --odoo-info: #17a2b8;
-    --odoo-warning: #ffc107;
-    --odoo-danger: #dc3545;
+    --primary: #714B67;
+    --primary-light: #8a6280;
+    --primary-dark: #5a3c52;
+    --primary-bg: #f9f5f8;
+    
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --text-light: #9ca3af;
+    
+    --bg: #ffffff;
+    --bg-alt: #f9fafb;
+    --border: #e5e7eb;
+    --border-light: #f3f4f6;
+    
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+    
+    --transition: 0.2s ease;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CONTROL BAR
+   BASE
    ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-control-bar {
+.activity-form {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 16px;
+    padding-bottom: 100px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.form-header {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
-    padding: 12px 20px;
-    background: #fff;
-    border-bottom: 1px solid var(--odoo-border);
-    margin: -20px -20px 20px -20px;
-}
-
-.odoo-control-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.odoo-breadcrumb-link {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--odoo-primary);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 14px;
-}
-
-.odoo-breadcrumb-link:hover {
-    text-decoration: underline;
-}
-
-.odoo-breadcrumb-link .material-icons {
-    font-size: 18px;
-}
-
-.odoo-breadcrumb-sep {
-    color: var(--odoo-text-muted);
-}
-
-.odoo-breadcrumb-current {
-    color: var(--odoo-text);
-    font-weight: 500;
-}
-
-.odoo-new-badge {
-    background: var(--odoo-success);
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.odoo-control-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.odoo-member-code {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--odoo-text-muted);
-    font-size: 13px;
-}
-
-.odoo-member-code .material-icons {
-    font-size: 18px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   FORM CONTAINER
-   ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-form-container {
-    display: grid;
-    grid-template-columns: 1fr 280px;
-    gap: 0;
-    background: #fff;
-    border-radius: 8px;
-    border: 1px solid var(--odoo-border);
-    overflow: hidden;
-}
-
-.odoo-form-main {
-    padding: 24px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   FORM HEADER
-   ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-form-header {
-    display: flex;
-    gap: 20px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--odoo-border);
-    margin-bottom: 20px;
-}
-
-.odoo-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, var(--odoo-primary) 0%, var(--odoo-primary-dark) 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.odoo-avatar .material-icons {
-    font-size: 36px;
-    color: #fff;
-}
-
-.odoo-header-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.odoo-radio-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.odoo-radio {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--odoo-text);
-}
-
-.odoo-radio input {
-    accent-color: var(--odoo-primary);
-}
-
-.odoo-name-field {
-    margin: 4px 0;
-}
-
-.odoo-name-input {
-    width: 100%;
-    border: none;
-    border-bottom: 2px solid transparent;
-    font-size: 24px;
-    font-weight: 600;
-    padding: 4px 0;
-    color: var(--odoo-text);
-    background: transparent;
-    transition: border-color 0.2s;
-}
-
-.odoo-name-input:focus {
-    outline: none;
-    border-bottom-color: var(--odoo-primary);
-}
-
-.odoo-name-input::placeholder {
-    color: #adb5bd;
-}
-
-.odoo-quick-fields {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-}
-
-.odoo-quick-field {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.odoo-quick-field .material-icons {
-    font-size: 18px;
-    color: var(--odoo-text-muted);
-}
-
-.odoo-quick-input,
-.odoo-quick-select {
-    border: 1px solid var(--odoo-border);
-    border-radius: 4px;
-    padding: 6px 10px;
-    font-size: 13px;
-    color: var(--odoo-text);
-    background: #fff;
-}
-
-.odoo-quick-input:focus,
-.odoo-quick-select:focus {
-    outline: none;
-    border-color: var(--odoo-primary);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   FORM BODY
-   ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-form-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    padding-bottom: 20px;
-}
-
-.odoo-field {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.odoo-label {
-    min-width: 100px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--odoo-text-muted);
-}
-
-.odoo-status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.odoo-status-info {
-    background: rgba(23, 162, 184, 0.1);
-    color: var(--odoo-info);
-}
-
-.odoo-status-active {
-    background: rgba(40, 167, 69, 0.1);
-    color: var(--odoo-success);
-}
-
-.odoo-status-pending {
-    background: rgba(255, 193, 7, 0.15);
-    color: #856404;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   TABS SECTION
-   ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-tabs-section {
-    border-top: 1px solid var(--odoo-border);
-    padding-top: 16px;
-}
-
-.odoo-tabs-bar {
-    display: flex;
-    gap: 4px;
-    border-bottom: 1px solid var(--odoo-border);
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+    border-bottom: 1px solid var(--border-light);
     margin-bottom: 16px;
 }
 
-.odoo-tab {
+.back-link {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 10px 16px;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    font-size: 13px;
+    gap: 8px;
+    color: var(--text);
+    text-decoration: none;
     font-weight: 500;
-    color: var(--odoo-text-muted);
-    cursor: pointer;
-    transition: all 0.2s;
+    padding: 8px 12px;
+    margin: -8px -12px;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
 }
 
-.odoo-tab .material-icons {
-    font-size: 18px;
+.back-link:hover {
+    background: var(--bg-alt);
 }
 
-.odoo-tab:hover {
-    color: var(--odoo-text);
-    background: var(--odoo-bg);
+.back-link .material-icons {
+    font-size: 20px;
+    color: var(--text-muted);
 }
 
-.odoo-tab.active {
-    color: var(--odoo-primary);
-    border-bottom-color: var(--odoo-primary);
+.form-actions {
+    display: flex;
+    gap: 8px;
 }
 
-.odoo-tab-badge {
-    background: var(--odoo-primary);
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-    min-width: 20px;
-    text-align: center;
-}
-
-.odoo-tabs-content {
-    min-height: 200px;
-}
-
-.odoo-tab-panel {
+.form-actions .btn-primary {
     display: none;
 }
 
-.odoo-tab-panel.active {
+@media (min-width: 640px) {
+    .form-actions .btn-primary {
+        display: flex;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOGGLE MODO RÁPIDO
+   ═══════════════════════════════════════════════════════════════════════════ */
+.quick-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--primary-bg);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--border);
+    border-radius: 24px;
+    transition: var(--transition);
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--primary);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
+.toggle-label {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.toggle-hint {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECCIONES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.form-section {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.section-main {
+    padding: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SELECTOR DE TIPO - Pills horizontales
+   ═══════════════════════════════════════════════════════════════════════════ */
+.type-selector {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.type-selector::-webkit-scrollbar {
+    display: none;
+}
+
+.type-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--bg-alt);
+    border: 2px solid transparent;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.type-pill input {
+    display: none;
+}
+
+.type-pill .pill-icon {
+    font-size: 18px;
+    color: var(--text-muted);
+    transition: var(--transition);
+}
+
+.type-pill .pill-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: var(--transition);
+}
+
+.type-pill:has(input:checked) {
+    background: var(--primary-bg);
+    border-color: var(--primary);
+}
+
+.type-pill:has(input:checked) .pill-icon,
+.type-pill:has(input:checked) .pill-label {
+    color: var(--primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CAMPOS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.field-group {
+    margin-bottom: 16px;
+}
+
+.field-group:last-child {
+    margin-bottom: 0;
+}
+
+.field-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.input-title {
+    width: 100%;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text);
+    border: none;
+    padding: 0;
+    background: transparent;
+    outline: none;
+}
+
+.input-title::placeholder {
+    color: var(--text-light);
+}
+
+.field-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.field-date,
+.field-location {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    flex: 1;
+    min-width: 140px;
+}
+
+.field-icon {
+    font-size: 20px;
+    color: var(--text-muted);
+}
+
+.field-date input,
+.field-location input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    min-width: 0;
+}
+
+.input-select,
+.field-group input[type="number"],
+.field-group textarea {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: var(--transition);
+}
+
+.input-select:focus,
+.field-group input:focus,
+.field-group textarea:focus {
+    border-color: var(--primary);
+    background: var(--bg);
+}
+
+.field-group textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCORDION
+   ═══════════════════════════════════════════════════════════════════════════ */
+.accordion-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.accordion-header:hover {
+    background: var(--bg-alt);
+}
+
+.accordion-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.accordion-icon {
+    font-size: 22px;
+    color: var(--primary);
+}
+
+.accordion-title > span:nth-child(2) {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.accordion-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    background: var(--primary);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 100px;
+}
+
+.accordion-badge:empty,
+.accordion-badge[data-count="0"] {
+    display: none;
+}
+
+.accordion-value {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.accordion-arrow {
+    font-size: 24px;
+    color: var(--text-muted);
+    transition: var(--transition);
+}
+
+.accordion-header[aria-expanded="true"] .accordion-arrow {
+    transform: rotate(180deg);
+}
+
+.accordion-content {
+    display: none;
+    padding: 0 20px 20px;
+}
+
+.accordion-content.expanded {
     display: block;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   PARTICIPANTES - NUEVO DISEÑO
+   PARTICIPANTES
    ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Toolbar */
-.participants-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-}
-
-.participants-search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 200px;
-    max-width: 320px;
-    background: var(--odoo-bg);
-    border: 1px solid var(--odoo-border);
-    border-radius: 6px;
-    padding: 0 12px;
-}
-
-.participants-search-box .material-icons {
-    font-size: 20px;
-    color: var(--odoo-text-muted);
-}
-
-.participants-search-box input {
-    flex: 1;
-    border: none;
-    background: none;
-    padding: 10px 0;
-    font-size: 13px;
-    color: var(--odoo-text);
-}
-
-.participants-search-box input:focus {
-    outline: none;
-}
-
-.participants-search-box input::placeholder {
-    color: #adb5bd;
-}
-
-.participants-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.btn-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    background: #fff;
-    border: 1px solid var(--odoo-border);
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--odoo-text-muted);
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.btn-action .material-icons {
-    font-size: 18px;
-}
-
-.btn-action:hover {
-    background: var(--odoo-bg);
-    color: var(--odoo-text);
-    border-color: #ced4da;
-}
-
-/* Container principal */
-.participants-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-/* Paneles */
-.participants-panel {
-    background: #fff;
-    border: 1px solid var(--odoo-border);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--odoo-bg);
-    border-bottom: 1px solid var(--odoo-border);
-}
-
-.panel-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--odoo-text);
-}
-
-.panel-title .material-icons {
-    font-size: 20px;
-    color: var(--odoo-text-muted);
-}
-
-.participants-selected-panel .panel-title .material-icons {
-    color: var(--odoo-success);
-}
-
-.panel-count {
-    background: var(--odoo-primary);
-    color: #fff;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.participants-selected-panel .panel-count {
-    background: var(--odoo-success);
-}
-
-.panel-body {
-    padding: 12px;
-    min-height: 200px;
-    max-height: 350px;
-    overflow-y: auto;
-}
-
-/* Empty state */
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 40px 20px;
-    color: var(--odoo-text-muted);
-    text-align: center;
-}
-
-.empty-state .material-icons {
-    font-size: 40px;
-    opacity: 0.4;
-}
-
-.empty-state span:last-child {
-    font-size: 13px;
-}
-
-/* Grid de participantes disponibles */
-.participants-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-/* Items de participante - Lista disponibles */
-.participants-grid label,
-.participant-item {
+.participants-search {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
-    background: #fff;
-    border: 1px solid var(--odoo-border);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
+    padding: 10px 14px;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    flex: 1;
 }
 
-.participants-grid label:hover,
-.participant-item:hover {
-    background: var(--odoo-bg);
-    border-color: #ced4da;
+.participants-search > .material-icons {
+    font-size: 20px;
+    color: var(--text-muted);
 }
 
-.participants-grid label input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--odoo-primary);
-    cursor: pointer;
-}
-
-.participants-grid label.selected,
-.participant-item.selected {
-    background: rgba(113, 75, 103, 0.08);
-    border-color: var(--odoo-primary);
+.participants-search input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    outline: none;
 }
 
 /* Chips de seleccionados */
-#selected-list {
+.selected-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    align-content: flex-start;
+    min-height: 40px;
+    padding: 12px;
+    background: var(--primary-bg);
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+}
+
+.empty-chips {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 14px;
+    width: 100%;
+    justify-content: center;
+    padding: 4px 0;
+}
+
+.empty-chips .material-icons {
+    font-size: 18px;
 }
 
 .selected-chip {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: linear-gradient(135deg, rgba(113,75,103,0.08) 0%, rgba(113,75,103,0.04) 100%);
-    border: 1px solid rgba(113,75,103,0.25);
-    border-radius: 20px;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--primary);
+    color: white;
     font-size: 13px;
-    color: var(--odoo-text);
+    font-weight: 500;
+    border-radius: 100px;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: var(--transition);
+    animation: chipIn 0.2s ease;
+}
+
+@keyframes chipIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
 }
 
 .selected-chip:hover {
-    background: rgba(220, 53, 69, 0.08);
-    border-color: var(--odoo-danger);
+    background: var(--primary-dark);
 }
 
-.selected-chip:hover .chip-remove {
-    color: var(--odoo-danger);
-}
-
-.chip-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--odoo-primary);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.chip-remove {
-    font-size: 16px !important;
-    color: var(--odoo-text-muted);
-    margin-left: 2px;
-}
-
-/* Hint inferior */
-.participants-hint {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 16px;
-    padding: 10px 14px;
-    background: rgba(23, 162, 184, 0.08);
-    border-radius: 6px;
-    font-size: 12px;
-    color: var(--odoo-info);
-}
-
-.participants-hint .material-icons {
+.selected-chip .material-icons {
     font-size: 16px;
+    opacity: 0.8;
 }
 
-/* Ocultar elementos mientras filtrado */
+/* Grid de participantes */
+.participants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.participants-grid label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 14px;
+    color: var(--text);
+}
+
+.participants-grid label:hover {
+    border-color: var(--primary-light);
+    background: var(--primary-bg);
+}
+
+.participants-grid label:has(input:checked) {
+    border-color: var(--primary);
+    background: var(--primary-bg);
+}
+
 .participants-grid label.hidden {
     display: none;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   TEXTAREA
-   ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-textarea {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid var(--odoo-border);
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-    color: var(--odoo-text);
-    resize: vertical;
-    transition: border-color 0.2s;
-}
-
-.odoo-textarea:focus {
-    outline: none;
-    border-color: var(--odoo-primary);
+.participants-grid input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ASIDE PANEL
+   IMPACTO
    ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-form-aside {
-    background: var(--odoo-bg);
-    padding: 20px;
-    border-left: 1px solid var(--odoo-border);
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+.impact-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
 }
 
-.odoo-aside-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.field-number input {
+    text-align: center;
+    font-weight: 600;
+    font-size: 18px;
 }
 
-.odoo-btn {
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOTONES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 10px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.2s;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    color: white;
+    background: var(--primary);
     border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
 }
 
-.odoo-btn-primary {
-    background: var(--odoo-primary);
-    color: #fff;
+.btn-primary:hover {
+    background: var(--primary-dark);
 }
 
-.odoo-btn-primary:hover {
-    background: var(--odoo-primary-dark);
+.btn-primary .material-icons {
+    font-size: 20px;
 }
 
-.odoo-btn-secondary {
-    background: #fff;
-    color: var(--odoo-text);
-    border: 1px solid var(--odoo-border);
-}
-
-.odoo-btn-secondary:hover {
-    background: var(--odoo-bg);
-}
-
-.odoo-btn .material-icons {
-    font-size: 18px;
-}
-
-.odoo-aside-info {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    background: #fff;
-    border-radius: 8px;
-    border: 1px solid var(--odoo-border);
-}
-
-.odoo-info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.odoo-info-label {
-    font-size: 12px;
-    color: var(--odoo-text-muted);
-}
-
-.odoo-info-value {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--odoo-text);
-}
-
-.odoo-info-badge {
-    background: rgba(40, 167, 69, 0.1);
-    color: var(--odoo-success);
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.odoo-badge-pending {
-    background: rgba(255, 193, 7, 0.15);
-    color: #856404;
-}
-
-.odoo-aside-tips {
-    padding: 16px;
-    background: #fff;
-    border-radius: 8px;
-    border: 1px solid var(--odoo-border);
-}
-
-.odoo-aside-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--odoo-text);
-    margin: 0 0 12px 0;
-}
-
-.odoo-tips-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.odoo-tips-list li {
-    position: relative;
-    padding-left: 16px;
-    margin-bottom: 8px;
-    font-size: 12px;
-    color: var(--odoo-text-muted);
-    line-height: 1.5;
-}
-
-.odoo-tips-list li::before {
-    content: '•';
-    position: absolute;
-    left: 0;
-    color: var(--odoo-primary);
-}
-
-.odoo-tips-list li:last-child {
-    margin-bottom: 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   ASIDE ACTIVITY
-   ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-aside-activity {
-    border-top: 1px solid var(--odoo-border);
-    padding-top: 16px;
-}
-
-.odoo-activity-item {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-}
-
-.odoo-activity-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--odoo-bg);
-    display: flex;
+.btn-secondary {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
+    gap: 8px;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-decoration: none;
+    transition: var(--transition);
 }
 
-.odoo-activity-avatar .material-icons {
-    font-size: 16px;
-    color: var(--odoo-text-muted);
-}
-
-.odoo-activity-content {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.odoo-activity-text {
-    font-size: 13px;
-    color: var(--odoo-text);
-}
-
-.odoo-activity-date {
-    font-size: 11px;
-    color: var(--odoo-text-muted);
+.btn-secondary:hover {
+    background: var(--bg-alt);
+    color: var(--text);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE
+   FOOTER FIJO (móvil)
    ═══════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 1024px) {
-    .odoo-form-container {
-        grid-template-columns: 1fr;
-    }
-
-    .odoo-form-aside {
-        border-top: 1px solid var(--odoo-border);
-        border-left: none;
-    }
-
-    .odoo-aside-actions {
-        flex-direction: row;
-        flex-wrap: wrap;
-    }
+.form-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+    z-index: 100;
 }
 
-@media (max-width: 900px) {
-    .participants-container {
-        grid-template-columns: 1fr;
-    }
+.form-footer .btn-secondary {
+    flex: 1;
 }
 
-@media (max-width: 768px) {
-    .odoo-form-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
+.form-footer .btn-primary {
+    flex: 2;
+}
 
-    .odoo-radio-group {
-        justify-content: center;
-    }
-
-    .odoo-quick-fields {
-        justify-content: center;
-    }
-
-    .odoo-form-body {
-        grid-template-columns: 1fr;
-    }
-
-    .odoo-control-bar {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .odoo-control-right {
+@media (min-width: 640px) {
+    .form-footer {
         display: none;
     }
     
-    .participants-toolbar {
-        flex-direction: column;
-        align-items: stretch;
+    .activity-form {
+        padding-bottom: 40px;
     }
-    
-    .participants-search-box {
-        max-width: none;
-    }
-    
-    .participants-actions {
-        justify-content: center;
-    }
- 
-.impact-grid{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:16px;
-}
-.impact-field{
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-}
-.impact-field-full{
-    grid-column: 1 / -1;
-}
-.impact-hint{
-    font-size:12px;
-    color: var(--odoo-text-muted);
-    line-height:1.4;
-}
-@media (max-width: 768px){
-    .impact-grid{ grid-template-columns: 1fr; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   IMPACTO
-   ═══════════════════════════════════════════════════════════════════ */
-.impact-grid{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:20px;
-    max-width: 800px;
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODO RÁPIDO - Ocultar secciones opcionales
+   ═══════════════════════════════════════════════════════════════════════════ */
+.activity-form.quick-mode .optional-section {
+    display: none;
 }
 
-.impact-field{
-    align-items: flex-start;
+.activity-form.quick-mode [data-optional] {
+    display: none;
 }
 
-.impact-field .odoo-input{
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOOLBAR PARTICIPANTES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.participants-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.participants-toolbar .participants-search {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--text-muted);
+}
+
+.btn-icon:hover {
+    background: var(--primary-bg);
+    color: var(--primary);
+    border-color: var(--primary-light);
+}
+
+.btn-qr {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--success);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-qr:hover {
+    background: #0d9668;
+}
+
+.btn-qr .material-icons {
+    font-size: 20px;
+}
+
+@media (max-width: 480px) {
+    .btn-qr-label {
+        display: none;
+    }
+    .btn-qr {
+        padding: 8px 10px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   QR SCANNER MODAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.qr-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.qr-modal.active {
+    display: flex;
+}
+
+.qr-modal-content {
+    width: 100%;
+    max-width: 400px;
+    max-height: 90vh;
+    background: var(--bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.qr-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.qr-modal-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.qr-modal-header h3 .material-icons {
+    color: var(--success);
+}
+
+.btn-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: var(--transition);
+}
+
+.btn-close:hover {
+    background: var(--bg-alt);
+    color: var(--text);
+}
+
+/* Scanner container */
+.qr-scanner-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    background: #000;
+    overflow: hidden;
+}
+
+#qrVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.qr-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.qr-frame {
+    width: 200px;
+    height: 200px;
+    border: 3px solid var(--success);
+    border-radius: 16px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    animation: pulse-frame 2s ease-in-out infinite;
+}
+
+@keyframes pulse-frame {
+    0%, 100% { 
+        border-color: var(--success);
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+    50% { 
+        border-color: #34d399;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 30px rgba(16, 185, 129, 0.5);
+    }
+}
+
+/* Lista de escaneados */
+.qr-scanned-list {
+    flex: 1;
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+}
+
+.scanned-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--bg-alt);
+    font-size: 14px;
+    color: var(--text-muted);
+    position: sticky;
+    top: 0;
+}
+
+.scanned-header .material-icons {
+    font-size: 18px;
+    color: var(--success);
+}
+
+.scanned-items {
+    padding: 8px 12px;
+}
+
+.scanned-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--success);
+    color: white;
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+}
+
+.scanned-item .material-icons {
+    font-size: 20px;
+}
+
+.scanned-item-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.scanned-item-time {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.qr-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+}
+
+.qr-modal-footer .btn-secondary {
     width: 100%;
 }
 
-.impact-hint{
-    font-size:12px;
-    color: var(--odoo-text-muted);
-    line-height:1.4;
+/* Toast de confirmación */
+.qr-toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: var(--success);
+    color: white;
+    border-radius: var(--radius);
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    z-index: 1001;
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 2s forwards;
 }
 
-.impact-field-full{
-    grid-column: 1 / -1;
-}
-
-@media (max-width: 768px){
-    .impact-grid{
-        grid-template-columns: 1fr;
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
     }
 }
 
+@keyframes toastOut {
+    to {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+}
+
+.qr-toast .material-icons {
+    font-size: 22px;
+}
+
+/* Error toast */
+.qr-toast.error {
+    background: var(--danger);
+}
+
+.qr-toast.warning {
+    background: var(--warning);
+    color: var(--text);
 }
 </style>
 
@@ -1322,205 +1266,460 @@
      ══════════════════════════════════════════════════════════════════════════ -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    initTabs();
-    initTypeSelector();
-    initParticipantsManager();
+    initQuickMode();
+    initAccordions();
+    initParticipants();
+    initResponsablePreview();
+    setDefaultDate();
+    initQRScanner();
 });
 
 /**
- * Sistema de tabs
+ * Modo rápido toggle
  */
-function initTabs() {
-    const tabs = document.querySelectorAll('.odoo-tab');
-    const panels = document.querySelectorAll('.odoo-tab-panel');
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const targetId = 'tab-' + this.dataset.tab;
-
-            // Remove active from all
-            tabs.forEach(t => t.classList.remove('active'));
-            panels.forEach(p => p.classList.remove('active'));
-
-            // Add active to current
-            this.classList.add('active');
-            const targetPanel = document.getElementById(targetId);
-            if (targetPanel) {
-                targetPanel.classList.add('active');
-            }
-        });
-    });
-}
-
-/**
- * Selector de tipo - cambia el icono según el tipo
- */
-function initTypeSelector() {
-    const radios = document.querySelectorAll('.odoo-radio input[type="radio"][name="tipo"]');
-    const icon = document.getElementById('activity-icon');
-
-    const typeIcons = {
-        'reunion': 'groups',
-        'culto': 'church',
-        'evangelismo': 'campaign',
-        'capacitacion': 'school',
-        'servicio': 'volunteer_activism',
-        'otro': 'event'
-    };
-
-    radios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (icon) {
-                const selectedType = this.value.toLowerCase();
-                icon.textContent = typeIcons[selectedType] || 'event';
-            }
-        });
-
-        // Set initial icon
-        if (radio.checked && icon) {
-            const selectedType = radio.value.toLowerCase();
-            icon.textContent = typeIcons[selectedType] || 'event';
-        }
-    });
-}
-
-/**
- * Gestor de participantes mejorado
- */
-function initParticipantsManager() {
-    const container = document.getElementById('participants-grid');
-    if (!container) return;
-
-    const searchInput = document.getElementById('participants-search');
-    const btnSelectAll = document.getElementById('btn-select-all');
-    const btnSelectNone = document.getElementById('btn-select-none');
-    const selectedList = document.getElementById('selected-list');
-    const emptySelected = document.getElementById('empty-selected');
-    const selectedCount = document.getElementById('selected-count');
-    const availableCount = document.getElementById('available-count');
-    const tabBadge = document.getElementById('tab-participants-badge');
-    const availableList = document.getElementById('available-list');
-
-    // Obtener todos los checkboxes y labels
-    const getCheckboxes = () => Array.from(availableList.querySelectorAll('input[type="checkbox"]'));
-    const getLabels = () => Array.from(availableList.querySelectorAll('label'));
-
-    // Obtener iniciales del nombre
-    function getInitials(name) {
-        return name.split(' ')
-            .slice(0, 2)
-            .map(word => word.charAt(0).toUpperCase())
-            .join('');
+function initQuickMode() {
+    const form = document.getElementById('activityForm');
+    const toggle = document.getElementById('quickMode');
+    
+    if (!form || !toggle) return;
+    
+    // Estado inicial
+    if (toggle.checked) {
+        form.classList.add('quick-mode');
     }
+    
+    toggle.addEventListener('change', function() {
+        form.classList.toggle('quick-mode', this.checked);
+    });
+}
 
-    // Actualizar contadores y vista
+/**
+ * Sistema de accordions
+ */
+function initAccordions() {
+    const headers = document.querySelectorAll('.accordion-header');
+    
+    headers.forEach(header => {
+        header.addEventListener('click', function() {
+            const section = this.closest('.accordion-section');
+            const content = section.querySelector('.accordion-content');
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            
+            this.setAttribute('aria-expanded', !isExpanded);
+            content.classList.toggle('expanded', !isExpanded);
+        });
+    });
+}
+
+/**
+ * Fecha por defecto: hoy
+ */
+function setDefaultDate() {
+    const dateInput = document.querySelector('input[name="fecha"]');
+    if (dateInput && !dateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+}
+
+/**
+ * Preview del responsable seleccionado
+ */
+function initResponsablePreview() {
+    const select = document.querySelector('select[name="responsable"]');
+    const preview = document.getElementById('responsableValue');
+    
+    if (!select || !preview) return;
+    
+    function updatePreview() {
+        const selected = select.options[select.selectedIndex];
+        preview.textContent = selected.value ? selected.text : 'Sin asignar';
+    }
+    
+    select.addEventListener('change', updatePreview);
+    updatePreview();
+}
+
+/**
+ * Gestor de participantes
+ */
+function initParticipants() {
+    const grid = document.getElementById('participantsGrid');
+    const search = document.getElementById('searchParticipants');
+    const chips = document.getElementById('selectedChips');
+    const emptyChips = document.getElementById('emptyChips');
+    const badge = document.getElementById('participantCount');
+    const btnAll = document.getElementById('selectAll');
+    const btnNone = document.getElementById('selectNone');
+    
+    if (!grid) return;
+    
+    const getCheckboxes = () => Array.from(grid.querySelectorAll('input[type="checkbox"]'));
+    const getLabels = () => Array.from(grid.querySelectorAll('label'));
+    
+    // Obtener nombre del label
+    function getName(checkbox) {
+        const label = checkbox.closest('label') || document.querySelector(`label[for="${checkbox.id}"]`);
+        return label ? label.textContent.trim() : 'Participante';
+    }
+    
+    // Iniciales
+    function getInitials(name) {
+        return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+    }
+    
+    // Actualizar vista
     function updateView() {
         const checkboxes = getCheckboxes();
         const selected = checkboxes.filter(cb => cb.checked);
         const count = selected.length;
-
-        // Actualizar contadores
-        if (selectedCount) selectedCount.textContent = count;
-        if (availableCount) availableCount.textContent = checkboxes.length;
-        if (tabBadge) tabBadge.textContent = count;
-
-        // Mostrar/ocultar empty state
-        if (emptySelected) {
-            emptySelected.style.display = count > 0 ? 'none' : 'flex';
+        
+        // Badge
+        if (badge) {
+            badge.textContent = count;
+            badge.dataset.count = count;
         }
-
-        // Limpiar y reconstruir lista de seleccionados
-        if (selectedList) {
-            // Mantener el empty state
-            const chips = selectedList.querySelectorAll('.selected-chip');
-            chips.forEach(chip => chip.remove());
-
+        
+        // Chips
+        if (chips) {
+            // Limpiar chips existentes (no el empty state)
+            chips.querySelectorAll('.selected-chip').forEach(c => c.remove());
+            
+            if (emptyChips) {
+                emptyChips.style.display = count > 0 ? 'none' : 'flex';
+            }
+            
             selected.forEach(cb => {
-                const label = cb.closest('label');
-                const name = label ? label.textContent.trim() : 'Participante';
-                
+                const name = getName(cb);
                 const chip = document.createElement('div');
                 chip.className = 'selected-chip';
-                chip.dataset.checkboxId = cb.id;
                 chip.innerHTML = `
-                    <span class="chip-avatar">${getInitials(name)}</span>
                     <span>${name}</span>
-                    <span class="material-icons chip-remove">close</span>
+                    <span class="material-icons">close</span>
                 `;
-                
                 chip.addEventListener('click', () => {
                     cb.checked = false;
-                    updateLabelStyle(label, false);
                     updateView();
                 });
-
-                selectedList.appendChild(chip);
+                chips.appendChild(chip);
             });
         }
-
-        // Actualizar estilos de labels
-        getLabels().forEach(label => {
-            const cb = label.querySelector('input[type="checkbox"]');
-            updateLabelStyle(label, cb && cb.checked);
+    }
+    
+    // Búsqueda
+    if (search) {
+        search.addEventListener('input', function() {
+            const term = this.value.toLowerCase().trim();
+            getLabels().forEach(label => {
+                const text = label.textContent.toLowerCase();
+                label.classList.toggle('hidden', term && !text.includes(term));
+            });
         });
     }
+    
+    // Seleccionar todos/ninguno
+    if (btnAll) {
+        btnAll.addEventListener('click', () => {
+            getLabels().forEach(label => {
+                if (!label.classList.contains('hidden')) {
+                    const cb = label.querySelector('input[type="checkbox"]');
+                    if (cb) cb.checked = true;
+                }
+            });
+            updateView();
+        });
+    }
+    
+    if (btnNone) {
+        btnNone.addEventListener('click', () => {
+            getCheckboxes().forEach(cb => cb.checked = false);
+            updateView();
+        });
+    }
+    
+    // Escuchar cambios
+    grid.addEventListener('change', updateView);
+    
+    // Inicial
+    updateView();
+}
 
-    function updateLabelStyle(label, isSelected) {
-        if (label) {
-            label.classList.toggle('selected', isSelected);
+/**
+ * Scanner QR para agregar participantes
+ * Requiere la librería html5-qrcode (se carga dinámicamente)
+ */
+function initQRScanner() {
+    const btnScan = document.getElementById('btnScanQR');
+    const btnClose = document.getElementById('btnCloseQR');
+    const btnDone = document.getElementById('btnDoneQR');
+    const modal = document.getElementById('qrModal');
+    const video = document.getElementById('qrVideo');
+    const scannedItems = document.getElementById('scannedItems');
+    const scannedCount = document.getElementById('scannedCount');
+    
+    if (!btnScan || !modal) return;
+    
+    let stream = null;
+    let scanning = false;
+    let scannedIds = new Set();
+    
+    // Cargar librería QR dinámicamente
+    function loadQRLibrary() {
+        return new Promise((resolve, reject) => {
+            if (window.Html5Qrcode) {
+                resolve();
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+    
+    // Mostrar toast
+    function showToast(message, type = 'success') {
+        const existing = document.querySelector('.qr-toast');
+        if (existing) existing.remove();
+        
+        const toast = document.createElement('div');
+        toast.className = `qr-toast ${type}`;
+        toast.innerHTML = `
+            <span class="material-icons">${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'warning'}</span>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => toast.remove(), 2500);
+    }
+    
+    // Vibrar (si está disponible)
+    function vibrate() {
+        if (navigator.vibrate) {
+            navigator.vibrate(100);
         }
     }
-
-    // Filtrar por búsqueda
-    function filterParticipants(term) {
-        const searchTerm = (term || '').toLowerCase().trim();
+    
+    // Sonido de confirmación
+    function playBeep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            oscillator.connect(gain);
+            gain.connect(ctx.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            gain.gain.value = 0.3;
+            
+            oscillator.start();
+            setTimeout(() => {
+                oscillator.stop();
+                ctx.close();
+            }, 100);
+        } catch (e) {}
+    }
+    
+    // Buscar y marcar participante por ID/código
+    function markParticipant(code) {
+        // El QR puede contener: ID numérico, código de miembro, o URL con ID
+        let memberId = code;
         
-        getLabels().forEach(label => {
-            const text = (label.textContent || '').toLowerCase();
-            const matches = !searchTerm || text.includes(searchTerm);
-            label.classList.toggle('hidden', !matches);
-        });
-    }
-
-    // Seleccionar/deseleccionar todos (solo visibles)
-    function setAll(value) {
-        getLabels().forEach(label => {
-            if (!label.classList.contains('hidden')) {
-                const cb = label.querySelector('input[type="checkbox"]');
-                if (cb) cb.checked = value;
+        // Si es URL, extraer el ID
+        if (code.includes('/')) {
+            const match = code.match(/miembro[s]?\/(\d+)/i) || code.match(/(\d+)/);
+            if (match) memberId = match[1];
+        }
+        
+        // Buscar checkbox por valor o data-attribute
+        const grid = document.getElementById('participantsGrid');
+        if (!grid) return null;
+        
+        const checkboxes = grid.querySelectorAll('input[type="checkbox"]');
+        let found = null;
+        
+        checkboxes.forEach(cb => {
+            // Buscar por valor del checkbox (normalmente el ID)
+            if (cb.value === memberId || cb.value === code) {
+                found = cb;
+            }
+            // Buscar por data-codigo si existe
+            if (cb.dataset.codigo === code) {
+                found = cb;
             }
         });
-        updateView();
+        
+        if (found && !found.checked) {
+            found.checked = true;
+            
+            // Obtener nombre
+            const label = found.closest('label') || document.querySelector(`label[for="${found.id}"]`);
+            const name = label ? label.textContent.trim() : `Miembro ${memberId}`;
+            
+            // Actualizar vista de participantes
+            if (typeof updateParticipantsView === 'function') {
+                updateParticipantsView();
+            } else {
+                // Trigger change event
+                found.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            
+            return { id: memberId, name: name };
+        } else if (found && found.checked) {
+            // Ya estaba marcado
+            const label = found.closest('label');
+            const name = label ? label.textContent.trim() : `Miembro ${memberId}`;
+            return { id: memberId, name: name, duplicate: true };
+        }
+        
+        return null;
     }
-
+    
+    // Agregar a lista de escaneados en el modal
+    function addToScannedList(member) {
+        if (!scannedItems) return;
+        
+        const time = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+        
+        const item = document.createElement('div');
+        item.className = 'scanned-item';
+        item.innerHTML = `
+            <span class="material-icons">person</span>
+            <span class="scanned-item-name">${member.name}</span>
+            <span class="scanned-item-time">${time}</span>
+        `;
+        
+        scannedItems.insertBefore(item, scannedItems.firstChild);
+        
+        if (scannedCount) {
+            scannedCount.textContent = scannedItems.children.length;
+        }
+    }
+    
+    // Iniciar scanner
+    async function startScanner() {
+        try {
+            await loadQRLibrary();
+            
+            modal.classList.add('active');
+            
+            // Solicitar acceso a cámara
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+            
+            video.srcObject = stream;
+            await video.play();
+            
+            scanning = true;
+            scanFrame();
+            
+        } catch (err) {
+            console.error('Error iniciando scanner:', err);
+            
+            if (err.name === 'NotAllowedError') {
+                showToast('Permite acceso a la cámara', 'error');
+            } else {
+                showToast('Error al iniciar cámara', 'error');
+            }
+            
+            closeScanner();
+        }
+    }
+    
+    // Escanear frame por frame
+    function scanFrame() {
+        if (!scanning || !video.videoWidth) {
+            if (scanning) requestAnimationFrame(scanFrame);
+            return;
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Usar html5-qrcode para decodificar
+        if (window.Html5Qrcode) {
+            Html5Qrcode.scanFile(canvas.toDataURL(), true)
+                .then(decodedText => {
+                    handleQRCode(decodedText);
+                })
+                .catch(() => {
+                    // No QR encontrado, continuar escaneando
+                });
+        }
+        
+        // Continuar escaneando
+        if (scanning) {
+            setTimeout(() => requestAnimationFrame(scanFrame), 200);
+        }
+    }
+    
+    // Manejar código QR detectado
+    function handleQRCode(code) {
+        if (scannedIds.has(code)) {
+            return; // Ya escaneado en esta sesión
+        }
+        
+        const result = markParticipant(code);
+        
+        if (result) {
+            scannedIds.add(code);
+            
+            if (result.duplicate) {
+                showToast(`${result.name} ya registrado`, 'warning');
+                vibrate();
+            } else {
+                addToScannedList(result);
+                showToast(`✓ ${result.name}`, 'success');
+                playBeep();
+                vibrate();
+            }
+        } else {
+            showToast('Miembro no encontrado', 'error');
+            vibrate();
+        }
+    }
+    
+    // Cerrar scanner
+    function closeScanner() {
+        scanning = false;
+        modal.classList.remove('active');
+        
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        
+        video.srcObject = null;
+    }
+    
     // Event listeners
-    if (searchInput) {
-        searchInput.addEventListener('input', () => {
-            filterParticipants(searchInput.value);
-        });
-    }
-
-    if (btnSelectAll) {
-        btnSelectAll.addEventListener('click', () => setAll(true));
-    }
-
-    if (btnSelectNone) {
-        btnSelectNone.addEventListener('click', () => setAll(false));
-    }
-
-    // Escuchar cambios en checkboxes
-    if (availableList) {
-        availableList.addEventListener('change', (e) => {
-            if (e.target.matches('input[type="checkbox"]')) {
-                updateView();
-            }
-        });
-    }
-
-    // Inicializar vista
-    updateView();
+    btnScan.addEventListener('click', startScanner);
+    btnClose.addEventListener('click', closeScanner);
+    btnDone.addEventListener('click', closeScanner);
+    
+    // Cerrar con ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeScanner();
+        }
+    });
+    
+    // Cerrar al hacer click fuera
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeScanner();
+        }
+    });
 }
 </script>
 
