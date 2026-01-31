@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-
+from . import views_reportes
 app_name = "miembros_app"
 
 urlpatterns = [
@@ -73,11 +73,7 @@ urlpatterns = [
     name="reporte_nuevos_creyentes"
 ),
 
-path(
-    "miembros/listado/compartir/",
-    views.listado_miembros_crear_link_publico,
-    name="listado_miembros_compartir",
-),
+
 
 
 path(
@@ -163,6 +159,7 @@ path("ajax/validar-telefono/", views.validar_telefono, name="validar_telefono"),
 
 path("miembros/<int:miembro_id>/padre/add/", views.padre_espiritual_add_simple, name="padre_add_simple"),
 path("miembros/<int:miembro_id>/padre/<int:padre_id>/remove/", views.padre_espiritual_remove_simple, name="padre_remove_simple"),
+path("miembros/listado/compartir/", views_reportes.compartir_listado_whatsapp, name="listado_miembros_compartir"),
 
 ]
 

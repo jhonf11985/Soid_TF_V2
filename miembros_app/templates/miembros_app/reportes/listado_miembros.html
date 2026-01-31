@@ -162,8 +162,8 @@
 </a>
 
 <button type="button" onclick="soidCompartirListadoMiembrosWhatsApp()">
-  <span class="material-icons">whatsapp</span>
-  Compartir link PDF (WhatsApp)
+    <span class="material-icons">share</span>
+    Compartir enlace (WhatsApp)
 </button>
 
 
@@ -1941,31 +1941,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
 <script>
-function soidGetCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return null;
-}
-
 async function soidCompartirListadoMiembrosWhatsApp() {
   try {
-    // 1) Endpoint (AJAX) que crea DocumentoCompartido + PDF + link
-    // IMPORTANTE: este name debe coincidir con el que pusiste en urls.py
     const endpoint = "{% url 'miembros_app:listado_miembros_compartir' %}";
-
-    // 2) Mantener los filtros actuales del listado
     const qs = window.location.search || "";
 
-    // 3) POST con CSRF
-    const csrftoken = soidGetCookie("csrftoken");
-
     const res = await fetch(endpoint + qs, {
-      method: "POST",
+      method: "GET",
       headers: {
-        "X-CSRFToken": csrftoken,
         "X-Requested-With": "XMLHttpRequest"
       }
     });
@@ -1973,21 +1957,15 @@ async function soidCompartirListadoMiembrosWhatsApp() {
     const data = await res.json();
 
     if (!data.ok) {
-      alert(data.error || "No se pudo generar el link.");
+      alert(data.error || "No se pudo generar el enlace.");
       return;
     }
 
-    const link = data.link;
-
-    // 4) Mensaje listo para WhatsApp
-    const msg = `Te comparto el PDF del listado de miembros (SOID):\n${link}\n\n(El enlace expira según configuración.)`;
-    const waUrl = "https://wa.me/?text=" + encodeURIComponent(msg);
-
-    // 5) Abrir WhatsApp (web o app)
-    window.open(waUrl, "_blank");
+    // Abrir WhatsApp con el mensaje prellenado
+    window.open(data.wa_url, "_blank");
 
   } catch (e) {
-    alert("Error generando el link o abriendo WhatsApp.");
+    alert("Error al compartir por WhatsApp.");
     console.error(e);
   }
 }
