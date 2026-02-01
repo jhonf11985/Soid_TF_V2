@@ -1470,7 +1470,7 @@ function initParticipants() {
 
 /**
  * Scanner QR para agregar participantes
- * Requiere la librería html5-qrcode (se carga dinámicamente)
+ * Usa jsQR para decodificación (más compatible con móviles)
  */
 function initQRScanner() {
     const btnScan = document.getElementById('btnScanQR');
@@ -1486,16 +1486,17 @@ function initQRScanner() {
     let stream = null;
     let scanning = false;
     let scannedIds = new Set();
+    let animationId = null;
     
-    // Cargar librería QR dinámicamente
+    // Cargar librería jsQR (más liviana y compatible)
     function loadQRLibrary() {
         return new Promise((resolve, reject) => {
-            if (window.Html5Qrcode) {
+            if (window.jsQR) {
                 resolve();
                 return;
             }
             const script = document.createElement('script');
-            script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+            script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);
@@ -1705,36 +1706,48 @@ function initQRScanner() {
         }
     }
     
-    // Escanear frame por frame
+    // Escanear frame por frame usando jsQR
     function scanFrame() {
-        if (!scanning || !video.videoWidth) {
-            if (scanning) requestAnimationFrame(scanFrame);
+        if (!scanning) {
             return;
         }
         
+        // Esperar a que el video tenga dimensiones
+        if (!video.videoWidth || !video.videoHeight) {
+            animationId = requestAnimationFrame(scanFrame);
+            return;
+        }
+        
+        // Crear canvas para capturar frame
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0);
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
-        // Usar html5-qrcode para decodificar
-        if (window.Html5Qrcode) {
-            Html5Qrcode.scanFile(canvas.toDataURL(), true)
-                .then(decodedText => {
-                    handleQRCode(decodedText);
-                })
-                .catch(() => {
-                    // No QR encontrado, continuar escaneando
+        try {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            // Usar jsQR para decodificar
+            if (window.jsQR) {
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'dontInvert'
                 });
+                
+                if (code && code.data) {
+                    handleQRCode(code.data);
+                }
+            }
+        } catch (e) {
+            console.warn('Error escaneando frame:', e);
         }
         
-        // Continuar escaneando
+        // Continuar escaneando (cada 150ms para no saturar)
         if (scanning) {
-            setTimeout(() => requestAnimationFrame(scanFrame), 200);
+            setTimeout(() => {
+                animationId = requestAnimationFrame(scanFrame);
+            }, 150);
         }
     }
     
@@ -1767,6 +1780,13 @@ function initQRScanner() {
     // Cerrar scanner
     function closeScanner() {
         scanning = false;
+        
+        // Cancelar animación pendiente
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+        
         modal.classList.remove('active');
         
         if (stream) {
