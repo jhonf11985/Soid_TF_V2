@@ -13,8 +13,16 @@ class QrToken(models.Model):
 
     # Por ahora lo dejamos así para no depender de tu modelo real.
     # En el siguiente paso lo vinculamos a Miembro con ForeignKey real.
-    miembro_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)
+   
 
+    # ✅ Vinculación real al miembro
+    miembro = models.OneToOneField(
+        "miembros_app.Miembro",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="qr_token",
+    )
     def __str__(self):
         return f"{self.token}"
 

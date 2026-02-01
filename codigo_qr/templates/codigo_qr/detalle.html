@@ -1,16 +1,228 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="container" style="max-width: 760px; margin: 0 auto; padding: 16px;">
-  <h2>Resultado QR</h2>
+{% extends 'codigo_qr/base_codigo_qr.html' %}
+{% load static %}
 
-  <div style="margin-top: 16px; padding: 16px; border: 1px solid #ddd; border-radius: 12px;">
-    <p><b>Token:</b> {{ qr.token }}</p>
-    <p><b>Miembro ID:</b> {{ qr.miembro_id|default:"(sin asignar)" }}</p>
-    <p><b>Estado:</b> {{ resultado }}</p>
-  </div>
+{% block title %}Detalle QR · Soid_Tf_2{% endblock %}
 
-  <div style="margin-top: 16px;">
-    <a href="{% url 'codigo_qr:scan' %}">Volver a escanear</a>
-  </div>
+{% block codigo_qr_content %}
+
+<div class="odoo-page">
+
+    <!-- TOPBAR -->
+    <div class="odoo-topbar">
+        <div class="odoo-topbar-left">
+            <a href="{% url 'codigo_qr:scan' %}" class="odoo-back-link" title="Volver">
+                <span class="material-icons">arrow_back</span>
+            </a>
+
+            <div class="odoo-breadcrumb">
+                <span class="odoo-breadcrumb-parent">Código QR</span>
+                <span class="odoo-breadcrumb-separator">/</span>
+                <span class="odoo-breadcrumb-current">Detalle</span>
+            </div>
+        </div>
+
+        <div class="odoo-topbar-right">
+            <span class="odoo-record-count">{{ resultado|default:"ok" }}</span>
+        </div>
+    </div>
+
+    <!-- ACTIONBAR -->
+    <div class="odoo-actionbar">
+        <div class="odoo-actionbar-left">
+            <a href="{% url 'codigo_qr:scan' %}" class="odoo-btn odoo-btn-secondary">Volver</a>
+            <a href="{% url 'codigo_qr:imagen' qr.token %}" target="_blank" class="odoo-btn odoo-btn-primary">
+                Abrir QR
+            </a>
+        </div>
+    </div>
+
+    <!-- SHEET -->
+    <div class="odoo-form-sheet">
+        <div class="odoo-form-content" style="grid-template-columns: 1fr 1fr;">
+
+            <!-- Datos -->
+            <div class="odoo-form-col">
+
+                <div class="odoo-field-row">
+                    <label>Token</label>
+                    <div class="odoo-field-value">
+                        <div class="odoo-readonly">{{ qr.token }}</div>
+                    </div>
+                </div>
+
+                <div class="odoo-field-row">
+                    <label>Miembro ID</label>
+                    <div class="odoo-field-value">
+                        <div class="odoo-readonly">{{ qr.miembro_id|default:"(sin asignar)" }}</div>
+                    </div>
+                </div>
+
+                <div class="odoo-field-row">
+                    <label>Estado</label>
+                    <div class="odoo-field-value">
+                        <div class="odoo-badge {% if resultado == 'ok' %}ok{% else %}warn{% endif %}">
+                            {{ resultado|default:"ok" }}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- QR -->
+            <div class="odoo-form-col">
+                <div class="odoo-qr-box">
+                    <div class="odoo-qr-title">
+                        <span class="material-icons">qr_code_2</span>
+                        <span>Código QR</span>
+                    </div>
+
+                    <div class="odoo-qr-img">
+                        <img src="{% url 'codigo_qr:imagen' qr.token %}" alt="QR" />
+                    </div>
+
+                    <div class="odoo-qr-hint">
+                        Escanéalo para abrir este token dentro del sistema.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </div>
+
+<style>
+    :root {
+        --odoo-purple: var(--color-primary);
+        --odoo-purple-dark: var(--color-primary);
+        --odoo-text: #212529;
+        --odoo-text-muted: #6c757d;
+        --odoo-border: #dee2e6;
+        --odoo-bg: #ffffff;
+        --odoo-bg-gray: #f8f9fa;
+    }
+
+    .odoo-page { background: var(--odoo-bg-gray); min-height: 100vh; }
+
+    .odoo-topbar {
+        display:flex; justify-content:space-between; align-items:center;
+        padding: 8px 16px; background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-topbar-left { display:flex; align-items:center; gap:12px; }
+
+    .odoo-back-link{
+        display:flex; align-items:center; justify-content:center;
+        width:32px; height:32px; color: var(--odoo-text-muted);
+        border-radius:4px; transition:all .15s; text-decoration:none;
+    }
+    .odoo-back-link:hover { background: var(--odoo-bg-gray); color: var(--odoo-text); }
+
+    .odoo-breadcrumb { display:flex; align-items:center; gap:8px; font-size:14px; }
+    .odoo-breadcrumb-parent { color: var(--odoo-purple); font-weight:500; }
+    .odoo-breadcrumb-separator { color: var(--odoo-text-muted); }
+    .odoo-breadcrumb-current { color: var(--odoo-text); font-weight:600; }
+    .odoo-record-count { font-size:13px; color: var(--odoo-text-muted); }
+
+    .odoo-actionbar{
+        display:flex; justify-content:space-between; align-items:center;
+        padding: 8px 16px; background: var(--odoo-bg);
+        border-bottom: 1px solid var(--odoo-border);
+    }
+
+    .odoo-btn{
+        display:inline-flex; align-items:center; gap:6px;
+        padding:6px 16px; font-size:13px; font-weight:500;
+        border:1px solid var(--odoo-border); border-radius:4px;
+        cursor:pointer; transition:all .15s; text-decoration:none;
+        font-family:inherit;
+    }
+    .odoo-btn-primary { background: var(--odoo-purple); color:#fff; border-color: var(--odoo-purple); }
+    .odoo-btn-primary:hover { background: var(--odoo-purple-dark); border-color: var(--odoo-purple-dark); }
+    .odoo-btn-secondary { background: var(--odoo-bg); color: var(--odoo-text); }
+    .odoo-btn-secondary:hover { background: var(--odoo-bg-gray); }
+
+    .odoo-form-sheet{
+        max-width:1200px; margin:16px auto; background: var(--odoo-bg);
+        border:1px solid var(--odoo-border); border-radius:4px; padding:0;
+    }
+
+    .odoo-form-content{
+        display:grid; grid-template-columns: 1fr 1fr; gap:24px;
+        padding:24px;
+    }
+
+    .odoo-form-col{ display:flex; flex-direction:column; gap:16px; }
+
+    .odoo-field-row{
+        display:grid; grid-template-columns:140px 1fr;
+        gap:12px; align-items:center;
+    }
+    .odoo-field-row label{
+        font-size:13px; font-weight:600; color: var(--odoo-text);
+        text-align:right;
+    }
+    .odoo-field-value{ display:flex; flex-direction:column; gap:6px; }
+    .odoo-readonly{
+        font-size:13px; color: var(--odoo-text);
+        padding:6px 10px; border:1px solid var(--odoo-border);
+        border-radius:8px; background:#fff;
+    }
+
+    .odoo-badge{
+        display:inline-flex; align-items:center; justify-content:center;
+        padding: 4px 10px; border-radius: 999px;
+        font-size: 12px; font-weight: 700;
+        width: fit-content;
+        border: 1px solid var(--odoo-border);
+        background: #fff;
+    }
+    .odoo-badge.ok{ color: #1b5e20; border-color: #c8e6c9; background: #e8f5e9; }
+    .odoo-badge.warn{ color: #b71c1c; border-color: #ffcdd2; background: #ffebee; }
+
+    .odoo-qr-box{
+        border:1px solid var(--odoo-border);
+        border-radius:12px;
+        background:#fff;
+        padding:14px;
+    }
+    .odoo-qr-title{
+        display:flex; align-items:center; gap:10px;
+        font-weight:700; color: var(--odoo-text);
+        margin-bottom:10px;
+    }
+    .odoo-qr-title .material-icons{ color: var(--odoo-purple); }
+
+    .odoo-qr-img{
+        display:flex; align-items:center; justify-content:center;
+        padding: 10px;
+        background: var(--odoo-bg-gray);
+        border: 1px dashed var(--odoo-border);
+        border-radius: 12px;
+    }
+    .odoo-qr-img img{
+        width: 260px; height: 260px;
+        background: #fff;
+        border-radius: 8px;
+    }
+
+    .odoo-qr-hint{
+        margin-top:10px;
+        font-size:12px;
+        color: var(--odoo-text-muted);
+        text-align:center;
+    }
+
+    @media (max-width: 900px){
+        .odoo-form-content{ grid-template-columns: 1fr; }
+        .odoo-field-row{ grid-template-columns: 120px 1fr; }
+    }
+    @media (max-width: 600px){
+        .odoo-field-row{ grid-template-columns: 1fr; gap:4px; }
+        .odoo-field-row label{ text-align:left; font-size:11px; color: var(--odoo-text-muted); }
+        .odoo-qr-img img{ width: 240px; height: 240px; }
+    }
+</style>
+
 {% endblock %}
