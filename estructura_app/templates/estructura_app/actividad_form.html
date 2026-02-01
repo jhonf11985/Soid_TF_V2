@@ -157,7 +157,7 @@
                         </div>
                         
                         <div class="qr-scanner-container">
-                            <video id="qrVideo" playsinline></video>
+                            <video id="qrVideo" playsinline autoplay muted></video>
                             <div class="qr-overlay">
                                 <div class="qr-frame"></div>
                             </div>
@@ -960,19 +960,43 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 .participants-toolbar {
     display: flex;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
     align-items: center;
     margin-bottom: 16px;
 }
 
 .participants-toolbar .participants-search {
     flex: 1;
+    min-width: 150px;
     margin-bottom: 0;
 }
 
 .toolbar-actions {
     display: flex;
     gap: 4px;
+    flex-shrink: 0;
+}
+
+/* En móviles muy pequeños, toolbar en columna */
+@media (max-width: 380px) {
+    .participants-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .participants-toolbar .participants-search {
+        width: 100%;
+    }
+    
+    .toolbar-actions {
+        justify-content: space-between;
+    }
+    
+    .btn-qr {
+        flex: 1;
+        justify-content: center;
+    }
 }
 
 .btn-icon {
@@ -1602,17 +1626,46 @@ function initQRScanner() {
     // Iniciar scanner
     async function startScanner() {
         try {
+            // Verificar soporte de cámara
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showToast('Tu navegador no soporta cámara', 'error');
+                return;
+            }
+            
             await loadQRLibrary();
             
             modal.classList.add('active');
             
+            // Configuración para iOS y Android
+            const constraints = {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            };
+            
             // Solicitar acceso a cámara
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' }
-            });
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
             
             video.srcObject = stream;
-            await video.play();
+            
+            // iOS requiere estos atributos
+            video.setAttribute('autoplay', '');
+            video.setAttribute('muted', '');
+            video.setAttribute('playsinline', '');
+            
+            // Esperar a que el video esté listo
+            await new Promise((resolve, reject) => {
+                video.onloadedmetadata = () => {
+                    video.play()
+                        .then(resolve)
+                        .catch(reject);
+                };
+                // Timeout por si no carga
+                setTimeout(() => reject(new Error('Timeout')), 5000);
+            });
             
             scanning = true;
             scanFrame();
@@ -1620,12 +1673,34 @@ function initQRScanner() {
         } catch (err) {
             console.error('Error iniciando scanner:', err);
             
-            if (err.name === 'NotAllowedError') {
-                showToast('Permite acceso a la cámara', 'error');
-            } else {
-                showToast('Error al iniciar cámara', 'error');
+            let mensaje = 'Error al iniciar cámara';
+            
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                mensaje = 'Permite acceso a la cámara en ajustes';
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                mensaje = 'No se encontró cámara';
+            } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                mensaje = 'La cámara está en uso por otra app';
+            } else if (err.name === 'OverconstrainedError') {
+                // Intentar sin constraints específicos
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    video.srcObject = stream;
+                    video.setAttribute('autoplay', '');
+                    video.setAttribute('muted', '');
+                    video.setAttribute('playsinline', '');
+                    await video.play();
+                    scanning = true;
+                    scanFrame();
+                    return;
+                } catch (e) {
+                    mensaje = 'Error de cámara';
+                }
+            } else if (err.message === 'Timeout') {
+                mensaje = 'Cámara no responde';
             }
             
+            showToast(mensaje, 'error');
             closeScanner();
         }
     }

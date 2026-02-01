@@ -18,7 +18,7 @@ class EvaluationSuggestionService:
         if not hasattr(user, "miembro") or not user.miembro:
             return None
 
-        miembro = user.miembro
+        miembo = user.miembro
         hoy = timezone.now()
 
         # 1) Unidades donde el miembro es liderazgo
