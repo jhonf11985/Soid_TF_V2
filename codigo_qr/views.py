@@ -366,9 +366,24 @@ def envio_desde_detalle(request, token: str):
 
     tel_norm = _normalizar_telefono_whatsapp(tel)
 
+
     # Crear enlace a la imagen PNG del QR
-    link = request.build_absolute_uri(reverse("codigo_qr:imagen", args=[qr.token]))
-    mensaje = f"Hola {miembro.nombres}, este es tu código QR de la iglesia. Guárdalo o preséntalo cuando se te pida: {link}"
+    link = request.build_absolute_uri(
+        reverse("codigo_qr:imagen", args=[qr.token])
+    )
+
+    nombre = f"{miembro.nombres} {miembro.apellidos}".strip()
+
+    mensaje = (
+        f"Hola {nombre}.\n\n"
+        f"La iglesia está viviendo un *tiempo de crecimiento y organización*.\n\n"
+        f"Este *Código QR* es tu *identificación personal* como miembro.\n\n"
+        f"Tu Código QR:\n"
+        f"{link}\n\n"
+        f"Bendiciones,\n"
+        f"Iglesia Torre Fuerte"
+)
+
 
     url = f"https://wa.me/{tel_norm}?text={quote(mensaje)}"
     return redirect(url)
