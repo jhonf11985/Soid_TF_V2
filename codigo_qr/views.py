@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 from django.urls import reverse
 from django.db.models import Q
+from django.core.paginator import Paginator
 
 import io
 import re
@@ -140,12 +141,15 @@ def _normalizar_telefono_whatsapp(tel: str) -> str:
 def envios_home(request):
     """
     Lista de miembros CON WHATSAPP para seleccionar y poner en cola el envío de su QR.
+    Paginado para optimizar rendimiento con muchos miembros.
     """
     q = (request.GET.get("q") or "").strip()
 
-    # ✅ SOLO miembros que tienen WhatsApp (no vacío, no nulo)
+    # SOLO miembros que tienen WhatsApp (no vacío, no nulo)
     miembros = Miembro.objects.exclude(
         Q(whatsapp__isnull=True) | Q(whatsapp="")
+    ).only(
+        "id", "nombres", "apellidos", "whatsapp"  # Solo campos necesarios
     ).order_by("nombres", "apellidos")
 
     # Búsqueda por ID o nombre
@@ -165,10 +169,19 @@ def envios_home(request):
     
     miembros = miembros.exclude(id__in=ids_pendientes)
 
+    # Total antes de paginar
+    total_con_whatsapp = miembros.count()
+
+    # Paginación - 50 por página para buen rendimiento
+    paginator = Paginator(miembros, 50)
+    page_number = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_number)
+
     context = {
-        "miembros": miembros[:200],
+        "miembros": page_obj,
+        "page_obj": page_obj,
         "q": q,
-        "total_con_whatsapp": miembros.count(),
+        "total_con_whatsapp": total_con_whatsapp,
     }
     return render(request, "codigo_qr/envios_home.html", context)
 
@@ -217,8 +230,9 @@ def envios_crear_lote(request):
             ya_pendientes += 1
             continue
 
-        # Crear el enlace y mensaje
-        link = request.build_absolute_uri(reverse("codigo_qr:por_miembro", args=[m.id]))
+        # Crear el enlace a la IMAGEN del QR (PNG), no a la página
+        # Primero aseguramos que el QR tiene token
+        link = request.build_absolute_uri(reverse("codigo_qr:imagen", args=[qr.token]))
         mensaje = f"Hola {m.nombres}, este es tu código QR de la iglesia. Guárdalo o preséntalo cuando se te pida: {link}"
 
         QrEnvio.objects.create(
@@ -286,7 +300,8 @@ def envios_enviar(request, envio_id: int):
 
     texto = (envio.mensaje or "").strip()
     if not texto:
-        link = request.build_absolute_uri(reverse("codigo_qr:por_miembro", args=[envio.miembro.id]))
+        # Respaldo: enlace a la imagen PNG del QR
+        link = request.build_absolute_uri(reverse("codigo_qr:imagen", args=[envio.token.token]))
         texto = f"Hola, este es tu código QR de la iglesia: {link}"
 
     url = f"https://wa.me/{tel_norm}?text={quote(texto)}"
@@ -312,48 +327,34 @@ def envios_marcar_enviado(request, envio_id: int):
     messages.success(request, "✅ Envío marcado como enviado.")
     return redirect("codigo_qr:envios_pendientes")
 
+
 @login_required
 @require_GET
 def envio_desde_detalle(request, token: str):
     """
-    Desde el detalle del QR:
-    - Valida que el QR tenga miembro
-    - Crea (si no existe) un QrEnvio PENDIENTE
-    - Redirige a envios_enviar (que abre WhatsApp wa.me)
+    Envía el QR por WhatsApp directamente desde la página de detalle del QR.
+    Crea el envío si no existe y redirige a WhatsApp.
     """
-    qr = get_object_or_404(QrToken, token=token)
-
-    if not qr.miembro_id:
-        messages.warning(request, "Este QR no está asignado a ningún miembro.")
-        return redirect("codigo_qr:scan")
+    try:
+        qr = QrToken.objects.select_related("miembro").get(token=token)
+    except QrToken.DoesNotExist:
+        raise Http404("QR inválido")
 
     miembro = qr.miembro
+    if not miembro:
+        messages.error(request, "Este QR no está asociado a un miembro.")
+        return redirect("codigo_qr:scan")
 
     tel = _get_whatsapp(miembro)
+    if not tel:
+        messages.warning(request, "Este miembro no tiene número de WhatsApp registrado.")
+        return redirect("codigo_qr:por_miembro", miembro_id=miembro.id)
+
     tel_norm = _normalizar_telefono_whatsapp(tel)
 
-    if not tel_norm:
-        messages.warning(request, "Este miembro no tiene un WhatsApp válido.")
-        return redirect("codigo_qr:por_miembro", miembro.id)
+    # Crear enlace a la imagen PNG del QR
+    link = request.build_absolute_uri(reverse("codigo_qr:imagen", args=[qr.token]))
+    mensaje = f"Hola {miembro.nombres}, este es tu código QR de la iglesia. Guárdalo o preséntalo cuando se te pida: {link}"
 
-    # Si ya hay un envío pendiente para este miembro + este QR, reutilízalo
-    envio = QrEnvio.objects.filter(
-        miembro_id=miembro.id,
-        token_id=qr.id,
-        estado=QrEnvio.ESTADO_PENDIENTE
-    ).order_by("-creado_en").first()
-
-    if not envio:
-        link = request.build_absolute_uri(reverse("codigo_qr:por_miembro", args=[miembro.id]))
-        mensaje = f"Hola {miembro.nombres}, este es tu código QR de la iglesia. Guárdalo o preséntalo cuando se te pida: {link}"
-
-        envio = QrEnvio.objects.create(
-            miembro=miembro,
-            token=qr,
-            telefono=tel,
-            mensaje=mensaje,
-            estado=QrEnvio.ESTADO_PENDIENTE,
-            creado_por=request.user,
-        )
-
-    return redirect("codigo_qr:envios_enviar", envio.id)
+    url = f"https://wa.me/{tel_norm}?text={quote(mensaje)}"
+    return redirect(url)
