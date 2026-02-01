@@ -231,23 +231,15 @@ def envios_crear_lote(request):
             continue
 
         # Crear el enlace a la IMAGEN del QR (PNG), no a la página
-        # Primero aseguramos que el QR tiene token
-        nombre = f"{m.nombres} {m.apellidos}".strip()
-
-        link = request.build_absolute_uri(
-            reverse("codigo_qr:imagen", args=[qr.token])
-        )
-
+        link = request.build_absolute_uri(reverse("codigo_qr:imagen", args=[qr.token]))
         mensaje = (
-            f"Hola {nombre}.\n\n"
-            f"La iglesia está viviendo un *tiempo de crecimiento y organización*.\n\n"
+            f"Hola {m.nombres} {m.apellidos}. "
+            f"La iglesia está viviendo un *tiempo de crecimiento y organización*. "
             f"Este *Código QR* es tu *identificación personal* como miembro.\n\n"
-            f"Tu Código QR:\n"
-            f"{link}\n\n"
+            f"Tu Código QR: {link}\n\n"
             f"Bendiciones,\n"
-            f"Iglesia Torre Fuerte"
+            f"Iglesia Torre Fuerte."
         )
-
 
         QrEnvio.objects.create(
             miembro=m,
@@ -316,7 +308,14 @@ def envios_enviar(request, envio_id: int):
     if not texto:
         # Respaldo: enlace a la imagen PNG del QR
         link = request.build_absolute_uri(reverse("codigo_qr:imagen", args=[envio.token.token]))
-        texto = f"Hola, este es tu código QR de la iglesia: {link}"
+        texto = (
+            f"Hola {envio.miembro.nombres} {envio.miembro.apellidos}. "
+            f"La iglesia está viviendo un *tiempo de crecimiento y organización*. "
+            f"Este *Código QR* es tu *identificación personal* como miembro.\n\n"
+            f"Tu Código QR: {link}\n\n"
+            f"Bendiciones,\n"
+            f"Iglesia Torre Fuerte."
+        )
 
     url = f"https://wa.me/{tel_norm}?text={quote(texto)}"
     return redirect(url)
@@ -366,24 +365,16 @@ def envio_desde_detalle(request, token: str):
 
     tel_norm = _normalizar_telefono_whatsapp(tel)
 
-
     # Crear enlace a la imagen PNG del QR
-    link = request.build_absolute_uri(
-        reverse("codigo_qr:imagen", args=[qr.token])
-    )
-
-    nombre = f"{miembro.nombres} {miembro.apellidos}".strip()
-
+    link = request.build_absolute_uri(reverse("codigo_qr:imagen", args=[qr.token]))
     mensaje = (
-        f"Hola {nombre}.\n\n"
-        f"La iglesia está viviendo un *tiempo de crecimiento y organización*.\n\n"
+        f"Hola {miembro.nombres} {miembro.apellidos}. "
+        f"La iglesia está viviendo un *tiempo de crecimiento y organización*. "
         f"Este *Código QR* es tu *identificación personal* como miembro.\n\n"
-        f"Tu Código QR:\n"
-        f"{link}\n\n"
+        f"Tu Código QR: {link}\n\n"
         f"Bendiciones,\n"
-        f"Iglesia Torre Fuerte"
-)
-
+        f"Iglesia Torre Fuerte."
+    )
 
     url = f"https://wa.me/{tel_norm}?text={quote(mensaje)}"
     return redirect(url)
