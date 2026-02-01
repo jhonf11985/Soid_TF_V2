@@ -59,6 +59,8 @@ INSTALLED_APPS = [
     'inventario_app',
     'agenda_app',
     'evaluaciones_app',
+    "codigo_qr",
+
 
 
 ]

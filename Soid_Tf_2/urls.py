@@ -6,6 +6,7 @@ from core import ajax_views
 from django.views.generic import TemplateView
 
 
+
 urlpatterns = [
     path("admin/", admin.site.urls),
 
@@ -59,6 +60,8 @@ urlpatterns = [
 
     path('evaluaciones/', include('evaluaciones_app.urls', namespace='evaluaciones_app')),
     path("docs/", include("core.urls_docs", namespace="docs")),
+    path("codigo-qr/", include("codigo_qr.urls")),
+
 
 ]
 
