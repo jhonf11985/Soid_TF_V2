@@ -1,0 +1,448 @@
+{% extends 'codigo_qr/base_codigo_qr.html' %}
+{% load static %}
+
+{% block codigo_qr_content %}
+<style>
+.envios-page {
+    padding: 0;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* Header compacto */
+.envios-header {
+    background: #5c9ead;
+    padding: 16px 20px;
+    color: white;
+}
+
+.envios-header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.envios-header p {
+    margin: 4px 0 0 0;
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+/* Toolbar */
+.envios-toolbar {
+    background: white;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.search-row {
+    display: flex;
+    gap: 8px;
+}
+
+.search-row input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.search-row input:focus {
+    outline: none;
+    border-color: #5c9ead;
+}
+
+.search-row button {
+    background: #5c9ead;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.toolbar-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.toolbar-stats a {
+    color: #5c9ead;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* Lista de miembros */
+.members-list {
+    background: white;
+    margin: 12px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.list-header {
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.list-header input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #5c9ead;
+}
+
+.list-header label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #495057;
+}
+
+.selection-count {
+    margin-left: auto;
+    background: #5c9ead;
+    color: white;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    display: none;
+}
+
+.selection-count.active {
+    display: inline-block;
+}
+
+/* Items de miembro */
+.member-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f3f4;
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.member-item:last-child {
+    border-bottom: none;
+}
+
+.member-item:active {
+    background: #f8f9fa;
+}
+
+.member-item.selected {
+    background: rgba(92,158,173,0.08);
+}
+
+.member-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #5c9ead;
+    flex-shrink: 0;
+}
+
+.member-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.member-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.member-phone {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.member-id {
+    font-size: 12px;
+    color: #adb5bd;
+    flex-shrink: 0;
+}
+
+/* Botón flotante */
+.fab-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    left: 20px;
+    z-index: 100;
+}
+
+.btn-submit {
+    width: 100%;
+    background: #5c9ead;
+    color: white;
+    border: none;
+    padding: 14px 20px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(92,158,173,0.4);
+}
+
+.btn-submit:disabled {
+    background: #adb5bd;
+    box-shadow: none;
+}
+
+/* Estado vacío */
+.empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: #6c757d;
+}
+
+.empty-state .material-icons {
+    font-size: 48px;
+    color: #dee2e6;
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Paginación */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    background: white;
+    margin: 0 12px 80px 12px;
+    border-radius: 8px;
+}
+
+.pagination a,
+.pagination span {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.pagination a {
+    background: #f8f9fa;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.pagination a:hover {
+    background: #e9ecef;
+}
+
+.pagination .current {
+    background: #5c9ead;
+    color: white;
+}
+
+.pagination .disabled {
+    color: #adb5bd;
+    pointer-events: none;
+}
+
+/* Espaciado inferior para el FAB */
+.content-wrapper {
+    padding-bottom: 80px;
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+    .envios-header {
+        padding: 20px 32px;
+    }
+    
+    .envios-header h1 {
+        font-size: 22px;
+    }
+    
+    .envios-toolbar {
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 16px 32px;
+    }
+    
+    .search-row {
+        min-width: 350px;
+    }
+    
+    .members-list {
+        margin: 20px 32px;
+    }
+    
+    .pagination {
+        margin: 0 32px 100px 32px;
+    }
+    
+    .fab-container {
+        left: auto;
+        width: auto;
+    }
+    
+    .btn-submit {
+        width: auto;
+        padding: 14px 32px;
+    }
+}
+</style>
+
+<div class="envios-page">
+    <form method="post" action="{% url 'codigo_qr:envios_crear_lote' %}" id="enviosForm">
+        {% csrf_token %}
+
+        <!-- Header -->
+        <div class="envios-header">
+            <h1>Envío de QR por WhatsApp</h1>
+            <p>{{ total_con_whatsapp }} miembro{{ total_con_whatsapp|pluralize:"s" }} con WhatsApp disponible{{ total_con_whatsapp|pluralize:"s" }}</p>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="envios-toolbar">
+            <div class="search-row">
+                <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nombre o ID...">
+                <button type="submit" formaction="{% url 'codigo_qr:envios_home' %}" formmethod="get">
+                    <span class="material-icons" style="font-size:18px;vertical-align:middle;">search</span>
+                </button>
+            </div>
+            <div class="toolbar-stats">
+                <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                <a href="{% url 'codigo_qr:envios_pendientes' %}">Ver pendientes →</a>
+            </div>
+        </div>
+
+        <!-- Lista -->
+        <div class="content-wrapper">
+            <div class="members-list">
+                <div class="list-header">
+                    <input type="checkbox" id="selectAll">
+                    <label for="selectAll">Seleccionar todos</label>
+                    <span class="selection-count" id="selectionCount">0</span>
+                </div>
+
+                {% for m in miembros %}
+                <div class="member-item" data-id="{{ m.id }}">
+                    <input type="checkbox" name="miembro_ids" value="{{ m.id }}" class="member-cb">
+                    <div class="member-info">
+                        <div class="member-name">{{ m.nombres }} {{ m.apellidos }}</div>
+                        <div class="member-phone">{{ m.whatsapp }}</div>
+                    </div>
+                    <div class="member-id">#{{ m.id }}</div>
+                </div>
+                {% empty %}
+                <div class="empty-state">
+                    <span class="material-icons">person_off</span>
+                    <p>No hay miembros disponibles</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Paginación -->
+            {% if page_obj.has_other_pages %}
+            <div class="pagination">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">← Anterior</a>
+                {% endif %}
+                
+                <span class="current">{{ page_obj.number }}</span>
+                
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}">Siguiente →</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Botón flotante -->
+        <div class="fab-container">
+            <button type="submit" class="btn-submit" id="btnSubmit" disabled>
+                <span class="material-icons">send</span>
+                <span id="btnText">Selecciona miembros</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.member-cb');
+    const countEl = document.getElementById('selectionCount');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const btnText = document.getElementById('btnText');
+    
+    function updateUI() {
+        const checked = document.querySelectorAll('.member-cb:checked').length;
+        
+        // Contador
+        countEl.textContent = checked;
+        countEl.classList.toggle('active', checked > 0);
+        
+        // Botón
+        btnSubmit.disabled = checked === 0;
+        btnText.textContent = checked === 0 
+            ? 'Selecciona miembros' 
+            : `Enviar a ${checked} miembro${checked > 1 ? 's' : ''}`;
+        
+        // Select all state
+        selectAll.checked = checked === checkboxes.length && checkboxes.length > 0;
+        selectAll.indeterminate = checked > 0 && checked < checkboxes.length;
+    }
+    
+    // Select all
+    selectAll.addEventListener('change', function() {
+        checkboxes.forEach(cb => {
+            cb.checked = this.checked;
+            cb.closest('.member-item').classList.toggle('selected', this.checked);
+        });
+        updateUI();
+    });
+    
+    // Individual checkboxes
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            this.closest('.member-item').classList.toggle('selected', this.checked);
+            updateUI();
+        });
+    });
+    
+    // Click en fila
+    document.querySelectorAll('.member-item').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.type === 'checkbox') return;
+            const cb = this.querySelector('.member-cb');
+            cb.checked = !cb.checked;
+            this.classList.toggle('selected', cb.checked);
+            updateUI();
+        });
+    });
+})();
+</script>
+{% endblock %}

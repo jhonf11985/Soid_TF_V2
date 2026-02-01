@@ -1,0 +1,384 @@
+{% extends 'codigo_qr/base_codigo_qr.html' %}
+{% load static %}
+
+{% block codigo_qr_content %}
+<style>
+.pendientes-page {
+    padding: 0;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* Header */
+.pendientes-header {
+    background: #5c9ead;
+    padding: 16px 20px;
+    color: white;
+}
+
+.pendientes-header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.pendientes-header p {
+    margin: 4px 0 0 0;
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+/* Stats */
+.stats-bar {
+    background: white;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stats-bar a {
+    color: #5c9ead;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.stats-badges {
+    display: flex;
+    gap: 12px;
+}
+
+.stat-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #495057;
+}
+
+.stat-badge .count {
+    background: #5c9ead;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.stat-badge.sent .count {
+    background: #40c057;
+}
+
+/* Lista compacta */
+.pendientes-list {
+    padding: 12px;
+}
+
+.pendiente-item {
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 12px;
+    transition: all 0.3s ease;
+}
+
+.pendiente-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pendiente-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pendiente-phone {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+/* Botón único que hace todo */
+.btn-enviar {
+    background: #25d366;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.btn-enviar:hover {
+    background: #20bd5a;
+    color: white;
+}
+
+.btn-enviar .material-icons {
+    font-size: 18px;
+}
+
+/* Estado vacío */
+.empty-state {
+    background: white;
+    border-radius: 8px;
+    padding: 60px 20px;
+    text-align: center;
+    margin: 12px;
+}
+
+.empty-state .material-icons {
+    font-size: 56px;
+    color: #40c057;
+    margin-bottom: 16px;
+}
+
+.empty-state h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    color: #212529;
+}
+
+.empty-state p {
+    margin: 0 0 20px 0;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.empty-state a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #5c9ead;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+/* Tip */
+.tip-box {
+    background: #e7f5ff;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.tip-box .material-icons {
+    color: #1c7ed6;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.tip-box p {
+    margin: 0;
+    font-size: 13px;
+    color: #1864ab;
+    line-height: 1.4;
+}
+
+/* Progreso */
+.progress-bar {
+    background: #e9ecef;
+    border-radius: 4px;
+    height: 6px;
+    margin: 12px 16px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    background: #40c057;
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+    .pendientes-header {
+        padding: 20px 32px;
+    }
+    
+    .pendientes-header h1 {
+        font-size: 22px;
+    }
+    
+    .stats-bar {
+        padding: 16px 32px;
+    }
+    
+    .progress-bar {
+        margin: 12px 32px;
+    }
+    
+    .pendientes-list {
+        padding: 12px 32px;
+    }
+    
+    .tip-box {
+        margin: 12px 32px;
+    }
+    
+    .empty-state {
+        margin: 20px 32px;
+    }
+}
+</style>
+
+<div class="pendientes-page">
+    <!-- Header -->
+    <div class="pendientes-header">
+        <h1>Envíos Pendientes</h1>
+        <p>Un clic: abre WhatsApp y marca como enviado</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+        <a href="{% url 'codigo_qr:envios_home' %}">← Agregar más</a>
+        <div class="stats-badges">
+            <div class="stat-badge">
+                <span>Pendientes</span>
+                <span class="count" id="countPendientes">{{ total_pendientes }}</span>
+            </div>
+            <div class="stat-badge sent">
+                <span>Enviados</span>
+                <span class="count" id="countEnviados">{{ total_enviados }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if pendientes %}
+    <!-- Barra de progreso -->
+    {% with total=total_pendientes|add:total_enviados %}
+    {% if total > 0 %}
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: {% widthratio total_enviados total 100 %}%"></div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Tip -->
+    <div class="tip-box">
+        <span class="material-icons">bolt</span>
+        <p><strong>Flujo rápido:</strong> Toca "Enviar" → WhatsApp se abre → presiona enviar en WhatsApp → ¡listo! Se marca automáticamente.</p>
+    </div>
+
+    <!-- Lista -->
+    <div class="pendientes-list" id="pendientesList">
+        {% for e in pendientes %}
+        <div class="pendiente-item" id="item-{{ e.id }}">
+            <div class="pendiente-info">
+                <div class="pendiente-name">{{ e.miembro.nombres }} {{ e.miembro.apellidos }}</div>
+                <div class="pendiente-phone">{{ e.telefono }}</div>
+            </div>
+            <a href="#" 
+               class="btn-enviar" 
+               data-envio-id="{{ e.id }}"
+               data-wa-url="{% url 'codigo_qr:envios_enviar' e.id %}"
+               onclick="enviarYMarcar(this, event)">
+                <span class="material-icons">send</span>
+                Enviar
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Estado vacío -->
+    <div class="empty-state">
+        <span class="material-icons">check_circle</span>
+        <h3>¡Todo enviado!</h3>
+        <p>No hay envíos pendientes.</p>
+        <a href="{% url 'codigo_qr:envios_home' %}">
+            <span class="material-icons">add</span>
+            Agregar miembros
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+let pendientesCount = {{ total_pendientes }};
+let enviadosCount = {{ total_enviados }};
+
+function enviarYMarcar(btn, event) {
+    event.preventDefault();
+    
+    const envioId = btn.dataset.envioId;
+    const waUrl = btn.dataset.waUrl;
+    const item = document.getElementById('item-' + envioId);
+    
+    // 1. Abrir WhatsApp en nueva pestaña
+    window.open(waUrl, '_blank');
+    
+    // 2. Marcar como enviado via fetch
+    const marcarUrl = "{% url 'codigo_qr:envios_marcar_enviado' 999 %}".replace('999', envioId);
+    
+    fetch(marcarUrl, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    }).then(response => {
+        if (response.ok || response.redirected) {
+            // Animar y remover el item
+            item.style.opacity = '0';
+            item.style.transform = 'translateX(50px)';
+            
+            setTimeout(() => {
+                item.remove();
+                actualizarContadores();
+            }, 300);
+        }
+    }).catch(err => {
+        console.log('Marcado localmente:', err);
+        // Aún así remover visualmente
+        item.style.opacity = '0.3';
+        setTimeout(() => item.remove(), 300);
+        actualizarContadores();
+    });
+}
+
+function actualizarContadores() {
+    pendientesCount--;
+    enviadosCount++;
+    
+    document.getElementById('countPendientes').textContent = pendientesCount;
+    document.getElementById('countEnviados').textContent = enviadosCount;
+    
+    // Actualizar barra de progreso
+    const total = pendientesCount + enviadosCount;
+    const progress = total > 0 ? (enviadosCount / total * 100) : 100;
+    const progressBar = document.getElementById('progressFill');
+    if (progressBar) {
+        progressBar.style.width = progress + '%';
+    }
+    
+    // Si no quedan pendientes, recargar para mostrar estado vacío
+    if (pendientesCount <= 0) {
+        setTimeout(() => location.reload(), 800);
+    }
+}
+</script>
+{% endblock %}

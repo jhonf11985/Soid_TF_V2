@@ -14,3 +14,11 @@ class QrScanLogAdmin(admin.ModelAdmin):
     list_display = ("token", "modo", "resultado", "escaneado_por", "creado_en")
     list_filter = ("modo", "resultado")
     search_fields = ("token__token",)
+from .models import QrEnvio
+
+
+@admin.register(QrEnvio)
+class QrEnvioAdmin(admin.ModelAdmin):
+    list_display = ("miembro_id", "estado", "telefono", "creado_en", "enviado_en")
+    list_filter = ("estado",)
+    search_fields = ("miembro_id", "telefono", "token__token")

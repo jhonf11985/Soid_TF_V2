@@ -40,3 +40,62 @@ class QrScanLog(models.Model):
 
     def __str__(self):
         return f"{self.token.token} - {self.modo} - {self.resultado}"
+
+from django.conf import settings
+from django.db import models
+
+
+class QrEnvio(models.Model):
+    ESTADO_PENDIENTE = "pendiente"
+    ESTADO_ENVIADO = "enviado"
+    ESTADO_SIN_TELEFONO = "sin_telefono"
+
+    ESTADOS = [
+        (ESTADO_PENDIENTE, "Pendiente"),
+        (ESTADO_ENVIADO, "Enviado"),
+        (ESTADO_SIN_TELEFONO, "Sin teléfono"),
+    ]
+
+    miembro = models.ForeignKey(
+        "miembros_app.Miembro",
+        on_delete=models.CASCADE,
+        related_name="qr_envios",
+    )
+    token = models.ForeignKey(
+        "codigo_qr.QrToken",
+        on_delete=models.CASCADE,
+        related_name="envios",
+    )
+
+    telefono = models.CharField(max_length=30, blank=True, default="")
+    mensaje = models.TextField(blank=True, default="")
+
+    estado = models.CharField(max_length=20, choices=ESTADOS, default=ESTADO_PENDIENTE)
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    enviado_en = models.DateTimeField(null=True, blank=True)
+
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="qr_envios_creados",
+    )
+    enviado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="qr_envios_enviados",
+    )
+
+    class Meta:
+        ordering = ["-creado_en"]
+        indexes = [
+            models.Index(fields=["estado"]),
+            models.Index(fields=["creado_en"]),
+        ]
+
+    def __str__(self):
+        return f"QR Envío {self.miembro_id} - {self.estado}"
