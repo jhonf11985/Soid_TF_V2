@@ -232,8 +232,22 @@ def envios_crear_lote(request):
 
         # Crear el enlace a la IMAGEN del QR (PNG), no a la página
         # Primero aseguramos que el QR tiene token
-        link = request.build_absolute_uri(reverse("codigo_qr:imagen", args=[qr.token]))
-        mensaje = f"Hola {m.nombres}, este es tu código QR de la iglesia. Guárdalo o preséntalo cuando se te pida: {link}"
+        nombre = f"{m.nombres} {m.apellidos}".strip()
+
+        link = request.build_absolute_uri(
+            reverse("codigo_qr:imagen", args=[qr.token])
+        )
+
+        mensaje = (
+            f"Hola {nombre}.\n\n"
+            f"La iglesia está viviendo un *tiempo de crecimiento y organización*.\n\n"
+            f"Este *Código QR* es tu *identificación personal* como miembro.\n\n"
+            f"Tu Código QR:\n"
+            f"{link}\n\n"
+            f"Bendiciones,\n"
+            f"Iglesia Torre Fuerte"
+        )
+
 
         QrEnvio.objects.create(
             miembro=m,
@@ -300,23 +314,9 @@ def envios_enviar(request, envio_id: int):
 
     texto = (envio.mensaje or "").strip()
     if not texto:
-        miembro = envio.miembro
-        nombre = f"{miembro.nombres} {miembro.apellidos}".strip()
-
-        link = request.build_absolute_uri(
-            reverse("codigo_qr:por_miembro", args=[miembro.id])
-        )
-
-        texto = (
-            f"Hola {nombre}.\n\n"
-            f"La iglesia está viviendo un *tiempo de crecimiento y organización*.\n\n"
-            f"Este *Código QR* es tu *identificación personal* como miembro.\n\n"
-            f"Tu Código QR:\n"
-            f"{link}\n\n"
-            f"Bendiciones,\n"
-            f"Iglesia Torre Fuerte"
-        )
-
+        # Respaldo: enlace a la imagen PNG del QR
+        link = request.build_absolute_uri(reverse("codigo_qr:imagen", args=[envio.token.token]))
+        texto = f"Hola, este es tu código QR de la iglesia: {link}"
 
     url = f"https://wa.me/{tel_norm}?text={quote(texto)}"
     return redirect(url)
