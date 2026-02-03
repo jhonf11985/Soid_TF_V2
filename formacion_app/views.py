@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Count
 
 from .models import ProgramaEducativo, CicloPrograma, GrupoFormativo, InscripcionGrupo
-from .forms import ProgramaEducativoForm
+from .forms import ProgramaEducativoForm,CicloProgramaForm
 
 
 # =============================================================================
