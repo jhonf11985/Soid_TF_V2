@@ -8,7 +8,7 @@ urlpatterns = [
     path("", views.inicio_formacion, name="inicio"),
     
     # Programas educativos
-    
+     path("programas/", views.programas_list, name="programas"),
     path("programas/nuevo/", views.programa_crear, name="programa_crear"),
     path("programas/<int:pk>/editar/", views.programa_editar, name="programa_editar"),
 
@@ -16,5 +16,8 @@ urlpatterns = [
     path("grupos/", views.grupos_listado, name="grupos"),
     path("grupos/nuevo/", views.grupo_crear, name="grupo_crear"),
     path("grupos/<int:pk>/editar/", views.grupo_editar, name="grupo_editar"),
+ # Ciclos
+path("ciclos/nuevo/", views.ciclo_crear, name="ciclo_crear"),
+path("ciclos/<int:pk>/editar/", views.ciclo_editar, name="ciclo_editar"),
 
 ]

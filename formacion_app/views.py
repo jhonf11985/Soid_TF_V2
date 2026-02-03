@@ -198,3 +198,43 @@ def grupo_editar(request, pk):
         "grupo": grupo,
         "programas": programas,
     })
+
+def ciclo_crear(request):
+    """Crear un nuevo ciclo de programa."""
+    if request.method == "POST":
+        form = CicloProgramaForm(request.POST)
+        if form.is_valid():
+            ciclo = form.save()
+
+            if "guardar_y_nuevo" in request.POST:
+                return redirect("formacion:ciclo_crear")
+
+            return redirect("formacion:ciclo_editar", pk=ciclo.pk)
+    else:
+        form = CicloProgramaForm()
+
+    return render(request, "formacion_app/ciclo_form.html", {
+        "form": form,
+        "ciclo": None,
+    })
+
+def ciclo_editar(request, pk):
+    """Editar un ciclo existente."""
+    ciclo = get_object_or_404(CicloPrograma, pk=pk)
+
+    if request.method == "POST":
+        form = CicloProgramaForm(request.POST, instance=ciclo)
+        if form.is_valid():
+            form.save()
+
+            if "guardar_y_nuevo" in request.POST:
+                return redirect("formacion:ciclo_crear")
+
+            return redirect("formacion:ciclo_editar", pk=ciclo.pk)
+    else:
+        form = CicloProgramaForm(instance=ciclo)
+
+    return render(request, "formacion_app/ciclo_form.html", {
+        "form": form,
+        "ciclo": ciclo,
+    })

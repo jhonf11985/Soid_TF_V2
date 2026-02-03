@@ -1,0 +1,95 @@
+{% extends 'formacion_app/base_formacion.html' %}
+{% load static %}
+
+{% block formacion_content %}
+<div class="container-fluid py-4">
+
+  <!-- Encabezado -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-1">
+        {% if ciclo %}Editar ciclo{% else %}Nuevo ciclo{% endif %}
+      </h4>
+      <p class="text-muted mb-0">
+        Crea y gestiona ciclos dentro de un programa educativo
+      </p>
+    </div>
+
+    <!-- Cambia este enlace cuando tengamos la lista de ciclos -->
+    <a href="{% url 'formacion:inicio' %}" class="btn btn-outline-secondary">
+      <span class="material-icons align-middle me-1">arrow_back</span>
+      Volver
+    </a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
+        <div class="row g-3">
+
+          {# Render seguro: no asumimos nombres de campos #}
+          {% for field in form %}
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="{{ field.id_for_label }}">
+                {{ field.label }}
+                {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+              </label>
+
+              {{ field }}
+
+              {% if field.help_text %}
+                <div class="form-text">{{ field.help_text }}</div>
+              {% endif %}
+
+              {% if field.errors %}
+                <div class="text-danger small mt-1">
+                  {{ field.errors|striptags }}
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+
+        </div>
+
+        <hr class="my-4">
+
+        <div class="d-flex gap-2 justify-content-end">
+          <button type="submit" name="guardar" class="btn btn-primary">
+            <span class="material-icons align-middle me-1">save</span>
+            Guardar
+          </button>
+
+          <button type="submit" name="guardar_y_nuevo" class="btn btn-outline-primary">
+            <span class="material-icons align-middle me-1">add</span>
+            Guardar y nuevo
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+</div>
+
+<style>
+  /* Ajuste suave para inputs si tu base no aplica clases Bootstrap a los widgets */
+  form input[type="text"],
+  form input[type="number"],
+  form input[type="date"],
+  form input[type="datetime-local"],
+  form select,
+  form textarea {
+    width: 100%;
+  }
+</style>
+{% endblock %}
