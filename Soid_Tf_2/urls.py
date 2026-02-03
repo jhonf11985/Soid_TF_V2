@@ -62,8 +62,11 @@ urlpatterns = [
     path("docs/", include("core.urls_docs", namespace="docs")),
     path("codigo-qr/", include("codigo_qr.urls")),
 
-
+    path("formacion/", include("formacion_app.urls")),
 ]
+
+
+
 
 # Para servir archivos estáticos y media en desarrollo
 if settings.DEBUG:
