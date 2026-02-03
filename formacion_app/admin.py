@@ -18,13 +18,38 @@ class CicloProgramaAdmin(admin.ModelAdmin):
 
 @admin.register(GrupoFormativo)
 class GrupoFormativoAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "ciclo", "sexo_permitido", "edad_min", "edad_max", "maestro", "activo")
-    search_fields = ("nombre", "ciclo__nombre", "ciclo__programa__nombre")
-    list_filter = ("sexo_permitido", "activo", "ciclo__programa")
-
-
+    list_display = (
+        "nombre",
+        "programa",
+        "sexo_permitido",
+        "edad_min",
+        "edad_max",
+        "maestro",
+        "activo",
+    )
+    search_fields = (
+        "nombre",
+        "programa__nombre",
+    )
+    list_filter = (
+        "sexo_permitido",
+        "activo",
+        "programa",
+    )
 @admin.register(InscripcionGrupo)
 class InscripcionGrupoAdmin(admin.ModelAdmin):
-    list_display = ("miembro_id", "grupo", "estado", "fecha_inscripcion")
-    search_fields = ("miembro_id", "grupo__nombre", "grupo__ciclo__nombre", "grupo__ciclo__programa__nombre")
-    list_filter = ("estado", "grupo__ciclo__programa")
+    list_display = (
+        "miembro_id",
+        "grupo",
+        "estado",
+        "fecha_inscripcion",
+    )
+    search_fields = (
+        "miembro_id",
+        "grupo__nombre",
+        "grupo__programa__nombre",
+    )
+    list_filter = (
+        "estado",
+        "grupo__programa",
+    )

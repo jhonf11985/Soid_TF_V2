@@ -23,8 +23,9 @@ def inicio_formacion(request):
     grupos_sin_maestro_lista = (
         GrupoFormativo.objects
         .filter(maestro__isnull=True)
-        .select_related("ciclo", "ciclo__programa")[:10]
+        .select_related("programa")[:10]
     )
+
 
     total_inscritos = InscripcionGrupo.objects.count()
     inscritos_activos = InscripcionGrupo.objects.filter(estado="ACTIVO").count()
@@ -45,9 +46,10 @@ def inicio_formacion(request):
     # Top programas por inscritos (vía grupos → inscripciones)
     top_programas = (
         ProgramaEducativo.objects
-        .annotate(total_inscritos=Count("ciclos__grupos__inscripciones"))
+        .annotate(total_inscritos=Count("grupos__inscripciones"))
         .order_by("-total_inscritos", "nombre")[:5]
     )
+
 
     ctx = {
         "total_programas": total_programas,
@@ -117,4 +119,82 @@ def programa_editar(request, pk):
     return render(request, "formacion_app/programa_form.html", {
         "form": form,
         "programa": programa,
+    })
+
+# =============================================================================
+# GRUPOS / CLASES
+# =============================================================================
+
+def grupos_listado(request):
+    """
+    Listado de grupos formativos.
+    """
+    grupos = (
+        GrupoFormativo.objects
+        .select_related("programa", "maestro")
+        .order_by("nombre")
+    )
+
+    return render(request, "formacion_app/grupos_list.html", {
+        "grupos": grupos,
+    })
+
+
+def grupo_crear(request):
+    """
+    Crear un nuevo grupo/clase.
+    """
+    if request.method == "POST":
+        grupo = GrupoFormativo(
+            nombre=request.POST.get("nombre"),
+            programa_id=request.POST.get("programa") or None,
+            sexo_permitido=request.POST.get("sexo_permitido", "MIXTO"),
+            edad_min=request.POST.get("edad_min") or None,
+            edad_max=request.POST.get("edad_max") or None,
+            maestro_id=request.POST.get("maestro") or None,
+            horario=request.POST.get("horario", ""),
+            lugar=request.POST.get("lugar", ""),
+            cupo=request.POST.get("cupo") or None,
+            activo=("activo" in request.POST),
+        )
+        grupo.full_clean()
+        grupo.save()
+        return redirect("formacion:grupo_editar", pk=grupo.pk)
+
+    programas = ProgramaEducativo.objects.filter(activo=True).order_by("nombre")
+
+    return render(request, "formacion_app/grupo_form.html", {
+        "grupo": None,
+        "programas": programas,
+    })
+
+
+def grupo_editar(request, pk):
+    """
+    Editar un grupo/clase existente.
+    """
+    grupo = get_object_or_404(GrupoFormativo, pk=pk)
+
+    if request.method == "POST":
+        grupo.nombre = request.POST.get("nombre")
+        grupo.programa_id = request.POST.get("programa") or None
+        grupo.sexo_permitido = request.POST.get("sexo_permitido", "MIXTO")
+        grupo.edad_min = request.POST.get("edad_min") or None
+        grupo.edad_max = request.POST.get("edad_max") or None
+        grupo.maestro_id = request.POST.get("maestro") or None
+        grupo.horario = request.POST.get("horario", "")
+        grupo.lugar = request.POST.get("lugar", "")
+        grupo.cupo = request.POST.get("cupo") or None
+        grupo.activo = "activo" in request.POST
+
+        grupo.full_clean()
+        grupo.save()
+
+        return redirect("formacion:grupo_editar", pk=grupo.pk)
+
+    programas = ProgramaEducativo.objects.filter(activo=True).order_by("nombre")
+
+    return render(request, "formacion_app/grupo_form.html", {
+        "grupo": grupo,
+        "programas": programas,
     })

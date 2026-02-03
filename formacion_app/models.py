@@ -52,18 +52,33 @@ class CicloPrograma(models.Model):
 
 class GrupoFormativo(models.Model):
     """
-    Grupo/clase dentro de un ciclo. Ej: 'Varones 18-30'
+    Grupo / clase formativa.
+    Puede existir de forma independiente o estar asignado a un programa.
     """
+
     SEXO_CHOICES = (
         ("VARONES", "Varones"),
         ("HEMBRAS", "Hembras"),
         ("MIXTO", "Mixto"),
     )
 
-    ciclo = models.ForeignKey(CicloPrograma, on_delete=models.CASCADE, related_name="grupos")
+    programa = models.ForeignKey(
+        ProgramaEducativo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="grupos",
+        help_text="Programa educativo al que pertenece (opcional).",
+    )
+
     nombre = models.CharField(max_length=120)
 
-    sexo_permitido = models.CharField(max_length=10, choices=SEXO_CHOICES, default="MIXTO")
+    sexo_permitido = models.CharField(
+        max_length=10,
+        choices=SEXO_CHOICES,
+        default="MIXTO",
+    )
+
     edad_min = models.PositiveSmallIntegerField(null=True, blank=True)
     edad_max = models.PositiveSmallIntegerField(null=True, blank=True)
 
@@ -72,29 +87,33 @@ class GrupoFormativo(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="grupos_formacion",
-        help_text="Usuario maestro/facilitador responsable (por ahora User).",
+        related_name="grupos_formativos",
+        help_text="Usuario responsable del grupo.",
     )
 
-    horario = models.CharField(max_length=120, blank=True)   # Ej: 'Domingos 9:00 AM'
-    lugar = models.CharField(max_length=120, blank=True)     # Ej: 'Aula 2'
+    horario = models.CharField(max_length=120, blank=True)
+    lugar = models.CharField(max_length=120, blank=True)
     cupo = models.PositiveSmallIntegerField(null=True, blank=True)
     activo = models.BooleanField(default=True)
+
+    creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = "Grupo formativo"
         verbose_name_plural = "Grupos formativos"
-        unique_together = (("ciclo", "nombre"),)
         ordering = ["nombre"]
+        unique_together = (("programa", "nombre"),)
 
     def __str__(self):
-        return f"{self.ciclo} | {self.nombre}"
+        if self.programa:
+            return f"{self.programa} | {self.nombre}"
+        return self.nombre
 
     def clean(self):
-        # Validación básica de rangos de edad
         if self.edad_min is not None and self.edad_max is not None:
             if self.edad_min > self.edad_max:
                 raise ValidationError("edad_min no puede ser mayor que edad_max.")
+
 
 
 class InscripcionGrupo(models.Model):
@@ -137,10 +156,21 @@ class InscripcionGrupo(models.Model):
         return f"Miembro {self.miembro_id} -> {self.grupo}"
 
     def clean(self):
-        # Bloquear que el mismo miembro esté en 2 grupos del mismo ciclo
-        ciclo = self.grupo.ciclo
-        qs = InscripcionGrupo.objects.filter(miembro_id=self.miembro_id, grupo__ciclo=ciclo)
+        """
+        Regla: si el grupo está asignado a un programa,
+        el miembro no puede estar en 2 grupos del mismo programa.
+        Si el grupo NO tiene programa, no aplicamos esta regla.
+        """
+        programa = self.grupo.programa
+        if not programa:
+            return
+
+        qs = InscripcionGrupo.objects.filter(
+            miembro_id=self.miembro_id,
+            grupo__programa=programa,
+        )
         if self.pk:
             qs = qs.exclude(pk=self.pk)
+
         if qs.exists():
-            raise ValidationError("Este miembro ya está inscrito en otro grupo de este ciclo.")
+            raise ValidationError("Este miembro ya está inscrito en otro grupo de este programa.")

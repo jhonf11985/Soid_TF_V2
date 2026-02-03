@@ -11,4 +11,10 @@ urlpatterns = [
     
     path("programas/nuevo/", views.programa_crear, name="programa_crear"),
     path("programas/<int:pk>/editar/", views.programa_editar, name="programa_editar"),
+
+        # Grupos / Clases
+    path("grupos/", views.grupos_listado, name="grupos"),
+    path("grupos/nuevo/", views.grupo_crear, name="grupo_crear"),
+    path("grupos/<int:pk>/editar/", views.grupo_editar, name="grupo_editar"),
+
 ]
