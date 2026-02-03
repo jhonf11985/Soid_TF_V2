@@ -57,18 +57,31 @@ from .inactivos import (
     carta_salida_miembro,
 )
 
-# Reportes (importar del archivo reportes.py cuando lo crees)
-# from .reportes import (
-#     reportes_miembros,
-#     reporte_listado_miembros,
-#     reporte_cumple_mes,
-#     reporte_miembros_nuevos_mes,
-#     reporte_miembros_salida,
-#     reporte_nuevos_creyentes,
-#     reporte_relaciones_familiares,
-#     exportar_miembros_excel,
-#     importar_miembros_excel,
-# )
+# Reportes
+from .reportes import (
+    reportes_miembros,
+    reporte_listado_miembros,
+    reporte_cumple_mes,
+    reporte_miembros_nuevos_mes,
+    reporte_miembros_salida,
+    reporte_nuevos_creyentes,
+    reporte_relaciones_familiares,
+    exportar_miembros_excel,
+    importar_miembros_excel,
+    listado_miembros_enviar_email,
+)
+
+# Extras (mapa, bitácora, padres espirituales, emails)
+from .extras import (
+    validar_telefono,
+    mapa_miembros,
+    api_mapa_miembros,
+    miembro_bitacora_add,
+    padre_espiritual_add_simple,
+    padre_espiritual_remove_simple,
+    miembro_enviar_ficha_email,
+    nuevos_creyentes_enviar_email,
+)
 
 # Utils (para uso interno)
 from .utils import (
@@ -79,6 +92,7 @@ from .utils import (
     modulo_nuevo_creyente_activo,
     miembro_tiene_asignacion_en_unidades,
     generar_pdf_desde_html,
+    get_choices_safe,
     MESES_ES,
     CORTE_NINOS,
     TIPOS_NUCLEAR,
