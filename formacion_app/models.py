@@ -71,6 +71,15 @@ class GrupoFormativo(models.Model):
         help_text="Programa educativo al que pertenece (opcional).",
     )
 
+    ciclo = models.ForeignKey(
+        "CicloPrograma",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="grupos",
+        help_text="Ciclo del programa (opcional, no usado por ahora).",
+    )
+
     nombre = models.CharField(max_length=120)
 
     sexo_permitido = models.CharField(

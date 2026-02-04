@@ -20,4 +20,7 @@ urlpatterns = [
 path("ciclos/nuevo/", views.ciclo_crear, name="ciclo_crear"),
 path("ciclos/<int:pk>/editar/", views.ciclo_editar, name="ciclo_editar"),
 
+  # ✅ LISTA DE GRUPOS
+    path("grupos/", views.grupos_listado, name="grupos"),
+
 ]

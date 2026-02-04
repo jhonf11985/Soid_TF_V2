@@ -238,3 +238,20 @@ def ciclo_editar(request, pk):
         "form": form,
         "ciclo": ciclo,
     })
+
+from django.shortcuts import render
+from .models import GrupoFormativo
+
+def grupos_listado(request):
+    """
+    Listado de grupos formativos.
+    """
+    grupos = (
+        GrupoFormativo.objects
+        .select_related("programa", "maestro")
+        .order_by("nombre")
+    )
+
+    return render(request, "formacion_app/grupos_list.html", {
+        "grupos": grupos,
+    })
