@@ -1,8 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Count
+from django.contrib import messages
 
 from .models import ProgramaEducativo, CicloPrograma, GrupoFormativo, InscripcionGrupo
-from .forms import ProgramaEducativoForm,CicloProgramaForm
+from .forms import ProgramaEducativoForm, CicloProgramaForm
+from miembros_app.models import Miembro
 
 
 # =============================================================================
@@ -19,13 +21,12 @@ def inicio_formacion(request):
     ciclos_activos = CicloPrograma.objects.filter(activo=True).count()
 
     total_grupos = GrupoFormativo.objects.count()
-    grupos_sin_maestro = GrupoFormativo.objects.filter(maestro__isnull=True).count()
+    grupos_sin_maestro = GrupoFormativo.objects.filter(maestros__isnull=True).count()
     grupos_sin_maestro_lista = (
         GrupoFormativo.objects
-        .filter(maestro__isnull=True)
+        .filter(maestros__isnull=True)
         .select_related("programa")[:10]
     )
-
 
     total_inscritos = InscripcionGrupo.objects.count()
     inscritos_activos = InscripcionGrupo.objects.filter(estado="ACTIVO").count()
@@ -43,13 +44,12 @@ def inicio_formacion(request):
         for r in distribucion
     ]
 
-    # Top programas por inscritos (vía grupos → inscripciones)
+    # Top programas por inscritos
     top_programas = (
         ProgramaEducativo.objects
         .annotate(total_inscritos=Count("grupos__inscripciones"))
         .order_by("-total_inscritos", "nombre")[:5]
     )
-
 
     ctx = {
         "total_programas": total_programas,
@@ -86,10 +86,8 @@ def programa_crear(request):
         form = ProgramaEducativoForm(request.POST)
         if form.is_valid():
             programa = form.save()
-
             if "guardar_y_nuevo" in request.POST:
                 return redirect("formacion:programa_crear")
-
             return redirect("formacion:programa_editar", pk=programa.pk)
     else:
         form = ProgramaEducativoForm()
@@ -108,10 +106,8 @@ def programa_editar(request, pk):
         form = ProgramaEducativoForm(request.POST, instance=programa)
         if form.is_valid():
             form.save()
-
             if "guardar_y_nuevo" in request.POST:
                 return redirect("formacion:programa_crear")
-
             return redirect("formacion:programa_editar", pk=programa.pk)
     else:
         form = ProgramaEducativoForm(instance=programa)
@@ -121,45 +117,96 @@ def programa_editar(request, pk):
         "programa": programa,
     })
 
+
 # =============================================================================
 # GRUPOS / CLASES
 # =============================================================================
 
+from django.db.models import Count
+
 def grupos_listado(request):
-    """
-    Listado de grupos formativos.
-    """
+    """Listado de grupos formativos."""
     grupos = (
         GrupoFormativo.objects
-        .select_related("programa", "maestro")
+        .select_related("programa")
+        .prefetch_related("maestros", "ayudantes")
+        .annotate(total_alumnos=Count("inscripciones", distinct=True))
         .order_by("nombre")
     )
-
     return render(request, "formacion_app/grupos_list.html", {
         "grupos": grupos,
     })
 
 
+
+def _parse_ids(ids_string):
+    """Convierte string de IDs separados por coma a lista de enteros."""
+    if not ids_string:
+        return []
+    return [int(id.strip()) for id in ids_string.split(',') if id.strip().isdigit()]
+
+
+def _get_miembros_data(miembros_queryset):
+    """Convierte queryset de miembros a lista de diccionarios para el template."""
+    return [
+        {
+            'id': m.id,
+            'nombre': f"{m.nombres} {m.apellidos}".strip(),
+            'codigo': m.codigo_miembro or ''
+        }
+        for m in miembros_queryset
+    ]
+
+
 def grupo_crear(request):
-    """
-    Crear un nuevo grupo/clase.
-    """
+    """Crear un nuevo grupo/clase."""
     if request.method == "POST":
-        grupo = GrupoFormativo(
-            nombre=request.POST.get("nombre"),
-            programa_id=request.POST.get("programa") or None,
-            sexo_permitido=request.POST.get("sexo_permitido", "MIXTO"),
-            edad_min=request.POST.get("edad_min") or None,
-            edad_max=request.POST.get("edad_max") or None,
-            maestro_id=request.POST.get("maestro") or None,
-            horario=request.POST.get("horario", ""),
-            lugar=request.POST.get("lugar", ""),
-            cupo=request.POST.get("cupo") or None,
-            activo=("activo" in request.POST),
-        )
-        grupo.full_clean()
-        grupo.save()
-        return redirect("formacion:grupo_editar", pk=grupo.pk)
+        try:
+            # Crear grupo
+            grupo = GrupoFormativo(
+                nombre=request.POST.get("nombre"),
+                programa_id=request.POST.get("programa") or None,
+                sexo_permitido=request.POST.get("sexo_permitido", "MIXTO"),
+                edad_min=request.POST.get("edad_min") or None,
+                edad_max=request.POST.get("edad_max") or None,
+                horario=request.POST.get("horario", ""),
+                lugar=request.POST.get("lugar", ""),
+                cupo=request.POST.get("cupo") or None,
+                activo=("activo" in request.POST),
+            )
+            grupo.full_clean()
+            grupo.save()
+
+            # Asignar maestros
+            maestros_ids = _parse_ids(request.POST.get("maestros_ids", ""))
+            if maestros_ids:
+                maestros = Miembro.objects.filter(id__in=maestros_ids)
+                grupo.maestros.set(maestros)
+
+            # Asignar ayudantes
+            ayudantes_ids = _parse_ids(request.POST.get("ayudantes_ids", ""))
+            if ayudantes_ids:
+                ayudantes = Miembro.objects.filter(id__in=ayudantes_ids)
+                grupo.ayudantes.set(ayudantes)
+
+            # Inscribir estudiantes
+            estudiantes_ids = _parse_ids(request.POST.get("estudiantes_ids", ""))
+            for miembro_id in estudiantes_ids:
+                InscripcionGrupo.objects.get_or_create(
+                    miembro_id=miembro_id,
+                    grupo=grupo,
+                    defaults={'estado': 'ACTIVO'}
+                )
+
+            messages.success(request, f"Grupo '{grupo.nombre}' creado exitosamente.")
+            return redirect("formacion:grupo_editar", pk=grupo.pk)
+
+        except Exception as e:
+            return render(request, "formacion_app/grupo_form.html", {
+                "grupo": None,
+                "programas": ProgramaEducativo.objects.filter(activo=True).order_by("nombre"),
+                "errors": str(e),
+            })
 
     programas = ProgramaEducativo.objects.filter(activo=True).order_by("nombre")
 
@@ -170,34 +217,89 @@ def grupo_crear(request):
 
 
 def grupo_editar(request, pk):
-    """
-    Editar un grupo/clase existente.
-    """
+    """Editar un grupo/clase existente."""
     grupo = get_object_or_404(GrupoFormativo, pk=pk)
 
     if request.method == "POST":
-        grupo.nombre = request.POST.get("nombre")
-        grupo.programa_id = request.POST.get("programa") or None
-        grupo.sexo_permitido = request.POST.get("sexo_permitido", "MIXTO")
-        grupo.edad_min = request.POST.get("edad_min") or None
-        grupo.edad_max = request.POST.get("edad_max") or None
-        grupo.maestro_id = request.POST.get("maestro") or None
-        grupo.horario = request.POST.get("horario", "")
-        grupo.lugar = request.POST.get("lugar", "")
-        grupo.cupo = request.POST.get("cupo") or None
-        grupo.activo = "activo" in request.POST
+        try:
+            # Actualizar campos básicos
+            grupo.nombre = request.POST.get("nombre")
+            grupo.programa_id = request.POST.get("programa") or None
+            grupo.sexo_permitido = request.POST.get("sexo_permitido", "MIXTO")
+            grupo.edad_min = request.POST.get("edad_min") or None
+            grupo.edad_max = request.POST.get("edad_max") or None
+            grupo.horario = request.POST.get("horario", "")
+            grupo.lugar = request.POST.get("lugar", "")
+            grupo.cupo = request.POST.get("cupo") or None
+            grupo.activo = "activo" in request.POST
 
-        grupo.full_clean()
-        grupo.save()
+            grupo.full_clean()
+            grupo.save()
 
-        return redirect("formacion:grupo_editar", pk=grupo.pk)
+            # Actualizar maestros
+            maestros_ids = _parse_ids(request.POST.get("maestros_ids", ""))
+            grupo.maestros.set(Miembro.objects.filter(id__in=maestros_ids))
 
+            # Actualizar ayudantes
+            ayudantes_ids = _parse_ids(request.POST.get("ayudantes_ids", ""))
+            grupo.ayudantes.set(Miembro.objects.filter(id__in=ayudantes_ids))
+
+            # Actualizar estudiantes (inscripciones)
+            estudiantes_ids_nuevos = set(_parse_ids(request.POST.get("estudiantes_ids", "")))
+            estudiantes_ids_actuales = set(
+                grupo.inscripciones.filter(estado="ACTIVO").values_list('miembro_id', flat=True)
+            )
+
+            # Agregar nuevos
+            for miembro_id in estudiantes_ids_nuevos - estudiantes_ids_actuales:
+                InscripcionGrupo.objects.get_or_create(
+                    miembro_id=miembro_id,
+                    grupo=grupo,
+                    defaults={'estado': 'ACTIVO'}
+                )
+
+            # Retirar los que ya no están
+            for miembro_id in estudiantes_ids_actuales - estudiantes_ids_nuevos:
+                InscripcionGrupo.objects.filter(
+                    miembro_id=miembro_id,
+                    grupo=grupo
+                ).update(estado='RETIRADO')
+
+            messages.success(request, "Grupo actualizado exitosamente.")
+            return redirect("formacion:grupo_editar", pk=grupo.pk)
+
+        except Exception as e:
+            # Si hay error, recargar con datos actuales
+            pass
+
+    # Preparar datos para el template
     programas = ProgramaEducativo.objects.filter(activo=True).order_by("nombre")
+
+    # Obtener maestros actuales
+    maestros_actuales = _get_miembros_data(grupo.maestros.all())
+
+    # Obtener ayudantes actuales
+    ayudantes_actuales = _get_miembros_data(grupo.ayudantes.all())
+
+    # Obtener estudiantes activos
+    estudiantes_qs = Miembro.objects.filter(
+        inscripciones_formacion__grupo=grupo,
+        inscripciones_formacion__estado="ACTIVO"
+    )
+    estudiantes_actuales = _get_miembros_data(estudiantes_qs)
 
     return render(request, "formacion_app/grupo_form.html", {
         "grupo": grupo,
         "programas": programas,
+        "maestros_actuales": maestros_actuales,
+        "ayudantes_actuales": ayudantes_actuales,
+        "estudiantes_actuales": estudiantes_actuales,
     })
+
+
+# =============================================================================
+# CICLOS
+# =============================================================================
 
 def ciclo_crear(request):
     """Crear un nuevo ciclo de programa."""
@@ -205,10 +307,8 @@ def ciclo_crear(request):
         form = CicloProgramaForm(request.POST)
         if form.is_valid():
             ciclo = form.save()
-
             if "guardar_y_nuevo" in request.POST:
                 return redirect("formacion:ciclo_crear")
-
             return redirect("formacion:ciclo_editar", pk=ciclo.pk)
     else:
         form = CicloProgramaForm()
@@ -218,6 +318,7 @@ def ciclo_crear(request):
         "ciclo": None,
     })
 
+
 def ciclo_editar(request, pk):
     """Editar un ciclo existente."""
     ciclo = get_object_or_404(CicloPrograma, pk=pk)
@@ -226,10 +327,8 @@ def ciclo_editar(request, pk):
         form = CicloProgramaForm(request.POST, instance=ciclo)
         if form.is_valid():
             form.save()
-
             if "guardar_y_nuevo" in request.POST:
                 return redirect("formacion:ciclo_crear")
-
             return redirect("formacion:ciclo_editar", pk=ciclo.pk)
     else:
         form = CicloProgramaForm(instance=ciclo)
@@ -237,21 +336,4 @@ def ciclo_editar(request, pk):
     return render(request, "formacion_app/ciclo_form.html", {
         "form": form,
         "ciclo": ciclo,
-    })
-
-from django.shortcuts import render
-from .models import GrupoFormativo
-
-def grupos_listado(request):
-    """
-    Listado de grupos formativos.
-    """
-    grupos = (
-        GrupoFormativo.objects
-        .select_related("programa", "maestro")
-        .order_by("nombre")
-    )
-
-    return render(request, "formacion_app/grupos_list.html", {
-        "grupos": grupos,
     })
