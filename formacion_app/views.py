@@ -486,12 +486,15 @@ def sesion_detalle(request, sesion_id):
 
     asistencias = sesion.asistencias.select_related("miembro").order_by("marcado_en")
 
+    # ✅ contar inscritos del grupo desde InscripcionGrupo
+    total_grupo = InscripcionGrupo.objects.filter(grupo=grupo, estado="ACTIVO").count()
+
     return render(request, "formacion_app/sesion_detalle.html", {
         "sesion": sesion,
         "grupo": grupo,
         "asistencias": asistencias,
+        "total_grupo": total_grupo,
     })
-
 
 def sesion_kiosko(request, sesion_id):
     sesion = get_object_or_404(SesionGrupo, id=sesion_id)
@@ -561,3 +564,19 @@ def sesion_kiosko_marcar(request, sesion_id):
         "marcado_en": timezone.localtime(asistencia.marcado_en).strftime("%d/%m/%Y %H:%M"),
     })
 
+from django.views.decorators.http import require_POST
+
+@require_POST
+def sesion_cerrar(request, sesion_id):
+    sesion = get_object_or_404(SesionGrupo, id=sesion_id)
+
+    if sesion.estado != SesionGrupo.ESTADO_ABIERTA:
+        messages.info(request, "Esta sesión ya estaba cerrada.")
+        return redirect("formacion:sesion_detalle", sesion_id=sesion.id)
+
+    sesion.estado = SesionGrupo.ESTADO_CERRADA
+    sesion.fin = timezone.now()
+    sesion.save(update_fields=["estado", "fin"])
+
+    messages.success(request, "Sesión cerrada correctamente.")
+    return redirect("formacion:grupos")

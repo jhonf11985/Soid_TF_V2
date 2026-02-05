@@ -32,6 +32,7 @@ path("ciclos/<int:pk>/editar/", views.ciclo_editar, name="ciclo_editar"),
 path("sesiones/<int:sesion_id>/", views.sesion_detalle, name="sesion_detalle"),
 path("sesiones/<int:sesion_id>/kiosko/", views.sesion_kiosko, name="sesion_kiosko"),
 path("sesiones/<int:sesion_id>/kiosko/marcar/", views.sesion_kiosko_marcar, name="sesion_kiosko_marcar"),
+path("sesiones/<int:sesion_id>/cerrar/", views.sesion_cerrar, name="sesion_cerrar"),
 
 
 
