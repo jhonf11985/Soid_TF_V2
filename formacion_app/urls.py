@@ -23,6 +23,11 @@ path("ciclos/<int:pk>/editar/", views.ciclo_editar, name="ciclo_editar"),
   # ✅ LISTA DE GRUPOS
     path("grupos/", views.grupos_listado, name="grupos"),
      path('grupos/reporte/', views.grupos_reporte, name='grupos_reporte'), 
+         path(
+        "grupos/<int:grupo_id>/sesion/abrir/",
+        views.grupo_sesion_abrir,
+        name="grupo_sesion_abrir",
+    ),
     
 
 ]

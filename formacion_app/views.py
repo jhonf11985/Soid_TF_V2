@@ -452,3 +452,9 @@ def grupos_reporte(request):
         "stats": stats,
         "programas": programas,
     })
+
+from django.http import HttpResponse
+
+def grupo_sesion_abrir(request, grupo_id):
+    # Paso 1: solo comprobación de que la URL funciona
+    return HttpResponse(f"OK ✅ Abrir sesión para grupo_id={grupo_id}")
