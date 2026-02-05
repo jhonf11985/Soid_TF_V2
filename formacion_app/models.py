@@ -321,3 +321,40 @@ class AsistenciaSesion(models.Model):
 
     def __str__(self):
         return f"{self.sesion_id} · {self.miembro_id} · {self.metodo}"
+
+class RolFormativo(models.Model):
+    TIPO_MAESTRO = "MAESTRO"
+    TIPO_AYUDANTE = "AYUDANTE"
+
+    TIPO_CHOICES = (
+        (TIPO_MAESTRO, "Maestro"),
+        (TIPO_AYUDANTE, "Ayudante"),
+    )
+
+    miembro = models.ForeignKey(
+        "miembros_app.Miembro",
+        on_delete=models.CASCADE,
+        related_name="roles_formativos",
+    )
+
+    tipo = models.CharField(
+        max_length=10,
+        choices=TIPO_CHOICES,
+    )
+
+    activo = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Rol formativo"
+        verbose_name_plural = "Roles formativos"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["miembro", "tipo"],
+                name="uniq_rol_formativo_por_miembro",
+            )
+        ]
+        ordering = ["tipo", "-id"]
+
+    def __str__(self):
+        return f"{self.miembro} · {self.tipo}"

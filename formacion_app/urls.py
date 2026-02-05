@@ -33,7 +33,11 @@ path("sesiones/<int:sesion_id>/", views.sesion_detalle, name="sesion_detalle"),
 path("sesiones/<int:sesion_id>/kiosko/", views.sesion_kiosko, name="sesion_kiosko"),
 path("sesiones/<int:sesion_id>/kiosko/marcar/", views.sesion_kiosko_marcar, name="sesion_kiosko_marcar"),
 path("sesiones/<int:sesion_id>/cerrar/", views.sesion_cerrar, name="sesion_cerrar"),
+path("roles/", views.roles_formativos, name="roles_formativos"),
+path("roles/", views.roles_formativos, name="roles_formativos"),
 
+path("roles/nuevo/", views.rol_formativo_nuevo, name="rol_formativo_nuevo"),
+path("roles/<int:pk>/toggle/", views.rol_formativo_toggle, name="rol_formativo_toggle"),
 
 
 ]

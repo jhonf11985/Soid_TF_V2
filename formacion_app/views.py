@@ -7,7 +7,8 @@ from .forms import ProgramaEducativoForm, CicloProgramaForm
 from miembros_app.models import Miembro
 from .utils_reglas import reporte_reglas_grupo
 from django.utils import timezone
-
+from django.contrib.auth.decorators import login_required
+from .models import RolFormativo
 # =============================================================================
 # DASHBOARD
 # =============================================================================
@@ -580,3 +581,86 @@ def sesion_cerrar(request, sesion_id):
 
     messages.success(request, "Sesión cerrada correctamente.")
     return redirect("formacion:grupos")
+def roles_formativos(request):
+    maestros = RolFormativo.objects.filter(tipo="MAESTRO")
+    ayudantes = RolFormativo.objects.filter(tipo="AYUDANTE")
+
+    return render(request, "formacion_app/roles_formativos.html", {
+        "maestros": maestros,
+        "ayudantes": ayudantes,
+    })
+
+
+@login_required
+def roles_formativos(request):
+    maestros = (
+        RolFormativo.objects
+        .select_related("miembro")
+        .filter(tipo=RolFormativo.TIPO_MAESTRO)
+        .order_by("-activo", "miembro__nombres", "miembro__apellidos")
+    )
+    ayudantes = (
+        RolFormativo.objects
+        .select_related("miembro")
+        .filter(tipo=RolFormativo.TIPO_AYUDANTE)
+        .order_by("-activo", "miembro__nombres", "miembro__apellidos")
+    )
+
+    return render(request, "formacion_app/roles_formativos.html", {
+        "maestros": maestros,
+        "ayudantes": ayudantes,
+        "total_maestros": maestros.count(),
+        "total_ayudantes": ayudantes.count(),
+    })
+
+
+@login_required
+def rol_formativo_nuevo(request):
+    """
+    Crea un rol formativo (MAESTRO o AYUDANTE) para un miembro.
+    Usamos un input hidden con miembro_id para que sea simple.
+    """
+    if request.method == "POST":
+        miembro_id = request.POST.get("miembro_id") or ""
+        tipo = request.POST.get("tipo") or ""
+
+        errores = []
+        if not miembro_id.isdigit():
+            errores.append("Selecciona un miembro válido.")
+        if tipo not in (RolFormativo.TIPO_MAESTRO, RolFormativo.TIPO_AYUDANTE):
+            errores.append("Selecciona un tipo válido (Maestro o Ayudante).")
+
+        miembro = None
+        if not errores:
+            miembro = get_object_or_404(Miembro, pk=int(miembro_id))
+
+            obj, created = RolFormativo.objects.get_or_create(
+                miembro=miembro,
+                tipo=tipo,
+                defaults={"activo": True},
+            )
+
+            if not created and not obj.activo:
+                obj.activo = True
+                obj.save(update_fields=["activo"])
+
+            messages.success(request, "Rol guardado correctamente.")
+            return redirect("formacion:roles_formativos")
+
+        return render(request, "formacion_app/rol_formativo_form.html", {
+            "errores": "\n".join(errores),
+            "tipos": [RolFormativo.TIPO_MAESTRO, RolFormativo.TIPO_AYUDANTE],
+        })
+
+    return render(request, "formacion_app/rol_formativo_form.html", {
+        "tipos": [RolFormativo.TIPO_MAESTRO, RolFormativo.TIPO_AYUDANTE],
+    })
+
+
+@login_required
+@require_POST
+def rol_formativo_toggle(request, pk):
+    rol = get_object_or_404(RolFormativo, pk=pk)
+    rol.activo = not rol.activo
+    rol.save(update_fields=["activo"])
+    return redirect("formacion:roles_formativos")
