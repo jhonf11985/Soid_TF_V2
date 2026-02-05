@@ -362,3 +362,93 @@ def ciclo_editar(request, pk):
         "form": form,
         "ciclo": ciclo,
     })
+
+# Agregar esta vista a views.py de formacion_app
+
+from django.shortcuts import render
+from django.db.models import Count
+from .models import ProgramaEducativo, GrupoFormativo
+from .utils_reglas import reporte_reglas_grupo
+
+
+def grupos_reporte(request):
+    """
+    Reporte de análisis de grupos formativos.
+    """
+    from django.db.models import Count
+    
+    grupos_qs = (
+        GrupoFormativo.objects
+        .select_related("programa")
+        .prefetch_related("maestros", "ayudantes", "inscripciones")
+        .annotate(total_alumnos=Count("inscripciones", distinct=True))
+        .order_by("nombre")
+    )
+    
+    grupos_data = []
+    stats = {
+        'total_grupos': 0,
+        'grupos_con_faltantes': 0,
+        'grupos_con_sobrantes': 0,
+        'grupos_excedidos': 0,
+        'grupos_sin_maestro': 0,
+        'grupos_vacios': 0,
+    }
+    
+    def miembro_to_dict(m):
+        return {
+            'id': m.id,
+            'nombre': f"{m.nombres} {m.apellidos}".strip(),
+            'codigo': getattr(m, 'codigo_miembro', '') or '',
+        }
+    
+    for grupo in grupos_qs:
+        stats['total_grupos'] += 1
+        
+        reporte = reporte_reglas_grupo(grupo)
+        
+        inscritos = [miembro_to_dict(m) for m in reporte['inscritos'][:50]]
+        faltan = [miembro_to_dict(m) for m in reporte['faltan'][:50]]
+        sobran = [miembro_to_dict(m) for m in reporte['sobran'][:50]]
+        
+        total_inscritos = reporte['inscritos'].count()
+        total_faltan = reporte['faltan'].count()
+        total_sobran = reporte['sobran'].count()
+        
+        excedido = False
+        if grupo.cupo and total_inscritos > grupo.cupo:
+            excedido = True
+            stats['grupos_excedidos'] += 1
+        
+        sin_maestro = not grupo.maestros.exists()
+        if sin_maestro:
+            stats['grupos_sin_maestro'] += 1
+        
+        if total_inscritos == 0:
+            stats['grupos_vacios'] += 1
+        
+        if total_faltan > 0:
+            stats['grupos_con_faltantes'] += 1
+        
+        if total_sobran > 0:
+            stats['grupos_con_sobrantes'] += 1
+        
+        grupos_data.append({
+            'grupo': grupo,
+            'inscritos': inscritos,
+            'faltan': faltan,
+            'sobran': sobran,
+            'total_inscritos': total_inscritos,
+            'total_faltan': total_faltan,
+            'total_sobran': total_sobran,
+            'excedido': excedido,
+            'sin_maestro': sin_maestro,
+        })
+    
+    programas = ProgramaEducativo.objects.filter(activo=True).order_by("nombre")
+    
+    return render(request, "formacion_app/grupos_reporte.html", {
+        "grupos": grupos_data,
+        "stats": stats,
+        "programas": programas,
+    })
