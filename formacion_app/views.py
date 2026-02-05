@@ -482,10 +482,14 @@ def grupo_sesion_abrir(request, grupo_id):
 
 def sesion_detalle(request, sesion_id):
     sesion = get_object_or_404(SesionGrupo, id=sesion_id)
+    grupo = sesion.grupo
+
+    asistencias = sesion.asistencias.select_related("miembro").order_by("marcado_en")
 
     return render(request, "formacion_app/sesion_detalle.html", {
         "sesion": sesion,
-        "grupo": sesion.grupo,
+        "grupo": grupo,
+        "asistencias": asistencias,
     })
 
 
