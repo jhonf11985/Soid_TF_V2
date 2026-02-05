@@ -29,5 +29,10 @@ path("ciclos/<int:pk>/editar/", views.ciclo_editar, name="ciclo_editar"),
         name="grupo_sesion_abrir",
     ),
     
+path("sesiones/<int:sesion_id>/", views.sesion_detalle, name="sesion_detalle"),
+path("sesiones/<int:sesion_id>/kiosko/", views.sesion_kiosko, name="sesion_kiosko"),
+path("sesiones/<int:sesion_id>/kiosko/marcar/", views.sesion_kiosko_marcar, name="sesion_kiosko_marcar"),
+
+
 
 ]

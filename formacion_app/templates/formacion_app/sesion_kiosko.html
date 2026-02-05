@@ -1,0 +1,100 @@
+{% extends 'formacion_app/base_formacion.html' %}
+{% load static %}
+
+{% block formacion_content %}
+<div style="padding:16px; max-width:620px; margin:0 auto;">
+  <h2 style="margin:0 0 6px 0;">Modo kiosko</h2>
+  <div style="color:#6c757d; margin-bottom:14px;">
+    {{ grupo.nombre }} · {{ sesion.fecha }}
+  </div>
+
+  <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:14px;">
+    
+    <form id="kioskoForm" method="post" autocomplete="off">
+      {% csrf_token %}
+
+      <label style="display:block;font-size:13px;color:#6c757d;margin-bottom:6px;">
+        Código del miembro
+      </label>
+
+      <input
+        id="codigoInput"
+        name="codigo"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="Ej: 1024"
+        style="width:100%;padding:14px 12px;font-size:20px;border:1px solid #dee2e6;border-radius:10px;outline:none;"
+      >
+
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button type="submit"
+                id="btnMarcar"
+                style="flex:1;background:#714B67;color:#fff;border:none;border-radius:10px;padding:12px 14px;font-size:16px;cursor:pointer;">
+          Marcar asistencia
+        </button>
+
+        <a href="{% url 'formacion:sesion_detalle' sesion.id %}"
+           style="background:#e9ecef;color:#212529;border-radius:10px;padding:12px 14px;text-decoration:none;display:inline-flex;align-items:center;">
+          Salir
+        </a>
+      </div>
+    </form>
+
+    <div id="resultado"
+         style="margin-top:12px; padding:10px 12px; border-radius:10px; display:none;">
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById('kioskoForm');
+  const input = document.getElementById('codigoInput');
+  const box = document.getElementById('resultado');
+
+  function show(msg, ok) {
+    box.style.display = 'block';
+    box.textContent = msg;
+    box.style.background = ok ? 'rgba(25,135,84,.12)' : 'rgba(220,53,69,.12)';
+    box.style.color = ok ? '#0f5132' : '#842029';
+  }
+
+  async function marcar(e) {
+    e.preventDefault();
+
+    const codigo = (input.value || '').trim();
+    if (!codigo) {
+      show("Introduce el código.", false);
+      input.focus();
+      return;
+    }
+
+    const formData = new FormData(form);
+
+    const res = await fetch("{% url 'formacion:sesion_kiosko_marcar' sesion.id %}", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      body: formData
+    });
+
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+
+    if (data && data.ok) {
+      show(data.msg, true);
+    } else {
+      show((data && data.msg) ? data.msg : "Error marcando asistencia.", false);
+    }
+
+    input.value = "";
+    input.focus();
+  }
+
+  form.addEventListener("submit", marcar);
+  setTimeout(() => input.focus(), 200);
+})();
+</script>
+
+{% endblock %}

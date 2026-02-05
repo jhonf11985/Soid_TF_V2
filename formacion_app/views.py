@@ -6,7 +6,7 @@ from .models import ProgramaEducativo, CicloPrograma, GrupoFormativo, Inscripcio
 from .forms import ProgramaEducativoForm, CicloProgramaForm
 from miembros_app.models import Miembro
 from .utils_reglas import reporte_reglas_grupo
-
+from django.utils import timezone
 
 # =============================================================================
 # DASHBOARD
@@ -455,6 +455,105 @@ def grupos_reporte(request):
 
 from django.http import HttpResponse
 
+
+from .models import GrupoFormativo, SesionGrupo
+
 def grupo_sesion_abrir(request, grupo_id):
-    # Paso 1: solo comprobación de que la URL funciona
-    return HttpResponse(f"OK ✅ Abrir sesión para grupo_id={grupo_id}")
+    grupo = get_object_or_404(GrupoFormativo, id=grupo_id)
+    hoy = timezone.localdate()
+
+    sesion = SesionGrupo.objects.filter(
+        grupo=grupo,
+        estado=SesionGrupo.ESTADO_ABIERTA,
+        fecha=hoy
+    ).first()
+
+    if not sesion:
+        sesion = SesionGrupo.objects.create(
+            grupo=grupo,
+            fecha=hoy,
+            creada_por=request.user if request.user.is_authenticated else None,
+        )
+        messages.success(request, f"Sesión abierta para: {grupo.nombre}")
+    else:
+        messages.info(request, f"Ya hay una sesión abierta hoy para: {grupo.nombre}")
+
+    return redirect("formacion:sesion_detalle", sesion_id=sesion.id)
+
+def sesion_detalle(request, sesion_id):
+    sesion = get_object_or_404(SesionGrupo, id=sesion_id)
+
+    return render(request, "formacion_app/sesion_detalle.html", {
+        "sesion": sesion,
+        "grupo": sesion.grupo,
+    })
+
+
+def sesion_kiosko(request, sesion_id):
+    sesion = get_object_or_404(SesionGrupo, id=sesion_id)
+
+    return render(request, "formacion_app/sesion_kiosko.html", {
+        "sesion": sesion,
+        "grupo": sesion.grupo,
+    })
+
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+
+from .models import SesionGrupo, AsistenciaSesion, InscripcionGrupo
+from miembros_app.models import Miembro
+
+
+@require_POST
+def sesion_kiosko_marcar(request, sesion_id):
+    sesion = get_object_or_404(SesionGrupo, id=sesion_id)
+
+    if sesion.estado != "ABIERTA":
+        return JsonResponse({"ok": False, "msg": "Esta sesión está cerrada."}, status=400)
+
+    codigo = (request.POST.get("codigo") or "").strip().upper()
+
+    if not codigo:
+        return JsonResponse({"ok": False, "msg": "Introduce el código."}, status=400)
+
+    # Normaliza: si viene "0001" lo convertimos a "TF-0001"
+    if codigo.isdigit():
+        codigo = f"TF-{codigo.zfill(4)}"
+    elif codigo.startswith("TF") and "-" not in codigo:
+        # por si escriben TF0001
+        num = codigo.replace("TF", "").strip()
+        if num.isdigit():
+            codigo = f"TF-{num.zfill(4)}"
+
+    try:
+        miembro = Miembro.objects.get(codigo_miembro=codigo)
+    except Miembro.DoesNotExist:
+        return JsonResponse({"ok": False, "msg": f"Código inválido: {codigo}"}, status=404)
+
+    # Verificar que pertenece al grupo y está ACTIVO
+    pertenece = InscripcionGrupo.objects.filter(
+        grupo=sesion.grupo,
+        miembro=miembro,
+        estado="ACTIVO"
+    ).exists()
+
+    if not pertenece:
+        return JsonResponse({"ok": False, "msg": "Este miembro no pertenece a este grupo."}, status=403)
+
+    asistencia, created = AsistenciaSesion.objects.get_or_create(
+        sesion=sesion,
+        miembro=miembro,
+        defaults={"metodo": "KIOSKO"}
+    )
+
+    if not created:
+        return JsonResponse({"ok": False, "msg": "Ya estaba marcado hoy ✅"}, status=200)
+
+    return JsonResponse({
+        "ok": True,
+        "msg": f"Asistencia registrada ✅ ({miembro.nombres} {miembro.apellidos})",
+        "codigo": codigo,
+        "marcado_en": timezone.localtime(asistencia.marcado_en).strftime("%d/%m/%Y %H:%M"),
+    })
+

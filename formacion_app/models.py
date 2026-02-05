@@ -236,3 +236,88 @@ class InscripcionGrupo(models.Model):
 
         if qs.exists():
             raise ValidationError("Este miembro ya está inscrito en otro grupo de este programa.")
+
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
+
+
+class SesionGrupo(models.Model):
+    ESTADO_ABIERTA = "ABIERTA"
+    ESTADO_CERRADA = "CERRADA"
+    ESTADOS = [
+        (ESTADO_ABIERTA, "Abierta"),
+        (ESTADO_CERRADA, "Cerrada"),
+    ]
+
+    grupo = models.ForeignKey(
+        "GrupoFormativo",
+        on_delete=models.CASCADE,
+        related_name="sesiones",
+    )
+
+    estado = models.CharField(max_length=10, choices=ESTADOS, default=ESTADO_ABIERTA)
+
+    fecha = models.DateField(default=timezone.localdate)
+    inicio = models.DateTimeField(default=timezone.now)
+    fin = models.DateTimeField(null=True, blank=True)
+
+    creada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sesiones_grupo_creadas",
+    )
+
+    class Meta:
+        ordering = ["-inicio"]
+        indexes = [
+            models.Index(fields=["grupo", "estado", "fecha"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["grupo", "fecha"],
+                name="uniq_sesion_grupo_fecha",
+            )
+        ]
+
+    def __str__(self):
+        return f"Sesión {self.grupo_id} {self.fecha} ({self.estado})"
+
+class AsistenciaSesion(models.Model):
+    METODO_QR = "QR"
+    METODO_KIOSKO = "KIOSKO"
+    METODO_MANUAL = "MANUAL"
+    METODOS = [
+        (METODO_QR, "QR"),
+        (METODO_KIOSKO, "Kiosko"),
+        (METODO_MANUAL, "Manual"),
+    ]
+
+    sesion = models.ForeignKey(
+        SesionGrupo,
+        on_delete=models.CASCADE,
+        related_name="asistencias",
+    )
+
+    miembro = models.ForeignKey(
+        "miembros_app.Miembro",
+        on_delete=models.CASCADE,
+        related_name="asistencias_formacion",
+    )
+
+    marcado_en = models.DateTimeField(auto_now_add=True)
+    metodo = models.CharField(max_length=10, choices=METODOS, default=METODO_KIOSKO)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["sesion", "miembro"],
+                name="uniq_asistencia_por_sesion",
+            )
+        ]
+        ordering = ["-marcado_en"]
+
+    def __str__(self):
+        return f"{self.sesion_id} · {self.miembro_id} · {self.metodo}"
