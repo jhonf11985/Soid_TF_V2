@@ -2,162 +2,764 @@
 {% load static %}
 
 {% block formacion_content %}
-<div class="container-fluid py-3">
+<style>
+/* =========================================================================
+   LISTADO DE GRUPOS - ESTILO ODOO
+   ========================================================================= */
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-      <h4 class="mb-1">Grupos</h4>
-      <div class="text-muted" style="font-size: 0.95rem;">
-        Lista de grupos/clases formativas
-      </div>
+.grupos-container {
+    padding: 0;
+    background: #f8f9fa;
+    min-height: calc(100vh - 120px);
+}
+
+/* CONTROL BAR */
+.grupos-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.grupos-title-section h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0;
+}
+
+.grupos-title-section .subtitle {
+    font-size: 13px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.grupos-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* SEARCH & FILTERS */
+.grupos-search-box {
+    position: relative;
+}
+
+.grupos-search-box input {
+    width: 280px;
+    padding: 8px 12px 8px 36px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.grupos-search-box input:focus {
+    outline: none;
+    border-color: #714B67;
+    box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
+}
+
+.grupos-search-box .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #adb5bd;
+    font-size: 20px;
+    pointer-events: none;
+}
+
+.btn-crear {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #714B67;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.btn-crear:hover {
+    background: #5a3d53;
+    color: white;
+}
+
+.btn-crear .material-icons {
+    font-size: 18px;
+}
+
+/* STATS BAR */
+.grupos-stats-bar {
+    display: flex;
+    gap: 24px;
+    padding: 12px 24px;
+    background: #fff;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.stat-item .stat-number {
+    font-weight: 600;
+    color: #714B67;
+}
+
+/* TABLE CONTAINER */
+.grupos-table-container {
+    padding: 20px 24px;
+}
+
+.grupos-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+/* TABLE */
+.grupos-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.grupos-table thead {
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.grupos-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+.grupos-table th.text-center {
+    text-align: center;
+}
+
+.grupos-table tbody tr {
+    border-bottom: 1px solid #f1f3f4;
+    transition: background 0.15s;
+}
+
+.grupos-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.grupos-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.grupos-table td {
+    padding: 14px 16px;
+    vertical-align: middle;
+}
+
+/* GRUPO INFO CELL */
+.grupo-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.grupo-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #714B67 0%, #8e6384 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.grupo-avatar .material-icons {
+    font-size: 22px;
+}
+
+.grupo-details .grupo-nombre {
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 2px;
+}
+
+.grupo-details .grupo-meta {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+/* PROGRAMA BADGE */
+.programa-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.programa-badge .material-icons {
+    font-size: 14px;
+}
+
+/* EQUIPO CELL */
+.equipo-cell {
+    max-width: 180px;
+}
+
+.equipo-maestros, .equipo-ayudantes {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+
+.equipo-maestros:last-child, .equipo-ayudantes:last-child {
+    margin-bottom: 0;
+}
+
+.equipo-maestros .material-icons {
+    font-size: 16px;
+    color: #714B67;
+}
+
+.equipo-ayudantes .material-icons {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+.equipo-nombres {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+
+/* ALUMNOS BADGE */
+.alumnos-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 28px;
+    padding: 0 10px;
+    background: #714B67;
+    color: white;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.alumnos-badge.empty {
+    background: #e9ecef;
+    color: #6c757d;
+}
+
+/* REGLAS CELL */
+.reglas-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.regla-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.regla-tag .material-icons {
+    font-size: 14px;
+}
+
+/* Sexo tags */
+.regla-tag.varones {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.regla-tag.hembras {
+    background: #fce7f3;
+    color: #9d174d;
+}
+
+.regla-tag.mixto {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+/* Estado civil tags */
+.regla-tag.civil {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Edad tag */
+.regla-tag.edad {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* HORARIO/LUGAR */
+.horario-lugar {
+    font-size: 13px;
+}
+
+.horario-item, .lugar-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+}
+
+.horario-item .material-icons, .lugar-item .material-icons {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+/* ESTADO BADGE */
+.estado-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.estado-badge.activo {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.estado-badge.inactivo {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* ACCIONES */
+.acciones-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.btn-accion {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+}
+
+.btn-accion:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.btn-accion.editar:hover {
+    background: rgba(113, 75, 103, 0.1);
+    color: #714B67;
+}
+
+.btn-accion .material-icons {
+    font-size: 20px;
+}
+
+/* EMPTY STATE */
+.empty-state {
+    padding: 60px 24px;
+    text-align: center;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.empty-state-icon .material-icons {
+    font-size: 40px;
+    color: #9ca3af;
+}
+
+.empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.empty-state p {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 20px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1200px) {
+    .grupos-table th:nth-child(6),
+    .grupos-table td:nth-child(6) {
+        display: none; /* Ocultar horario/lugar en pantallas medianas */
+    }
+}
+
+@media (max-width: 992px) {
+    .grupos-control-bar {
+        padding: 12px 16px;
+    }
+    
+    .grupos-search-box input {
+        width: 200px;
+    }
+    
+    .grupos-table-container {
+        padding: 16px;
+    }
+    
+    .grupos-table th:nth-child(4),
+    .grupos-table td:nth-child(4) {
+        display: none; /* Ocultar equipo */
+    }
+}
+
+@media (max-width: 768px) {
+    .grupos-stats-bar {
+        display: none;
+    }
+    
+    .grupos-search-box {
+        display: none;
+    }
+    
+    .grupos-table {
+        font-size: 13px;
+    }
+    
+    .grupos-table th, .grupos-table td {
+        padding: 10px 12px;
+    }
+    
+    .grupo-avatar {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .grupo-avatar .material-icons {
+        font-size: 18px;
+    }
+}
+</style>
+
+<div class="grupos-container">
+    <!-- BARRA DE CONTROL -->
+    <div class="grupos-control-bar">
+        <div class="grupos-title-section">
+            <h1>Grupos Formativos</h1>
+            <div class="subtitle">Gestiona las clases y grupos de formación</div>
+        </div>
+        
+        <div class="grupos-actions">
+            <div class="grupos-search-box">
+                <span class="material-icons search-icon">search</span>
+                <input type="text" id="searchGrupos" placeholder="Buscar grupo..." autocomplete="off">
+            </div>
+            
+            <a href="{% url 'formacion:grupo_crear' %}" class="btn-crear">
+                <span class="material-icons">add</span>
+                Nuevo grupo
+            </a>
+        </div>
     </div>
-
-    <a href="{% url 'formacion:grupo_crear' %}" class="btn btn-primary">
-      <span class="material-icons" style="font-size:18px; vertical-align:middle;">add</span>
-      Nuevo grupo
-    </a>
-  </div>
-
-  <div class="card shadow-sm border-0">
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table align-middle mb-0">
-          <thead class="table-light">
-<tr>
-  <th class="ps-3">Grupo</th>
-  <th>Programa</th>
-  <th>Maestro</th>
-  <th>Ayudantes</th>
-  <th class="text-center">Alumnos</th>
-
-  <th>Sexo</th>
-  <th>Edad</th>
-  <th>Horario</th>
-  <th>Lugar</th>
-  <th class="text-center">Estado</th>
-  <th class="text-end pe-3">Acciones</th>
-</tr>
-
-          </thead>
-
-          <tbody>
-            {% for g in grupos %}
-              <tr>
-                <td class="ps-3">
-                  <div class="fw-semibold">{{ g.nombre }}</div>
-                  {% if g.cupo %}
-                    <div class="text-muted" style="font-size:0.85rem;">Cupo: {{ g.cupo }}</div>
-                  {% endif %}
-                </td>
-
-                <td>
-                  {% if g.programa %}
-                    <span class="badge bg-secondary">{{ g.programa.nombre }}</span>
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
-                </td>
-
-      <td>
-  {% with lista=g.maestros.all %}
-    {% if lista %}
-      {% for m in lista %}{% if not forloop.first %}, {% endif %}{{ m }}{% endfor %}
-    {% else %}
-      <span class="text-muted">Sin asignar</span>
-    {% endif %}
-  {% endwith %}
-</td>
-
-<td>
-  {% with lista=g.ayudantes.all %}
-    {% if lista %}
-      {% for a in lista %}{% if not forloop.first %}, {% endif %}{{ a }}{% endfor %}
-    {% else %}
-      <span class="text-muted">—</span>
-    {% endif %}
-  {% endwith %}
-</td>
-<td class="text-center">
-  <span class="badge bg-dark">
-    {{ g.total_alumnos }}
-  </span>
-</td>
-
-
-                <td>
-                  {% if g.sexo_permitido == "VARONES" %}
-                    <span class="badge bg-primary">Varones</span>
-                  {% elif g.sexo_permitido == "HEMBRAS" %}
-                    <span class="badge bg-danger">Hembras</span>
-                  {% else %}
-                    <span class="badge bg-info text-dark">Mixto</span>
-                  {% endif %}
-                </td>
-
-                <td>
-                  {% if g.edad_min or g.edad_max %}
-                    <span class="text-muted">
-                      {% if g.edad_min %}{{ g.edad_min }}{% else %}—{% endif %}
-                      -
-                      {% if g.edad_max %}{{ g.edad_max }}{% else %}—{% endif %}
-                    </span>
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
-                </td>
-
-                <td>
-                  {% if g.horario %}
-                    {{ g.horario }}
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
-                </td>
-
-                <td>
-                  {% if g.lugar %}
-                    {{ g.lugar }}
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
-                </td>
-
-                <td class="text-center">
-                  {% if g.activo %}
-                    <span class="badge bg-success">Activo</span>
-                  {% else %}
-                    <span class="badge bg-secondary">Inactivo</span>
-                  {% endif %}
-                </td>
-
-                <td class="text-end pe-3">
-                  <a href="{% url 'formacion:grupo_editar' g.id %}" class="btn btn-sm btn-outline-primary">
-                    <span class="material-icons" style="font-size:18px; vertical-align:middle;">edit</span>
-                    Editar
-                  </a>
- 
-
-                </td>
-                
-              </tr>
-            {% empty %}
-              <tr>
-                <td colspan="9" class="text-center py-4">
-                  <div class="text-muted">No hay grupos creados todavía.</div>
-                  <div class="mt-2">
-                    <a href="{% url 'formacion:grupo_crear' %}" class="btn btn-sm btn-primary">
-                      <span class="material-icons" style="font-size:18px; vertical-align:middle;">add</span>
-                      Crear el primer grupo
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    
+    <!-- BARRA DE ESTADÍSTICAS -->
+    <div class="grupos-stats-bar">
+        <div class="stat-item">
+            <span class="stat-number">{{ grupos|length }}</span>
+            <span>grupos en total</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number" id="stat-activos">0</span>
+            <span>activos</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number" id="stat-alumnos">0</span>
+            <span>alumnos inscritos</span>
+        </div>
     </div>
-  </div>
-
+    
+    <!-- TABLA -->
+    <div class="grupos-table-container">
+        <div class="grupos-card">
+            {% if grupos %}
+            <table class="grupos-table">
+                <thead>
+                    <tr>
+                        <th>Grupo</th>
+                        <th>Programa</th>
+                        <th class="text-center">Alumnos</th>
+                        <th>Equipo</th>
+                        <th>Reglas</th>
+                        <th>Horario / Lugar</th>
+                        <th class="text-center">Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in grupos %}
+                    <tr class="grupo-row" 
+                        data-nombre="{{ g.nombre|lower }}" 
+                        data-activo="{{ g.activo }}"
+                        data-alumnos="{{ g.total_alumnos }}">
+                        
+                        <!-- GRUPO INFO -->
+                        <td>
+                            <div class="grupo-info">
+                                <div class="grupo-avatar">
+                                    <span class="material-icons">groups</span>
+                                </div>
+                                <div class="grupo-details">
+                                    <div class="grupo-nombre">{{ g.nombre }}</div>
+                                    {% if g.cupo %}
+                                    <div class="grupo-meta">Cupo: {{ g.cupo }} personas</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- PROGRAMA -->
+                        <td>
+                            {% if g.programa %}
+                            <span class="programa-badge">
+                                <span class="material-icons">menu_book</span>
+                                {{ g.programa.nombre }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- ALUMNOS -->
+                        <td class="text-center">
+                            <span class="alumnos-badge {% if g.total_alumnos == 0 %}empty{% endif %}">
+                                {{ g.total_alumnos }}
+                            </span>
+                        </td>
+                        
+                        <!-- EQUIPO -->
+                        <td>
+                            <div class="equipo-cell">
+                                {% with maestros=g.maestros.all %}
+                                {% if maestros %}
+                                <div class="equipo-maestros" title="Maestros: {% for m in maestros %}{{ m }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                    <span class="material-icons">school</span>
+                                    <span class="equipo-nombres">
+                                        {% for m in maestros %}{{ m }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% endwith %}
+                                
+                                {% with ayudantes=g.ayudantes.all %}
+                                {% if ayudantes %}
+                                <div class="equipo-ayudantes" title="Ayudantes: {% for a in ayudantes %}{{ a }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                    <span class="material-icons">support_agent</span>
+                                    <span class="equipo-nombres">
+                                        {% for a in ayudantes %}{{ a }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% endwith %}
+                                
+                                {% if not g.maestros.all and not g.ayudantes.all %}
+                                <span class="text-muted" style="font-size:12px;">Sin asignar</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        
+                        <!-- REGLAS -->
+                        <td>
+                            <div class="reglas-cell">
+                                <!-- Sexo -->
+                                {% if g.sexo_permitido == "VARONES" %}
+                                <span class="regla-tag varones">
+                                    <span class="material-icons">male</span> Varones
+                                </span>
+                                {% elif g.sexo_permitido == "HEMBRAS" %}
+                                <span class="regla-tag hembras">
+                                    <span class="material-icons">female</span> Hembras
+                                </span>
+                                {% else %}
+                                <span class="regla-tag mixto">
+                                    <span class="material-icons">group</span> Mixto
+                                </span>
+                                {% endif %}
+                                
+                                <!-- Estado Civil -->
+                                {% if g.estado_civil_permitido and g.estado_civil_permitido != "TODOS" %}
+                                <span class="regla-tag civil">
+                                    <span class="material-icons">favorite</span> 
+                                    {{ g.get_estado_civil_permitido_display }}
+                                </span>
+                                {% endif %}
+                                
+                                <!-- Edad -->
+                                {% if g.edad_min or g.edad_max %}
+                                <span class="regla-tag edad">
+                                    <span class="material-icons">cake</span>
+                                    {% if g.edad_min and g.edad_max %}
+                                        {{ g.edad_min }}-{{ g.edad_max }} años
+                                    {% elif g.edad_min %}
+                                        +{{ g.edad_min }} años
+                                    {% else %}
+                                        Hasta {{ g.edad_max }} años
+                                    {% endif %}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        
+                        <!-- HORARIO / LUGAR -->
+                        <td>
+                            <div class="horario-lugar">
+                                {% if g.horario %}
+                                <div class="horario-item">
+                                    <span class="material-icons">schedule</span>
+                                    {{ g.horario }}
+                                </div>
+                                {% endif %}
+                                {% if g.lugar %}
+                                <div class="lugar-item">
+                                    <span class="material-icons">place</span>
+                                    {{ g.lugar }}
+                                </div>
+                                {% endif %}
+                                {% if not g.horario and not g.lugar %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        
+                        <!-- ESTADO -->
+                        <td class="text-center">
+                            {% if g.activo %}
+                            <span class="estado-badge activo">
+                                <span class="material-icons" style="font-size:14px;">check_circle</span>
+                                Activo
+                            </span>
+                            {% else %}
+                            <span class="estado-badge inactivo">
+                                <span class="material-icons" style="font-size:14px;">cancel</span>
+                                Inactivo
+                            </span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- ACCIONES -->
+                        <td>
+                            <div class="acciones-cell">
+                                <a href="{% url 'formacion:grupo_editar' g.id %}" class="btn-accion editar" title="Editar grupo">
+                                    <span class="material-icons">edit</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <!-- EMPTY STATE -->
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <span class="material-icons">groups</span>
+                </div>
+                <h3>No hay grupos creados</h3>
+                <p>Comienza creando tu primer grupo formativo para organizar las clases.</p>
+                <a href="{% url 'formacion:grupo_crear' %}" class="btn-crear">
+                    <span class="material-icons">add</span>
+                    Crear primer grupo
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calcular estadísticas
+    const rows = document.querySelectorAll('.grupo-row');
+    let activos = 0;
+    let totalAlumnos = 0;
+    
+    rows.forEach(row => {
+        if (row.dataset.activo === 'True') activos++;
+        totalAlumnos += parseInt(row.dataset.alumnos) || 0;
+    });
+    
+    document.getElementById('stat-activos').textContent = activos;
+    document.getElementById('stat-alumnos').textContent = totalAlumnos;
+    
+    // Búsqueda en tiempo real
+    const searchInput = document.getElementById('searchGrupos');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            
+            rows.forEach(row => {
+                const nombre = row.dataset.nombre || '';
+                const visible = nombre.includes(query);
+                row.style.display = visible ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
+
 {% endblock %}

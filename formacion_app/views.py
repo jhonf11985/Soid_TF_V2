@@ -123,8 +123,6 @@ def programa_editar(request, pk):
 # GRUPOS / CLASES
 # =============================================================================
 
-from django.db.models import Count
-
 def grupos_listado(request):
     """Listado de grupos formativos."""
     grupos = (
@@ -137,7 +135,6 @@ def grupos_listado(request):
     return render(request, "formacion_app/grupos_list.html", {
         "grupos": grupos,
     })
-
 
 
 def _parse_ids(ids_string):
@@ -168,6 +165,7 @@ def grupo_crear(request):
                 nombre=request.POST.get("nombre"),
                 programa_id=request.POST.get("programa") or None,
                 sexo_permitido=request.POST.get("sexo_permitido", "MIXTO"),
+                estado_civil_permitido=request.POST.get("estado_civil_permitido", "TODOS"),
                 edad_min=request.POST.get("edad_min") or None,
                 edad_max=request.POST.get("edad_max") or None,
                 horario=request.POST.get("horario", ""),
@@ -227,6 +225,7 @@ def grupo_editar(request, pk):
             grupo.nombre = request.POST.get("nombre")
             grupo.programa_id = request.POST.get("programa") or None
             grupo.sexo_permitido = request.POST.get("sexo_permitido", "MIXTO")
+            grupo.estado_civil_permitido = request.POST.get("estado_civil_permitido", "TODOS")
             grupo.edad_min = request.POST.get("edad_min") or None
             grupo.edad_max = request.POST.get("edad_max") or None
             grupo.horario = request.POST.get("horario", "")
@@ -289,6 +288,10 @@ def grupo_editar(request, pk):
     )
     estudiantes_actuales = _get_miembros_data(estudiantes_qs)
 
+    # Contar equipo y alumnos para badges en pestañas
+    total_equipo = len(maestros_actuales) + len(ayudantes_actuales)
+    total_alumnos = len(estudiantes_actuales)
+
     # --- SUGERIDOS POR REGLAS (NO BLOQUEA, SOLO SUGIERE) ---
     reporte = reporte_reglas_grupo(grupo)
 
@@ -304,18 +307,18 @@ def grupo_editar(request, pk):
         "total_sobran": reporte["sobran"].count(),
     }
 
-
     return render(request, "formacion_app/grupo_form.html", {
         "grupo": grupo,
         "programas": programas,
         "maestros_actuales": maestros_actuales,
         "ayudantes_actuales": ayudantes_actuales,
         "estudiantes_actuales": estudiantes_actuales,
+        "total_equipo": total_equipo,
+        "total_alumnos": total_alumnos,
         "sugeridos_elegibles": sugeridos_elegibles,
         "sugeridos_faltan": sugeridos_faltan,
         "sugeridos_sobran": sugeridos_sobran,
         "sugeridos_stats": sugeridos_stats,
-
     })
 
 

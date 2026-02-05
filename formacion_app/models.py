@@ -61,6 +61,17 @@ class GrupoFormativo(models.Model):
         ("MIXTO", "Mixto"),
     )
 
+    # =========================================================================
+    # NUEVA REGLA: ESTADO CIVIL PERMITIDO
+    # =========================================================================
+    ESTADO_CIVIL_CHOICES = (
+        ("TODOS", "Todos"),
+        ("SOLTERO", "Solteros"),
+        ("CASADO", "Casados"),
+        ("VIUDO", "Viudos"),
+        ("DIVORCIADO", "Divorciados"),
+    )
+
     programa = models.ForeignKey(
         ProgramaEducativo,
         on_delete=models.SET_NULL,
@@ -85,6 +96,13 @@ class GrupoFormativo(models.Model):
         max_length=10,
         choices=SEXO_CHOICES,
         default="MIXTO",
+    )
+
+    estado_civil_permitido = models.CharField(
+        max_length=15,
+        choices=ESTADO_CIVIL_CHOICES,
+        default="TODOS",
+        help_text="Filtro por estado civil para sugerencias de alumnos.",
     )
 
     edad_min = models.PositiveSmallIntegerField(null=True, blank=True)

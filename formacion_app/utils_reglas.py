@@ -36,12 +36,50 @@ def rango_nacimiento_por_edad(edad_min: int | None, edad_max: int | None, hoy: d
     return nac_min, nac_max
 
 
+# =========================================================================
+# NORMALIZACIÓN DE ESTADO CIVIL
+# =========================================================================
+
+def _normalizar_estado_civil(valor: str) -> str:
+    """
+    Normaliza diferentes variantes de estado civil a un valor estándar.
+    Maneja: Soltero/a, Casado/a, Viudo/a, Divorciado/a, Union libre, etc.
+    """
+    if not valor:
+        return ""
+    
+    val = valor.strip().lower()
+    
+    # Soltero
+    if val in ("soltero", "soltera", "soltero/a", "s"):
+        return "SOLTERO"
+    
+    # Casado
+    if val in ("casado", "casada", "casado/a", "c", "matrimonio"):
+        return "CASADO"
+    
+    # Viudo
+    if val in ("viudo", "viuda", "viudo/a", "v"):
+        return "VIUDO"
+    
+    # Divorciado
+    if val in ("divorciado", "divorciada", "divorciado/a", "d", "separado", "separada"):
+        return "DIVORCIADO"
+    
+    # Unión libre (se considera como "no soltero" para efectos de grupos)
+    if val in ("union libre", "unión libre", "concubinato", "conviviente"):
+        return "UNION_LIBRE"
+    
+    return ""
+
+
 def miembros_elegibles_por_grupo(grupo, hoy: date | None = None):
     """
     SUGERENCIA (no bloquea):
     Devuelve miembros que 'deberían' estar según reglas del grupo:
     - sexo_permitido (VARONES/HEMBRAS/MIXTO)
     - edad_min / edad_max
+    - estado_civil_permitido (TODOS/SOLTERO/CASADO/VIUDO/DIVORCIADO)
     """
     if hoy is None:
         hoy = date.today()
@@ -59,17 +97,22 @@ def miembros_elegibles_por_grupo(grupo, hoy: date | None = None):
         except Exception:
             pass
 
-    # Sexo
+    # =========================================================================
+    # FILTRO POR SEXO
+    # =========================================================================
     try:
         Miembro._meta.get_field("genero")
-        if getattr(grupo, "sexo_permitido", "MIXTO") == "VARONES":
+        sexo_permitido = getattr(grupo, "sexo_permitido", "MIXTO")
+        if sexo_permitido == "VARONES":
             qs = qs.filter(genero="masculino")
-        elif getattr(grupo, "sexo_permitido", "MIXTO") == "HEMBRAS":
+        elif sexo_permitido == "HEMBRAS":
             qs = qs.filter(genero="femenino")
     except Exception:
         pass
 
-    # Edad (por fecha_nacimiento)
+    # =========================================================================
+    # FILTRO POR EDAD (fecha_nacimiento)
+    # =========================================================================
     try:
         Miembro._meta.get_field("fecha_nacimiento")
         qs = qs.exclude(fecha_nacimiento__isnull=True)
@@ -86,6 +129,27 @@ def miembros_elegibles_por_grupo(grupo, hoy: date | None = None):
             qs = qs.filter(fecha_nacimiento__lte=nac_max)
     except Exception:
         pass
+
+    # =========================================================================
+    # FILTRO POR ESTADO CIVIL (NUEVO)
+    # =========================================================================
+    estado_civil_permitido = getattr(grupo, "estado_civil_permitido", "TODOS")
+    
+    if estado_civil_permitido and estado_civil_permitido != "TODOS":
+        try:
+            Miembro._meta.get_field("estado_civil")
+            
+            # Filtrar en Python porque el campo es texto libre
+            # Primero obtenemos los IDs que cumplen
+            ids_validos = []
+            for m in qs.only("id", "estado_civil"):
+                estado_norm = _normalizar_estado_civil(m.estado_civil)
+                if estado_norm == estado_civil_permitido:
+                    ids_validos.append(m.id)
+            
+            qs = Miembro.objects.filter(id__in=ids_validos)
+        except Exception:
+            pass
 
     return qs.order_by("nombres", "apellidos")
 
