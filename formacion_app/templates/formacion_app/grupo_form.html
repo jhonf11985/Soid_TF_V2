@@ -264,19 +264,90 @@
             <!-- TABS -->
             <div class="odoo-tabs-section">
                 <div class="odoo-tabs-bar">
-                    <button type="button" class="odoo-tab active" data-tab="reglas">Reglas</button>
+                    <button type="button" class="odoo-tab active" data-tab="reglas">Alumnos Sugeridos</button>
                     <button type="button" class="odoo-tab" data-tab="alumnos">Alumnos</button>
                     <button type="button" class="odoo-tab" data-tab="equipo">Maestros y ayudantes</button>
                 </div>
                 <div class="odoo-tabs-content">
 
-                    <!-- TAB: Reglas -->
-                    <div class="odoo-tab-panel active" id="tab-reglas">
-                        <div class="odoo-empty-state">
-                            <span class="material-icons">rule</span>
-                            <span>Reglas básicas listas: sexo permitido, rango de edad y cupo.</span>
-                        </div>
-                    </div>
+<!-- TAB: Reglas -->
+<div class="odoo-tab-panel active" id="tab-reglas">
+
+  <!-- RESUMEN -->
+  <div class="odoo-empty-state" style="align-items:flex-start;">
+    <span class="material-icons">rule</span>
+    <div>
+      <strong>Sugerencias por reglas (no bloquea)</strong><br>
+      <small>
+        Elegibles: <b>{{ sugeridos_stats.total_elegibles }}</b> ·
+        Inscritos: <b>{{ sugeridos_stats.total_inscritos }}</b> ·
+        Faltan: <b>{{ sugeridos_stats.total_faltan }}</b> ·
+        Sobran: <b>{{ sugeridos_stats.total_sobran }}</b>
+      </small>
+    </div>
+  </div>
+
+  <!-- FALTAN -->
+  <div style="margin-top:16px;">
+    <div class="autocomplete-section-title">
+      <span class="material-icons">person_add_alt</span>
+      Deberían estar en este grupo
+    </div>
+
+    {% if sugeridos_faltan %}
+      <div class="selected-list">
+        {% for m in sugeridos_faltan %}
+          <div class="selected-item">
+            <span class="material-icons">person</span>
+            <div class="selected-item-info">
+              <div class="selected-item-name">{{ m.nombre }}</div>
+              <div class="selected-item-code">{{ m.codigo }}</div>
+            </div>
+            <button type="button" class="odoo-btn odoo-btn-secondary"
+              onclick="window.__agregarSugerido('estudiantes', {{ m.id }}, '{{ m.nombre|escapejs }}', '{{ m.codigo|escapejs }}')">
+              Añadir
+            </button>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="selected-empty">
+        <span class="material-icons">check_circle</span>
+        <span>No hay sugerencias pendientes.</span>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- SOBRAN -->
+  <div style="margin-top:20px;">
+    <div class="autocomplete-section-title">
+      <span class="material-icons">warning_amber</span>
+      No cumplen las reglas actuales
+    </div>
+
+    {% if sugeridos_sobran %}
+      <div class="selected-list">
+        {% for m in sugeridos_sobran %}
+          <div class="selected-item">
+            <span class="material-icons">person</span>
+            <div class="selected-item-info">
+              <div class="selected-item-name">{{ m.nombre }}</div>
+              <div class="selected-item-code">{{ m.codigo }}</div>
+            </div>
+            <span class="odoo-info-badge odoo-badge-inactive">Revisar</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="selected-empty">
+        <span class="material-icons">verified</span>
+        <span>Todos los inscritos cumplen las reglas.</span>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
 
                     <!-- TAB: Alumnos -->
                     <div class="odoo-tab-panel" id="tab-alumnos">
@@ -543,6 +614,23 @@ document.addEventListener('DOMContentLoaded', function() {
     acMaestros.excludeFrom = [acAyudantes];
     acAyudantes.excludeFrom = [acMaestros];
 
+    // Exponer instancias para poder añadir sugeridos desde la pestaña "Reglas"
+    window.__autocompletes = {
+        estudiantes: acEstudiantes,
+        maestros: acMaestros,
+        ayudantes: acAyudantes
+    };
+
+    // Añadir sugeridos desde "Reglas" (NO guarda; solo selecciona igual que el autocomplete)
+    window.__agregarSugerido = function(key, id, nombre, codigo) {
+        const ac = window.__autocompletes && window.__autocompletes[key];
+        if (!ac) return;
+
+        // Usa el método ya existente (esto actualiza lista + hidden input + contador)
+        ac.addItem(id, nombre, codigo);
+    };
+
+
     // Cargar datos existentes (edición)
     {% if maestros_actuales %}
     acMaestros.loadExisting({{ maestros_actuales|safe }});
@@ -555,6 +643,7 @@ document.addEventListener('DOMContentLoaded', function() {
     {% if estudiantes_actuales %}
     acEstudiantes.loadExisting({{ estudiantes_actuales|safe }});
     {% endif %}
+
 
     // TABS
     const tabs = document.querySelectorAll('.odoo-tab');

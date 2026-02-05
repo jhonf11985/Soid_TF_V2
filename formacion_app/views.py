@@ -5,6 +5,7 @@ from django.contrib import messages
 from .models import ProgramaEducativo, CicloPrograma, GrupoFormativo, InscripcionGrupo
 from .forms import ProgramaEducativoForm, CicloProgramaForm
 from miembros_app.models import Miembro
+from .utils_reglas import reporte_reglas_grupo
 
 
 # =============================================================================
@@ -288,12 +289,33 @@ def grupo_editar(request, pk):
     )
     estudiantes_actuales = _get_miembros_data(estudiantes_qs)
 
+    # --- SUGERIDOS POR REGLAS (NO BLOQUEA, SOLO SUGIERE) ---
+    reporte = reporte_reglas_grupo(grupo)
+
+    # Para no cargar demasiado la UI
+    sugeridos_faltan = _get_miembros_data(reporte["faltan"][:50])
+    sugeridos_sobran = _get_miembros_data(reporte["sobran"][:50])
+    sugeridos_elegibles = _get_miembros_data(reporte["elegibles"][:50])
+
+    sugeridos_stats = {
+        "total_elegibles": reporte["elegibles"].count(),
+        "total_inscritos": reporte["inscritos"].count(),
+        "total_faltan": reporte["faltan"].count(),
+        "total_sobran": reporte["sobran"].count(),
+    }
+
+
     return render(request, "formacion_app/grupo_form.html", {
         "grupo": grupo,
         "programas": programas,
         "maestros_actuales": maestros_actuales,
         "ayudantes_actuales": ayudantes_actuales,
         "estudiantes_actuales": estudiantes_actuales,
+        "sugeridos_elegibles": sugeridos_elegibles,
+        "sugeridos_faltan": sugeridos_faltan,
+        "sugeridos_sobran": sugeridos_sobran,
+        "sugeridos_stats": sugeridos_stats,
+
     })
 
 
