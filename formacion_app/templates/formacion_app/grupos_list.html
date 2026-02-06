@@ -1,5 +1,6 @@
 {% extends 'formacion_app/base_formacion.html' %}
 {% load static %}
+{% load formacion_extras %}
 
 {% block formacion_content %}
 <style>
@@ -511,7 +512,22 @@
     .grupo-avatar .material-icons {
         font-size: 18px;
     }
-    
+    .btn-accion.continuar-sesion {
+    color: #2563eb; /* azul */
+}
+.btn-accion.continuar-sesion:hover {
+    background: rgba(37, 99, 235, 0.12);
+    color: #1d4ed8;
+}
+
+.btn-accion.reabrir-sesion {
+    color: #d97706; /* naranja */
+}
+.btn-accion.reabrir-sesion:hover {
+    background: rgba(217, 119, 6, 0.12);
+    color: #b45309;
+}
+
 }
 </style>
 
@@ -720,24 +736,47 @@
                             {% endif %}
                         </td>
                         
-                        <!-- ACCIONES -->
+<!-- ACCIONES -->
 <td style="width:110px;">
-    <div class="acciones-cell">
-        <!-- Abrir sesión -->
+  <div class="acciones-cell">
+
+    {% with sesion=sesiones_hoy|get_item:g.id %}
+      {% if not sesion %}
+        <!-- No hay sesión hoy -->
         <a href="{% url 'formacion:grupo_sesion_abrir' g.id %}"
            class="btn-accion abrir-sesion"
-           title="Abrir sesión (hoy)">
-            <span class="material-icons">play_circle</span>
+           title="Abrir sesión de hoy ({{ hoy }})">
+          <span class="material-icons">play_circle</span>
         </a>
 
-        <!-- Editar grupo -->
-        <a href="{% url 'formacion:grupo_editar' g.id %}"
-           class="btn-accion editar"
-           title="Editar grupo">
-            <span class="material-icons">edit</span>
+      {% elif sesion.estado == 'ABIERTA' %}
+        <!-- Sesión abierta hoy -->
+        <a href="{% url 'formacion:sesion_detalle' sesion.id %}"
+           class="btn-accion continuar-sesion"
+           title="Continuar sesión de hoy ({{ hoy }})">
+          <span class="material-icons">play_circle_filled</span>
         </a>
-    </div>
+
+      {% else %}
+        <!-- Sesión cerrada hoy -->
+        <a href="{% url 'formacion:grupo_sesion_abrir' g.id %}"
+           class="btn-accion reabrir-sesion"
+           title="Reabrir sesión de hoy ({{ hoy }})">
+          <span class="material-icons">replay_circle_filled</span>
+        </a>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Editar grupo -->
+    <a href="{% url 'formacion:grupo_editar' g.id %}"
+       class="btn-accion editar"
+       title="Editar grupo">
+      <span class="material-icons">edit</span>
+    </a>
+
+  </div>
 </td>
+
 
                     </tr>
                     {% endfor %}

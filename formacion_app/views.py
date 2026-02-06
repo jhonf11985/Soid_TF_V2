@@ -93,10 +93,21 @@ def programa_crear(request):
             return redirect("formacion:programa_editar", pk=programa.pk)
     else:
         form = ProgramaEducativoForm()
+    maestros = RolFormativo.objects.filter(
+        tipo=RolFormativo.TIPO_MAESTRO,
+        activo=True
+    ).select_related("miembro")
+
+    ayudantes = RolFormativo.objects.filter(
+        tipo=RolFormativo.TIPO_AYUDANTE,
+        activo=True
+    ).select_related("miembro")
 
     return render(request, "formacion_app/programa_form.html", {
         "form": form,
         "programa": None,
+            "maestros_disponibles": maestros,
+    "ayudantes_disponibles": ayudantes,
     })
 
 
@@ -114,15 +125,28 @@ def programa_editar(request, pk):
     else:
         form = ProgramaEducativoForm(instance=programa)
 
+    maestros = RolFormativo.objects.filter(
+        tipo=RolFormativo.TIPO_MAESTRO,
+        activo=True
+    ).select_related("miembro")
+
+    ayudantes = RolFormativo.objects.filter(
+        tipo=RolFormativo.TIPO_AYUDANTE,
+        activo=True
+    ).select_related("miembro")        
+
     return render(request, "formacion_app/programa_form.html", {
         "form": form,
         "programa": programa,
+            "maestros_disponibles": maestros,
+    "ayudantes_disponibles": ayudantes,
     })
 
 
 # =============================================================================
 # GRUPOS / CLASES
 # =============================================================================
+
 
 def grupos_listado(request):
     """Listado de grupos formativos."""
@@ -133,10 +157,23 @@ def grupos_listado(request):
         .annotate(total_alumnos=Count("inscripciones", distinct=True))
         .order_by("nombre")
     )
+
+    hoy = timezone.localdate()
+
+    # Mapa: { grupo_id: SesionGrupo de hoy }
+    sesiones_hoy = {
+        s.grupo_id: s
+        for s in SesionGrupo.objects.filter(
+            grupo_id__in=grupos.values_list("id", flat=True),
+            fecha=hoy,
+        ).only("id", "grupo_id", "estado", "fecha")
+    }
+
     return render(request, "formacion_app/grupos_list.html", {
         "grupos": grupos,
+        "sesiones_hoy": sesiones_hoy,
+        "hoy": hoy,
     })
-
 
 def _parse_ids(ids_string):
     """Convierte string de IDs separados por coma a lista de enteros."""
@@ -447,7 +484,30 @@ def grupos_reporte(request):
         })
     
     programas = ProgramaEducativo.objects.filter(activo=True).order_by("nombre")
-    
+        
+    # TOTAL miembros que pertenecen a la iglesia (NO es estado_miembro)
+    total_miembros = Miembro.objects.filter(activo=True).count()
+
+    # Miembros que están en al menos 1 grupo con inscripción ACTIVA
+    miembros_con_grupo = (
+        Miembro.objects
+        .filter(
+            activo=True,
+            inscripciones_formacion__estado="ACTIVO",
+            inscripciones_formacion__grupo__activo=True,  # recomendado
+        )
+        .distinct()
+        .count()
+    )
+
+    miembros_sin_grupo = total_miembros - miembros_con_grupo
+
+    porc_sin_grupo = round((miembros_sin_grupo / total_miembros) * 100, 2) if total_miembros else 0
+
+    stats["total_miembros_iglesia"] = total_miembros
+    stats["miembros_sin_grupo"] = miembros_sin_grupo
+    stats["porc_sin_grupo"] = porc_sin_grupo
+
     return render(request, "formacion_app/grupos_reporte.html", {
         "grupos": grupos_data,
         "stats": stats,
@@ -459,26 +519,35 @@ from django.http import HttpResponse
 
 from .models import GrupoFormativo, SesionGrupo
 
+
 def grupo_sesion_abrir(request, grupo_id):
-    grupo = get_object_or_404(GrupoFormativo, id=grupo_id)
+    grupo = get_object_or_404(GrupoFormativo, pk=grupo_id)
     hoy = timezone.localdate()
 
-    sesion = SesionGrupo.objects.filter(
+    sesion, created = SesionGrupo.objects.get_or_create(
         grupo=grupo,
-        estado=SesionGrupo.ESTADO_ABIERTA,
-        fecha=hoy
-    ).first()
+        fecha=hoy,
+        defaults={
+            "estado": SesionGrupo.ESTADO_ABIERTA,
+            "inicio": timezone.now(),
+            "creada_por": request.user if request.user.is_authenticated else None,
+        },
+    )
 
-    if not sesion:
-        sesion = SesionGrupo.objects.create(
-            grupo=grupo,
-            fecha=hoy,
-            creada_por=request.user if request.user.is_authenticated else None,
-        )
-        messages.success(request, f"Sesión abierta para: {grupo.nombre}")
+    # Si ya existía pero estaba cerrada → reabrimos
+    if not created and sesion.estado == SesionGrupo.ESTADO_CERRADA:
+        sesion.estado = SesionGrupo.ESTADO_ABIERTA
+        sesion.inicio = timezone.now()
+        sesion.fin = None
+        sesion.save(update_fields=["estado", "inicio", "fin"])
+
+        messages.success(request, "Sesión reabierta correctamente.")
+    elif created:
+        messages.success(request, "Sesión abierta correctamente.")
     else:
-        messages.info(request, f"Ya hay una sesión abierta hoy para: {grupo.nombre}")
+        messages.info(request, "Ya existe una sesión abierta para hoy.")
 
+    # 👉 SIEMPRE vamos al detalle de la sesión
     return redirect("formacion:sesion_detalle", sesion_id=sesion.id)
 
 def sesion_detalle(request, sesion_id):
