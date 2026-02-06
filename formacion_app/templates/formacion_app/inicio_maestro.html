@@ -1,0 +1,207 @@
+{% extends 'formacion_app/base_formacion.html' %}
+{% load static %}
+
+{% block formacion_content %}
+<div style="padding:16px; max-width:1100px; margin:0 auto;">
+
+  <!-- BLOQUE IA (limpio, sin mensajes) -->
+  <div style="background:#fff;border:1px solid #e9ecef;border-radius:16px;padding:20px;">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+      <div style="min-width:260px;flex:1;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="material-icons" style="font-size:26px;color:#5c9ead;">{{ ia.icono }}</span>
+          <h2 style="margin:0;font-weight:900;font-size:24px;">{{ ia.saludo }}, {{ ia.nombre }} 👋</h2>
+        </div>
+
+        <div style="color:#6c757d;margin-top:8px;font-weight:600;font-size:15px;line-height:1.5;">
+          {{ ia.resumen }}
+        </div>
+
+        <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+          <span style="border-radius:999px;padding:8px 14px;font-weight:800;font-size:12px;background:#f8f9fa;border:1px solid #dee2e6;color:#495057;display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-icons" style="font-size:16px;">calendar_today</span>
+            {{ hoy }}
+          </span>
+          <span style="border-radius:999px;padding:8px 14px;font-weight:800;font-size:12px;background:rgba(92,158,173,.12);border:1px solid rgba(92,158,173,.25);color:#5c9ead;display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-icons" style="font-size:16px;">verified</span>
+            Panel del Maestro
+          </span>
+        </div>
+      </div>
+
+      <div style="display:inline-flex;align-items:center;gap:10px;border-radius:999px;padding:10px 16px;font-weight:900;font-size:13px;border:1px solid rgba(92,158,173,.25);color:#5c9ead;background:rgba(92,158,173,.12);box-shadow:0 2px 4px rgba(92,158,173,.08);">
+        <span class="material-icons" style="font-size:20px;">auto_awesome</span>
+        Asistente activo
+      </div>
+    </div>
+  </div>
+
+  <!-- TARJETAS DE GRUPOS -->
+  <div style="display:grid;gap:14px;margin-top:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));">
+    {% for g in grupo_cards %}
+      <div style="background:#fff;border:1px solid #e9ecef;border-radius:16px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:all .2s;">
+
+        <!-- Header del grupo -->
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-weight:900;font-size:18px;color:#2c2c2c;">{{ g.nombre }}</span>
+              <a href="{% url 'formacion:grupo_detalle' g.id %}"
+                 style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#5c9ead;text-decoration:none;background:rgba(92,158,173,.1);padding:4px 10px;border-radius:8px;transition:all .2s;"
+                 onmouseover="this.style.background='rgba(92,158,173,.18)'"
+                 onmouseout="this.style.background='rgba(92,158,173,.1)'">
+                <span class="material-icons" style="font-size:15px;">visibility</span>
+                Ver detalle
+              </a>
+            </div>
+            <div style="color:#6c757d;font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px;">
+              <span class="material-icons" style="font-size:16px;">group</span>
+              {{ g.total }} estudiante{{ g.total|pluralize }} activo{{ g.total|pluralize }}
+            </div>
+          </div>
+
+          {% if g.sesion_hoy_id %}
+            {% if g.sesion_hoy_estado == "ABIERTA" %}
+              <span style="border-radius:999px;padding:7px 12px;font-weight:900;font-size:11px;background:rgba(25,135,84,.12);border:1px solid rgba(25,135,84,.25);color:#0f5132;display:inline-flex;align-items:center;gap:5px;">
+                <span class="material-icons" style="font-size:14px;">check_circle</span>
+                SESIÓN ACTIVA
+              </span>
+            {% else %}
+              <span style="border-radius:999px;padding:7px 12px;font-weight:900;font-size:11px;background:rgba(13,110,253,.12);border:1px solid rgba(13,110,253,.25);color:#084298;display:inline-flex;align-items:center;gap:5px;">
+                <span class="material-icons" style="font-size:14px;">schedule</span>
+                LISTA
+              </span>
+            {% endif %}
+          {% else %}
+            <span style="border-radius:999px;padding:7px 12px;font-weight:900;font-size:11px;background:#f8f9fa;border:1px solid #dee2e6;color:#6c757d;display:inline-flex;align-items:center;gap:5px;">
+              <span class="material-icons" style="font-size:14px;">info</span>
+              SIN SESIÓN
+            </span>
+          {% endif %}
+        </div>
+
+        <!-- Mensajes IA conversacionales por clase -->
+        <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">
+          {% for m in g.mensajes %}
+            <div style="
+              background:linear-gradient(135deg, rgba(92,158,173,.04) 0%, rgba(92,158,173,.08) 100%);
+              border-left:3px solid rgba(92,158,173,.4);
+              border-radius:10px;
+              padding:12px 14px;
+              font-weight:600;
+              color:#2c2c2c;
+              line-height:1.5;
+              font-size:13px;
+            ">
+              {{ m.texto }}
+
+              {% if m.accion_texto and m.accion_url_name %}
+                <div style="margin-top:10px;">
+                  <a href="{% url m.accion_url_name pk=g.id %}"
+                     style="
+                        display:inline-flex;
+                        align-items:center;
+                        gap:8px;
+                        text-decoration:none;
+                        background:#5c9ead;
+                        color:#fff;
+                        font-weight:900;
+                        padding:9px 14px;
+                        border-radius:10px;
+                        font-size:12px;
+                        transition:all .2s;
+                     "
+                     onmouseover="this.style.background='#4a7d8d'"
+                     onmouseout="this.style.background='#5c9ead'">
+                    <span class="material-icons" style="font-size:16px;">{{ m.accion_icono|default:'visibility' }}</span>
+                    {{ m.accion_texto }}
+                  </a>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+
+          <!-- Mensaje de estado conversacional -->
+          {% if g.sesion_hoy_id %}
+            {% if g.sesion_hoy_estado == "ABIERTA" %}
+              <div style="background:linear-gradient(135deg, rgba(25,135,84,.06) 0%, rgba(25,135,84,.10) 100%);border-left:3px solid rgba(25,135,84,.5);border-radius:10px;padding:12px 14px;font-weight:700;color:#0f5132;font-size:13px;line-height:1.5;">
+                ✅ ¡Tu clase está en marcha! Los estudiantes pueden escanear el código QR para marcar asistencia.
+              </div>
+            {% else %}
+              <div style="background:linear-gradient(135deg, rgba(13,110,253,.06) 0%, rgba(13,110,253,.10) 100%);border-left:3px solid rgba(13,110,253,.5);border-radius:10px;padding:12px 14px;font-weight:700;color:#084298;font-size:13px;line-height:1.5;">
+                📋 La sesión de hoy ya está preparada. Cuando estés listo, puedes abrirla y comenzar la clase.
+              </div>
+            {% endif %}
+          {% else %}
+            <div style="background:linear-gradient(135deg, rgba(255,193,7,.06) 0%, rgba(255,193,7,.10) 100%);border-left:3px solid rgba(255,193,7,.5);border-radius:10px;padding:12px 14px;font-weight:700;color:#997404;font-size:13px;line-height:1.5;">
+              💭 Aún no has creado la sesión de hoy. ¿Vas a dar clase? Créala cuando estés listo.
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Acciones principales -->
+        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+          {% if g.sesion_hoy_id %}
+            {% if g.sesion_hoy_estado == "ABIERTA" %}
+              <a href="{% url 'formacion:sesion_detalle' g.sesion_hoy_id %}"
+                 style="display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;background:#5c9ead;color:#fff;font-weight:900;padding:13px 16px;border-radius:12px;font-size:13px;flex:1;min-width:160px;transition:all .2s;box-shadow:0 2px 6px rgba(92,158,173,.2);"
+                 onmouseover="this.style.background='#4a7d8d';this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(92,158,173,.3)'"
+                 onmouseout="this.style.background='#5c9ead';this.style.transform='translateY(0)';this.style.boxShadow='0 2px 6px rgba(92,158,173,.2)'">
+                <span class="material-icons" style="font-size:20px;">school</span>
+                IR A MI CLASE
+              </a>
+
+              <form method="POST" action="{% url 'formacion:sesion_cerrar' g.sesion_hoy_id %}" style="flex:1;min-width:140px;" onsubmit="return confirm('¿Estás seguro de cerrar esta sesión? Esto finalizará la clase.');">
+                {% csrf_token %}
+                <button type="submit" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:#dc3545;color:#fff;font-weight:900;padding:13px 16px;border-radius:12px;border:none;font-size:13px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(220,53,69,.2);"
+                        onmouseover="this.style.background='#bb2d3b';this.style.boxShadow='0 4px 12px rgba(220,53,69,.3)'" 
+                        onmouseout="this.style.background='#dc3545';this.style.boxShadow='0 2px 6px rgba(220,53,69,.2)'">
+                  <span class="material-icons" style="font-size:20px;">stop_circle</span>
+                  CERRAR CLASE
+                </button>
+              </form>
+
+              <a href="{% url 'formacion:sesion_kiosko' g.sesion_hoy_id %}"
+                 style="display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:#fff;color:#5c9ead;font-weight:900;padding:13px 16px;border-radius:12px;border:2px solid rgba(92,158,173,.3);font-size:13px;transition:all .2s;"
+                 onmouseover="this.style.borderColor='#5c9ead';this.style.background='rgba(92,158,173,.05)'"
+                 onmouseout="this.style.borderColor='rgba(92,158,173,.3)';this.style.background='#fff'">
+                <span class="material-icons" style="font-size:20px;">qr_code_scanner</span>
+                KIOSKO
+              </a>
+            {% else %}
+              <a href="{% url 'formacion:ir_a_mi_clase' g.id %}"
+                 style="display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;background:#198754;color:#fff;font-weight:900;padding:13px 16px;border-radius:12px;font-size:13px;flex:1;min-width:160px;transition:all .2s;box-shadow:0 2px 6px rgba(25,135,84,.2);"
+                 onmouseover="this.style.background='#157347';this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(25,135,84,.3)'"
+                 onmouseout="this.style.background='#198754';this.style.transform='translateY(0)';this.style.boxShadow='0 2px 6px rgba(25,135,84,.2)'">
+                <span class="material-icons" style="font-size:20px;">play_circle</span>
+                ABRIR SESIÓN
+              </a>
+            {% endif %}
+          {% else %}
+            <a href="{% url 'formacion:ir_a_mi_clase' g.id %}"
+               style="display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;background:#5c9ead;color:#fff;font-weight:900;padding:13px 16px;border-radius:12px;font-size:13px;flex:1;min-width:160px;transition:all .2s;box-shadow:0 2px 6px rgba(92,158,173,.2);"
+               onmouseover="this.style.background='#4a7d8d';this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(92,158,173,.3)'"
+               onmouseout="this.style.background='#5c9ead';this.style.transform='translateY(0)';this.style.boxShadow='0 2px 6px rgba(92,158,173,.2)'">
+              <span class="material-icons" style="font-size:20px;">add_circle</span>
+              CREAR SESIÓN
+            </a>
+          {% endif %}
+        </div>
+
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  [style*="grid-template-columns"] > div {
+    animation: fadeIn 0.4s ease-out;
+  }
+</style>
+{% endblock %}

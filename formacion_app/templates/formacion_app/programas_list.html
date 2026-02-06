@@ -2,89 +2,93 @@
 {% load static %}
 
 {% block formacion_content %}
-<div class="container-fluid py-4">
+<div style="max-width:960px;margin:0 auto;padding:16px 16px 80px;">
 
-    <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="mb-1">Programas educativos</h4>
-            <p class="text-muted mb-0">
-                Gestión de programas de formación, discipulado y enseñanza
-            </p>
-        </div>
-
-        <a href="{% url 'formacion:programa_crear' %}" class="btn btn-primary">
-            <span class="material-icons align-middle me-1">add</span>
-            Nuevo programa
-        </a>
+  <!-- Encabezado -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+    <div>
+      <h2 style="margin:0 0 4px;font-size:1.4rem;font-weight:800;color:#1e293b;">Programas educativos</h2>
+      <p style="margin:0;font-size:0.84rem;color:#64748b;font-weight:500;">
+        Gestión de programas de formación, discipulado y enseñanza
+      </p>
     </div>
+    <a href="{% url 'formacion:programa_crear' %}"
+       style="display:inline-flex;align-items:center;gap:6px;background:#5c9ead;color:#fff;font-weight:800;font-size:0.84rem;padding:10px 18px;border-radius:10px;text-decoration:none;transition:all .2s;box-shadow:0 2px 6px rgba(92,158,173,.2);"
+       onmouseover="this.style.background='#4a8a99';this.style.transform='translateY(-1px)'"
+       onmouseout="this.style.background='#5c9ead';this.style.transform='translateY(0)'">
+      <span class="material-icons" style="font-size:18px;">add</span>
+      Nuevo programa
+    </a>
+  </div>
 
-    <!-- Lista de programas -->
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
+  {% if programas %}
+    <!-- Lista de programas como cards -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      {% for programa in programas %}
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;transition:box-shadow .2s;flex-wrap:wrap;"
+             onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.06)'"
+             onmouseout="this.style.boxShadow='none'">
 
-            {% if programas %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Programa</th>
-                            <th class="text-center">Estado</th>
-                            <th class="text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for programa in programas %}
-                        <tr>
-                            <td>
-                                <strong>{{ programa.nombre }}</strong>
-                                {% if programa.descripcion %}
-                                    <div class="text-muted small">
-                                        {{ programa.descripcion|truncatechars:80 }}
-                                    </div>
-                                {% endif %}
-                            </td>
-
-                            <td class="text-center">
-                                {% if programa.activo %}
-                                    <span class="badge bg-success">Activo</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Inactivo</span>
-                                {% endif %}
-                            </td>
-
-                            <td class="text-center">
-                                <a href="{% url 'formacion:programa_editar' programa.pk %}"
-                                   class="btn btn-sm btn-outline-primary"
-                                   title="Editar programa">
-                                    <span class="material-icons" style="font-size:18px;">
-                                        edit
-                                    </span>
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+          <!-- Info -->
+          <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:200px;">
+            <div style="width:42px;height:42px;border-radius:10px;background:rgba(92,158,173,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-icons" style="font-size:22px;color:#5c9ead;">school</span>
             </div>
+            <div>
+              <div style="font-weight:700;font-size:0.95rem;color:#1e293b;">{{ programa.nombre }}</div>
+              {% if programa.descripcion %}
+                <div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;line-height:1.4;">
+                  {{ programa.descripcion|truncatechars:80 }}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Estado + Acciones -->
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+            {% if programa.activo %}
+              <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:999px;font-size:0.72rem;font-weight:700;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#16a34a;">
+                <span class="material-icons" style="font-size:13px;">check_circle</span>
+                Activo
+              </span>
             {% else %}
-            <!-- Estado vacío -->
-            <div class="text-center py-5">
-                <span class="material-icons text-muted" style="font-size:48px;">
-                    school
-                </span>
-                <h5 class="mt-3">No hay programas creados</h5>
-                <p class="text-muted mb-3">
-                    Comienza creando el primer programa educativo
-                </p>
-                <a href="{% url 'formacion:programa_crear' %}" class="btn btn-primary">
-                    Crear programa
-                </a>
-            </div>
+              <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:999px;font-size:0.72rem;font-weight:700;background:#f8fafc;border:1px solid #e2e8f0;color:#94a3b8;">
+                <span class="material-icons" style="font-size:13px;">pause_circle</span>
+                Inactivo
+              </span>
             {% endif %}
 
+            <a href="{% url 'formacion:programa_editar' programa.pk %}"
+               style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;font-size:0.78rem;font-weight:700;color:#5c9ead;background:rgba(92,158,173,.08);text-decoration:none;border:1px solid rgba(92,158,173,.2);transition:all .2s;"
+               onmouseover="this.style.background='rgba(92,158,173,.15)';this.style.borderColor='rgba(92,158,173,.35)'"
+               onmouseout="this.style.background='rgba(92,158,173,.08)';this.style.borderColor='rgba(92,158,173,.2)'"
+               title="Editar programa">
+              <span class="material-icons" style="font-size:16px;">edit</span>
+              Editar
+            </a>
+          </div>
+
         </div>
+      {% endfor %}
     </div>
+
+  {% else %}
+    <!-- Estado vacío -->
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;text-align:center;padding:48px 24px;">
+      <span class="material-icons" style="font-size:48px;color:#cbd5e1;">school</span>
+      <h3 style="margin:12px 0 6px;font-size:1.1rem;font-weight:700;color:#334155;">No hay programas creados</h3>
+      <p style="color:#94a3b8;font-size:0.88rem;margin:0 0 18px;">
+        Comienza creando el primer programa educativo
+      </p>
+      <a href="{% url 'formacion:programa_crear' %}"
+         style="display:inline-flex;align-items:center;gap:6px;background:#5c9ead;color:#fff;font-weight:800;font-size:0.84rem;padding:10px 20px;border-radius:10px;text-decoration:none;transition:all .2s;"
+         onmouseover="this.style.background='#4a8a99'"
+         onmouseout="this.style.background='#5c9ead'">
+        <span class="material-icons" style="font-size:18px;">add</span>
+        Crear programa
+      </a>
+    </div>
+  {% endif %}
 
 </div>
 {% endblock %}

@@ -1,0 +1,556 @@
+{% extends "formacion_app/base_formacion.html" %}
+{% load static %}
+
+{% block formacion_content %}
+<style>
+  /* ── Layout general ── */
+  .grupo-detalle-wrapper {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 16px 80px;
+  }
+
+  /* ── Header con breadcrumb + estado ── */
+  .gd-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .gd-header-left h2 {
+    margin: 0 0 2px;
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .gd-header-left h2 .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .gd-header-left h2 .status-dot.active   { background: #22c55e; }
+  .gd-header-left h2 .status-dot.inactive { background: #94a3b8; }
+
+  .gd-breadcrumb {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+  .gd-breadcrumb a {
+    color: #5c9ead;
+    text-decoration: none;
+  }
+  .gd-breadcrumb a:hover { text-decoration: underline; }
+
+  .gd-programa-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #edf5f7;
+    color: #5c9ead;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-top: 6px;
+  }
+  .gd-programa-badge .material-icons { font-size: 14px; }
+
+  .gd-header-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .gd-header-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .2s;
+  }
+  .gd-header-actions .btn .material-icons { font-size: 18px; }
+  .gd-header-actions .btn-primary {
+    background: #5c9ead;
+    color: #fff;
+  }
+  .gd-header-actions .btn-primary:hover { background: #4a8a99; }
+  .gd-header-actions .btn-outline {
+    background: #fff;
+    color: #475569;
+    border: 1.5px solid #e2e8f0;
+  }
+  .gd-header-actions .btn-outline:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  /* ── Stats cards ── */
+  .gd-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .gd-stat-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: box-shadow .2s;
+  }
+  .gd-stat-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+
+  .gd-stat-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .gd-stat-icon .material-icons { font-size: 22px; color: #fff; }
+  .gd-stat-icon.purple { background: #5c9ead; }
+  .gd-stat-icon.amber  { background: #f59e0b; }
+  .gd-stat-icon.red    { background: #ef4444; }
+
+  .gd-stat-info strong {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.1;
+  }
+  .gd-stat-info small {
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+
+  /* ── Secciones (cards) ── */
+  .gd-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .gd-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .gd-card-header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .gd-card-header h4 .material-icons {
+    font-size: 20px;
+    color: #5c9ead;
+  }
+  .gd-card-header .badge-count {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+  .gd-card-body {
+    padding: 16px 20px;
+  }
+
+  /* ── Equipo (maestros/ayudantes) ── */
+  .gd-equipo-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .gd-equipo-group {
+    flex: 1;
+    min-width: 200px;
+  }
+  .gd-equipo-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .gd-persona-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 5px 12px 5px 6px;
+    font-size: 0.82rem;
+    color: #334155;
+    margin: 0 6px 6px 0;
+  }
+  .gd-persona-chip .avatar-mini {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: #5c9ead;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
+  .gd-no-data {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+
+  /* ── Tabla de alumnos ── */
+  .gd-alumnos-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .gd-alumnos-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .gd-alumnos-table td {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    color: #334155;
+    border-bottom: 1px solid #f8fafc;
+  }
+  .gd-alumnos-table tr:last-child td { border-bottom: none; }
+  .gd-alumnos-table tr:hover td { background: #f5fafa; }
+
+  .gd-alumno-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .gd-alumno-name .avatar-sm {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #5c9ead, #8bbcc7);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .gd-alumno-name span { font-weight: 500; }
+  .gd-codigo {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    background: #f8fafc;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* ── Sesiones timeline ── */
+  .gd-timeline {
+    position: relative;
+    padding-left: 28px;
+  }
+  .gd-timeline::before {
+    content: '';
+    position: absolute;
+    left: 9px;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: #e2e8f0;
+    border-radius: 2px;
+  }
+  .gd-timeline-item {
+    position: relative;
+    padding-bottom: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .gd-timeline-item:last-child { padding-bottom: 0; }
+
+  .gd-timeline-dot {
+    position: absolute;
+    left: -28px;
+    top: 3px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .gd-timeline-dot .material-icons { font-size: 13px; color: #fff; }
+  .gd-timeline-dot.cerrada  { background: #22c55e; }
+  .gd-timeline-dot.abierta  { background: #3b82f6; }
+  .gd-timeline-dot.default  { background: #94a3b8; }
+
+  .gd-timeline-content {
+    flex: 1;
+  }
+  .gd-timeline-fecha {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+  }
+  .gd-timeline-estado {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: 8px;
+  }
+  .gd-timeline-estado.cerrada {
+    background: #dcfce7;
+    color: #16a34a;
+  }
+  .gd-timeline-estado.abierta {
+    background: #dbeafe;
+    color: #2563eb;
+  }
+  .gd-timeline-estado.default {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  /* ── Empty states ── */
+  .gd-empty {
+    text-align: center;
+    padding: 28px 16px;
+  }
+  .gd-empty .material-icons {
+    font-size: 36px;
+    color: #cbd5e1;
+    margin-bottom: 8px;
+  }
+  .gd-empty p {
+    color: #94a3b8;
+    font-size: 0.88rem;
+    margin: 0;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .gd-header { flex-direction: column; }
+    .gd-header-actions { width: 100%; }
+    .gd-header-actions .btn { flex: 1; justify-content: center; }
+    .gd-stats { grid-template-columns: 1fr; }
+    .gd-equipo-row { flex-direction: column; gap: 16px; }
+    .gd-alumnos-table th:nth-child(2),
+    .gd-alumnos-table td:nth-child(2) { display: none; }
+    .gd-card-body { padding: 12px 14px; }
+  }
+</style>
+
+<div class="grupo-detalle-wrapper">
+
+  <!-- BREADCRUMB -->
+  <div class="gd-breadcrumb">
+    <a href="{% url 'formacion:grupos' %}">Grupos</a>
+    <span style="margin: 0 4px;">›</span>
+    {{ grupo.nombre }}
+  </div>
+
+  <!-- HEADER -->
+  <div class="gd-header">
+    <div class="gd-header-left">
+      <h2>
+        <span class="status-dot {% if grupo.activo %}active{% else %}inactive{% endif %}"></span>
+        {{ grupo.nombre }}
+      </h2>
+      {% if grupo.programa %}
+        <span class="gd-programa-badge">
+          <span class="material-icons">school</span>
+          {{ grupo.programa.nombre }}
+        </span>
+      {% endif %}
+    </div>
+
+    <div class="gd-header-actions">
+      <a href="{% url 'formacion:grupos' %}" class="btn btn-outline">
+        <span class="material-icons">arrow_back</span> Volver
+      </a>
+      <a href="{% url 'formacion:grupo_editar' grupo.id %}" class="btn btn-primary">
+        <span class="material-icons">edit</span> Editar
+      </a>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="gd-stats">
+    <div class="gd-stat-card">
+      <div class="gd-stat-icon purple">
+        <span class="material-icons">groups</span>
+      </div>
+      <div class="gd-stat-info">
+        <strong>{{ stats.total_alumnos }}</strong>
+        <small>Alumnos activos</small>
+      </div>
+    </div>
+
+    <div class="gd-stat-card">
+      <div class="gd-stat-icon amber">
+        <span class="material-icons">person_add</span>
+      </div>
+      <div class="gd-stat-info">
+        <strong>{{ stats.faltan }}</strong>
+        <small>Faltan por perfil</small>
+      </div>
+    </div>
+
+    <div class="gd-stat-card">
+      <div class="gd-stat-icon red">
+        <span class="material-icons">rule</span>
+      </div>
+      <div class="gd-stat-info">
+        <strong>{{ stats.sobran }}</strong>
+        <small>No cumplen reglas</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- EQUIPO -->
+  <div class="gd-card">
+    <div class="gd-card-header">
+      <h4><span class="material-icons">people_alt</span> Equipo</h4>
+    </div>
+    <div class="gd-card-body">
+      <div class="gd-equipo-row">
+        <div class="gd-equipo-group">
+          <div class="gd-equipo-label">Maestros</div>
+          {% for m in grupo.maestros.all %}
+            <span class="gd-persona-chip">
+              <span class="avatar-mini">{{ m.nombres|first }}{{ m.apellidos|first }}</span>
+              {{ m.nombres }} {{ m.apellidos }}
+            </span>
+          {% empty %}
+            <span class="gd-no-data">No asignados</span>
+          {% endfor %}
+        </div>
+        <div class="gd-equipo-group">
+          <div class="gd-equipo-label">Ayudantes</div>
+          {% for a in grupo.ayudantes.all %}
+            <span class="gd-persona-chip">
+              <span class="avatar-mini">{{ a.nombres|first }}{{ a.apellidos|first }}</span>
+              {{ a.nombres }} {{ a.apellidos }}
+            </span>
+          {% empty %}
+            <span class="gd-no-data">No asignados</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALUMNOS -->
+  <div class="gd-card">
+    <div class="gd-card-header">
+      <h4><span class="material-icons">school</span> Alumnos activos</h4>
+      <span class="badge-count">{{ stats.total_alumnos }}</span>
+    </div>
+    <div class="gd-card-body" style="padding: 0;">
+      {% if alumnos %}
+        <table class="gd-alumnos-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Código</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for i in alumnos %}
+              <tr>
+                <td>
+                  <div class="gd-alumno-name">
+                    <span class="avatar-sm">{{ i.miembro.nombres|first }}{{ i.miembro.apellidos|first }}</span>
+                    <span>{{ i.miembro.nombres }} {{ i.miembro.apellidos }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="gd-codigo">{{ i.miembro.codigo_miembro }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="gd-empty">
+          <span class="material-icons">person_off</span>
+          <p>No hay alumnos inscritos en este grupo.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- SESIONES -->
+  <div class="gd-card">
+    <div class="gd-card-header">
+      <h4><span class="material-icons">calendar_month</span> Últimas sesiones</h4>
+      {% if sesiones %}
+        <span class="badge-count">{{ sesiones|length }}</span>
+      {% endif %}
+    </div>
+    <div class="gd-card-body">
+      {% if sesiones %}
+        <div class="gd-timeline">
+          {% for s in sesiones %}
+            <div class="gd-timeline-item">
+              <div class="gd-timeline-dot {% if s.estado == 'CERRADA' %}cerrada{% elif s.estado == 'ABIERTA' %}abierta{% else %}default{% endif %}">
+                <span class="material-icons">
+                  {% if s.estado == 'CERRADA' %}check{% elif s.estado == 'ABIERTA' %}radio_button_checked{% else %}circle{% endif %}
+                </span>
+              </div>
+              <div class="gd-timeline-content">
+                <span class="gd-timeline-fecha">{{ s.fecha|date:"d M Y" }}</span>
+                <span class="gd-timeline-estado {% if s.estado == 'CERRADA' %}cerrada{% elif s.estado == 'ABIERTA' %}abierta{% else %}default{% endif %}">
+                  {{ s.estado }}
+                </span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="gd-empty">
+          <span class="material-icons">event_busy</span>
+          <p>Aún no hay sesiones registradas.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

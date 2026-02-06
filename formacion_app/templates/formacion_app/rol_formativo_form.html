@@ -1,135 +1,213 @@
 {% extends "formacion_app/base_formacion.html" %}
 
-{% block title %}Añadir rol · Formación{% endblock %}
+{% block title %}Maestros y Ayudantes · Formación{% endblock %}
 
 {% block formacion_content %}
+<div style="max-width:960px;margin:0 auto;padding:16px 16px 80px;">
 
-<style>
-  .card { background:#fff; border:1px solid #e9ecef; border-radius:10px; overflow:hidden; }
-  .top { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; background:#f8f9fa; border-bottom:1px solid #dee2e6; flex-wrap:wrap; }
-  .title { display:flex; gap:8px; align-items:center; font-weight:800; color:#212529; }
-  .title .material-icons { color:#714B67; }
-  .body { padding:16px; }
-  .row { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
-  .field label { font-size:12px; font-weight:700; color:#6c757d; display:block; margin-bottom:6px; }
-  .input, .select { width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; outline:none; }
-  .input:focus, .select:focus { border-color:#714B67; box-shadow: 0 0 0 3px rgba(113,75,103,.12); }
-  .actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
-  .btn { display:inline-flex; gap:8px; align-items:center; padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
-  .btn-primary { background:#714B67; color:#fff; }
-  .btn-secondary { background:#e9ecef; color:#495057; text-decoration:none; }
-  .alert { background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; padding:10px 12px; border-radius:8px; margin-bottom:12px; font-size:13px; white-space:pre-wrap; }
-  .help { font-size:12px; color:#6c757d; margin-top:8px; }
-  @media (max-width: 860px) { .row { grid-template-columns: 1fr; } }
-</style>
-
-<div class="card">
-  <div class="top">
-    <div class="title">
-      <span class="material-icons">person_add</span>
-      Añadir Maestro / Ayudante
+  <!-- Encabezado -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+    <div>
+      <h2 style="margin:0 0 4px;font-size:1.4rem;font-weight:800;color:#1e293b;">Maestros y Ayudantes</h2>
+      <p style="margin:0;font-size:0.84rem;color:#64748b;font-weight:500;">
+        Gestión de roles formativos del equipo docente
+      </p>
     </div>
-    <a class="btn btn-secondary" href="{% url 'formacion:roles_formativos' %}">
-      <span class="material-icons">arrow_back</span> Volver
+    <a href="{% url 'formacion:rol_formativo_nuevo' %}"
+       style="display:inline-flex;align-items:center;gap:6px;background:#5c9ead;color:#fff;font-weight:800;font-size:0.84rem;padding:10px 18px;border-radius:10px;text-decoration:none;transition:all .2s;box-shadow:0 2px 6px rgba(92,158,173,.2);"
+       onmouseover="this.style.background='#4a8a99';this.style.transform='translateY(-1px)'"
+       onmouseout="this.style.background='#5c9ead';this.style.transform='translateY(0)'">
+      <span class="material-icons" style="font-size:18px;">add</span>
+      Añadir
     </a>
   </div>
 
-  <div class="body">
-    {% if errores %}
-      <div class="alert">{{ errores }}</div>
-    {% endif %}
+  <!-- Card contenedora -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
 
-    <form method="post">
-      {% csrf_token %}
+    <!-- Tabs -->
+    <div style="display:flex;border-bottom:2px solid #f1f5f9;background:#fafbfc;" id="roles-tabs">
+      <button class="roles-tab active" data-tab="maestros"
+              style="flex:1;border:none;background:transparent;padding:14px 16px;cursor:pointer;font-weight:700;font-size:0.88rem;color:#94a3b8;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <span class="material-icons" style="font-size:18px;">school</span>
+        Maestros
+        <span style="background:#f1f5f9;padding:2px 8px;border-radius:999px;font-size:0.7rem;font-weight:800;color:#64748b;">{{ maestros|length }}</span>
+      </button>
+      <button class="roles-tab" data-tab="ayudantes"
+              style="flex:1;border:none;background:transparent;padding:14px 16px;cursor:pointer;font-weight:700;font-size:0.88rem;color:#94a3b8;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <span class="material-icons" style="font-size:18px;">support_agent</span>
+        Ayudantes
+        <span style="background:#f1f5f9;padding:2px 8px;border-radius:999px;font-size:0.7rem;font-weight:800;color:#64748b;">{{ ayudantes|length }}</span>
+      </button>
+    </div>
 
-      <div class="row">
-        <div class="field">
-          <label>Buscar miembro</label>
-          <input class="input" type="text" id="miembro_buscar" placeholder="Escribe nombre o código..." autocomplete="off">
-          <input type="hidden" name="miembro_id" id="miembro_id">
-          <div class="help">Selecciona un miembro de la lista sugerida.</div>
-          <div id="miembro_sugerencias" class="help"></div>
+    <!-- Panel Maestros -->
+    <div class="roles-panel active" id="panel-maestros" style="padding:8px 0;">
+      {% for r in maestros %}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-bottom:1px solid #f8fafc;flex-wrap:wrap;transition:background .15s;"
+             onmouseover="this.style.background='#fafcfd'"
+             onmouseout="this.style.background='transparent'">
+
+          <!-- Persona -->
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:180px;">
+            <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#5c9ead,#8bbcc7);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0;">
+              {{ r.miembro.nombres|first }}{{ r.miembro.apellidos|first }}
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:0.88rem;color:#1e293b;">{{ r.miembro.nombres }} {{ r.miembro.apellidos }}</div>
+              <div style="font-size:0.75rem;color:#94a3b8;font-family:'Roboto Mono',monospace;">{{ r.miembro.codigo_miembro|default:"—" }}</div>
+            </div>
+          </div>
+
+          <!-- Estado + Acción -->
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+            {% if r.activo %}
+              <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:0.7rem;font-weight:700;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#16a34a;">
+                <span class="material-icons" style="font-size:12px;">check_circle</span>
+                Activo
+              </span>
+            {% else %}
+              <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:0.7rem;font-weight:700;background:#f8fafc;border:1px solid #e2e8f0;color:#94a3b8;">
+                <span class="material-icons" style="font-size:12px;">pause_circle</span>
+                Inactivo
+              </span>
+            {% endif %}
+
+            <form method="post" action="{% url 'formacion:rol_formativo_toggle' r.id %}" style="margin:0;">
+              {% csrf_token %}
+              {% if r.activo %}
+                <button type="submit"
+                        style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;font-size:0.75rem;font-weight:700;color:#ef4444;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);cursor:pointer;transition:all .2s;"
+                        onmouseover="this.style.background='rgba(239,68,68,.12)'"
+                        onmouseout="this.style.background='rgba(239,68,68,.06)'">
+                  <span class="material-icons" style="font-size:15px;">block</span>
+                  Desactivar
+                </button>
+              {% else %}
+                <button type="submit"
+                        style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;font-size:0.75rem;font-weight:700;color:#16a34a;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);cursor:pointer;transition:all .2s;"
+                        onmouseover="this.style.background='rgba(34,197,94,.12)'"
+                        onmouseout="this.style.background='rgba(34,197,94,.06)'">
+                  <span class="material-icons" style="font-size:15px;">check_circle</span>
+                  Activar
+                </button>
+              {% endif %}
+            </form>
+          </div>
+
         </div>
-
-        <div class="field">
-          <label>Tipo de rol</label>
-          <select class="select" name="tipo" required>
-            <option value="">Seleccione...</option>
-            <option value="MAESTRO">Maestro</option>
-            <option value="AYUDANTE">Ayudante</option>
-          </select>
-          <div class="help">Esto define quién sale en el listado de Maestros/Ayudantes y luego se carga en grupos.</div>
+      {% empty %}
+        <div style="text-align:center;padding:40px 20px;">
+          <span class="material-icons" style="font-size:40px;color:#cbd5e1;">person_off</span>
+          <p style="color:#94a3b8;font-size:0.88rem;margin:10px 0 0;">No hay maestros registrados.</p>
         </div>
-      </div>
+      {% endfor %}
+    </div>
 
-      <div class="actions">
-        <button type="submit" class="btn btn-primary">
-          <span class="material-icons">save</span> Guardar
-        </button>
-        <a class="btn btn-secondary" href="{% url 'formacion:roles_formativos' %}">
-          Cancelar
-        </a>
-      </div>
-    </form>
+    <!-- Panel Ayudantes -->
+    <div class="roles-panel" id="panel-ayudantes" style="padding:8px 0;display:none;">
+      {% for r in ayudantes %}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-bottom:1px solid #f8fafc;flex-wrap:wrap;transition:background .15s;"
+             onmouseover="this.style.background='#fafcfd'"
+             onmouseout="this.style.background='transparent'">
+
+          <!-- Persona -->
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:180px;">
+            <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#5c9ead,#8bbcc7);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0;">
+              {{ r.miembro.nombres|first }}{{ r.miembro.apellidos|first }}
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:0.88rem;color:#1e293b;">{{ r.miembro.nombres }} {{ r.miembro.apellidos }}</div>
+              <div style="font-size:0.75rem;color:#94a3b8;font-family:'Roboto Mono',monospace;">{{ r.miembro.codigo_miembro|default:"—" }}</div>
+            </div>
+          </div>
+
+          <!-- Estado + Acción -->
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+            {% if r.activo %}
+              <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:0.7rem;font-weight:700;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#16a34a;">
+                <span class="material-icons" style="font-size:12px;">check_circle</span>
+                Activo
+              </span>
+            {% else %}
+              <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:0.7rem;font-weight:700;background:#f8fafc;border:1px solid #e2e8f0;color:#94a3b8;">
+                <span class="material-icons" style="font-size:12px;">pause_circle</span>
+                Inactivo
+              </span>
+            {% endif %}
+
+            <form method="post" action="{% url 'formacion:rol_formativo_toggle' r.id %}" style="margin:0;">
+              {% csrf_token %}
+              {% if r.activo %}
+                <button type="submit"
+                        style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;font-size:0.75rem;font-weight:700;color:#ef4444;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);cursor:pointer;transition:all .2s;"
+                        onmouseover="this.style.background='rgba(239,68,68,.12)'"
+                        onmouseout="this.style.background='rgba(239,68,68,.06)'">
+                  <span class="material-icons" style="font-size:15px;">block</span>
+                  Desactivar
+                </button>
+              {% else %}
+                <button type="submit"
+                        style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;font-size:0.75rem;font-weight:700;color:#16a34a;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);cursor:pointer;transition:all .2s;"
+                        onmouseover="this.style.background='rgba(34,197,94,.12)'"
+                        onmouseout="this.style.background='rgba(34,197,94,.06)'">
+                  <span class="material-icons" style="font-size:15px;">check_circle</span>
+                  Activar
+                </button>
+              {% endif %}
+            </form>
+          </div>
+
+        </div>
+      {% empty %}
+        <div style="text-align:center;padding:40px 20px;">
+          <span class="material-icons" style="font-size:40px;color:#cbd5e1;">person_off</span>
+          <p style="color:#94a3b8;font-size:0.88rem;margin:10px 0 0;">No hay ayudantes registrados.</p>
+        </div>
+      {% endfor %}
+    </div>
+
   </div>
+
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const API_URL = "/api/buscar-miembros/?filtro=activos&limit=10&q=";
-  const input = document.getElementById("miembro_buscar");
-  const hidden = document.getElementById("miembro_id");
-  const sugerencias = document.getElementById("miembro_sugerencias");
+  document.addEventListener("DOMContentLoaded", function () {
+    const tabs = document.querySelectorAll(".roles-tab");
+    const panels = {
+      maestros: document.getElementById("panel-maestros"),
+      ayudantes: document.getElementById("panel-ayudantes"),
+    };
 
-  let t = null;
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        // Reset tabs
+        tabs.forEach(t => {
+          t.classList.remove("active");
+          t.style.color = "#94a3b8";
+          t.style.borderBottomColor = "transparent";
+          t.style.background = "transparent";
+        });
+        // Reset panels
+        Object.values(panels).forEach(p => p.style.display = "none");
 
-  function render(items){
-    if (!items || items.length === 0) {
-      sugerencias.innerHTML = "<div class='help'>No se encontraron resultados.</div>";
-      return;
-    }
-
-    sugerencias.innerHTML = items.map(i => {
-      const codigo = i.codigo || "Sin código";
-      return `
-        <div style="padding:8px 10px;border:1px solid #eee;border-radius:8px;margin-top:6px;cursor:pointer;"
-             data-id="${i.id}" data-text="${i.nombre} (${codigo})">
-          <strong>${i.nombre}</strong><br><small>${codigo}</small>
-        </div>
-      `;
-    }).join("");
-
-    sugerencias.querySelectorAll("div[data-id]").forEach(div => {
-      div.addEventListener("click", () => {
-        hidden.value = div.dataset.id;
-        input.value = div.dataset.text;
-        sugerencias.innerHTML = "<div class='help'>Seleccionado ✅</div>";
+        // Activate
+        tab.classList.add("active");
+        tab.style.color = "#5c9ead";
+        tab.style.borderBottomColor = "#5c9ead";
+        tab.style.background = "#fff";
+        panels[tab.dataset.tab].style.display = "block";
       });
     });
-  }
 
-  async function search(q){
-    try {
-      const res = await fetch(API_URL + encodeURIComponent(q), {
-        credentials: "same-origin",
-        headers: { "X-Requested-With": "XMLHttpRequest" }
-      });
-      const data = await res.json();
-      if (data.success) render(data.resultados || []);
-      else render([]);
-    } catch(e){
-      render([]);
+    // Init active tab style
+    const activeTab = document.querySelector(".roles-tab.active");
+    if (activeTab) {
+      activeTab.style.color = "#5c9ead";
+      activeTab.style.borderBottomColor = "#5c9ead";
+      activeTab.style.background = "#fff";
     }
-  }
-
-  input.addEventListener("input", () => {
-    hidden.value = "";
-    const q = input.value.trim();
-    clearTimeout(t);
-    if (q.length < 2) { sugerencias.innerHTML = ""; return; }
-    t = setTimeout(() => search(q), 250);
   });
-});
 </script>
 
 {% endblock %}
