@@ -632,6 +632,8 @@ def sesion_kiosko_marcar(request, sesion_id):
         "msg": f"Asistencia registrada ✅ ({miembro.nombres} {miembro.apellidos})",
         "codigo": codigo,
         "marcado_en": timezone.localtime(asistencia.marcado_en).strftime("%d/%m/%Y %H:%M"),
+        "nombre": f"{miembro.nombres} {miembro.apellidos}".strip(),
+        "grupo": sesion.grupo.nombre,
     })
 
 from django.views.decorators.http import require_POST

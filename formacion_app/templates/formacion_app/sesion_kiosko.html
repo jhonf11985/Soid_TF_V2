@@ -2,48 +2,410 @@
 {% load static %}
 
 {% block formacion_content %}
-<div style="padding:16px; max-width:620px; margin:0 auto;">
-  <h2 style="margin:0 0 6px 0;">Modo kiosko</h2>
-  <div style="color:#6c757d; margin-bottom:14px;">
-    {{ grupo.nombre }} · {{ sesion.fecha }}
+<style>
+  :root{
+    --k-bg: #f6f7fb;
+    --k-card: #ffffff;
+    --k-border: #e9ecef;
+    --k-muted: #6c757d;
+    --k-text: #212529;
+    --k-primary: #714B67;   /* tu vino */
+    --k-primary-2: #5f3f57;
+    --k-shadow: 0 18px 55px rgba(16,24,40,.12);
+    --k-radius: 18px;
+  }
+
+  /* ============ MODO KIOSKO: ocultar “todo lo demás” del layout ============ */
+  html, body { height: 100%; }
+  body { overflow: hidden; background: var(--k-bg) !important; }
+
+  /* Oculta elementos típicos del layout (sidebar/topbar/footer/breadcrumbs) */
+  header, .topbar, .navbar, .app-header, .header,
+  aside, .sidebar, .app-sidebar, nav.sidebar, .layout-sidebar,
+  .breadcrumb, .breadcrumbs, .footer, footer,
+  .sidebar-nav, .sidebar-container, .sidebar-wrapper,
+  .main-header, .page-header, .page-titlebar {
+    display: none !important;
+  }
+
+  /* Resetea contenedores típicos para que no empujen hacia abajo */
+  main, .main, .content, .page-content, .container, .container-fluid,
+  .layout, .layout-content, .app-content, .content-wrapper, .page-wrapper,
+  .odoo-content, .odoo-page, .odoo-main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  /* ============ KIOSKO: CENTRADO PERFECTO ============ */
+  .kiosko-wrap{
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;      /* ✅ centra vertical */
+    justify-content: center;  /* ✅ centra horizontal */
+    padding: 18px;
+    box-sizing: border-box;
+    background: var(--k-bg);
+  }
+
+  .kiosko-card{
+    width: min(760px, 100%);
+    background: var(--k-card);
+    border: 1px solid var(--k-border);
+    border-radius: var(--k-radius);
+    box-shadow: var(--k-shadow);
+    overflow: hidden;
+  }
+
+  .kiosko-header{
+    padding: 16px 18px 12px 18px;
+    border-bottom: 1px solid var(--k-border);
+    display:flex;
+    align-items:flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .kiosko-title{
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--k-text);
+    letter-spacing: .2px;
+  }
+
+  .kiosko-sub{
+    margin-top: 4px;
+    color: var(--k-muted);
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .kiosko-exit{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    text-decoration:none;
+    background:#f1f3f5;
+    color: var(--k-text);
+    border: 1px solid #e5e7eb;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    white-space: nowrap;
+    transition: transform .08s ease, background .15s ease;
+  }
+  .kiosko-exit:active{ transform: scale(.98); }
+  .kiosko-exit:hover{ background:#e9ecef; }
+
+  .kiosko-body{
+    padding: 16px 18px 18px 18px;
+  }
+
+  /* Display tipo “pantalla” */
+  .kiosko-label{
+    display:block;
+    font-size: 12.5px;
+    color: var(--k-muted);
+    margin-bottom: 6px;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+  }
+
+  .kiosko-display{
+    background: #f8f9fa;
+    border: 2px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 14px 12px;
+  }
+
+  .kiosko-input{
+    width:100%;
+    border:none;
+    outline:none;
+    background: transparent;
+    font-size: clamp(22px, 3.2vw, 34px);
+    font-weight: 900;
+    letter-spacing: .25em;
+    text-align: center;
+    color: var(--k-text);
+  }
+
+  .kiosko-hint{
+    margin-top: 8px;
+    color: var(--k-muted);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  /* Teclado */
+  .pad{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .pad-btn{
+    height: 64px;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--k-text);
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+    transition: transform .06s ease, box-shadow .12s ease, background .12s ease;
+    box-shadow: 0 6px 18px rgba(16,24,40,.06);
+  }
+  .pad-btn:hover{ background: #f8f9fa; }
+  .pad-btn:active{
+    transform: scale(.98);
+    box-shadow: 0 2px 10px rgba(16,24,40,.10);
+  }
+  .pad-btn.pad-action{ font-size: 16px; letter-spacing: .2px; }
+  .pad-btn.pad-back{ font-size: 18px; }
+
+  /* Acciones */
+  .kiosko-actions{
+    display:flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary{
+    flex: 1;
+    min-width: 220px;
+    border: none;
+    border-radius: 16px;
+    padding: 14px 16px;
+    background: var(--k-primary);
+    color:#fff;
+    font-weight: 900;
+    font-size: 16px;
+    letter-spacing: .4px;
+    cursor: pointer;
+    transition: transform .08s ease, background .15s ease;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    touch-action: manipulation;
+  }
+  .btn-primary:hover{ background: var(--k-primary-2); }
+  .btn-primary:active{ transform: scale(.99); }
+
+  .btn-ghost{
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: var(--k-text);
+    border-radius: 16px;
+    padding: 14px 16px;
+    font-weight: 900;
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform .08s ease, background .15s ease;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    touch-action: manipulation;
+  }
+  .btn-ghost:hover{ background:#f8f9fa; }
+  .btn-ghost:active{ transform: scale(.99); }
+
+  /* Resultado (debajo de botones) */
+  .kiosko-result{
+    margin-top: 14px;
+    border-radius: 16px;
+    padding: 12px 14px;
+    display:none;
+    align-items:flex-start;
+    gap: 10px;
+    border: 1px solid transparent;
+  }
+  .kiosko-result .icon{ font-size: 20px; line-height: 1; margin-top: 2px; }
+  .kiosko-result .text{ font-size: 14px; font-weight: 800; line-height: 1.25; }
+  .kiosko-result .sub{ margin-top: 4px; font-size: 13px; font-weight: 700; opacity: .9; }
+
+  .is-ok{
+    background: rgba(25,135,84,.10);
+    border-color: rgba(25,135,84,.20);
+    color: #0f5132;
+  }
+  .is-bad{
+    background: rgba(220,53,69,.10);
+    border-color: rgba(220,53,69,.20);
+    color: #842029;
+  }
+
+  /* Botón pantalla completa (siempre arriba) */
+  .fs-btn{
+    position: fixed;
+    right: 14px;
+    top: 14px;
+    z-index: 99998;
+    background: #111827;
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-weight: 900;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.22);
+  }
+  .fs-btn:active{ transform: scale(.99); }
+
+  /* Overlay bienvenida */
+  .welcome-overlay{
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 18, 22, .55);
+    z-index: 99999;
+    backdrop-filter: blur(4px);
+  }
+  .welcome-box{
+    width: min(760px, 92vw);
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid #e9ecef;
+    padding: 18px 18px;
+    box-shadow: 0 22px 70px rgba(0,0,0,.25);
+    text-align: center;
+  }
+  .welcome-ok{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    background: rgba(25,135,84,.10);
+    color:#0f5132;
+    border: 1px solid rgba(25,135,84,.20);
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-weight: 900;
+  }
+  .welcome-title{
+    margin: 12px 0 0 0;
+    font-size: clamp(20px, 3.4vw, 34px);
+    font-weight: 950;
+    color: var(--k-text);
+  }
+  .welcome-sub{
+    margin-top: 8px;
+    font-size: clamp(14px, 2.2vw, 18px);
+    color: var(--k-muted);
+    font-weight: 800;
+  }
+
+  @media (min-width: 820px){
+    .pad-btn{ height: 70px; font-size: 24px; }
+  }
+</style>
+
+<button type="button" id="btnFullscreen" class="fs-btn">
+  <span class="material-icons" style="font-size:18px;">fullscreen</span>
+  Pantalla completa
+</button>
+
+<div id="welcomeOverlay" class="welcome-overlay" aria-live="polite">
+  <div class="welcome-box">
+    <div class="welcome-ok">✅ Asistencia registrada</div>
+    <h3 class="welcome-title" id="welcomeTitle">Bienvenido</h3>
+    <div class="welcome-sub" id="welcomeSub">al grupo</div>
   </div>
+</div>
 
-  <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:14px;">
-    
-    <form id="kioskoForm" method="post" autocomplete="off">
-      {% csrf_token %}
+<div class="kiosko-wrap">
+  <div class="kiosko-card">
 
-      <label style="display:block;font-size:13px;color:#6c757d;margin-bottom:6px;">
-        Código del miembro
-      </label>
-
-      <input
-        id="codigoInput"
-        name="codigo"
-        type="text"
-        inputmode="numeric"
-        autocomplete="off"
-        placeholder="Ej: 1024"
-        style="width:100%;padding:14px 12px;font-size:20px;border:1px solid #dee2e6;border-radius:10px;outline:none;"
-      >
-
-      <div style="display:flex; gap:10px; margin-top:12px;">
-        <button type="submit"
-                id="btnMarcar"
-                style="flex:1;background:#714B67;color:#fff;border:none;border-radius:10px;padding:12px 14px;font-size:16px;cursor:pointer;">
-          Marcar asistencia
-        </button>
-
-        <a href="{% url 'formacion:sesion_detalle' sesion.id %}"
-           style="background:#e9ecef;color:#212529;border-radius:10px;padding:12px 14px;text-decoration:none;display:inline-flex;align-items:center;">
-          Salir
-        </a>
+    <div class="kiosko-header">
+      <div>
+        <h2 class="kiosko-title">Modo kiosko</h2>
+        <div class="kiosko-sub">
+          {{ grupo.nombre }} · {{ sesion.fecha }}
+        </div>
       </div>
-    </form>
 
-    <div id="resultado"
-         style="margin-top:12px; padding:10px 12px; border-radius:10px; display:none;">
+      <a class="kiosko-exit" href="{% url 'formacion:sesion_detalle' sesion.id %}">
+        <span class="material-icons" style="font-size:18px;">arrow_back</span>
+        Salir
+      </a>
     </div>
+
+    <div class="kiosko-body">
+      <form id="kioskoForm" method="post" autocomplete="off">
+        {% csrf_token %}
+
+        <label class="kiosko-label">Código del miembro</label>
+
+        <div class="kiosko-display">
+          <input
+            id="codigoInput"
+            name="codigo"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            class="kiosko-input"
+            aria-label="Código del miembro"
+          >
+        </div>
+
+        <div class="kiosko-hint">
+          Introduce tu código con el teclado.
+        </div>
+
+        <div class="pad" aria-label="Teclado numérico">
+          <button type="button" class="pad-btn" data-key="1">1</button>
+          <button type="button" class="pad-btn" data-key="2">2</button>
+          <button type="button" class="pad-btn" data-key="3">3</button>
+
+          <button type="button" class="pad-btn" data-key="4">4</button>
+          <button type="button" class="pad-btn" data-key="5">5</button>
+          <button type="button" class="pad-btn" data-key="6">6</button>
+
+          <button type="button" class="pad-btn" data-key="7">7</button>
+          <button type="button" class="pad-btn" data-key="8">8</button>
+          <button type="button" class="pad-btn" data-key="9">9</button>
+
+          <button type="button" class="pad-btn pad-action" data-action="clear">Borrar</button>
+          <button type="button" class="pad-btn" data-key="0">0</button>
+          <button type="button" class="pad-btn pad-back" data-action="back">⌫</button>
+        </div>
+
+        <div class="kiosko-actions">
+          <button type="submit" id="btnMarcar" class="btn-primary">
+            <span class="material-icons" style="font-size:20px;">check_circle</span>
+            MARCAR ASISTENCIA
+          </button>
+
+          <button type="button" id="btnLimpiar" class="btn-ghost">
+            <span class="material-icons" style="font-size:20px;">restart_alt</span>
+            Limpiar
+          </button>
+        </div>
+
+        <div id="resultado" class="kiosko-result" role="status" aria-live="polite">
+          <div class="icon" id="resultadoIcon">✔️</div>
+          <div>
+            <div class="text" id="resultadoText">Mensaje</div>
+            <div class="sub" id="resultadoSub" style="display:none;"></div>
+          </div>
+        </div>
+
+      </form>
+    </div>
+
   </div>
 </div>
 
@@ -51,22 +413,112 @@
 (function () {
   const form = document.getElementById('kioskoForm');
   const input = document.getElementById('codigoInput');
-  const box = document.getElementById('resultado');
 
-  function show(msg, ok) {
-    box.style.display = 'block';
-    box.textContent = msg;
-    box.style.background = ok ? 'rgba(25,135,84,.12)' : 'rgba(220,53,69,.12)';
-    box.style.color = ok ? '#0f5132' : '#842029';
+  const box = document.getElementById('resultado');
+  const icon = document.getElementById('resultadoIcon');
+  const text = document.getElementById('resultadoText');
+  const sub  = document.getElementById('resultadoSub');
+
+  const btnLimpiar = document.getElementById('btnLimpiar');
+
+  // Fullscreen
+  const btnFS = document.getElementById('btnFullscreen');
+  function isFS(){ return !!document.fullscreenElement; }
+  async function enterFullscreen(){
+    try{
+      await document.documentElement.requestFullscreen();
+      btnFS.style.display = 'none';
+    }catch(e){
+      console.warn('Fullscreen bloqueado por el navegador:', e);
+    }
+  }
+  btnFS?.addEventListener('click', enterFullscreen);
+  document.addEventListener('fullscreenchange', () => {
+    btnFS.style.display = isFS() ? 'none' : 'inline-flex';
+  });
+
+  // Welcome overlay
+  const overlay = document.getElementById('welcomeOverlay');
+  const wTitle = document.getElementById('welcomeTitle');
+  const wSub = document.getElementById('welcomeSub');
+  let welcomeTimer = null;
+
+  function showWelcome(nombre, grupo){
+    if (welcomeTimer) clearTimeout(welcomeTimer);
+    wTitle.textContent = `Bienvenido, ${nombre || 'miembro'} 👋`;
+    wSub.textContent = grupo ? `al grupo ${grupo}` : `al grupo`;
+    overlay.style.display = 'flex';
+    welcomeTimer = setTimeout(() => overlay.style.display = 'none', 1500);
+  }
+  overlay?.addEventListener('click', () => overlay.style.display = 'none');
+
+  // UX
+  const MAX_LEN = 8;
+  let hideTimer = null;
+
+  function focusInput() {
+    input.focus({ preventScroll: true });
+  }
+  function setValue(v){ input.value = v; }
+  function appendDigit(d){
+    const cur = (input.value || '').replace(/\s+/g,'');
+    if (cur.length >= MAX_LEN) return;
+    setValue(cur + d);
+  }
+  function backspace(){
+    const cur = (input.value || '');
+    if (!cur) return;
+    setValue(cur.slice(0, -1));
+  }
+  function clearAll(){ setValue(''); }
+
+  function show(msg, ok, extra){
+    if (hideTimer) clearTimeout(hideTimer);
+
+    box.style.display = 'flex';
+    box.classList.remove('is-ok','is-bad');
+    box.classList.add(ok ? 'is-ok' : 'is-bad');
+
+    icon.textContent = ok ? '✔️' : '⚠️';
+    text.textContent = msg;
+
+    if (extra){
+      sub.style.display = 'block';
+      sub.textContent = extra;
+    } else {
+      sub.style.display = 'none';
+      sub.textContent = '';
+    }
+
+    hideTimer = setTimeout(() => { box.style.display = 'none'; }, ok ? 1700 : 2300);
   }
 
-  async function marcar(e) {
+  // Pad events
+  document.querySelectorAll('.pad-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      const action = btn.dataset.action;
+
+      if (key) appendDigit(key);
+      if (action === 'back') backspace();
+      if (action === 'clear') clearAll();
+
+      focusInput();
+    });
+  });
+
+  btnLimpiar.addEventListener('click', () => {
+    clearAll();
+    focusInput();
+  });
+
+  async function marcar(e){
     e.preventDefault();
 
     const codigo = (input.value || '').trim();
-    if (!codigo) {
+    if (!codigo){
       show("Introduce el código.", false);
-      input.focus();
+      focusInput();
       return;
     }
 
@@ -82,19 +534,37 @@
     let data = null;
     try { data = await res.json(); } catch (e) {}
 
-    if (data && data.ok) {
-      show(data.msg, true);
+    if (data && data.ok){
+      // Si tu backend no manda nombre/grupo aún, igual mostramos usando msg
+      const nombre = data.nombre || "";
+      const grupo  = data.grupo || "{{ grupo.nombre|escapejs }}";
+
+      show(data.msg || "Asistencia registrada ✅", true, data.marcado_en ? ("Marcado: " + data.marcado_en) : "");
+
+      // Bienvenida grande (si no hay nombre, se usa “miembro”)
+      showWelcome(nombre, grupo);
+
     } else {
       show((data && data.msg) ? data.msg : "Error marcando asistencia.", false);
     }
 
-    input.value = "";
-    input.focus();
+    clearAll();
+    focusInput();
   }
 
   form.addEventListener("submit", marcar);
-  setTimeout(() => input.focus(), 200);
+
+  // Mantener el foco y evitar que el navegador “salte” por scroll
+  setTimeout(() => focusInput(), 150);
+
+  // Bloqueo de letras: deja solo números y teclas útiles (por si hay teclado físico)
+  input.addEventListener('keydown', (e) => {
+    const allowed = ['Backspace','Delete','Tab','Enter'];
+    if (allowed.includes(e.key)) return;
+    if (/^\d$/.test(e.key)) return; // permitir números
+    e.preventDefault();
+  });
+
 })();
 </script>
-
 {% endblock %}
