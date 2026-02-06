@@ -17,6 +17,13 @@ class ProgramaEducativo(models.Model):
         ("POR_CICLO", "Por ciclo"),
     )
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default="POR_CICLO")
+    unidad_responsable = models.ForeignKey(
+        "estructura_app.Unidad",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="programas_responsables",
+        help_text="Unidad responsable del programa (ministerio/departamento)."
+    )
 
     creado_en = models.DateTimeField(auto_now_add=True)
 

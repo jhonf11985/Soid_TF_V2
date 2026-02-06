@@ -13,9 +13,10 @@ from .models import (
 
 @admin.register(ProgramaEducativo)
 class ProgramaEducativoAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "tipo", "activo", "creado_en")
-    search_fields = ("nombre",)
-    list_filter = ("tipo", "activo")
+    list_display = ("nombre", "tipo", "unidad_responsable", "activo", "creado_en")
+    search_fields = ("nombre", "unidad_responsable__nombre")
+    list_filter = ("tipo", "activo", "unidad_responsable")
+
 
 
 @admin.register(CicloPrograma)
