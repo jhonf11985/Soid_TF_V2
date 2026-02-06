@@ -1,0 +1,203 @@
+{% extends 'formacion_app/base_formacion.html' %}
+{% load static %}
+
+{% block formacion_content %}
+<style>
+/* Reusamos el mismo look & feel del reporte de grupos (container + cards + items) */
+.reporte-container{padding:0;background:#f8f9fa;min-height:calc(100vh - 120px);}
+.reporte-header{padding:22px 24px 12px;}
+.reporte-title{font-size:20px;font-weight:800;margin:0;}
+.reporte-subtitle{margin:6px 0 0;color:#6b7280;font-size:13px;}
+
+.resumen-section{padding:0 24px 12px;}
+.resumen-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}
+.resumen-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:.15s;}
+.resumen-card:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(0,0,0,.06);}
+.resumen-card-icon{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;}
+.resumen-card-icon .material-icons{font-size:20px;}
+.resumen-card-content{min-width:0;}
+.resumen-card-number{font-size:18px;font-weight:900;line-height:1.1;}
+.resumen-card-label{font-size:12px;color:#6b7280;margin-top:2px;}
+
+.icon-total{background:#eef2ff;color:#4338ca;}
+.icon-ok{background:#ecfdf5;color:#047857;}
+.icon-obs{background:#fffbeb;color:#b45309;}
+.icon-risk{background:#fef2f2;color:#b91c1c;}
+.icon-cob{background:#eff6ff;color:#1d4ed8;}
+
+.resultados-section{padding:0 24px 24px;}
+.resultados-header{display:flex;justify-content:space-between;align-items:center;margin:10px 0;}
+.resultados-count{font-size:13px;color:#6b7280;}
+.resultados-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;}
+
+.programa-item{border-top:1px solid #eef2f7;}
+.programa-item:first-child{border-top:none;}
+.programa-header{display:flex;gap:12px;align-items:center;padding:14px 14px;cursor:pointer;}
+.programa-expand-icon{width:28px;height:28px;border-radius:10px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;}
+.programa-expand-icon .material-icons{transition:.15s;}
+.programa-info{display:flex;gap:12px;align-items:center;flex:1;min-width:0;}
+.programa-avatar{width:38px;height:38px;border-radius:14px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;}
+.programa-nombre{font-weight:900;}
+.programa-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;color:#6b7280;font-size:12px;}
+.programa-meta-item{display:flex;gap:6px;align-items:center;}
+.programa-meta-item .material-icons{font-size:16px;opacity:.85;}
+
+.programa-badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.badge-stat{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid #e5e7eb;background:#fafafa;color:#111827;}
+.badge-stat .material-icons{font-size:16px;}
+.badge-ok{background:#ecfdf5;border-color:#a7f3d0;color:#047857;}
+.badge-obs{background:#fffbeb;border-color:#fde68a;color:#b45309;}
+.badge-risk{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
+
+.programa-content{display:none;padding:0 14px 14px;}
+.programa-item.open .programa-content{display:block;}
+.programa-item.open .programa-expand-icon .material-icons{transform:rotate(90deg);}
+
+.grupos-mini{margin-top:10px;border:1px solid #eef2f7;border-radius:12px;overflow:hidden;}
+.grupos-mini .row{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-top:1px solid #f1f5f9;font-size:13px;}
+.grupos-mini .row:first-child{border-top:none;}
+.muted{color:#6b7280;font-size:12px;}
+</style>
+
+<div class="reporte-container">
+  <div class="reporte-header">
+    <h1 class="reporte-title">Análisis de Programas</h1>
+    <div class="reporte-subtitle">
+      Estado general, cobertura y alertas por programa · Total iglesia: <strong>{{ stats.total_iglesia }}</strong>
+    </div>
+  </div>
+
+  <!-- RESUMEN (mismo concepto que el reporte de grupos) -->
+  <div class="resumen-section">
+    <div class="resumen-cards">
+      <div class="resumen-card">
+        <div class="resumen-card-icon icon-total"><span class="material-icons">menu_book</span></div>
+        <div class="resumen-card-content">
+          <div class="resumen-card-number">{{ stats.total_programas }}</div>
+          <div class="resumen-card-label">Programas activos</div>
+        </div>
+      </div>
+
+      <div class="resumen-card">
+        <div class="resumen-card-icon icon-ok"><span class="material-icons">check_circle</span></div>
+        <div class="resumen-card-content">
+          <div class="resumen-card-number">{{ stats.saludables }}</div>
+          <div class="resumen-card-label">Saludables</div>
+        </div>
+      </div>
+
+      <div class="resumen-card">
+        <div class="resumen-card-icon icon-obs"><span class="material-icons">visibility</span></div>
+        <div class="resumen-card-content">
+          <div class="resumen-card-number">{{ stats.observacion }}</div>
+          <div class="resumen-card-label">En observación</div>
+        </div>
+      </div>
+
+      <div class="resumen-card">
+        <div class="resumen-card-icon icon-risk"><span class="material-icons">warning</span></div>
+        <div class="resumen-card-content">
+          <div class="resumen-card-number">{{ stats.riesgo }}</div>
+          <div class="resumen-card-label">En riesgo</div>
+        </div>
+      </div>
+
+      <div class="resumen-card">
+        <div class="resumen-card-icon icon-cob"><span class="material-icons">insights</span></div>
+        <div class="resumen-card-content">
+          <div class="resumen-card-number">{{ stats.cobertura_prom }}%</div>
+          <div class="resumen-card-label">Cobertura promedio</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div class="resultados-section">
+    <div class="resultados-header">
+      <div class="resultados-count">
+        Mostrando <strong>{{ items|length }}</strong> programas
+      </div>
+    </div>
+
+    <div class="resultados-card">
+      {% for item in items %}
+      <div class="programa-item" onclick="this.classList.toggle('open')">
+        <div class="programa-header">
+          <div class="programa-expand-icon"><span class="material-icons">chevron_right</span></div>
+
+          <div class="programa-info">
+            <div class="programa-avatar"><span class="material-icons">menu_book</span></div>
+            <div style="min-width:0;">
+              <div class="programa-nombre">{{ item.programa.nombre }}</div>
+              <div class="programa-meta">
+                <span class="programa-meta-item">
+                  <span class="material-icons">groups</span>
+                  Grupos: {{ item.grupos_total }}
+                </span>
+                <span class="programa-meta-item">
+                  <span class="material-icons">people</span>
+                  Inscritos: {{ item.miembros_inscritos }}
+                </span>
+                <span class="programa-meta-item">
+                  <span class="material-icons">pie_chart</span>
+                  Cobertura: {{ item.cobertura }}%
+                </span>
+                <span class="programa-meta-item">
+                  <span class="material-icons">report</span>
+                  Alertas: {{ item.pct_alerta }}%
+                </span>
+              </div>
+              <div class="muted">{{ item.programa.get_tipo_display }}</div>
+            </div>
+          </div>
+
+          <div class="programa-badges">
+            {% if item.estado == "saludable" %}
+              <span class="badge-stat badge-ok"><span class="material-icons">check_circle</span> Saludable</span>
+            {% elif item.estado == "observacion" %}
+              <span class="badge-stat badge-obs"><span class="material-icons">visibility</span> Observación</span>
+            {% else %}
+              <span class="badge-stat badge-risk"><span class="material-icons">warning</span> Riesgo</span>
+            {% endif %}
+
+            {% if item.grupos_vacios > 0 %}
+              <span class="badge-stat badge-risk"><span class="material-icons">group_off</span> Vacíos: {{ item.grupos_vacios }}</span>
+            {% endif %}
+            {% if item.grupos_sin_maestro > 0 %}
+              <span class="badge-stat badge-obs"><span class="material-icons">school</span> Sin maestro: {{ item.grupos_sin_maestro }}</span>
+            {% endif %}
+            {% if item.grupos_inactivos > 0 %}
+              <span class="badge-stat"><span class="material-icons">pause_circle</span> Inactivos: {{ item.grupos_inactivos }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="programa-content">
+          <div class="muted" style="margin-top:6px;">
+            Detalle rápido de grupos (inscritos activos por grupo).
+          </div>
+
+          <div class="grupos-mini">
+            {% for g in item.grupos_detalle %}
+            <div class="row">
+              <div>
+                <strong>{{ g.nombre }}</strong>
+                {% if g.activo %}<span class="muted">· Activo</span>{% else %}<span class="muted">· Inactivo</span>{% endif %}
+              </div>
+              <div><span class="muted">Inscritos:</span> <strong>{{ g.inscritos }}</strong></div>
+            </div>
+            {% empty %}
+            <div class="row">
+              <div class="muted">Este programa no tiene grupos aún.</div>
+            </div>
+            {% endfor %}
+          </div>
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -38,6 +38,7 @@ path("roles/", views.roles_formativos, name="roles_formativos"),
 
 path("roles/nuevo/", views.rol_formativo_nuevo, name="rol_formativo_nuevo"),
 path("roles/<int:pk>/toggle/", views.rol_formativo_toggle, name="rol_formativo_toggle"),
+path("reportes/programas/", views.reporte_analisis_programas, name="reporte_programas"),
 
 
 ]

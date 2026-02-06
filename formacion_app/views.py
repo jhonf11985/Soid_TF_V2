@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Count
+from django.db.models import Count,Q
 from django.contrib import messages
 
 from .models import ProgramaEducativo, CicloPrograma, GrupoFormativo, InscripcionGrupo
@@ -733,3 +733,139 @@ def rol_formativo_toggle(request, pk):
     rol.activo = not rol.activo
     rol.save(update_fields=["activo"])
     return redirect("formacion:roles_formativos")
+
+
+
+def _estado_programa(grupos_total, pct_alerta, cobertura):
+    """
+    Semáforo simple (v1):
+    - 🔴 Riesgo: muchos grupos con alertas o muy baja cobertura
+    - 🟡 Observación: algo de alerta o cobertura baja
+    - 🟢 Saludable: estable
+    """
+    if grupos_total == 0:
+        return ("riesgo", "sin_grupos")
+
+    if pct_alerta > 40 or cobertura < 10:
+        return ("riesgo", "alertas_altas" if pct_alerta > 40 else "cobertura_baja")
+
+    if pct_alerta >= 15 or cobertura < 20:
+        return ("observacion", "alertas_medias" if pct_alerta >= 15 else "cobertura_media")
+
+    return ("saludable", "ok")
+
+
+def reporte_analisis_programas(request):
+    # Total real de iglesia = miembros que pertenecen (activo=True)
+    total_iglesia = Miembro.objects.filter(activo=True).count()
+
+    programas = ProgramaEducativo.objects.filter(activo=True).order_by("nombre")
+
+    items = []
+    for p in programas:
+        qs_grupos = GrupoFormativo.objects.filter(programa=p)
+
+        grupos_total = qs_grupos.count()
+        grupos_activos = qs_grupos.filter(activo=True).count()
+        grupos_inactivos = grupos_total - grupos_activos
+
+        # Grupos sin maestro: ni M2M maestros ni legacy maestro
+        grupos_sin_maestro = (
+            qs_grupos
+            .filter(maestros__isnull=True, maestro__isnull=True)
+            .distinct()
+            .count()
+        )
+
+        # Grupos vacíos: 0 inscripciones activas (solo miembros que pertenecen)
+        grupos_vacios = (
+            qs_grupos
+            .annotate(
+                total_activos=Count(
+                    "inscripciones",
+                    filter=Q(
+                        inscripciones__estado="ACTIVO",
+                        inscripciones__miembro__activo=True,
+                    ),
+                    distinct=True,
+                )
+            )
+            .filter(total_activos=0)
+            .count()
+        )
+
+        # Miembros inscritos (únicos) en el programa (activos en iglesia)
+        miembros_inscritos = (
+            InscripcionGrupo.objects
+            .filter(
+                grupo__programa=p,
+                estado="ACTIVO",
+                miembro__activo=True,
+                grupo__activo=True,
+            )
+            .values("miembro_id")
+            .distinct()
+            .count()
+        )
+
+        cobertura = round((miembros_inscritos / total_iglesia) * 100, 2) if total_iglesia else 0
+
+        alertas = grupos_sin_maestro + grupos_vacios
+        pct_alerta = round((alertas / grupos_total) * 100, 2) if grupos_total else 0
+
+        estado, motivo = _estado_programa(grupos_total, pct_alerta, cobertura)
+
+        # Lista simple de grupos (para desplegar)
+        grupos_detalle = (
+            qs_grupos
+            .annotate(
+                inscritos=Count(
+                    "inscripciones",
+                    filter=Q(
+                        inscripciones__estado="ACTIVO",
+                        inscripciones__miembro__activo=True,
+                    ),
+                    distinct=True,
+                )
+            )
+            .order_by("nombre")
+        )
+
+        items.append({
+            "programa": p,
+            "grupos_total": grupos_total,
+            "grupos_activos": grupos_activos,
+            "grupos_inactivos": grupos_inactivos,
+            "grupos_sin_maestro": grupos_sin_maestro,
+            "grupos_vacios": grupos_vacios,
+            "miembros_inscritos": miembros_inscritos,
+            "cobertura": cobertura,
+            "pct_alerta": pct_alerta,
+            "estado": estado,     # saludable / observacion / riesgo
+            "motivo": motivo,     # ok / cobertura_baja / alertas_altas / etc
+            "grupos_detalle": grupos_detalle,
+        })
+
+    # Resumen general (cards arriba)
+    total_programas = len(items)
+    saludables = sum(1 for i in items if i["estado"] == "saludable")
+    observacion = sum(1 for i in items if i["estado"] == "observacion")
+    riesgo = sum(1 for i in items if i["estado"] == "riesgo")
+
+    cobertura_prom = round(
+        (sum(i["cobertura"] for i in items) / total_programas), 2
+    ) if total_programas else 0
+
+    stats = {
+        "total_programas": total_programas,
+        "saludables": saludables,
+        "observacion": observacion,
+        "riesgo": riesgo,
+        "total_iglesia": total_iglesia,
+        "cobertura_prom": cobertura_prom,
+    }
+
+    return render(request, "formacion_app/programas_reporte.html", {
+        "stats": stats,
+        "items": items,
+    })
