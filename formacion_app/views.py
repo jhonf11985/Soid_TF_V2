@@ -1,7 +1,7 @@
 from datetime import date
 from django.urls import reverse
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -99,6 +99,7 @@ def inicio_formacion(request):
 # =============================================================================
 
 @login_required
+@permission_required('formacion_app.view_programaeducativo', raise_exception=True)
 def programas_list(request):
     """Listado de todos los programas educativos."""
     programas = ProgramaEducativo.objects.all()
@@ -106,6 +107,7 @@ def programas_list(request):
 
 
 @login_required
+@permission_required('formacion_app.add_programaeducativo', raise_exception=True)
 def programa_crear(request):
     """Crear un nuevo programa educativo."""
     if request.method == "POST":
@@ -138,6 +140,7 @@ def programa_crear(request):
 
 
 @login_required
+@permission_required('formacion_app.change_programaeducativo', raise_exception=True)
 def programa_editar(request, pk):
     """Editar un programa educativo existente."""
     programa = get_object_or_404(ProgramaEducativo, pk=pk)
@@ -176,6 +179,7 @@ def programa_editar(request, pk):
 # =============================================================================
 
 @login_required
+@permission_required('formacion_app.view_grupoformativo', raise_exception=True)
 def grupos_listado(request):
     """Listado de grupos formativos."""
     grupos = (
@@ -223,6 +227,7 @@ def _get_miembros_data(miembros_queryset):
 
 
 @login_required
+@permission_required('formacion_app.add_grupoformativo', raise_exception=True)
 def grupo_crear(request):
     """Crear un nuevo grupo/clase."""
     if request.method == "POST":
@@ -273,6 +278,7 @@ def grupo_crear(request):
 
 
 @login_required
+@permission_required('formacion_app.change_grupoformativo', raise_exception=True)
 def grupo_editar(request, pk):
     """Editar un grupo/clase existente."""
     grupo = get_object_or_404(GrupoFormativo, pk=pk)
@@ -370,6 +376,7 @@ def grupo_editar(request, pk):
 # =============================================================================
 
 @login_required
+@permission_required('formacion_app.add_cicloprograma', raise_exception=True)
 def ciclo_crear(request):
     """Crear un nuevo ciclo de programa."""
     if request.method == "POST":
@@ -386,6 +393,7 @@ def ciclo_crear(request):
 
 
 @login_required
+@permission_required('formacion_app.change_cicloprograma', raise_exception=True)
 def ciclo_editar(request, pk):
     """Editar un ciclo existente."""
     ciclo = get_object_or_404(CicloPrograma, pk=pk)
@@ -408,6 +416,7 @@ def ciclo_editar(request, pk):
 # =============================================================================
 
 @login_required
+@permission_required('formacion_app.view_grupoformativo', raise_exception=True)
 def grupos_reporte(request):
     """
     Reporte de análisis de grupos formativos.
@@ -526,6 +535,7 @@ def _estado_programa(grupos_total, pct_alerta, cobertura):
 
 
 @login_required
+@permission_required('formacion_app.view_programaeducativo', raise_exception=True)
 def reporte_analisis_programas(request):
     total_iglesia = Miembro.objects.filter(activo=True).count()
     programas = ProgramaEducativo.objects.filter(activo=True).order_by("nombre")
@@ -639,6 +649,7 @@ def reporte_analisis_programas(request):
 # =============================================================================
 
 @login_required
+@permission_required('formacion_app.add_sesiongrupo', raise_exception=True)
 def grupo_sesion_abrir(request, grupo_id):
     grupo = get_object_or_404(GrupoFormativo, pk=grupo_id)
     hoy = timezone.localdate()
@@ -668,6 +679,7 @@ def grupo_sesion_abrir(request, grupo_id):
 
 
 @login_required
+@permission_required('formacion_app.view_sesiongrupo', raise_exception=True)
 def sesion_detalle(request, sesion_id):
     sesion = get_object_or_404(SesionGrupo, id=sesion_id)
     grupo = sesion.grupo
@@ -684,6 +696,7 @@ def sesion_detalle(request, sesion_id):
 
 
 @login_required
+@permission_required('formacion_app.view_sesiongrupo', raise_exception=True)
 def sesion_kiosko(request, sesion_id):
     sesion = get_object_or_404(SesionGrupo, id=sesion_id)
     return render(request, "formacion_app/sesion_kiosko.html", {
@@ -694,6 +707,7 @@ def sesion_kiosko(request, sesion_id):
 
 @require_POST
 @login_required
+@permission_required('formacion_app.add_asistenciasesion', raise_exception=True)
 def sesion_kiosko_marcar(request, sesion_id):
     sesion = get_object_or_404(SesionGrupo, id=sesion_id)
 
@@ -746,6 +760,7 @@ def sesion_kiosko_marcar(request, sesion_id):
 
 @require_POST
 @login_required
+@permission_required('formacion_app.change_sesiongrupo', raise_exception=True)
 def sesion_cerrar(request, sesion_id):
     sesion = get_object_or_404(SesionGrupo, id=sesion_id)
 
@@ -766,6 +781,7 @@ def sesion_cerrar(request, sesion_id):
 # =============================================================================
 
 @login_required
+@permission_required('formacion_app.view_rolformativo', raise_exception=True)
 def roles_formativos(request):
     maestros = (
         RolFormativo.objects
@@ -789,6 +805,7 @@ def roles_formativos(request):
 
 
 @login_required
+@permission_required('formacion_app.add_rolformativo', raise_exception=True)
 def rol_formativo_nuevo(request):
     """
     Crea un rol formativo (MAESTRO o AYUDANTE) para un miembro.
@@ -830,8 +847,9 @@ def rol_formativo_nuevo(request):
     })
 
 
-@login_required
 @require_POST
+@login_required
+@permission_required('formacion_app.change_rolformativo', raise_exception=True)
 def rol_formativo_toggle(request, pk):
     rol = get_object_or_404(RolFormativo, pk=pk)
     rol.activo = not rol.activo
@@ -1123,6 +1141,7 @@ def ir_a_mi_clase(request, grupo_id):
     return redirect("formacion:sesion_detalle", sesion_id=sesion.id)
 
 @login_required
+@permission_required('formacion_app.view_grupoformativo', raise_exception=True)
 def grupo_detalle(request, pk):
     grupo = get_object_or_404(
         GrupoFormativo.objects
