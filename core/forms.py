@@ -187,6 +187,38 @@ class UsuarioIglesiaForm(UserCreationForm):
         widget=forms.HiddenInput()
     )
 
+    def clean_miembro_id(self):
+        """
+        Limpia el campo miembro_id:
+        - Convierte string vacío a None
+        - Valida que el miembro exista y no esté ya vinculado
+        """
+        miembro_id = self.cleaned_data.get("miembro_id")
+        
+        # Si viene vacío (string vacío o None), retornar None
+        if not miembro_id:
+            return None
+        
+        # Asegurar que sea entero
+        try:
+            miembro_id = int(miembro_id)
+        except (ValueError, TypeError):
+            return None
+        
+        from miembros_app.models import Miembro
+        miembro = Miembro.objects.filter(id=miembro_id).first()
+        
+        if not miembro:
+            raise forms.ValidationError("El miembro seleccionado no existe.")
+        
+        # Verificar que no esté ya vinculado a otro usuario
+        if miembro.usuario is not None:
+            raise forms.ValidationError(
+                f"Este miembro ya está vinculado al usuario «{miembro.usuario.username}»."
+            )
+        
+        return miembro_id
+
     def clean_email(self):
         email = (self.cleaned_data.get("email") or "").strip().lower()
         if not email:
@@ -313,6 +345,14 @@ class UsuarioIglesiaEditForm(forms.ModelForm):
     miembro_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
     override_nombre = forms.BooleanField(required=False, initial=False, widget=forms.HiddenInput())
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Precargar el grupo actual del usuario
+        if self.instance and self.instance.pk:
+            grupo_actual = self.instance.groups.first()
+            if grupo_actual:
+                self.fields['grupo'].initial = grupo_actual
+
     def clean_email(self):
         email = (self.cleaned_data.get("email") or "").strip().lower()
         if not email:
@@ -322,8 +362,11 @@ class UsuarioIglesiaEditForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
 
-        if qs.exists():
-            raise forms.ValidationError("Ya existe otro usuario con este correo electrónico.")
+        usuario_existente = qs.first()
+        if usuario_existente:
+            raise forms.ValidationError(
+                f"Ya existe otro usuario con este correo: «{usuario_existente.username}»."
+            )
 
         return email
 
@@ -350,24 +393,31 @@ class UsuarioIglesiaEditForm(forms.ModelForm):
 
     def clean_miembro_id(self):
         miembro_id = self.cleaned_data.get("miembro_id")
+        
+        # Si viene vacío, retornar None
         if not miembro_id:
-            return miembro_id
+            return None
+        
+        # Asegurar que sea entero
+        try:
+            miembro_id = int(miembro_id)
+        except (ValueError, TypeError):
+            return None
 
         from miembros_app.models import Miembro
         miembro = Miembro.objects.filter(id=miembro_id).first()
 
         if not miembro:
-            return miembro_id
+            raise forms.ValidationError("El miembro seleccionado no existe.")
 
-        # buscar si ese miembro ya está vinculado a otro usuario
-        qs = User.objects.filter(email__iexact=miembro.email)
-
-        if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-
-        if qs.exists():
+        # Verificar que no esté ya vinculado a OTRO usuario
+        if miembro.usuario is not None:
+            # Si el miembro ya está vinculado al usuario actual, está OK
+            if self.instance and self.instance.pk and miembro.usuario.pk == self.instance.pk:
+                return miembro_id
+            # Si está vinculado a otro usuario, error
             raise forms.ValidationError(
-                f"⚠️ Este miembro ya está vinculado a otro usuario ({qs.first().username})."
+                f"⚠️ Este miembro ya está vinculado al usuario «{miembro.usuario.username}»."
             )
 
         return miembro_id

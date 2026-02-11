@@ -749,20 +749,36 @@ def crear_usuario(request):
                 user = form.save()
 
                 miembro_id = form.cleaned_data.get("miembro_id")
+                
+                # Debug: también verificar el POST directo
+                if not miembro_id:
+                    raw_miembro_id = request.POST.get("miembro_id", "").strip()
+                    if raw_miembro_id:
+                        try:
+                            miembro_id = int(raw_miembro_id)
+                        except (ValueError, TypeError):
+                            miembro_id = None
+
                 if miembro_id:
+                    # Buscar el miembro sin el filtro de usuario para debug
                     miembro = Miembro.objects.select_for_update().filter(
-                        id=miembro_id,
-                        usuario__isnull=True
+                        id=miembro_id
                     ).first()
 
                     if miembro:
-                        miembro.usuario = user
-                        miembro.save()
+                        # Verificar si ya tiene usuario asignado
+                        if miembro.usuario is None:
+                            miembro.usuario = user
+                            miembro.save(update_fields=['usuario'])
+                            messages.info(request, f"Miembro «{miembro}» vinculado correctamente.")
+                        else:
+                            messages.warning(request, f"El miembro ya estaba vinculado a {miembro.usuario.username}.")
+                    else:
+                        messages.warning(request, f"No se encontró el miembro con ID {miembro_id}.")
 
             nombre_mostrar = user.get_full_name() or user.username
             messages.success(request, f"Usuario «{nombre_mostrar}» creado correctamente.")
             return redirect("core:listado")
-
 
     else:
         form = UsuarioIglesiaForm()
@@ -865,22 +881,66 @@ def editar_usuario(request, user_id):
         messages.error(request, "El usuario no existe.")
         return redirect("core:listado")
 
+    # Obtener el miembro actualmente vinculado (si existe)
+    miembro_actual = Miembro.objects.filter(usuario=usuario).first()
+
     if request.method == "POST":
         form = UsuarioIglesiaEditForm(request.POST, instance=usuario)
         if form.is_valid():
             with transaction.atomic():
                 form.save()  # el form ya guarda y asigna el grupo
+
+                # Obtener el nuevo miembro_id del formulario
+                nuevo_miembro_id = form.cleaned_data.get("miembro_id")
+                
+                # Fallback al POST directo
+                if not nuevo_miembro_id:
+                    raw_miembro_id = request.POST.get("miembro_id", "").strip()
+                    if raw_miembro_id:
+                        try:
+                            nuevo_miembro_id = int(raw_miembro_id)
+                        except (ValueError, TypeError):
+                            nuevo_miembro_id = None
+
+                # Lógica de vinculación/desvinculación
+                if miembro_actual and (not nuevo_miembro_id or nuevo_miembro_id != miembro_actual.id):
+                    # Desvincular el miembro anterior
+                    miembro_actual.usuario = None
+                    miembro_actual.save(update_fields=['usuario'])
+
+                if nuevo_miembro_id:
+                    if not miembro_actual or nuevo_miembro_id != miembro_actual.id:
+                        # Vincular el nuevo miembro
+                        nuevo_miembro = Miembro.objects.select_for_update().filter(
+                            id=nuevo_miembro_id
+                        ).first()
+
+                        if nuevo_miembro:
+                            if nuevo_miembro.usuario is None:
+                                nuevo_miembro.usuario = usuario
+                                nuevo_miembro.save(update_fields=['usuario'])
+                            elif nuevo_miembro.usuario.id != usuario.id:
+                                messages.warning(
+                                    request, 
+                                    f"El miembro ya está vinculado a «{nuevo_miembro.usuario.username}»."
+                                )
+
             messages.success(request, "Usuario actualizado correctamente.")
             return redirect("core:listado")
         else:
             messages.error(request, "Hay errores en el formulario.")
     else:
-        form = UsuarioIglesiaEditForm(instance=usuario)
+        # Precargar el miembro_id en el formulario si existe
+        initial_data = {}
+        if miembro_actual:
+            initial_data['miembro_id'] = miembro_actual.id
+        form = UsuarioIglesiaEditForm(instance=usuario, initial=initial_data)
 
     context = {
         "form": form,
         "usuario_obj": usuario,
         "modo_edicion": True,
+        "miembro_actual": miembro_actual,  # Para mostrar en el template si es necesario
     }
     return render(request, "core/usuarios/crear_usuario.html", context)
 

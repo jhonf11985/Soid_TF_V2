@@ -74,7 +74,9 @@
                  data-debounce="300">
 
               {{ form.miembro_id }}
-
+              {% if form.miembro_id.errors %}
+                <div class="odoo-field-error" style="margin-top:8px;">{{ form.miembro_id.errors.0 }}</div>
+              {% endif %}
 
               <div class="autocomplete-field">
                 <div class="autocomplete-chip" style="display:none;">
@@ -111,25 +113,15 @@
 <div class="odoo-quick-fields">
   <div class="odoo-quick-field">
     <span class="material-icons">email</span>
-
-    {% if form.miembro_id.value %}
-      <input
-        type="email"
-        id="id_email"
-        name="email"
-        value="{{ form.email.value|default:'' }}"
-        readonly
-        style="background:transparent; cursor:not-allowed; opacity:.85;"
-      >
-    {% else %}
-      {{ form.email }}
-    {% endif %}
+    {{ form.email }}
   </div>
 
-  {% if form.miembro_id.value %}
+  {% if form.email.errors %}
+    <div class="odoo-field-error">{{ form.email.errors.0 }}</div>
+  {% elif form.miembro_id.value %}
     <div class="email-status ok" style="display:block;">
       <span class="material-icons">link</span>
-      Email tomado del miembro vinculado.
+      Email del miembro vinculado (puedes modificarlo).
     </div>
   {% else %}
     <div id="email-status" class="email-status" style="display:none;"></div>
@@ -1334,6 +1326,9 @@
   // Submit control (lo más importante)
   // =========================
   let allowNextSubmit = false;
+  
+  // Detectar si estamos en modo edición
+  const modoEdicion = document.querySelector('.odoo-breadcrumb-current')?.textContent?.trim() === 'Editar';
 
   form.addEventListener("submit", async function(e){
     // Si reenviamos nosotros mismos, dejar pasar
@@ -1345,6 +1340,16 @@
     // Si HTML5 detecta inválidos, no ponemos spinner aquí
     if (typeof form.checkValidity === "function" && !form.checkValidity()){
       return;
+    }
+
+    // EN MODO EDICIÓN: confiar en el backend, no validar email aquí
+    if (modoEdicion) {
+      isDirty = false;
+      lockButton(btnSubmitDesktop, "Guardando...");
+      lockButton(btnSubmitMobile, "Guardando...");
+      lockCancel(btnCancelDesktop);
+      lockCancel(btnCancelMobile);
+      return; // Dejar que el form se envíe normalmente
     }
 
     // Validar email antes de enviar
