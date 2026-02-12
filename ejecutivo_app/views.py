@@ -4,6 +4,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Count
 from django.shortcuts import render
 from django.utils import timezone
+from miembros_app.views.utils import calcular_edad, porcentaje
+from core.utils_config import get_edad_minima_miembro_oficial
 
 from miembros_app.models import Miembro
 from core.utils_config import get_edad_minima_miembro_oficial
@@ -16,109 +18,162 @@ def _cutoff_nacimiento_por_edad(edad_minima: int, hoy: date) -> date:
         return hoy.replace(month=2, day=28, year=hoy.year - edad_minima)
 
 
-def _diagnostico_membresia(ratio: float) -> dict:
+def _diagnostico_membresia(activos, pasivos, observacion, disciplina, catecumenos, descarriados, total):
     """
-    ratio = oficiales_activos / oficiales_total
-    Devuelve nivel + mensaje ejecutivo.
+    Diagnóstico pastoral basado en la condición real de la membresía.
+    No habla de números, interpreta la vida espiritual de la iglesia.
     """
-    if ratio >= 0.85:
+
+    if total == 0:
+        return {
+            "nivel": "sin_datos",
+            "titulo": "Sin base de evaluación",
+            "mensaje": "Aún no hay miembros oficiales suficientes para evaluar la condición de la iglesia.",
+        }
+
+    # mayorías
+    if activos >= (total * 0.75):
         return {
             "nivel": "saludable",
-            "titulo": "Membresía saludable",
-            "mensaje": "La mayoría de los miembros oficiales está en estado pastoral activo.",
+            "titulo": "Iglesia firme",
+            "mensaje": "La congregación se mantiene estable. La mayoría camina activamente en la vida de la iglesia.",
         }
-    if ratio >= 0.70:
+
+    # crecimiento fuerte
+    if catecumenos >= (total * 0.35):
         return {
-            "nivel": "atencion",
-            "titulo": "Membresía en atención",
-            "mensaje": "Hay una porción importante de oficiales fuera de activo. Conviene revisar pasivos y observación.",
+            "nivel": "crecimiento",
+            "titulo": "Tiempo de formación",
+            "mensaje": "Dios está añadiendo personas. Muchos están en proceso y necesitan acompañamiento cercano.",
         }
-    if ratio >= 0.50:
+
+    # disciplina alta
+    if disciplina >= (total * 0.20) or observacion >= (total * 0.25):
         return {
-            "nivel": "preocupante",
-            "titulo": "Membresía preocupante",
-            "mensaje": "Muchos oficiales no están en estado activo. Recomiendo revisar causas y activar seguimiento.",
+            "nivel": "orden",
+            "titulo": "Tiempo de corrección",
+            "mensaje": "La iglesia atraviesa un proceso de orden. Algunos hermanos requieren cuidado pastoral cercano.",
         }
+
+    # enfriamiento
+    if pasivos + descarriados > activos:
+        return {
+            "nivel": "enfriamiento",
+            "titulo": "La iglesia necesita cercanía",
+            "mensaje": "Hay más hermanos detenidos que caminando. Conviene acercarse, escuchar y pastorear.",
+        }
+
+    # debilitamiento serio
+    if activos <= (total * 0.40):
+        return {
+            "nivel": "riesgo",
+            "titulo": "Necesita atención pastoral",
+            "mensaje": "La membresía activa es baja. Es momento de fortalecer, visitar y recuperar.",
+        }
+
+    # neutro
     return {
-        "nivel": "critico",
-        "titulo": "Membresía en estado crítico",
-        "mensaje": "La proporción de oficiales activos es baja. Recomiendo un plan pastoral de recuperación.",
+        "nivel": "atencion",
+        "titulo": "Momento de cuidado",
+        "mensaje": "La iglesia se mantiene, pero algunos hermanos necesitan ser acompañados más de cerca.",
     }
 
 
 @login_required
 def inicio(request):
-    hoy = timezone.localdate()
+    """
+    Centro Ejecutivo · Inicio (Nivel 1)
+    - KPIs de miembros (con la MISMA lógica del dashboard de miembros)
+    - Diagnóstico basado en miembros oficiales
+    - Focos principales (limpios)
+    """
+    miembros = Miembro.objects.filter(activo=True)
+    edad_minima = get_edad_minima_miembro_oficial()
+    hoy = date.today()
 
-    # -----------------------------
-    # KPIs básicos (foto rápida)
-    # -----------------------------
-    total = Miembro.objects.count()
-    activos_pertenencia = Miembro.objects.filter(activo=True).count()  # pertenece a la iglesia (checkbox)
-    nuevos_creyentes = Miembro.objects.filter(nuevo_creyente=True, activo=True).count()
-    inactivos_pertenencia = Miembro.objects.filter(activo=False).count()
+    # ============================================================
+    # 1) CONTEO DE MEMBRESÍA OFICIAL (MISMA LÓGICA QUE MIEMBROS)
+    # ============================================================
+    activos = pasivos = observacion = disciplina = catecumenos = 0
 
-    # -----------------------------
-    # OFICIALES (base del diagnóstico)
-    # -----------------------------
-    edad_min = get_edad_minima_miembro_oficial()
-    cutoff = _cutoff_nacimiento_por_edad(edad_min, hoy)
+    for m in miembros:
+        edad = calcular_edad(m.fecha_nacimiento)
+        if edad is None or edad < edad_minima:
+            continue
+        if m.nuevo_creyente:
+            continue
+        if not m.bautizado_confirmado:
+            catecumenos += 1
+            continue
 
-    oficiales_qs = Miembro.objects.filter(
-        activo=True,                  # sigue perteneciendo
-        nuevo_creyente=False,
-        bautizado_confirmado=True,
-        fecha_nacimiento__isnull=False,
-        fecha_nacimiento__lte=cutoff,
+        if m.estado_miembro == "activo":
+            activos += 1
+        elif m.estado_miembro == "pasivo":
+            pasivos += 1
+        elif m.estado_miembro == "observacion":
+            observacion += 1
+        elif m.estado_miembro == "disciplina":
+            disciplina += 1
+
+    # Descarriados (inactivos) — MISMA LÓGICA
+    miembros_descarriados = Miembro.objects.filter(activo=False, razon_salida__isnull=False)
+    descarriados = sum(
+        1 for m in miembros_descarriados
+        if calcular_edad(m.fecha_nacimiento) is not None
+        and calcular_edad(m.fecha_nacimiento) >= edad_minima
+        and "descarri" in str(m.razon_salida).lower()
     )
 
-    oficiales_total = oficiales_qs.count()
+    total_oficiales = activos + pasivos + observacion + disciplina + catecumenos
+    total_base = total_oficiales  # igual que tu dashboard
 
-    # Estado pastoral "activo" (no el checkbox)
-    oficiales_estado_activo = oficiales_qs.filter(estado_miembro="activo").count()
+    # ============================================================
+    # 2) DIAGNÓSTICO EJECUTIVO (solo oficiales)
+    # ============================================================
+    ratio_activos = (activos / total_oficiales) if total_oficiales else 0.0
 
-    ratio = (oficiales_estado_activo / oficiales_total) if oficiales_total else 0.0
-    diag = _diagnostico_membresia(ratio) if oficiales_total else {
-        "nivel": "sin_datos",
-        "titulo": "Sin base de membresía oficial",
-        "mensaje": "Aún no hay miembros oficiales suficientes para evaluar la salud de la membresía.",
-    }
+    diag = _diagnostico_membresia(
+        activos,
+        pasivos,
+        observacion,
+        disciplina,
+        catecumenos,
+        descarriados,
+        total_oficiales
+    )
 
-    # Desglose (solo oficiales NO activos)
     desglose_no_activos = []
-    if oficiales_total:
-        estados = ["pasivo", "observacion", "disciplina", "descarriado", "catecumeno", "trasladado", ""]
-        counts = (
-            oficiales_qs
-            .exclude(estado_miembro="activo")
-            .values("estado_miembro")
-            .annotate(c=Count("id"))
-            .order_by("-c")
-        )
-        mapa = {x["estado_miembro"]: x["c"] for x in counts}
+    # Aquí mostramos solo oficiales NO activos (como “por qué” en 1 línea)
+    if catecumenos:
+        desglose_no_activos.append({"label": "Catecúmenos", "value": catecumenos})
+    if pasivos:
+        desglose_no_activos.append({"label": "Pasivos", "value": pasivos})
+    if observacion:
+        desglose_no_activos.append({"label": "Observación", "value": observacion})
+    if disciplina:
+        desglose_no_activos.append({"label": "Disciplina", "value": disciplina})
 
-        etiquetas = {
-            "pasivo": "Pasivos",
-            "observacion": "Observación",
-            "disciplina": "Disciplina",
-            "descarriado": "Descarriados",
-            "catecumeno": "Catecúmenos",
-            "trasladado": "Trasladados",
-            "": "Sin estado",
-        }
+    # ============================================================
+    # 3) KPIs “ejecutivos” (alineados con tu dashboard)
+    # ============================================================
+    total_miembros_registrados = miembros.count()  # activo=True (incluye niños y nuevos creyentes) :contentReference[oaicite:1]{index=1}
 
-        for key in estados:
-            if key in mapa and mapa[key] > 0:
-                desglose_no_activos.append({"label": etiquetas.get(key, key), "value": mapa[key]})
+    hace_7_dias = timezone.now() - timedelta(days=7)
+    nuevos_creyentes_semana = Miembro.objects.filter(
+        nuevo_creyente=True, activo=True, fecha_creacion__gte=hace_7_dias
+    ).count()  # igual que tu dashboard :contentReference[oaicite:2]{index=2}
 
-    # -----------------------------
-    # ALERTAS PRINCIPALES (Focos)
-    # -----------------------------
+    # ============================================================
+    # 4) FOCOS PRINCIPALES (Nivel 1, sin listas largas)
+    #    (aquí puedes ajustar qué entra como foco)
+    # ============================================================
     focos = []
 
+    # Foco: Nuevos creyentes sin mentor
     nc_sin_mentor = Miembro.objects.filter(
         activo=True, nuevo_creyente=True
     ).filter(Q(mentor__isnull=True) | Q(mentor="")).count()
+
     if nc_sin_mentor:
         focos.append({
             "nivel": "alta",
@@ -128,51 +183,31 @@ def inicio(request):
             "cta_url": "/ejecutivo/personas/?filtro=nc_sin_mentor",
         })
 
-    estados_sensibles = ["disciplina", "observacion", "descarriado", "pasivo"]
-    sensibles = Miembro.objects.filter(activo=True, estado_miembro__in=estados_sensibles).count()
-    if sensibles:
-        focos.append({
-            "nivel": "alta",
-            "titulo": "Estados pastorales sensibles",
-            "detalle": f"{sensibles} personas en disciplina/observación/descarriado/pasivo.",
-            "cta_texto": "Revisar",
-            "cta_url": "/ejecutivo/personas/?filtro=estado_sensible",
-        })
-
-    reingresos_pend = Miembro.objects.filter(
-        activo=True, etapa_actual="reincorporado"
-    ).filter(Q(estado_pastoral_reingreso__isnull=True) | Q(estado_pastoral_reingreso="")).count()
-    if reingresos_pend:
-        focos.append({
-            "nivel": "media",
-            "titulo": "Reingresos pendientes de cierre",
-            "detalle": f"{reingresos_pend} reincorporaciones sin definir estado pastoral.",
-            "cta_texto": "Revisar",
-            "cta_url": "/ejecutivo/personas/?filtro=reingresos_pend",
-        })
-
-    fichas_incompletas = Miembro.objects.filter(activo=True).filter(
-        Q(telefono_norm__isnull=True) | Q(telefono_norm="") |
-        Q(fecha_nacimiento__isnull=True)
+    # Foco: Datos incompletos (igual espíritu del dashboard)
+    sin_contacto = miembros.filter(
+        (Q(telefono__isnull=True) | Q(telefono="")),
+        (Q(telefono_secundario__isnull=True) | Q(telefono_secundario="")),
+        (Q(email__isnull=True) | Q(email="")),
     ).count()
-    if fichas_incompletas:
+
+    if sin_contacto:
         focos.append({
             "nivel": "media",
-            "titulo": "Fichas incompletas",
-            "detalle": f"{fichas_incompletas} sin teléfono normalizado o sin fecha de nacimiento.",
+            "titulo": "Registros sin contacto",
+            "detalle": f"{sin_contacto} miembros sin teléfono(s) y sin email.",
             "cta_texto": "Revisar",
-            "cta_url": "/ejecutivo/personas/?filtro=fichas_incompletas",
+            "cta_url": "/ejecutivo/personas/?filtro=sin_contacto",
         })
 
-    hace_30 = hoy - timedelta(days=30)
-    salidas_recientes = Miembro.objects.filter(fecha_salida__isnull=False, fecha_salida__gte=hace_30).count()
-    if salidas_recientes:
+    # Foco: Oficiales fuera de activo (resumen ejecutivo)
+    oficiales_no_activos = total_oficiales - activos
+    if total_oficiales and oficiales_no_activos:
         focos.append({
-            "nivel": "baja",
-            "titulo": "Salidas recientes (30 días)",
-            "detalle": f"{salidas_recientes} salidas registradas recientemente.",
+            "nivel": "media" if ratio_activos >= 0.70 else "alta",
+            "titulo": "Miembros oficiales fuera de activo",
+            "detalle": f"{oficiales_no_activos} oficiales no están en estado pastoral activo.",
             "cta_texto": "Revisar",
-            "cta_url": "/ejecutivo/personas/?filtro=salidas_recientes",
+            "cta_url": "/ejecutivo/personas/?filtro=oficiales_no_activos",
         })
 
     # Mensaje general
@@ -183,23 +218,48 @@ def inicio(request):
 
     context = {
         "estado_general": estado_general,
+
+        # KPIs estilo “miembros_dashboard”
         "kpis": [
-            {"label": "Total registrados", "value": total},
-            {"label": "Pertenecen (activo)", "value": activos_pertenencia},
-            {"label": "Nuevos creyentes", "value": nuevos_creyentes},
-            {"label": "Inactivos", "value": inactivos_pertenencia},
+            {"label": "Miembros registrados", "value": total_miembros_registrados, "sub": "Incluye niños y nuevos creyentes"},
+            {"label": "Miembros oficiales", "value": total_oficiales, "sub": f"Mayores de {edad_minima} años"},
+            {"label": "Nuevos creyentes", "value": nuevos_creyentes_semana, "sub": "Últimos 7 días"},
+            {"label": "Descarriados", "value": descarriados, "sub": "Necesitan seguimiento"},
         ],
+
+        # Membresía (tarjeta de diagnóstico)
         "membresia": {
-            "oficiales_total": oficiales_total,
-            "oficiales_estado_activo": oficiales_estado_activo,
-            "ratio": ratio,  # 0..1
+            "oficiales_total": total_oficiales,
+            "oficiales_estado_activo": activos,
+            "ratio": ratio_activos,
             "diag": diag,
             "desglose_no_activos": desglose_no_activos,
             "cta_url": "/ejecutivo/personas/?filtro=oficiales_no_activos",
         },
+
+        # Estados (por si luego quieres mostrar mini-cards)
+        "estados": {
+            "activos": activos,
+            "pasivos": pasivos,
+            "observacion": observacion,
+            "disciplina": disciplina,
+            "catecumenos": catecumenos,
+            "descarriados": descarriados,
+            "pct_activos": porcentaje(activos, total_base),
+            "pct_pasivos": porcentaje(pasivos, total_base),
+            "pct_observacion": porcentaje(observacion, total_base),
+            "pct_disciplina": porcentaje(disciplina, total_base),
+            "pct_catecumenos": porcentaje(catecumenos, total_base),
+        },
+
+        # Focos principales (máximo 5)
         "focos": focos[:5],
     }
+
     return render(request, "ejecutivo_app/inicio.html", context)
+
+
 @login_required
 def personas(request):
+    # Placeholder del Nivel 2 (lo haremos luego)
     return render(request, "ejecutivo_app/personas.html", {})
