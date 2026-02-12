@@ -61,6 +61,8 @@ INSTALLED_APPS = [
     'evaluaciones_app',
     "codigo_qr",
     "formacion_app",
+    'ejecutivo_app',
+
 
 
 

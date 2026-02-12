@@ -63,6 +63,7 @@ urlpatterns = [
     path("codigo-qr/", include("codigo_qr.urls")),
 
     path("formacion/", include("formacion_app.urls")),
+      path("ejecutivo/", include("ejecutivo_app.urls")),
 ]
 
 
