@@ -60,5 +60,11 @@ path("config/actualizacion/", views.actualizacion_config, name="actualizacion_co
     # === API BUSQUEDA (PUBLICO) ===
     path("api/buscar-miembros/", views.api_buscar_miembros, name="api_buscar_miembros"),
 
+    # === FAMILIAS - SOLICITUDES (ADMIN) ===
+    path("admin/familias/solicitudes/", views.familia_solicitudes_lista, name="familia_solicitudes_lista"),
+    path("admin/familias/solicitudes/<int:pk>/", views.familia_solicitud_detalle, name="familia_solicitud_detalle"),
+    path("admin/familias/solicitudes/<int:pk>/aplicar/", views.familia_solicitud_aplicar, name="familia_solicitud_aplicar"),
+    path("admin/familias/solicitudes/<int:pk>/rechazar/", views.familia_solicitud_rechazar, name="familia_solicitud_rechazar"),
+
 
 ]

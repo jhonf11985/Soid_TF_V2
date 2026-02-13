@@ -1,0 +1,756 @@
+{% extends 'actualizacion_datos_miembros/base_actualizacion.html' %}
+{% load static %}
+
+{% block title %}Solicitudes de Familia · Soid_Tf_2{% endblock %}
+
+{% block actualizacion_content %}
+<style>
+  .solicitudes-page {
+    padding: 24px;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .page-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-title-icon {
+    width: 46px;
+    height: 46px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 151, 167, 0.25);
+  }
+
+  .page-title-icon .material-icons {
+    font-size: 24px;
+    color: #fff;
+  }
+
+  .page-title h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
+
+  .page-title p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 2px 0 0 0;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .search-box {
+    position: relative;
+    width: 300px;
+  }
+
+  .search-box .material-icons {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 20px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 12px 14px 12px 46px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: #fff;
+    transition: all 0.2s ease;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: #0097a7;
+    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.1);
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    border: 2px solid transparent;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .stat-card.active {
+    border-color: #0097a7;
+    background: linear-gradient(135deg, #e0f7fa 0%, #fff 100%);
+  }
+
+  .stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .stat-icon .material-icons {
+    font-size: 22px;
+  }
+
+  .stat-icon.all {
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    color: #0097a7;
+  }
+
+  .stat-icon.pending {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #d97706;
+  }
+
+  .stat-icon.approved {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #059669;
+  }
+
+  .stat-icon.rejected {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #dc2626;
+  }
+
+  .stat-info h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    line-height: 1;
+  }
+
+  .stat-info p {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 3px 0 0;
+    font-weight: 500;
+  }
+
+  /* Table card */
+  .table-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead {
+    background: #f8fafc;
+  }
+
+  th {
+    padding: 14px 18px;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 2px solid #e8ecef;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+    transition: all 0.15s ease;
+    cursor: pointer;
+  }
+
+  tbody tr:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  }
+
+  tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  td {
+    padding: 16px 18px;
+    font-size: 0.9rem;
+    color: #334155;
+    vertical-align: middle;
+  }
+
+  /* Member cell */
+  .member-cell {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .member-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 151, 167, 0.25);
+  }
+
+  .member-info {
+    min-width: 0;
+  }
+
+  .member-name {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .member-code {
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+
+  /* Relation indicators */
+  .relation-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .relation-indicator .material-icons {
+    font-size: 18px;
+  }
+
+  .relation-indicator.has {
+    color: #059669;
+  }
+
+  .relation-indicator.has .material-icons {
+    color: #e91e63;
+  }
+
+  .relation-indicator.none {
+    color: #cbd5e1;
+  }
+
+  /* Badges */
+  .badge-parents {
+    display: inline-flex;
+    gap: 6px;
+  }
+
+  .badge-parent {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  .badge-parent.padre {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  .badge-parent.madre {
+    background: #f3e8ff;
+    color: #7c3aed;
+  }
+
+  .badge-parent .material-icons {
+    font-size: 14px;
+  }
+
+  .badge-hijos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 6px rgba(0, 151, 167, 0.25);
+  }
+
+  /* Status badges */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 20px;
+  }
+
+  .status-badge .material-icons {
+    font-size: 16px;
+  }
+
+  .status-badge.pendiente {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+  }
+
+  .status-badge.aplicada {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+  }
+
+  .status-badge.rechazada {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+  }
+
+  /* Date cell */
+  .date-cell {
+    text-align: right;
+  }
+
+  .date-main {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #334155;
+  }
+
+  .date-time {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+
+  /* Action cell */
+  .action-cell {
+    text-align: center;
+  }
+
+  .btn-view {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #64748b;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .btn-view:hover {
+    background: #0097a7;
+    color: #fff;
+    transform: scale(1.05);
+  }
+
+  .btn-view .material-icons {
+    font-size: 20px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 80px 20px;
+    text-align: center;
+  }
+
+  .empty-state-icon {
+    width: 90px;
+    height: 90px;
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+  }
+
+  .empty-state-icon .material-icons {
+    font-size: 44px;
+    color: #0097a7;
+  }
+
+  .empty-state h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #334155;
+    margin: 0 0 8px;
+  }
+
+  .empty-state p {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin: 0 0 24px;
+  }
+
+  .btn-generate {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 151, 167, 0.25);
+  }
+
+  .btn-generate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 151, 167, 0.35);
+  }
+
+  .btn-generate .material-icons {
+    font-size: 20px;
+  }
+
+  /* Table footer */
+  .table-footer {
+    padding: 14px 20px;
+    background: #f8fafc;
+    border-top: 1px solid #e8ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .table-footer-info {
+    font-size: 0.85rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .table-footer-info .material-icons {
+    font-size: 18px;
+    color: #0097a7;
+  }
+
+  .table-footer-info strong {
+    color: #0097a7;
+    font-weight: 600;
+  }
+
+  .text-muted {
+    color: #cbd5e1;
+  }
+
+  @media (max-width: 1024px) {
+    .stats-row {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .solicitudes-page {
+      padding: 16px;
+    }
+
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .header-actions {
+      width: 100%;
+    }
+
+    .search-box {
+      width: 100%;
+    }
+
+    .stats-row {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    th, td {
+      padding: 12px 14px;
+    }
+
+    .member-cell {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      font-size: 12px;
+    }
+  }
+</style>
+
+<div class="solicitudes-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-title">
+      <div class="page-title-icon">
+        <span class="material-icons">family_restroom</span>
+      </div>
+      <div>
+        <h1>Solicitudes de Familia</h1>
+        <p>Gestiona las solicitudes de alta de núcleos familiares</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <form method="get">
+        <div class="search-box">
+          <span class="material-icons">search</span>
+          <input type="text" name="q" placeholder="Buscar por nombre..." value="{{ q }}">
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stats cards como filtros -->
+  <div class="stats-row">
+    <a href="?" class="stat-card {% if not estado %}active{% endif %}">
+      <div class="stat-icon all">
+        <span class="material-icons">folder</span>
+      </div>
+      <div class="stat-info">
+        <h3>{{ total_count|default:solicitudes|length }}</h3>
+        <p>Todas</p>
+      </div>
+    </a>
+
+    <a href="?estado=pendiente" class="stat-card {% if estado == 'pendiente' %}active{% endif %}">
+      <div class="stat-icon pending">
+        <span class="material-icons">schedule</span>
+      </div>
+      <div class="stat-info">
+        <h3>{{ pendientes_count|default:"0" }}</h3>
+        <p>Pendientes</p>
+      </div>
+    </a>
+
+    <a href="?estado=aplicada" class="stat-card {% if estado == 'aplicada' %}active{% endif %}">
+      <div class="stat-icon approved">
+        <span class="material-icons">check_circle</span>
+      </div>
+      <div class="stat-info">
+        <h3>{{ aplicadas_count|default:"0" }}</h3>
+        <p>Aplicadas</p>
+      </div>
+    </a>
+
+    <a href="?estado=rechazada" class="stat-card {% if estado == 'rechazada' %}active{% endif %}">
+      <div class="stat-icon rejected">
+        <span class="material-icons">cancel</span>
+      </div>
+      <div class="stat-info">
+        <h3>{{ rechazadas_count|default:"0" }}</h3>
+        <p>Rechazadas</p>
+      </div>
+    </a>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-wrapper">
+      {% if solicitudes %}
+      <table>
+        <thead>
+          <tr>
+            <th>Principal</th>
+            <th>Cónyuge</th>
+            <th>Padres</th>
+            <th>Hijos</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th style="width: 60px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in solicitudes %}
+          <tr onclick="window.location='{% url 'actualizacion_datos_miembros:familia_solicitud_detalle' s.pk %}'">
+            <td>
+              <div class="member-cell">
+                <div class="member-avatar">
+                  {% if s.principal %}
+                    {{ s.principal.nombres|slice:":1" }}{{ s.principal.apellidos|slice:":1" }}
+                  {% else %}
+                    ?
+                  {% endif %}
+                </div>
+                <div class="member-info">
+                  {% if s.principal %}
+                    <div class="member-name">{{ s.principal.nombres }} {{ s.principal.apellidos }}</div>
+                    {% if s.principal.codigo %}<div class="member-code">{{ s.principal.codigo }}</div>{% endif %}
+                  {% else %}
+                    <div class="member-name text-muted">Sin principal</div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+
+            <td>
+              {% if s.conyuge_id %}
+                <span class="relation-indicator has">
+                  <span class="material-icons">favorite</span>
+                  Sí
+                </span>
+              {% else %}
+                <span class="relation-indicator none">—</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if s.padre_id or s.madre_id %}
+                <div class="badge-parents">
+                  {% if s.padre_id %}
+                    <span class="badge-parent padre">
+                      <span class="material-icons">person</span>
+                      Padre
+                    </span>
+                  {% endif %}
+                  {% if s.madre_id %}
+                    <span class="badge-parent madre">
+                      <span class="material-icons">person</span>
+                      Madre
+                    </span>
+                  {% endif %}
+                </div>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if s.hijos_ids %}
+                <span class="badge-hijos">{{ s.hijos_ids|length }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if s.estado == 'pendiente' %}
+                <span class="status-badge pendiente">
+                  <span class="material-icons">schedule</span>
+                  Pendiente
+                </span>
+              {% elif s.estado == 'aplicada' %}
+                <span class="status-badge aplicada">
+                  <span class="material-icons">check_circle</span>
+                  Aplicada
+                </span>
+              {% elif s.estado == 'rechazada' %}
+                <span class="status-badge rechazada">
+                  <span class="material-icons">cancel</span>
+                  Rechazada
+                </span>
+              {% endif %}
+            </td>
+
+            <td class="date-cell">
+              <div class="date-main">{{ s.creado_en|date:"d M Y" }}</div>
+              <div class="date-time">{{ s.creado_en|time:"H:i" }}</div>
+            </td>
+
+            <td class="action-cell">
+              <a href="{% url 'actualizacion_datos_miembros:familia_solicitud_detalle' s.pk %}" class="btn-view" title="Ver detalle" onclick="event.stopPropagation();">
+                <span class="material-icons">chevron_right</span>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="table-footer">
+        <div class="table-footer-info">
+          <span class="material-icons">family_restroom</span>
+          Mostrando <strong>{{ solicitudes|length }}</strong> solicitud{{ solicitudes|length|pluralize:"es" }}
+        </div>
+      </div>
+
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <span class="material-icons">family_restroom</span>
+        </div>
+        <h3>No hay solicitudes</h3>
+        <p>Cuando alguien envíe el formulario de familia, aparecerá aquí para su revisión.</p>
+        <a href="{% url 'actualizacion_datos_miembros:generar_link_familia' %}" class="btn-generate">
+          <span class="material-icons">add_link</span>
+          Generar link de familia
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

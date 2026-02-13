@@ -1,0 +1,1001 @@
+{% extends 'actualizacion_datos_miembros/base_actualizacion.html' %}
+{% load static %}
+
+{% block title %}Solicitud de Familia #{{ s.pk }} · Soid_Tf_2{% endblock %}
+
+{% block actualizacion_content %}
+<style>
+  .detalle-page {
+    padding: 24px;
+    max-width: 900px;
+  }
+
+  /* Header */
+  .page-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .back-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #64748b;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .back-btn:hover {
+    background: #f1f5f9;
+    color: #334155;
+  }
+
+  .page-title-area {
+    flex: 1;
+  }
+
+  .page-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+  }
+
+  .page-subtitle {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 4px 0 0;
+  }
+
+  /* Status badge grande */
+  .status-badge-lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 24px;
+  }
+
+  .status-badge-lg .material-icons {
+    font-size: 18px;
+  }
+
+  .status-badge-lg.pendiente {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+  }
+
+  .status-badge-lg.aplicada {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+  }
+
+  .status-badge-lg.rechazada {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+  }
+
+  /* Action bar */
+  .action-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .btn-action .material-icons {
+    font-size: 20px;
+  }
+
+  .btn-action.btn-primary {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .btn-action.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  }
+
+  .btn-action.btn-danger {
+    background: #fff;
+    color: #dc2626;
+    border: 2px solid #fecaca;
+  }
+
+  .btn-action.btn-danger:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+  }
+
+  /* Main card */
+  .main-card {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  /* Section */
+  .section {
+    padding: 24px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .section:last-child {
+    border-bottom: none;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .section-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .section-icon .material-icons {
+    font-size: 22px;
+    color: #fff;
+  }
+
+  .section-icon.principal {
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+  }
+
+  .section-icon.conyuge {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  }
+
+  .section-icon.padres {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  }
+
+  .section-icon.hijos {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+
+  .section-icon.info {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  }
+
+  .section-icon.alertas {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  }
+
+  .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+  }
+
+  .section-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    border-radius: 12px;
+    margin-left: 8px;
+  }
+
+  /* Member card */
+  .member-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+  }
+
+  .member-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  .member-card.destacado {
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    border-color: rgba(0, 151, 167, 0.3);
+  }
+
+  .member-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 151, 167, 0.25);
+  }
+
+  .member-avatar.conyuge {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.25);
+  }
+
+  .member-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .member-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 4px;
+  }
+
+  .member-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .member-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+
+  .member-meta-item .material-icons {
+    font-size: 16px;
+    color: #94a3b8;
+  }
+
+  .btn-view-member {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .btn-view-member:hover {
+    background: #0097a7;
+    border-color: #0097a7;
+    color: #fff;
+    transform: scale(1.05);
+  }
+
+  .btn-view-member .material-icons {
+    font-size: 20px;
+  }
+
+  /* Padres grid */
+  .padres-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .padre-card {
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .padre-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+
+  .padre-label.padre-m {
+    color: #2563eb;
+  }
+
+  .padre-label.madre-f {
+    color: #9333ea;
+  }
+
+  .padre-label .material-icons {
+    font-size: 16px;
+  }
+
+  .padre-member {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .padre-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .padre-avatar.padre-m {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+
+  .padre-avatar.madre-f {
+    background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  }
+
+  .padre-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  /* Hijos grid */
+  .hijos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .hijo-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: #fffbeb;
+    border-radius: 12px;
+    border: 1px solid #fde68a;
+  }
+
+  .hijo-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .hijo-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  /* Empty state inline */
+  .empty-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 12px;
+    color: #94a3b8;
+    font-size: 0.9rem;
+  }
+
+  .empty-inline .material-icons {
+    font-size: 20px;
+  }
+
+  /* Alertas */
+  .alertas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .alerta-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-radius: 12px;
+    border: 1px solid #fecaca;
+  }
+
+  .alerta-item .material-icons {
+    font-size: 20px;
+    color: #dc2626;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .alerta-text {
+    font-size: 0.9rem;
+    color: #991b1b;
+    line-height: 1.5;
+  }
+
+  /* Info grid */
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .info-item {
+    padding: 14px 16px;
+    background: #f8fafc;
+    border-radius: 10px;
+  }
+
+  .info-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+
+  .info-value {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #1e293b;
+  }
+
+  .info-item.full {
+    grid-column: 1 / -1;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s ease;
+  }
+
+  .modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .modal-box {
+    background: #fff;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 440px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.25s ease;
+  }
+
+  .modal-overlay.active .modal-box {
+    transform: scale(1) translateY(0);
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .modal-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+  }
+
+  .modal-header h3 .material-icons {
+    color: #dc2626;
+  }
+
+  .modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    transition: all 0.15s ease;
+  }
+
+  .modal-close:hover {
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  .modal-body {
+    padding: 24px;
+  }
+
+  .modal-body label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 10px;
+  }
+
+  .modal-body textarea {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+    transition: all 0.15s ease;
+  }
+
+  .modal-body textarea:focus {
+    outline: none;
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-radius: 0 0 20px 20px;
+  }
+
+  .modal-btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .modal-btn.btn-cancel {
+    background: #fff;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+  }
+
+  .modal-btn.btn-cancel:hover {
+    background: #f1f5f9;
+    color: #334155;
+  }
+
+  .modal-btn.btn-confirm {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+  }
+
+  .modal-btn.btn-confirm:hover {
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+  }
+
+  @media (max-width: 768px) {
+    .detalle-page {
+      padding: 16px;
+    }
+
+    .page-title {
+      font-size: 1.25rem;
+    }
+
+    .action-bar {
+      flex-direction: column;
+    }
+
+    .btn-action {
+      justify-content: center;
+    }
+
+    .padres-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .member-card {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .btn-view-member {
+      margin-top: 12px;
+    }
+  }
+</style>
+
+<div class="detalle-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <a href="{% url 'actualizacion_datos_miembros:familia_solicitudes_lista' %}" class="back-btn">
+      <span class="material-icons">arrow_back</span>
+    </a>
+    <div class="page-title-area">
+      <div class="page-title-row">
+        <h1 class="page-title">Solicitud #{{ s.pk }}</h1>
+        {% if s.estado == 'pendiente' %}
+          <span class="status-badge-lg pendiente">
+            <span class="material-icons">schedule</span>
+            Pendiente
+          </span>
+        {% elif s.estado == 'aplicada' %}
+          <span class="status-badge-lg aplicada">
+            <span class="material-icons">check_circle</span>
+            Aplicada
+          </span>
+        {% elif s.estado == 'rechazada' %}
+          <span class="status-badge-lg rechazada">
+            <span class="material-icons">cancel</span>
+            Rechazada
+          </span>
+        {% endif %}
+      </div>
+      <p class="page-subtitle">Solicitud de alta de núcleo familiar</p>
+    </div>
+  </div>
+
+  <!-- Action bar -->
+  {% if s.estado == 'pendiente' %}
+  <div class="action-bar">
+    <form method="post" action="{% url 'actualizacion_datos_miembros:familia_solicitud_aplicar' s.pk %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" class="btn-action btn-primary">
+        <span class="material-icons">check_circle</span>
+        Aprobar y aplicar relaciones
+      </button>
+    </form>
+    <button type="button" class="btn-action btn-danger" onclick="document.getElementById('modal-rechazar').classList.add('active')">
+      <span class="material-icons">cancel</span>
+      Rechazar solicitud
+    </button>
+  </div>
+  {% endif %}
+
+  <!-- Main card -->
+  <div class="main-card">
+
+    <!-- Principal -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon principal">
+          <span class="material-icons">person</span>
+        </div>
+        <h2 class="section-title">Miembro Principal</h2>
+      </div>
+
+      {% if s.principal %}
+      <div class="member-card destacado">
+        <div class="member-avatar">{{ s.principal.nombres|slice:":1" }}{{ s.principal.apellidos|slice:":1" }}</div>
+        <div class="member-info">
+          <div class="member-name">{{ s.principal.nombres }} {{ s.principal.apellidos }}</div>
+          <div class="member-meta">
+            {% if s.principal.codigo %}
+            <span class="member-meta-item">
+              <span class="material-icons">badge</span>
+              {{ s.principal.codigo }}
+            </span>
+            {% endif %}
+            {% if s.principal.telefono %}
+            <span class="member-meta-item">
+              <span class="material-icons">phone</span>
+              {{ s.principal.telefono }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        <a href="{% url 'miembros_app:detalle' s.principal.pk %}" class="btn-view-member" target="_blank" title="Ver perfil">
+          <span class="material-icons">open_in_new</span>
+        </a>
+      </div>
+      {% else %}
+      <div class="empty-inline">
+        <span class="material-icons">person_off</span>
+        No se especificó miembro principal
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Cónyuge -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon conyuge">
+          <span class="material-icons">favorite</span>
+        </div>
+        <h2 class="section-title">Cónyuge</h2>
+      </div>
+
+      {% if conyuge %}
+      <div class="member-card">
+        <div class="member-avatar conyuge">{{ conyuge.nombres|slice:":1" }}{{ conyuge.apellidos|slice:":1" }}</div>
+        <div class="member-info">
+          <div class="member-name">{{ conyuge.nombres }} {{ conyuge.apellidos }}</div>
+          <div class="member-meta">
+            {% if conyuge.codigo %}
+            <span class="member-meta-item">
+              <span class="material-icons">badge</span>
+              {{ conyuge.codigo }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        <a href="{% url 'miembros_app:detalle' conyuge.pk %}" class="btn-view-member" target="_blank" title="Ver perfil">
+          <span class="material-icons">open_in_new</span>
+        </a>
+      </div>
+      {% else %}
+      <div class="empty-inline">
+        <span class="material-icons">heart_broken</span>
+        No se especificó cónyuge
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Padres -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon padres">
+          <span class="material-icons">escalator_warning</span>
+        </div>
+        <h2 class="section-title">Padres</h2>
+      </div>
+
+      <div class="padres-grid">
+        <div class="padre-card">
+          <div class="padre-label padre-m">
+            <span class="material-icons">man</span>
+            Padre
+          </div>
+          {% if padre %}
+          <div class="padre-member">
+            <div class="padre-avatar padre-m">{{ padre.nombres|slice:":1" }}{{ padre.apellidos|slice:":1" }}</div>
+            <div class="padre-name">{{ padre.nombres }} {{ padre.apellidos }}</div>
+          </div>
+          {% else %}
+          <div class="empty-inline" style="padding: 12px;">
+            <span class="material-icons">person_off</span>
+            No especificado
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="padre-card">
+          <div class="padre-label madre-f">
+            <span class="material-icons">woman</span>
+            Madre
+          </div>
+          {% if madre %}
+          <div class="padre-member">
+            <div class="padre-avatar madre-f">{{ madre.nombres|slice:":1" }}{{ madre.apellidos|slice:":1" }}</div>
+            <div class="padre-name">{{ madre.nombres }} {{ madre.apellidos }}</div>
+          </div>
+          {% else %}
+          <div class="empty-inline" style="padding: 12px;">
+            <span class="material-icons">person_off</span>
+            No especificado
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Hijos -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon hijos">
+          <span class="material-icons">child_care</span>
+        </div>
+        <h2 class="section-title">Hijos</h2>
+        {% if hijos %}<span class="section-count">{{ hijos|length }}</span>{% endif %}
+      </div>
+
+      {% if hijos %}
+      <div class="hijos-grid">
+        {% for hijo in hijos %}
+        <div class="hijo-card">
+          <div class="hijo-avatar">{{ hijo.nombres|slice:":1" }}{{ hijo.apellidos|slice:":1" }}</div>
+          <div class="hijo-name">{{ hijo.nombres }} {{ hijo.apellidos }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-inline">
+        <span class="material-icons">child_friendly</span>
+        No se especificaron hijos
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Alertas -->
+    {% if s.alertas %}
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon alertas">
+          <span class="material-icons">warning</span>
+        </div>
+        <h2 class="section-title">Alertas detectadas</h2>
+        <span class="section-count" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">{{ s.alertas|length }}</span>
+      </div>
+
+      <div class="alertas-list">
+        {% for alerta in s.alertas %}
+        <div class="alerta-item">
+          <span class="material-icons">error</span>
+          <span class="alerta-text">{{ alerta.motivo|default:alerta }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Información -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon info">
+          <span class="material-icons">info</span>
+        </div>
+        <h2 class="section-title">Información de la solicitud</h2>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Fecha de envío</div>
+          <div class="info-value">{{ s.creado_en|date:"d/m/Y" }} a las {{ s.creado_en|time:"H:i" }}</div>
+        </div>
+
+        {% if s.revisado_en %}
+        <div class="info-item">
+          <div class="info-label">Revisado</div>
+          <div class="info-value">{{ s.revisado_en|date:"d/m/Y H:i" }} por {{ s.revisado_por.username|default:"—" }}</div>
+        </div>
+        {% endif %}
+
+        {% if s.ip_origen %}
+        <div class="info-item">
+          <div class="info-label">IP de origen</div>
+          <div class="info-value">{{ s.ip_origen }}</div>
+        </div>
+        {% endif %}
+
+        {% if s.nota_admin %}
+        <div class="info-item full">
+          <div class="info-label">Nota del administrador</div>
+          <div class="info-value">{{ s.nota_admin }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Modal Rechazar -->
+<div class="modal-overlay" id="modal-rechazar">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>
+        <span class="material-icons">cancel</span>
+        Rechazar solicitud
+      </h3>
+      <button type="button" class="modal-close" onclick="document.getElementById('modal-rechazar').classList.remove('active')">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <form method="post" action="{% url 'actualizacion_datos_miembros:familia_solicitud_rechazar' s.pk %}">
+      {% csrf_token %}
+      <div class="modal-body">
+        <label>Motivo del rechazo (opcional)</label>
+        <textarea name="nota_admin" placeholder="Escribe el motivo por el cual rechazas esta solicitud..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn btn-cancel" onclick="document.getElementById('modal-rechazar').classList.remove('active')">Cancelar</button>
+        <button type="submit" class="modal-btn btn-confirm">Rechazar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Cerrar modal con Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('modal-rechazar').classList.remove('active');
+  }
+});
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('modal-rechazar').addEventListener('click', function(e) {
+  if (e.target === this) {
+    this.classList.remove('active');
+  }
+});
+</script>
+{% endblock %}

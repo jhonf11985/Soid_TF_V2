@@ -1,5 +1,537 @@
 {% extends "actualizacion_datos_miembros/base_actualizacion.html" %}
-{% block content %}
-  <h2>Alertas familiares</h2>
-  <p>Esta pantalla queda lista. Ahora conectamos aquí la tabla real de alertas cuando la creemos.</p>
+{% load static %}
+
+{% block actualizacion_content %}
+<style>
+  .alertas-page {
+    padding: 24px;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .page-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-title-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-title-icon .material-icons {
+    font-size: 22px;
+    color: #fff;
+  }
+
+  .page-title h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
+
+  .page-title p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 2px 0 0 0;
+  }
+
+  /* Stats cards */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .stat-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .stat-icon .material-icons {
+    font-size: 24px;
+    color: #fff;
+  }
+
+  .stat-icon.warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+
+  .stat-icon.error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  }
+
+  .stat-icon.info {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+
+  .stat-info h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    line-height: 1;
+  }
+
+  .stat-info p {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 4px 0 0;
+  }
+
+  /* Filters */
+  .filters-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 20px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .filter-chip:hover {
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  .filter-chip.active {
+    background: #f59e0b;
+    color: #fff;
+  }
+
+  .filter-chip .material-icons {
+    font-size: 16px;
+  }
+
+  /* Alertas list */
+  .alertas-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  .alerta-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+  }
+
+  .alerta-item:hover {
+    background: #fefce8;
+  }
+
+  .alerta-item:last-child {
+    border-bottom: none;
+  }
+
+  .alerta-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .alerta-icon .material-icons {
+    font-size: 22px;
+  }
+
+  .alerta-icon.warning {
+    background: #fef3c7;
+    color: #d97706;
+  }
+
+  .alerta-icon.error {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .alerta-icon.info {
+    background: #dbeafe;
+    color: #2563eb;
+  }
+
+  .alerta-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .alerta-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .alerta-tipo {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  .alerta-tipo.conyuge {
+    background: #fce7f3;
+    color: #be185d;
+  }
+
+  .alerta-tipo.padre {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  .alerta-tipo.madre {
+    background: #f3e8ff;
+    color: #7c3aed;
+  }
+
+  .alerta-tipo.hijo {
+    background: #d1fae5;
+    color: #047857;
+  }
+
+  .alerta-tipo.duplicado {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .alerta-mensaje {
+    font-size: 0.95rem;
+    color: #334155;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+
+  .alerta-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .alerta-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8rem;
+    color: #64748b;
+  }
+
+  .alerta-meta-item .material-icons {
+    font-size: 16px;
+  }
+
+  .alerta-meta-item a {
+    color: #0097a7;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .alerta-meta-item a:hover {
+    text-decoration: underline;
+  }
+
+  .alerta-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .btn-action-sm {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    text-decoration: none;
+  }
+
+  .btn-action-sm .material-icons {
+    font-size: 18px;
+  }
+
+  .btn-action-sm.btn-view {
+    background: #e0f7fa;
+    color: #0097a7;
+  }
+
+  .btn-action-sm.btn-view:hover {
+    background: #0097a7;
+    color: #fff;
+  }
+
+  .btn-action-sm.btn-dismiss {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  .btn-action-sm.btn-dismiss:hover {
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+  }
+
+  .empty-state-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+  }
+
+  .empty-state-icon .material-icons {
+    font-size: 40px;
+    color: #059669;
+  }
+
+  .empty-state h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #059669;
+    margin: 0 0 8px;
+  }
+
+  .empty-state p {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
+  }
+
+  /* Footer */
+  .alertas-footer {
+    padding: 14px 20px;
+    background: #f8fafc;
+    border-top: 1px solid #e8ecef;
+    font-size: 0.85rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .alertas-footer .material-icons {
+    font-size: 16px;
+    color: #f59e0b;
+  }
+
+  .alertas-footer strong {
+    color: #d97706;
+  }
+
+  @media (max-width: 768px) {
+    .alertas-page {
+      padding: 16px;
+    }
+
+    .alerta-item {
+      flex-direction: column;
+    }
+
+    .alerta-actions {
+      margin-top: 12px;
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
+</style>
+
+<div class="alertas-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-title">
+      <div class="page-title-icon">
+        <span class="material-icons">report</span>
+      </div>
+      <div>
+        <h1>Alertas Familiares</h1>
+        <p>Conflictos y advertencias detectados en las solicitudes de familia</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon warning">
+        <span class="material-icons">warning</span>
+      </div>
+      <div class="stat-info">
+        <h3>{{ total_alertas|default:"0" }}</h3>
+        <p>Alertas totales</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon error">
+        <span class="material-icons">error</span>
+      </div>
+      <div class="stat-info">
+        <h3>{{ alertas_conflicto|default:"0" }}</h3>
+        <p>Conflictos</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon info">
+        <span class="material-icons">info</span>
+      </div>
+      <div class="stat-info">
+        <h3>{{ alertas_info|default:"0" }}</h3>
+        <p>Advertencias</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <a href="?" class="filter-chip {% if not tipo_filtro %}active{% endif %}">
+      <span class="material-icons">list</span>
+      Todas
+    </a>
+    <a href="?tipo=conyuge" class="filter-chip {% if tipo_filtro == 'conyuge' %}active{% endif %}">
+      <span class="material-icons">favorite</span>
+      Cónyuge
+    </a>
+    <a href="?tipo=padre" class="filter-chip {% if tipo_filtro == 'padre' %}active{% endif %}">
+      <span class="material-icons">person</span>
+      Padre
+    </a>
+    <a href="?tipo=madre" class="filter-chip {% if tipo_filtro == 'madre' %}active{% endif %}">
+      <span class="material-icons">person</span>
+      Madre
+    </a>
+    <a href="?tipo=hijo" class="filter-chip {% if tipo_filtro == 'hijo' %}active{% endif %}">
+      <span class="material-icons">child_care</span>
+      Hijos
+    </a>
+  </div>
+
+  <!-- Alertas list -->
+  <div class="alertas-card">
+    {% if alertas %}
+      {% for alerta in alertas %}
+      <div class="alerta-item">
+        <div class="alerta-icon {% if alerta.nivel == 'error' %}error{% elif alerta.nivel == 'warning' %}warning{% else %}info{% endif %}">
+          <span class="material-icons">
+            {% if alerta.nivel == 'error' %}error{% elif alerta.nivel == 'warning' %}warning{% else %}info{% endif %}
+          </span>
+        </div>
+
+        <div class="alerta-content">
+          <div class="alerta-header">
+            <span class="alerta-tipo {{ alerta.tipo|default:'duplicado' }}">{{ alerta.tipo|default:"Conflicto" }}</span>
+          </div>
+          <div class="alerta-mensaje">{{ alerta.mensaje|default:alerta.motivo|default:alerta }}</div>
+          <div class="alerta-meta">
+            {% if alerta.principal %}
+            <div class="alerta-meta-item">
+              <span class="material-icons">person</span>
+              Principal: <a href="{% url 'miembros_app:detalle' alerta.principal.pk %}">{{ alerta.principal.nombres }} {{ alerta.principal.apellidos }}</a>
+            </div>
+            {% endif %}
+            {% if alerta.solicitud_id %}
+            <div class="alerta-meta-item">
+              <span class="material-icons">description</span>
+              <a href="{% url 'actualizacion_datos_miembros:familia_solicitud_detalle' alerta.solicitud_id %}">Ver solicitud #{{ alerta.solicitud_id }}</a>
+            </div>
+            {% endif %}
+            {% if alerta.fecha %}
+            <div class="alerta-meta-item">
+              <span class="material-icons">schedule</span>
+              {{ alerta.fecha|date:"d/m/Y H:i" }}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="alerta-actions">
+          {% if alerta.solicitud_id %}
+          <a href="{% url 'actualizacion_datos_miembros:familia_solicitud_detalle' alerta.solicitud_id %}" class="btn-action-sm btn-view" title="Ver solicitud">
+            <span class="material-icons">visibility</span>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="alertas-footer">
+        <span class="material-icons">report</span>
+        Total: <strong>{{ alertas|length }}</strong> alerta{{ alertas|length|pluralize:"s" }}
+      </div>
+
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <span class="material-icons">check_circle</span>
+        </div>
+        <h3>¡Sin alertas!</h3>
+        <p>No se han detectado conflictos en las solicitudes de familia</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
 {% endblock %}

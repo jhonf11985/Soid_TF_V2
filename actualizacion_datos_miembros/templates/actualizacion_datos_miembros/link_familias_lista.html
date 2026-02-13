@@ -1,35 +1,531 @@
 {% extends "actualizacion_datos_miembros/base_actualizacion.html" %}
-{% block content %}
-  <h2>Links de familia</h2>
+{% load static %}
 
-  <form method="get" style="margin:12px 0;">
-    <input type="text" name="q" value="{{ q }}" placeholder="Buscar por token (parcial)" />
-    <button type="submit">Buscar</button>
-    <a href="{% url 'actualizacion_datos_miembros:generar_link_familia' %}">Generar nuevo</a>
-  </form>
+{% block actualizacion_content %}
+<style>
+  .links-page {
+    padding: 24px;
+  }
 
-  <table style="width:100%; border-collapse: collapse;">
-    <thead>
-      <tr>
-        <th style="text-align:left; border-bottom:1px solid #ddd; padding:8px;">Token</th>
-        <th style="text-align:left; border-bottom:1px solid #ddd; padding:8px;">Activo</th>
-        <th style="text-align:left; border-bottom:1px solid #ddd; padding:8px;">Último envío</th>
-        <th style="text-align:left; border-bottom:1px solid #ddd; padding:8px;">Link</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for x in items %}
-        <tr>
-          <td style="padding:8px;">{{ x.token }}</td>
-          <td style="padding:8px;">{{ x.activo }}</td>
-          <td style="padding:8px;">{{ x.ultimo_envio_en|default:"—" }}</td>
-          <td style="padding:8px;">
-            <a href="{% url 'actualizacion_datos_miembros:familia_formulario_publico' token=x.token %}" target="_blank">Abrir</a>
-          </td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="4" style="padding:8px;">No hay links creados.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .page-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-title-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-title-icon .material-icons {
+    font-size: 22px;
+    color: #fff;
+  }
+
+  .page-title h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
+
+  .page-title p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 2px 0 0 0;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .search-box {
+    position: relative;
+    width: 280px;
+  }
+
+  .search-box .material-icons {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 20px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 10px 14px 10px 44px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: #fff;
+    transition: all 0.2s ease;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: #0097a7;
+    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.1);
+  }
+
+  .btn-nuevo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 151, 167, 0.25);
+  }
+
+  .btn-nuevo:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 151, 167, 0.35);
+  }
+
+  .btn-nuevo .material-icons {
+    font-size: 20px;
+  }
+
+  .table-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead {
+    background: #f8fafc;
+    border-bottom: 2px solid #e8ecef;
+  }
+
+  th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  th.col-num {
+    width: 50px;
+    text-align: center;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+  }
+
+  tbody tr:hover {
+    background: #f8fafc;
+  }
+
+  tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  td {
+    padding: 14px 16px;
+    font-size: 0.9rem;
+    color: #334155;
+    vertical-align: middle;
+  }
+
+  td.col-num {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+  }
+
+  .token-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .token-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .token-icon .material-icons {
+    font-size: 18px;
+    color: #0097a7;
+  }
+
+  .token-value {
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.8rem;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 4px 8px;
+    border-radius: 6px;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge .material-icons {
+    font-size: 14px;
+  }
+
+  .badge-success {
+    background: #d1fae5;
+    color: #059669;
+  }
+
+  .badge-danger {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .date-cell {
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+
+  .date-cell .material-icons {
+    font-size: 14px;
+    vertical-align: middle;
+    margin-right: 4px;
+    opacity: 0.6;
+  }
+
+  .action-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .btn-action .material-icons {
+    font-size: 18px;
+  }
+
+  .btn-action.btn-open {
+    background: #e0f7fa;
+    color: #0097a7;
+  }
+
+  .btn-action.btn-open:hover {
+    background: #0097a7;
+    color: #fff;
+  }
+
+  .btn-action.btn-copy {
+    background: #f1f5f9;
+    color: #64748b;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-action.btn-copy:hover {
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+  }
+
+  .empty-state .material-icons {
+    font-size: 56px;
+    color: #cbd5e1;
+    margin-bottom: 16px;
+  }
+
+  .empty-state h3 {
+    font-size: 1.1rem;
+    color: #334155;
+    margin: 0 0 8px;
+  }
+
+  .empty-state p {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0 0 20px;
+  }
+
+  .table-footer {
+    padding: 14px 20px;
+    background: #f8fafc;
+    border-top: 1px solid #e8ecef;
+    font-size: 0.85rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .table-footer .material-icons {
+    font-size: 16px;
+    color: #0097a7;
+  }
+
+  .table-footer strong {
+    color: #0097a7;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #1e293b;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  .toast .material-icons {
+    font-size: 20px;
+    color: #4ade80;
+  }
+
+  @media (max-width: 768px) {
+    .links-page {
+      padding: 16px;
+    }
+
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .header-actions {
+      flex-direction: column;
+    }
+
+    .search-box {
+      width: 100%;
+    }
+
+    .btn-nuevo {
+      justify-content: center;
+    }
+
+    .token-value {
+      max-width: 120px;
+    }
+  }
+</style>
+
+<div class="links-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-title">
+      <div class="page-title-icon">
+        <span class="material-icons">family_restroom</span>
+      </div>
+      <div>
+        <h1>Links de Familia</h1>
+        <p>Enlaces públicos para que los miembros registren su núcleo familiar</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <form method="get">
+        <div class="search-box">
+          <span class="material-icons">search</span>
+          <input type="text" name="q" placeholder="Buscar por token..." value="{{ q }}">
+        </div>
+      </form>
+
+      <a href="{% url 'actualizacion_datos_miembros:generar_link_familia' %}" class="btn-nuevo">
+        <span class="material-icons">add_link</span>
+        Generar nuevo link
+      </a>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-num">#</th>
+            <th>Token</th>
+            <th>Estado</th>
+            <th>Último envío</th>
+            <th>Creado</th>
+            <th style="text-align:center;">Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for x in items %}
+          <tr>
+            <td class="col-num">{{ forloop.counter }}</td>
+
+            <td>
+              <div class="token-cell">
+                <div class="token-icon">
+                  <span class="material-icons">link</span>
+                </div>
+                <span class="token-value" title="{{ x.token }}">{{ x.token }}</span>
+              </div>
+            </td>
+
+            <td>
+              {% if x.activo %}
+                <span class="badge badge-success">
+                  <span class="material-icons">lock_open</span>
+                  Activo
+                </span>
+              {% else %}
+                <span class="badge badge-danger">
+                  <span class="material-icons">lock</span>
+                  Inactivo
+                </span>
+              {% endif %}
+            </td>
+
+            <td class="date-cell">
+              {% if x.ultimo_envio_en %}
+                <span class="material-icons">schedule</span>
+                {{ x.ultimo_envio_en|date:"d/m/Y H:i" }}
+              {% else %}
+                <span style="color:#cbd5e1;">—</span>
+              {% endif %}
+            </td>
+
+            <td class="date-cell">
+              {{ x.creado_en|date:"d/m/Y" }}
+            </td>
+
+            <td>
+              <div class="action-btns">
+                <button type="button" class="btn-action btn-copy" onclick="copyLink('{% url 'actualizacion_datos_miembros:familia_formulario_publico' token=x.token %}')" title="Copiar link">
+                  <span class="material-icons">content_copy</span>
+                </button>
+                <a href="{% url 'actualizacion_datos_miembros:familia_formulario_publico' token=x.token %}" target="_blank" class="btn-action btn-open" title="Abrir formulario">
+                  <span class="material-icons">open_in_new</span>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <span class="material-icons">link_off</span>
+                <h3>No hay links creados</h3>
+                <p>Genera un nuevo link para compartir con los miembros</p>
+                <a href="{% url 'actualizacion_datos_miembros:generar_link_familia' %}" class="btn-nuevo">
+                  <span class="material-icons">add_link</span>
+                  Generar primer link
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if items %}
+    <div class="table-footer">
+      <span class="material-icons">link</span>
+      Total: <strong>{{ items|length }}</strong> link{{ items|length|pluralize:"s" }}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast">
+  <span class="material-icons">check_circle</span>
+  <span>Link copiado al portapapeles</span>
+</div>
+
+<script>
+function copyLink(url) {
+  const fullUrl = window.location.origin + url;
+  navigator.clipboard.writeText(fullUrl).then(() => {
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  });
+}
+</script>
 {% endblock %}

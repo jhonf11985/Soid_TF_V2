@@ -1,15 +1,362 @@
 {% extends "actualizacion_datos_miembros/base_actualizacion.html" %}
-{% block content %}
-  <h2>Generar link de familia</h2>
+{% load static %}
 
-  <form method="post" style="margin:12px 0;">
-    {% csrf_token %}
-    <button type="submit">Crear link</button>
-  </form>
+{% block actualizacion_content %}
+<style>
+  .generate-page {
+    padding: 24px;
+    max-width: 640px;
+  }
 
-  {% if link %}
-    <hr>
-    <p><strong>Link generado:</strong></p>
-    <p><a href="{{ link }}" target="_blank">{{ link }}</a></p>
-  {% endif %}
+  .page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .back-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #64748b;
+    transition: all 0.15s ease;
+  }
+
+  .back-btn:hover {
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  .page-title h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
+
+  .page-title p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 2px 0 0 0;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  .card-body {
+    padding: 28px;
+  }
+
+  .generate-intro {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px;
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+
+  .generate-intro-icon {
+    width: 48px;
+    height: 48px;
+    background: #fff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 151, 167, 0.15);
+  }
+
+  .generate-intro-icon .material-icons {
+    font-size: 24px;
+    color: #0097a7;
+  }
+
+  .generate-intro-text h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #00838f;
+    margin: 0 0 6px;
+  }
+
+  .generate-intro-text p {
+    font-size: 0.9rem;
+    color: #00838f;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .btn-generate {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 151, 167, 0.3);
+  }
+
+  .btn-generate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 151, 167, 0.4);
+  }
+
+  .btn-generate .material-icons {
+    font-size: 22px;
+  }
+
+  /* Link generado */
+  .link-result {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 2px solid #e8ecef;
+  }
+
+  .link-result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .link-result-header .material-icons {
+    font-size: 24px;
+    color: #10b981;
+  }
+
+  .link-result-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #059669;
+    margin: 0;
+  }
+
+  .link-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+
+  .link-box input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 0.9rem;
+    color: #334155;
+    font-family: 'Monaco', 'Consolas', monospace;
+    outline: none;
+  }
+
+  .link-box .btn-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .link-box .btn-copy:hover {
+    background: #cbd5e1;
+  }
+
+  .link-box .btn-copy .material-icons {
+    font-size: 18px;
+  }
+
+  .link-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn-action {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .btn-action .material-icons {
+    font-size: 20px;
+  }
+
+  .btn-action.btn-primary {
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 151, 167, 0.25);
+  }
+
+  .btn-action.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 151, 167, 0.35);
+  }
+
+  .btn-action.btn-secondary {
+    background: #f1f5f9;
+    color: #334155;
+  }
+
+  .btn-action.btn-secondary:hover {
+    background: #e2e8f0;
+  }
+
+  .copied-msg {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #d1fae5;
+    color: #059669;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 8px;
+  }
+
+  .copied-msg.show {
+    display: flex;
+  }
+
+  .copied-msg .material-icons {
+    font-size: 18px;
+  }
+
+  @media (max-width: 640px) {
+    .generate-page {
+      padding: 16px;
+    }
+
+    .link-actions {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<div class="generate-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <a href="{% url 'actualizacion_datos_miembros:familia_links_lista' %}" class="back-btn">
+      <span class="material-icons">arrow_back</span>
+    </a>
+    <div class="page-title">
+      <h1>Generar Link de Familia</h1>
+      <p>Crea un enlace público para registro de núcleo familiar</p>
+    </div>
+  </div>
+
+  <!-- Card -->
+  <div class="card">
+    <div class="card-body">
+
+      <div class="generate-intro">
+        <div class="generate-intro-icon">
+          <span class="material-icons">family_restroom</span>
+        </div>
+        <div class="generate-intro-text">
+          <h3>¿Cómo funciona?</h3>
+          <p>Este link permite que cualquier miembro registre su núcleo familiar: cónyuge, padres e hijos. Las solicitudes quedarán pendientes hasta que un administrador las revise y apruebe.</p>
+        </div>
+      </div>
+
+      {% if not link %}
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn-generate">
+          <span class="material-icons">add_link</span>
+          Generar nuevo link
+        </button>
+      </form>
+      {% endif %}
+
+      {% if link %}
+      <div class="link-result">
+        <div class="link-result-header">
+          <span class="material-icons">check_circle</span>
+          <h3>¡Link generado exitosamente!</h3>
+        </div>
+
+        <div class="link-box">
+          <input type="text" id="linkInput" value="{{ link }}" readonly>
+          <button type="button" class="btn-copy" onclick="copyLink()">
+            <span class="material-icons">content_copy</span>
+            Copiar
+          </button>
+        </div>
+
+        <div class="link-actions">
+          <a href="{{ link }}" target="_blank" class="btn-action btn-primary">
+            <span class="material-icons">open_in_new</span>
+            Abrir formulario
+          </a>
+          <a href="{% url 'actualizacion_datos_miembros:familia_links_lista' %}" class="btn-action btn-secondary">
+            <span class="material-icons">list</span>
+            Ver todos los links
+          </a>
+        </div>
+
+        <div class="copied-msg" id="copiedMsg">
+          <span class="material-icons">check_circle</span>
+          Link copiado al portapapeles
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+
+{% if link %}
+<script>
+function copyLink() {
+  const input = document.getElementById('linkInput');
+  input.select();
+  input.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(input.value).then(() => {
+    const msg = document.getElementById('copiedMsg');
+    msg.classList.add('show');
+    setTimeout(() => msg.classList.remove('show'), 2500);
+  });
+}
+</script>
+{% endif %}
 {% endblock %}

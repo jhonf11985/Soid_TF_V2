@@ -264,11 +264,18 @@ class AccesoAltaFamilia(models.Model):
         return f"AccesoAltaFamilia(token={self.token}) activo={self.activo}"
 
 
+
 class AltaFamiliaLog(models.Model):
     """
-    Auditoría de cada envío hecho desde un link de familia.
+    Solicitud de alta de familia.
     Guarda quién fue el principal elegido y qué relaciones se intentaron crear.
+    El admin debe aprobar para que las relaciones se apliquen.
     """
+    class Estados(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente"
+        APLICADA = "aplicada", "Aplicada"
+        RECHAZADA = "rechazada", "Rechazada"
+
     acceso = models.ForeignKey(
         AccesoAltaFamilia,
         on_delete=models.CASCADE,
@@ -285,18 +292,63 @@ class AltaFamiliaLog(models.Model):
         blank=True,
     )
 
+    estado = models.CharField(
+        max_length=20,
+        choices=Estados.choices,
+        default=Estados.PENDIENTE,
+    )
 
     creado_en = models.DateTimeField(default=timezone.now)
 
-    # IDs enviados (no borramos nada)
+    # IDs enviados
     conyuge_id = models.IntegerField(null=True, blank=True)
     padre_id = models.IntegerField(null=True, blank=True)
     madre_id = models.IntegerField(null=True, blank=True)
     hijos_ids = models.JSONField(default=list, blank=True)
 
-    # Resultado
-    relaciones_creadas = models.JSONField(default=list, blank=True)  # [{tipo, miembro_id, familiar_id}]
-    alertas = models.JSONField(default=list, blank=True)            # [{tipo, motivo, detalle}]
+    # Resultado (se llena cuando se aplica)
+    relaciones_creadas = models.JSONField(default=list, blank=True)
+    alertas = models.JSONField(default=list, blank=True)
+
+    # Auditoría de revisión
+    revisado_en = models.DateTimeField(null=True, blank=True)
+    revisado_por = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="solicitudes_familia_revisadas",
+    )
+    nota_admin = models.TextField(blank=True)
+
+    # Auditoría de origen
+    ip_origen = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "Solicitud: alta de familia"
+        verbose_name_plural = "Solicitudes: alta de familia"
+        ordering = ["-creado_en"]
 
     def __str__(self):
-        return f"AltaFamiliaLog({self.pk}) principal={self.principal_id} token={self.acceso.token}"
+        return f"AltaFamilia({self.pk}) principal={self.principal_id} - {self.estado}"
+
+    def get_conyuge(self):
+        if self.conyuge_id:
+            return Miembro.objects.filter(pk=self.conyuge_id).first()
+        return None
+
+    def get_padre(self):
+        if self.padre_id:
+            return Miembro.objects.filter(pk=self.padre_id).first()
+        return None
+
+    def get_madre(self):
+        if self.madre_id:
+            return Miembro.objects.filter(pk=self.madre_id).first()
+        return None
+
+    def get_hijos(self):
+        if self.hijos_ids:
+            return Miembro.objects.filter(pk__in=self.hijos_ids)
+        return Miembro.objects.none()

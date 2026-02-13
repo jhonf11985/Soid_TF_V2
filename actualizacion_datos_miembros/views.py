@@ -74,10 +74,59 @@ def familia_generar_link(request):
 @login_required
 def familia_alertas(request):
     """
-    Placeholder por ahora: luego conectamos la tabla real de alertas.
+    Admin: muestra alertas/conflictos detectados en solicitudes de familia.
+    Las alertas se extraen del campo JSONField 'alertas' de AltaFamiliaLog.
     """
-    return render(request, "actualizacion_datos_miembros/alta_familias_alerta.html")
+    tipo_filtro = (request.GET.get("tipo") or "").strip().lower()
 
+    # Obtener todos los logs que tienen alertas
+    logs_con_alertas = AltaFamiliaLog.objects.filter(
+        alertas__isnull=False
+    ).exclude(
+        alertas=[]
+    ).select_related("principal").order_by("-creado_en")
+
+    # Construir lista de alertas con contexto
+    alertas = []
+    for log in logs_con_alertas:
+        for alerta_data in log.alertas:
+            # Normalizar la alerta (puede ser string o dict)
+            if isinstance(alerta_data, str):
+                alerta = {
+                    "mensaje": alerta_data,
+                    "tipo": "conflicto",
+                    "nivel": "warning",
+                }
+            else:
+                alerta = {
+                    "mensaje": alerta_data.get("motivo") or alerta_data.get("mensaje") or str(alerta_data),
+                    "tipo": alerta_data.get("tipo", "conflicto"),
+                    "nivel": alerta_data.get("nivel", "warning"),
+                }
+
+            # Agregar contexto
+            alerta["principal"] = log.principal
+            alerta["solicitud_id"] = log.pk
+            alerta["fecha"] = log.creado_en
+
+            # Filtrar por tipo si se especificó
+            if tipo_filtro and alerta["tipo"].lower() != tipo_filtro:
+                continue
+
+            alertas.append(alerta)
+
+    # Calcular estadísticas
+    total_alertas = len(alertas)
+    alertas_conflicto = sum(1 for a in alertas if a.get("nivel") == "error")
+    alertas_info = total_alertas - alertas_conflicto
+
+    return render(request, "actualizacion_datos_miembros/alta_familias_alerta.html", {
+        "alertas": alertas,
+        "total_alertas": total_alertas,
+        "alertas_conflicto": alertas_conflicto,
+        "alertas_info": alertas_info,
+        "tipo_filtro": tipo_filtro,
+    })
 
 
 from django.http import JsonResponse
@@ -159,15 +208,19 @@ def generar_link_familia(request, miembro_id):
         "link": link,
         "created": created,
     })
+# ============================================
+# REEMPLAZAR familia_formulario_publico en views.py
+# ============================================
 
 def familia_formulario_publico(request, token):
     """
     Público: Pantalla bienvenida + seleccionar principal + construir familia.
+    Solo guarda la solicitud como PENDIENTE, NO aplica relaciones.
+    El admin debe aprobar para que se apliquen.
     """
     acceso = get_object_or_404(AccesoAltaFamilia, token=token, activo=True)
 
     # IMPORTANTE: aquí tú ya tienes CFG en otros formularios.
-    # Si lo obtienes en tu proyecto desde una tabla config, mantenlo igual.
     CFG = None
 
     if request.method == "POST":
@@ -175,7 +228,7 @@ def familia_formulario_publico(request, token):
         conyuge_id = (request.POST.get("conyuge_id") or "").strip()
         padre_id = (request.POST.get("padre_id") or "").strip()
         madre_id = (request.POST.get("madre_id") or "").strip()
-        hijos_ids = request.POST.getlist("hijos_ids")  # puede venir repetido
+        hijos_ids = request.POST.getlist("hijos_ids")
 
         if not principal_id:
             messages.error(request, "Debes seleccionar un miembro principal antes de enviar.")
@@ -201,20 +254,13 @@ def familia_formulario_publico(request, token):
             except ValueError:
                 continue
 
-        # Aplicar alta familia (tu motor ya maneja choques y alertas)
-        try:
-            resultado = aplicar_alta_familia(
-                jefe_id=principal.id,
-                conyuge_id=conyuge_id_int,
-                padre_id=padre_id_int,
-                madre_id=madre_id_int,
-                hijos_ids=hijos_ids_int,
-            )
-        except Exception as e:
-            messages.error(request, f"No se pudo procesar la familia: {e}")
-            return render(request, "actualizacion_datos_miembros/familia_publico.html", {"CFG": CFG, "acceso": acceso})
+        # Obtener IP y User Agent para auditoría
+        ip_origen = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", ""))
+        if ip_origen and "," in ip_origen:
+            ip_origen = ip_origen.split(",")[0].strip()
+        user_agent = request.META.get("HTTP_USER_AGENT", "")[:255]
 
-        # Log + marcar ultimo envío (link reusable, no se desactiva)
+        # Crear solicitud como PENDIENTE (NO aplicar relaciones aún)
         AltaFamiliaLog.objects.create(
             acceso=acceso,
             principal=principal,
@@ -222,20 +268,22 @@ def familia_formulario_publico(request, token):
             padre_id=padre_id_int,
             madre_id=madre_id_int,
             hijos_ids=hijos_ids_int,
-            relaciones_creadas=resultado.get("creadas", []),
-            alertas=resultado.get("alertas", []),
+            estado="pendiente",  # <-- IMPORTANTE: estado pendiente
+            ip_origen=ip_origen,
+            user_agent=user_agent,
         )
+
+        # Marcar último envío
         acceso.ultimo_envio_en = timezone.now()
         acceso.save(update_fields=["ultimo_envio_en", "actualizado_en"])
 
         return render(
             request,
             "actualizacion_datos_miembros/familia_ok.html",
-            {"CFG": CFG, "principal": principal, "resultado": resultado},
+            {"CFG": CFG, "principal": principal},
         )
 
     return render(request, "actualizacion_datos_miembros/familia_publico.html", {"CFG": CFG, "acceso": acceso})
-
 
 @login_required
 def actualizacion_config(request):
@@ -925,3 +973,128 @@ def alta_rechazar(request, pk):
 
     messages.success(request, "Solicitud rechazada.")
     return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
+
+
+# ============================================
+# REEMPLAZAR familia_solicitudes_lista en views.py
+# ============================================
+
+@login_required
+def familia_solicitudes_lista(request):
+    """
+    Admin: lista de solicitudes de alta de familia.
+    """
+    # Obtener todas las solicitudes
+    qs_all = AltaFamiliaLog.objects.select_related("principal", "acceso").order_by("-creado_en")
+
+    # Contadores para los stats cards
+    total_count = qs_all.count()
+    pendientes_count = qs_all.filter(estado="pendiente").count()
+    aplicadas_count = qs_all.filter(estado="aplicada").count()
+    rechazadas_count = qs_all.filter(estado="rechazada").count()
+
+    # Aplicar filtro de estado si existe
+    qs = qs_all
+    estado = (request.GET.get("estado") or "").strip()
+    if estado:
+        qs = qs.filter(estado=estado)
+
+    # Aplicar filtro de búsqueda
+    q = (request.GET.get("q") or "").strip()
+    if q:
+        qs = qs.filter(
+            Q(principal__nombres__icontains=q) |
+            Q(principal__apellidos__icontains=q) |
+            Q(principal__codigo__icontains=q)
+        )
+
+    return render(request, "actualizacion_datos_miembros/familia_solicitudes_lista.html", {
+        "solicitudes": qs[:300],
+        "estado": estado,
+        "q": q,
+        "Estados": AltaFamiliaLog.Estados,
+        "total_count": total_count,
+        "pendientes_count": pendientes_count,
+        "aplicadas_count": aplicadas_count,
+        "rechazadas_count": rechazadas_count,
+    })
+
+@login_required
+def familia_solicitud_detalle(request, pk):
+    """
+    Admin: detalle de una solicitud de familia.
+    """
+    s = get_object_or_404(AltaFamiliaLog.objects.select_related("principal", "acceso"), pk=pk)
+
+    return render(request, "actualizacion_datos_miembros/familia_solicitud_detalle.html", {
+        "s": s,
+        "Estados": AltaFamiliaLog.Estados,
+        "conyuge": s.get_conyuge(),
+        "padre": s.get_padre(),
+        "madre": s.get_madre(),
+        "hijos": s.get_hijos(),
+    })
+
+
+@login_required
+def familia_solicitud_aplicar(request, pk):
+    """
+    Admin: aplicar la solicitud de familia (crear relaciones).
+    """
+    if request.method != "POST":
+        return HttpResponseForbidden("Método no permitido")
+
+    s = get_object_or_404(AltaFamiliaLog, pk=pk)
+
+    if s.estado != AltaFamiliaLog.Estados.PENDIENTE:
+        messages.info(request, "Esta solicitud ya fue procesada.")
+        return redirect("actualizacion_datos_miembros:familia_solicitud_detalle", pk=s.pk)
+
+    # Aplicar las relaciones
+    try:
+        resultado = aplicar_alta_familia(
+            jefe_id=s.principal_id,
+            conyuge_id=s.conyuge_id,
+            padre_id=s.padre_id,
+            madre_id=s.madre_id,
+            hijos_ids=s.hijos_ids or [],
+        )
+        s.relaciones_creadas = resultado.get("relaciones_creadas", [])
+        s.alertas = resultado.get("alertas", [])
+    except Exception as e:
+        messages.error(request, f"Error al aplicar relaciones: {e}")
+        return redirect("actualizacion_datos_miembros:familia_solicitud_detalle", pk=s.pk)
+
+    # Marcar como aplicada
+    s.estado = AltaFamiliaLog.Estados.APLICADA
+    s.revisado_en = timezone.now()
+    s.revisado_por = request.user
+    s.save()
+
+    messages.success(request, "Solicitud aplicada ✅ Las relaciones familiares fueron creadas.")
+    return redirect("actualizacion_datos_miembros:familia_solicitud_detalle", pk=s.pk)
+
+
+@login_required
+def familia_solicitud_rechazar(request, pk):
+    """
+    Admin: rechazar la solicitud de familia.
+    """
+    if request.method != "POST":
+        return HttpResponseForbidden("Método no permitido")
+
+    s = get_object_or_404(AltaFamiliaLog, pk=pk)
+
+    if s.estado != AltaFamiliaLog.Estados.PENDIENTE:
+        messages.info(request, "Esta solicitud ya fue procesada.")
+        return redirect("actualizacion_datos_miembros:familia_solicitud_detalle", pk=s.pk)
+
+    nota = (request.POST.get("nota_admin") or "").strip()
+    s.estado = AltaFamiliaLog.Estados.RECHAZADA
+    s.nota_admin = nota
+    s.revisado_en = timezone.now()
+    s.revisado_por = request.user
+    s.save()
+
+    messages.success(request, "Solicitud rechazada.")
+    return redirect("actualizacion_datos_miembros:familia_solicitud_detalle", pk=s.pk)
