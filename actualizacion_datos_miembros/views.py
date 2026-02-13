@@ -230,7 +230,7 @@ def familia_formulario_publico(request, token):
 
         return render(
             request,
-            "actualizacion_datos_miembros/familia/exito.html",
+            "actualizacion_datos_miembros/familia_ok.html",
             {"CFG": CFG, "principal": principal, "resultado": resultado},
         )
 

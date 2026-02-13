@@ -64,13 +64,14 @@
 
     .form-section { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--color-border); }
 
-    .section-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+    .section-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap: wrap; }
     .section-icon {
       width: 38px; height: 38px; border-radius: 12px;
       display:inline-flex; align-items:center; justify-content:center;
       background: var(--color-primary-soft);
       border: 1px solid rgba(0,151,167,0.25);
       color: var(--color-primary-dark);
+      transition: all 0.2s;
     }
     .section-icon .material-icons { font-size: 20px; }
     .section-title { font-size: 14px; font-weight: 700; color: var(--color-text-main); }
@@ -79,31 +80,44 @@
     @media (min-width: 760px){ .fields-grid.two-col{ grid-template-columns: 1fr 1fr; } }
 
     .form-group { position: relative; }
-    .form-label { display:block; font-size: 12px; font-weight:600; color: var(--color-text-main); margin-bottom:8px; }
+    .form-label { display:block; font-size: 12px; font-weight:600; color: var(--color-text-main); margin-bottom:8px; transition: color 0.2s; }
 
     .help-text { margin-top:6px; font-size:12px; color: var(--color-text-muted); line-height:1.4; }
 
-    /* ====== AUTOCOMPLETE STYLES (igual a ingreso_form) ====== */
+    /* ====== AUTOCOMPLETE STYLES - ESTILO LÍNEA ====== */
     .autocomplete-wrapper { position: relative; }
 
+    /* Campo estilo línea (solo borde inferior) */
     .autocomplete-field {
       position: relative;
       display: flex;
       align-items: center;
-      min-height: 48px;
-      padding: 0 12px;
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-soft);
-      background: #fff;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      min-height: 44px;
+      padding: 0 4px;
+      border: none;
+      border-bottom: 2px solid var(--color-border);
+      background: transparent;
+      transition: border-color 0.2s;
     }
     .autocomplete-field:focus-within {
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px rgba(0,151,167,0.12);
+      border-bottom-color: var(--color-primary);
     }
     .autocomplete-field.has-selection {
-      background: rgba(0,151,167,0.04);
-      border-color: rgba(0,151,167,0.3);
+      border-bottom-color: var(--color-primary);
+    }
+
+    /* Estado bloqueado/deshabilitado */
+    .autocomplete-wrapper.disabled .autocomplete-field {
+      background: #f9fafb;
+      border-bottom-color: #e5e7eb;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+    .autocomplete-wrapper.disabled .autocomplete-search {
+      cursor: not-allowed;
+    }
+    .autocomplete-wrapper.disabled .form-label {
+      color: var(--color-text-muted);
     }
 
     .autocomplete-search {
@@ -111,11 +125,15 @@
       border: none;
       outline: none;
       font-size: 14px;
-      padding: 12px 0;
+      padding: 10px 0;
       background: transparent;
       color: var(--color-text-main);
     }
     .autocomplete-search::placeholder { color: var(--color-text-muted); }
+    .autocomplete-search:disabled {
+      background: transparent;
+      cursor: not-allowed;
+    }
 
     /* Chip de selección */
     .autocomplete-chip {
@@ -230,6 +248,32 @@
 
     /* ====== FIN AUTOCOMPLETE ====== */
 
+    /* Sección bloqueada */
+    .form-section.locked {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .form-section.locked .section-icon {
+      background: #f3f4f6;
+      border-color: #e5e7eb;
+      color: #9ca3af;
+    }
+
+    /* Indicador de bloqueo */
+    .lock-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-left: auto;
+      padding: 4px 10px;
+      background: #f3f4f6;
+      border-radius: 20px;
+    }
+    .lock-indicator .material-icons { font-size: 14px; }
+    .lock-indicator.unlocked { display: none; }
+
     .children-list { display:flex; flex-direction:column; gap:12px; }
     .child-row { border:1px solid var(--color-border); border-radius:14px; padding:14px; background:#fff; }
     .row-actions { display:flex; gap:10px; margin-top:10px; }
@@ -241,6 +285,11 @@
       padding:10px 12px; border-radius:12px;
       cursor:pointer; font-size:13px; font-weight:600;
       display:inline-flex; align-items:center; gap:8px;
+      transition: opacity 0.2s;
+    }
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     .btn-secondary .material-icons { font-size:18px; }
 
@@ -252,10 +301,15 @@
       color:#fff; font-size:15px; font-weight:600;
       cursor:pointer;
       display:flex; align-items:center; justify-content:center; gap:10px;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
     }
-    .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,151,167,0.3); }
-    .submit-btn:active { transform: translateY(0); }
+    .submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,151,167,0.3); }
+    .submit-btn:active:not(:disabled) { transform: translateY(0); }
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
 
     .form-footer { margin-top:18px; padding-top:18px; border-top:1px solid var(--color-border); text-align:center; font-size:12px; color: var(--color-text-muted); }
     .powered-by { margin-top:22px; text-align:center; font-size:11px; color: rgba(255,255,255,0.75); }
@@ -289,10 +343,107 @@
     }
 
     .hidden { display:none; }
+
+    /* Modal de confirmación */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+      transform: scale(0.9);
+      transition: transform 0.2s;
+    }
+    .modal-overlay.active .modal-box {
+      transform: scale(1);
+    }
+    .modal-icon {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+    .modal-icon .material-icons { font-size: 24px; }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+      color: var(--color-text-main);
+    }
+    .modal-text {
+      font-size: 13px;
+      text-align: center;
+      color: var(--color-text-muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .modal-btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s;
+    }
+    .modal-btn-cancel {
+      background: #f3f4f6;
+      color: var(--color-text-main);
+    }
+    .modal-btn-cancel:hover { background: #e5e7eb; }
+    .modal-btn-confirm {
+      background: #dc2626;
+      color: #fff;
+    }
+    .modal-btn-confirm:hover { background: #b91c1c; }
   </style>
 </head>
 
 <body data-alta-familia-token="{{ acceso.token }}">
+
+<!-- Modal de confirmación -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal-box">
+    <div class="modal-icon">
+      <span class="material-icons">warning</span>
+    </div>
+    <div class="modal-title">¿Quitar miembro principal?</div>
+    <div class="modal-text">
+      Al quitar el miembro principal se borrarán todas las selecciones de cónyuge, padres e hijos que hayas hecho.
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="modal-btn modal-btn-cancel" id="modalCancel">Cancelar</button>
+      <button type="button" class="modal-btn modal-btn-confirm" id="modalConfirmBtn">Sí, quitar todo</button>
+    </div>
+  </div>
+</div>
 
 <div class="form-container">
 
@@ -347,14 +498,14 @@
       {% csrf_token %}
 
       <!-- PRINCIPAL -->
-      <div class="form-section" style="margin-top:0; padding-top:0; border-top:none;">
+      <div class="form-section" style="margin-top:0; padding-top:0; border-top:none;" id="section-principal">
         <div class="section-header">
           <div class="section-icon"><span class="material-icons">person</span></div>
           <span class="section-title">Miembro principal</span>
         </div>
 
         <div class="fields-grid">
-          <div class="form-group autocomplete-wrapper" data-field="principal">
+          <div class="form-group autocomplete-wrapper" data-field="principal" id="autocomplete-principal">
             <label class="form-label">Buscar miembro principal (obligatorio)</label>
             
             <input type="hidden" name="principal_id" class="autocomplete-hidden">
@@ -385,20 +536,24 @@
               </div>
             </div>
 
-            <div class="help-text">Este será el miembro base a partir del cual se construirán las relaciones.</div>
+            <div class="help-text">Este será el miembro base. Una vez seleccionado, podrás agregar familiares.</div>
           </div>
         </div>
       </div>
 
       <!-- CÓNYUGE -->
-      <div class="form-section">
+      <div class="form-section locked" id="section-conyuge">
         <div class="section-header">
           <div class="section-icon"><span class="material-icons">favorite</span></div>
           <span class="section-title">Cónyuge</span>
+          <span class="lock-indicator" id="lock-conyuge">
+            <span class="material-icons">lock</span>
+            Selecciona el principal primero
+          </span>
         </div>
 
         <div class="fields-grid">
-          <div class="form-group autocomplete-wrapper" data-field="conyuge">
+          <div class="form-group autocomplete-wrapper disabled" data-field="conyuge">
             <label class="form-label">Buscar cónyuge (opcional)</label>
             
             <input type="hidden" name="conyuge_id" class="autocomplete-hidden">
@@ -414,7 +569,7 @@
                   <span class="material-icons">close</span>
                 </button>
               </div>
-              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off">
+              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off" disabled>
             </div>
             
             <div class="autocomplete-dropdown">
@@ -433,14 +588,18 @@
       </div>
 
       <!-- PADRES -->
-      <div class="form-section">
+      <div class="form-section locked" id="section-padres">
         <div class="section-header">
           <div class="section-icon"><span class="material-icons">groups</span></div>
           <span class="section-title">Padre y madre</span>
+          <span class="lock-indicator" id="lock-padres">
+            <span class="material-icons">lock</span>
+            Selecciona el principal primero
+          </span>
         </div>
 
         <div class="fields-grid two-col">
-          <div class="form-group autocomplete-wrapper" data-field="padre">
+          <div class="form-group autocomplete-wrapper disabled" data-field="padre">
             <label class="form-label">Buscar padre (opcional)</label>
             
             <input type="hidden" name="padre_id" class="autocomplete-hidden">
@@ -456,7 +615,7 @@
                   <span class="material-icons">close</span>
                 </button>
               </div>
-              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off">
+              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off" disabled>
             </div>
             
             <div class="autocomplete-dropdown">
@@ -472,7 +631,7 @@
             </div>
           </div>
 
-          <div class="form-group autocomplete-wrapper" data-field="madre">
+          <div class="form-group autocomplete-wrapper disabled" data-field="madre">
             <label class="form-label">Buscar madre (opcional)</label>
             
             <input type="hidden" name="madre_id" class="autocomplete-hidden">
@@ -488,7 +647,7 @@
                   <span class="material-icons">close</span>
                 </button>
               </div>
-              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off">
+              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off" disabled>
             </div>
             
             <div class="autocomplete-dropdown">
@@ -507,10 +666,14 @@
       </div>
 
       <!-- HIJOS -->
-      <div class="form-section">
+      <div class="form-section locked" id="section-hijos">
         <div class="section-header">
           <div class="section-icon"><span class="material-icons">child_care</span></div>
           <span class="section-title">Hijos</span>
+          <span class="lock-indicator" id="lock-hijos">
+            <span class="material-icons">lock</span>
+            Selecciona el principal primero
+          </span>
         </div>
 
         <div class="help-text" style="margin-bottom: 12px;">
@@ -519,13 +682,13 @@
 
         <div class="children-list" id="childrenList"></div>
 
-        <button type="button" class="btn-secondary" id="btnAddChild">
+        <button type="button" class="btn-secondary" id="btnAddChild" disabled>
           <span class="material-icons">add</span>
           Añadir hijo
         </button>
       </div>
 
-      <button type="submit" class="submit-btn">
+      <button type="submit" class="submit-btn" id="btnSubmit" disabled>
         <span class="material-icons">send</span>
         Enviar familia
       </button>
@@ -553,6 +716,10 @@
   const MIN_CHARS = 2;
   const DEBOUNCE_DELAY = 300;
 
+  // Estado global
+  let principalSelected = false;
+  let autocompleteInstances = [];
+
   function getToken() {
     return document.body.dataset.altaFamiliaToken || "";
   }
@@ -571,12 +738,115 @@
   }
 
   // =============================================
+  // BLOQUEO/DESBLOQUEO DE SECCIONES
+  // =============================================
+  function unlockAllSections() {
+    principalSelected = true;
+
+    // Desbloquear secciones
+    ['section-conyuge', 'section-padres', 'section-hijos'].forEach(id => {
+      const section = document.getElementById(id);
+      if (section) section.classList.remove('locked');
+    });
+
+    // Ocultar indicadores de bloqueo
+    ['lock-conyuge', 'lock-padres', 'lock-hijos'].forEach(id => {
+      const lock = document.getElementById(id);
+      if (lock) lock.classList.add('unlocked');
+    });
+
+    // Habilitar wrappers y sus inputs
+    document.querySelectorAll('.autocomplete-wrapper:not([data-field="principal"])').forEach(wrapper => {
+      wrapper.classList.remove('disabled');
+      const input = wrapper.querySelector('.autocomplete-search');
+      if (input) input.disabled = false;
+    });
+
+    // Habilitar botones
+    document.getElementById('btnAddChild').disabled = false;
+    document.getElementById('btnSubmit').disabled = false;
+  }
+
+  function lockAllSections() {
+    principalSelected = false;
+
+    // Bloquear secciones
+    ['section-conyuge', 'section-padres', 'section-hijos'].forEach(id => {
+      const section = document.getElementById(id);
+      if (section) section.classList.add('locked');
+    });
+
+    // Mostrar indicadores de bloqueo
+    ['lock-conyuge', 'lock-padres', 'lock-hijos'].forEach(id => {
+      const lock = document.getElementById(id);
+      if (lock) lock.classList.remove('unlocked');
+    });
+
+    // Deshabilitar wrappers
+    document.querySelectorAll('.autocomplete-wrapper:not([data-field="principal"])').forEach(wrapper => {
+      wrapper.classList.add('disabled');
+      const input = wrapper.querySelector('.autocomplete-search');
+      if (input) input.disabled = true;
+    });
+
+    // Deshabilitar botones
+    document.getElementById('btnAddChild').disabled = true;
+    document.getElementById('btnSubmit').disabled = true;
+  }
+
+  function clearAllSelections() {
+    // Limpiar todos los autocompletes excepto el principal
+    autocompleteInstances.forEach(instance => {
+      if (instance.wrapper.dataset.field !== 'principal') {
+        instance.clearSelection(true); // true = sin trigger de eventos
+      }
+    });
+
+    // Limpiar hijos
+    document.getElementById('childrenList').innerHTML = '';
+  }
+
+  // =============================================
+  // MODAL DE CONFIRMACIÓN
+  // =============================================
+  const modal = document.getElementById('modalConfirm');
+  const modalCancel = document.getElementById('modalCancel');
+  const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+  let pendingClearCallback = null;
+
+  function showModal(onConfirm) {
+    pendingClearCallback = onConfirm;
+    modal.classList.add('active');
+  }
+
+  function hideModal() {
+    modal.classList.remove('active');
+    pendingClearCallback = null;
+  }
+
+  modalCancel.addEventListener('click', hideModal);
+  modalConfirmBtn.addEventListener('click', function() {
+    if (pendingClearCallback) {
+      pendingClearCallback();
+    }
+    hideModal();
+  });
+
+  // Cerrar modal con Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && modal.classList.contains('active')) {
+      hideModal();
+    }
+  });
+
+  // =============================================
   // AUTOCOMPLETE CLASS
   // =============================================
   class AutocompleteMiembro {
     constructor(wrapper) {
       this.wrapper = wrapper;
       this.debounceTimer = null;
+      this.isPrincipal = wrapper.dataset.field === 'principal';
 
       // Elementos
       this.hiddenInput = wrapper.querySelector('.autocomplete-hidden');
@@ -597,6 +867,7 @@
       if (!this.searchInput || !this.dropdown || !this.hiddenInput) return;
 
       this.bind();
+      autocompleteInstances.push(this);
     }
 
     bind() {
@@ -633,7 +904,17 @@
         this.chipRemove.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          this.clearSelection();
+          
+          if (this.isPrincipal && principalSelected) {
+            // Mostrar modal de confirmación
+            showModal(() => {
+              clearAllSelections();
+              this.clearSelection();
+              lockAllSections();
+            });
+          } else {
+            this.clearSelection();
+          }
         });
       }
 
@@ -667,7 +948,6 @@
 
         const data = await response.json();
 
-        // Compatible con {success: true, resultados: [...]}
         if (data.success && Array.isArray(data.resultados) && data.resultados.length > 0) {
           this.renderResults(data.resultados);
         } else {
@@ -730,9 +1010,14 @@
       if (this.fieldContainer) this.fieldContainer.classList.add('has-selection');
 
       this.closeDropdown();
+
+      // Si es el principal, desbloquear todo
+      if (this.isPrincipal) {
+        unlockAllSections();
+      }
     }
 
-    clearSelection() {
+    clearSelection(silent = false) {
       this.hiddenInput.value = '';
       this.chip.style.display = 'none';
       this.searchInput.style.display = '';
@@ -740,7 +1025,10 @@
       this.searchInput.value = '';
       this.listEl.innerHTML = '';
       this.closeDropdown();
-      this.searchInput.focus();
+      
+      if (!silent) {
+        this.searchInput.focus();
+      }
     }
 
     showLoading() {
@@ -780,7 +1068,7 @@
       document.getElementById('welcomeBox').style.display = 'none';
       document.getElementById('familyForm').classList.remove('hidden');
       // Focus al primer campo
-      const firstSearch = document.querySelector('.autocomplete-wrapper .autocomplete-search');
+      const firstSearch = document.querySelector('#autocomplete-principal .autocomplete-search');
       if (firstSearch) firstSearch.focus();
     });
 
@@ -851,14 +1139,21 @@
 
       // Botón quitar
       row.querySelector('.btn-remove-child').addEventListener('click', function() {
+        // Remover de la lista de instancias
+        const instance = autocompleteInstances.find(i => i.wrapper === wrapper);
+        if (instance) {
+          const idx = autocompleteInstances.indexOf(instance);
+          if (idx > -1) autocompleteInstances.splice(idx, 1);
+        }
         row.remove();
       });
+
+      // Focus al nuevo input
+      const newInput = row.querySelector('.autocomplete-search');
+      if (newInput) newInput.focus();
     }
 
     btnAddChild.addEventListener('click', addChildRow);
-
-    // Agregar un hijo por defecto
-    addChildRow();
 
   });
 
