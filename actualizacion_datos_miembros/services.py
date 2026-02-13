@@ -110,3 +110,117 @@ def crear_miembro_desde_solicitud_alta(solicitud: SolicitudAltaMiembro) -> Miemb
             acceso.save(update_fields=["activo", "actualizado_en"])
 
     return miembro
+
+from django.db import transaction
+from miembros_app.models import Miembro, MiembroRelacion, sync_familia_inteligente_por_relacion
+
+
+def _ya_tiene_conyuge(miembro: Miembro):
+    return MiembroRelacion.objects.filter(miembro=miembro, tipo_relacion="conyuge").values_list("familiar_id", flat=True)
+
+
+def _ya_tiene_padre(miembro: Miembro):
+    return MiembroRelacion.objects.filter(miembro=miembro, tipo_relacion="padre").values_list("familiar_id", flat=True)
+
+
+def _ya_tiene_madre(miembro: Miembro):
+    return MiembroRelacion.objects.filter(miembro=miembro, tipo_relacion="madre").values_list("familiar_id", flat=True)
+
+
+@transaction.atomic
+def _crear_relacion_segura(*, miembro: Miembro, familiar: Miembro, tipo: str, alertas: list, creadas: list):
+    # 1) No auto-relación
+    if miembro.id == familiar.id:
+        alertas.append({"tipo": tipo, "motivo": "self", "detalle": "No se puede relacionar un miembro consigo mismo."})
+        return
+
+    # 2) Reglas de choque (solo para los básicos)
+    if tipo == "conyuge":
+        actuales = set(_ya_tiene_conyuge(miembro))
+        actuales |= set(_ya_tiene_conyuge(familiar))
+        if actuales and (familiar.id not in actuales or miembro.id not in actuales):
+            alertas.append({
+                "tipo": "conyuge",
+                "motivo": "conflicto",
+                "detalle": f"Choque: ya existe cónyuge registrado (miembro {miembro.id} o {familiar.id}). No se creó.",
+            })
+            return
+
+    if tipo == "padre":
+        actuales = list(_ya_tiene_padre(miembro))
+        if actuales and familiar.id not in actuales:
+            alertas.append({
+                "tipo": "padre",
+                "motivo": "conflicto",
+                "detalle": f"El miembro {miembro.id} ya tiene padre registrado ({actuales[0]}). No se creó otro.",
+            })
+            return
+
+    if tipo == "madre":
+        actuales = list(_ya_tiene_madre(miembro))
+        if actuales and familiar.id not in actuales:
+            alertas.append({
+                "tipo": "madre",
+                "motivo": "conflicto",
+                "detalle": f"El miembro {miembro.id} ya tiene madre registrada ({actuales[0]}). No se creó otra.",
+            })
+            return
+
+    # 3) Crear relación (idempotente gracias al UniqueConstraint)
+    rel, created = MiembroRelacion.objects.get_or_create(
+        miembro=miembro,
+        familiar=familiar,
+        tipo_relacion=tipo,
+        defaults={"vive_junto": True},
+    )
+    if created:
+        creadas.append({"tipo": tipo, "miembro_id": miembro.id, "familiar_id": familiar.id})
+        sync_familia_inteligente_por_relacion(rel)
+
+    # 4) Inversa automática (también idempotente)
+    inv_tipo = MiembroRelacion.inverse_tipo(tipo, miembro.genero)
+    inv, inv_created = MiembroRelacion.objects.get_or_create(
+        miembro=familiar,
+        familiar=miembro,
+        tipo_relacion=inv_tipo,
+        defaults={"vive_junto": True},
+    )
+    if inv_created:
+        creadas.append({"tipo": inv_tipo, "miembro_id": familiar.id, "familiar_id": miembro.id})
+        sync_familia_inteligente_por_relacion(inv)
+
+
+@transaction.atomic
+def aplicar_alta_familia(*, jefe_id: int, conyuge_id=None, padre_id=None, madre_id=None, hijos_ids=None):
+    """
+    Crea relaciones directas: conyuge, padre, madre, hijos (sin borrar nada).
+    Maneja choques y deja alertas.
+    """
+    hijos_ids = hijos_ids or []
+
+    jefe = Miembro.objects.get(id=jefe_id)
+    alertas = []
+    creadas = []
+
+    # Cónyuge
+    if conyuge_id:
+        cony = Miembro.objects.get(id=conyuge_id)
+        _crear_relacion_segura(miembro=jefe, familiar=cony, tipo="conyuge", alertas=alertas, creadas=creadas)
+
+    # Padre / Madre (respecto al jefe)
+    if padre_id:
+        padre = Miembro.objects.get(id=padre_id)
+        _crear_relacion_segura(miembro=jefe, familiar=padre, tipo="padre", alertas=alertas, creadas=creadas)
+
+    if madre_id:
+        madre = Miembro.objects.get(id=madre_id)
+        _crear_relacion_segura(miembro=jefe, familiar=madre, tipo="madre", alertas=alertas, creadas=creadas)
+
+    # Hijos: jefe -> hijo
+    for hid in hijos_ids:
+        if not hid:
+            continue
+        hijo = Miembro.objects.get(id=int(hid))
+        _crear_relacion_segura(miembro=jefe, familiar=hijo, tipo="hijo", alertas=alertas, creadas=creadas)
+
+    return {"creadas": creadas, "alertas": alertas}

@@ -23,6 +23,175 @@ from .models import ActualizacionDatosConfig
 from .forms import ActualizacionDatosConfigForm
 import re
 
+from django.urls import reverse
+from django.utils import timezone
+from django.shortcuts import get_object_or_404, render, redirect
+from django.http import HttpResponseForbidden
+from miembros_app.models import Miembro
+from .models import AccesoAltaFamilia, AltaFamiliaLog
+from .services import aplicar_alta_familia
+
+
+
+
+
+@login_required
+def familia_links_lista(request):
+    q = (request.GET.get("q") or "").strip()
+
+
+    qs = AccesoAltaFamilia.objects.select_related("jefe").order_by("-actualizado_en")
+    if q:
+        qs = qs.filter(
+            Q(jefe__nombres__icontains=q) |
+            Q(jefe__apellidos__icontains=q) |
+            Q(jefe__cedula__icontains=q)
+        )
+
+    return render(request, "actualizacion_datos_miembros/link_familias_lista.html", {
+
+
+        "items": qs,
+        "q": q,
+    })
+
+
+@login_required
+def familia_generar_link(request):
+    """
+    Pantalla simple: buscas miembro (cabeza del hogar) y generas el link.
+    """
+    q = (request.GET.get("q") or "").strip()
+    miembro = None
+    link = None
+
+    resultados = Miembro.objects.all().order_by("nombres", "apellidos")
+    if q:
+        resultados = resultados.filter(
+            Q(nombres__icontains=q) |
+            Q(apellidos__icontains=q) |
+            Q(cedula__icontains=q)
+        )[:20]
+    else:
+        resultados = resultados[:0]
+
+    if request.method == "POST":
+        miembro_id = request.POST.get("miembro_id")
+        if miembro_id:
+            miembro = get_object_or_404(Miembro, pk=int(miembro_id))
+            acceso, _ = AccesoAltaFamilia.objects.get_or_create(jefe=miembro)
+
+            if not acceso.activo:
+                acceso.activo = True
+                acceso.save(update_fields=["activo", "actualizado_en"])
+
+            acceso.ultimo_envio_en = timezone.now()
+            acceso.save(update_fields=["ultimo_envio_en", "actualizado_en"])
+
+            link = request.build_absolute_uri(
+                reverse("actualizacion_datos_miembros:familia_formulario_publico", kwargs={"token": acceso.token})
+            )
+
+    return render(request, "actualizacion_datos_miembros/link_familias.html", {
+
+        "q": q,
+        "resultados": resultados,
+        "miembro": miembro,
+        "link": link,
+    })
+
+
+@login_required
+def familia_alertas(request):
+    """
+    Placeholder por ahora: luego conectamos la tabla real de alertas.
+    """
+    return render(request, "actualizacion_datos_miembros/alta_familias_alerta.html")
+
+
+
+def api_buscar_miembros(request):
+    q = (request.GET.get("q") or "").strip()
+    if len(q) < 2:
+        return JsonResponse({"results": []})
+
+    qs = (Miembro.objects
+          .filter(Q(nombres__icontains=q) | Q(apellidos__icontains=q) | Q(cedula__icontains=q))
+          .order_by("nombres", "apellidos")[:20])
+
+    results = []
+    for m in qs:
+        nombre = f"{m.nombres} {m.apellidos}".strip()
+        results.append({
+            "id": m.id,
+            "nombre": nombre,
+            "cedula": getattr(m, "cedula", "") or "",
+            "telefono": getattr(m, "telefono", "") or "",
+        })
+    return JsonResponse({"results": results})
+
+@login_required
+def generar_link_familia(request, miembro_id):
+    jefe = get_object_or_404(Miembro, pk=miembro_id)
+
+    acceso, created = AccesoAltaFamilia.objects.get_or_create(jefe=jefe)
+    if not acceso.activo:
+        acceso.activo = True
+        acceso.save(update_fields=["activo", "actualizado_en"])
+
+    link = request.build_absolute_uri(
+        reverse("actualizacion_datos_miembros:familia_formulario_publico", kwargs={"token": acceso.token})
+    )
+
+    return render(request, "actualizacion_datos_miembros/link_familia.html", {
+        "jefe": jefe,
+        "acceso": acceso,
+        "link": link,
+        "created": created,
+    })
+
+def familia_formulario_publico(request, token):
+    acceso = get_object_or_404(AccesoAltaFamilia, token=token, activo=True)
+    jefe = acceso.jefe
+
+    if request.method == "POST":
+        conyuge_id = (request.POST.get("conyuge_id") or "").strip() or None
+        padre_id = (request.POST.get("padre_id") or "").strip() or None
+        madre_id = (request.POST.get("madre_id") or "").strip() or None
+
+        hijos_ids = request.POST.getlist("hijos_ids")  # múltiples
+
+        resultado = aplicar_alta_familia(
+            jefe_id=jefe.id,
+            conyuge_id=int(conyuge_id) if conyuge_id else None,
+            padre_id=int(padre_id) if padre_id else None,
+            madre_id=int(madre_id) if madre_id else None,
+            hijos_ids=[int(x) for x in hijos_ids if (x or "").strip()],
+        )
+
+        AltaFamiliaLog.objects.create(
+            jefe=jefe,
+            conyuge_id=int(conyuge_id) if conyuge_id else None,
+            padre_id=int(padre_id) if padre_id else None,
+            madre_id=int(madre_id) if madre_id else None,
+            hijos_ids=[int(x) for x in hijos_ids if (x or "").strip()],
+            relaciones_creadas=resultado["creadas"],
+            alertas=resultado["alertas"],
+        )
+
+        acceso.ultimo_envio_en = timezone.now()
+        acceso.save(update_fields=["ultimo_envio_en", "actualizado_en"])
+
+        return render(request, "actualizacion_datos_miembros/familia/exito.html", {
+            "jefe": jefe,
+            "creadas": resultado["creadas"],
+            "alertas": resultado["alertas"],
+        })
+
+    # GET
+    return render(request, "actualizacion_datos_miembros/formulario.html", {"jefe": jefe})
+
+
 @login_required
 def actualizacion_config(request):
     config = ActualizacionDatosConfig.get_solo()

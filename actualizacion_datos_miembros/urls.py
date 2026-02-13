@@ -49,5 +49,16 @@ path("admin/alta-masiva/link/", views.alta_masiva_link, name="alta_masiva_link")
 
 path("config/actualizacion/", views.actualizacion_config, name="actualizacion_config"),
 
+    # === FAMILIAS (ADMIN) ===
+    path("admin/familias/links/", views.familia_links_lista, name="familia_links_lista"),
+    path("admin/familias/generar/", views.familia_generar_link, name="generar_link_familia"),
+    path("admin/familias/alertas/", views.familia_alertas, name="familia_alertas"),
+
+    # === FAMILIAS (PUBLICO) ===
+    path("familia/<uuid:token>/", views.familia_formulario_publico, name="familia_formulario_publico"),
+
+    # === API BUSQUEDA (PUBLICO) ===
+    path("api/buscar-miembros/", views.api_buscar_miembros, name="api_buscar_miembros"),
+
 
 ]

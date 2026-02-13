@@ -238,3 +238,49 @@ class ActualizacionDatosConfig(models.Model):
     def get_solo(cls):
         obj, _ = cls.objects.get_or_create(pk=1, defaults={"activo": True, "campos_permitidos": []})
         return obj
+    
+import uuid
+from django.db import models
+from django.utils import timezone
+from miembros_app.models import Miembro
+
+
+class AccesoAltaFamilia(models.Model):
+    """
+    Link único (sin login) por 'cabeza del hogar' para dar de alta relaciones familiares.
+    - Se genera 1 vez y se reutiliza siempre.
+    """
+    jefe = models.OneToOneField(
+        Miembro,
+        on_delete=models.CASCADE,
+        related_name="acceso_alta_familia",
+    )
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    activo = models.BooleanField(default=True)
+
+    creado_en = models.DateTimeField(default=timezone.now)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    ultimo_envio_en = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"AccesoAltaFamilia({self.jefe_id}) activo={self.activo}"
+
+
+class AltaFamiliaLog(models.Model):
+    """
+    Registro de lo enviado por el jefe del hogar.
+    Sirve para auditoría y para revisar alertas.
+    """
+    jefe = models.ForeignKey(Miembro, on_delete=models.CASCADE, related_name="altas_familia_log")
+    creado_en = models.DateTimeField(default=timezone.now)
+
+    # Guardamos IDs enviados (no borramos nada)
+    conyuge_id = models.IntegerField(null=True, blank=True)
+    padre_id = models.IntegerField(null=True, blank=True)
+    madre_id = models.IntegerField(null=True, blank=True)
+    hijos_ids = models.JSONField(default=list, blank=True)
+
+    # Resultado
+    relaciones_creadas = models.JSONField(default=list, blank=True)  # [{tipo, miembro_id, familiar_id}]
+    alertas = models.JSONField(default=list, blank=True)            # [{tipo, motivo, detalle}]
+
