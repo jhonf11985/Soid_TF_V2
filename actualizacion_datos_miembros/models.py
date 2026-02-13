@@ -245,16 +245,14 @@ from django.utils import timezone
 from miembros_app.models import Miembro
 
 
+
+
 class AccesoAltaFamilia(models.Model):
     """
-    Link único (sin login) por 'cabeza del hogar' para dar de alta relaciones familiares.
-    - Se genera 1 vez y se reutiliza siempre.
+    Link público (sin login) para alta de familia.
+    - No está anclado a un miembro.
+    - Se puede reutilizar muchas veces hasta que el admin lo desactive.
     """
-    jefe = models.OneToOneField(
-        Miembro,
-        on_delete=models.CASCADE,
-        related_name="acceso_alta_familia",
-    )
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     activo = models.BooleanField(default=True)
 
@@ -263,18 +261,34 @@ class AccesoAltaFamilia(models.Model):
     ultimo_envio_en = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"AccesoAltaFamilia({self.jefe_id}) activo={self.activo}"
+        return f"AccesoAltaFamilia(token={self.token}) activo={self.activo}"
 
 
 class AltaFamiliaLog(models.Model):
     """
-    Registro de lo enviado por el jefe del hogar.
-    Sirve para auditoría y para revisar alertas.
+    Auditoría de cada envío hecho desde un link de familia.
+    Guarda quién fue el principal elegido y qué relaciones se intentaron crear.
     """
-    jefe = models.ForeignKey(Miembro, on_delete=models.CASCADE, related_name="altas_familia_log")
+    acceso = models.ForeignKey(
+        AccesoAltaFamilia,
+        on_delete=models.CASCADE,
+        related_name="logs",
+        null=True,
+        blank=True,
+    )
+
+    principal = models.ForeignKey(
+        Miembro,
+        on_delete=models.CASCADE,
+        related_name="altas_familia_como_principal",
+        null=True,
+        blank=True,
+    )
+
+
     creado_en = models.DateTimeField(default=timezone.now)
 
-    # Guardamos IDs enviados (no borramos nada)
+    # IDs enviados (no borramos nada)
     conyuge_id = models.IntegerField(null=True, blank=True)
     padre_id = models.IntegerField(null=True, blank=True)
     madre_id = models.IntegerField(null=True, blank=True)
@@ -284,3 +298,5 @@ class AltaFamiliaLog(models.Model):
     relaciones_creadas = models.JSONField(default=list, blank=True)  # [{tipo, miembro_id, familiar_id}]
     alertas = models.JSONField(default=list, blank=True)            # [{tipo, motivo, detalle}]
 
+    def __str__(self):
+        return f"AltaFamiliaLog({self.pk}) principal={self.principal_id} token={self.acceso.token}"

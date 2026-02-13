@@ -1,6 +1,11 @@
 // core/static/core/js/autocomplete-miembro.js
 // Autocomplete estándar Soid_tf_2 (igual a Ingreso/Egreso: chip + dropdown bonito)
 
+
+function getAltaFamiliaToken() {
+  return document.body.dataset.altaFamiliaToken || "";
+}
+
 (function () {
   "use strict";
 
@@ -132,10 +137,15 @@
       this.showLoading();
 
       try {
+
+
+        const token = getAltaFamiliaToken();
+
         const url =
           `${this.endpoint}?q=${encodeURIComponent(query)}` +
           `&filtro=${encodeURIComponent(this.filtro)}` +
-          `&limit=${encodeURIComponent(this.limit)}`;
+          `&limit=${encodeURIComponent(this.limit)}` +
+          (token ? `&token=${encodeURIComponent(token)}` : "");
 
         const response = await fetch(url, {
           credentials: "same-origin",

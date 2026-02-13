@@ -1,767 +1,868 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Alta de Familia</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alta de Familia</title>
 
-    <!-- Fuentes e iconos (igual que alta_publico.html) -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        :root {
-            --color-primary: {{ CFG.color_primario|default:"#0097a7" }};
-            --color-primary-dark: #00838f;
-            --color-primary-soft: #e0f7fa;
-            --color-bg: #f5f5f7;
-            --color-surface: #ffffff;
-            --color-text-main: #111827;
-            --color-text-muted: #6b7280;
-            --color-border: #e5e7eb;
-            --color-error: #ef4444;
-            --radius-soft: 12px;
-        }
+    :root {
+      --color-primary: {{ CFG.color_primario|default:"#0097a7" }};
+      --color-primary-dark: #00838f;
+      --color-primary-soft: #e0f7fa;
+      --color-bg: #f5f5f7;
+      --color-surface: #ffffff;
+      --color-text-main: #111827;
+      --color-text-muted: #6b7280;
+      --color-border: #e5e7eb;
+      --color-error: #ef4444;
+      --radius-soft: 12px;
+    }
 
-        body {
-            font-family: 'Poppins', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, var(--color-primary) 0%, #5c9ead 50%, #5c9ead 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-            position: relative;
-        }
+    body {
+      font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, var(--color-primary) 0%, #5c9ead 50%, #5c9ead 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      position: relative;
+    }
 
-        body::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image:
-                radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
-            pointer-events: none;
-        }
+    body::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
 
-        .form-container {
-            max-width: 680px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 1;
-        }
+    .form-container { max-width: 680px; margin: 0 auto; position: relative; z-index: 1; }
 
-        /* LOGO */
-        .brand-top {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 22px;
-        }
+    .brand-top { display: flex; justify-content: center; margin-bottom: 22px; }
+    .church-logo { max-height: 72px; object-fit: contain; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.15)); }
 
-        .church-logo {
-            max-height: 72px;
-            object-fit: contain;
-            filter: drop-shadow(0 6px 14px rgba(0,0,0,0.15));
-        }
+    .form-header { text-align: center; margin-bottom: 28px; }
+    .form-header h1 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 6px; text-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .form-header p { font-size: 14px; color: rgba(255,255,255,0.9); }
 
-        /* HEADER */
-        .form-header {
-            text-align: center;
-            margin-bottom: 28px;
-        }
+    .form-card { background: var(--color-surface); border-radius: 20px; padding: 32px; box-shadow: 0 25px 60px rgba(0,0,0,0.15); }
 
-        .form-header h1 {
-            font-size: 26px;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 6px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+    .alert-error {
+      display: flex; gap: 10px; padding: 14px 16px; margin-bottom: 18px;
+      border-radius: var(--radius-soft);
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #b91c1c; font-size: 13px; line-height: 1.4;
+    }
+    .alert-error .material-icons { font-size: 20px; }
 
-        .form-header p {
-            font-size: 14px;
-            color: rgba(255,255,255,0.9);
-        }
+    .form-section { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--color-border); }
 
-        /* CARD */
-        .form-card {
-            background: var(--color-surface);
-            border-radius: 20px;
-            padding: 32px;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.15);
-        }
+    .section-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+    .section-icon {
+      width: 38px; height: 38px; border-radius: 12px;
+      display:inline-flex; align-items:center; justify-content:center;
+      background: var(--color-primary-soft);
+      border: 1px solid rgba(0,151,167,0.25);
+      color: var(--color-primary-dark);
+    }
+    .section-icon .material-icons { font-size: 20px; }
+    .section-title { font-size: 14px; font-weight: 700; color: var(--color-text-main); }
 
-        /* MENSAJE INSTITUCIONAL */
-        .message {
-            display: flex;
-            gap: 12px;
-            padding: 16px;
-            margin-bottom: 28px;
-            border-radius: var(--radius-soft);
-            background: var(--color-primary-soft);
-            border: 1px solid var(--color-primary);
-            color: var(--color-primary-dark);
-            font-size: 13px;
-            line-height: 1.6;
-        }
+    .fields-grid { display:grid; grid-template-columns: 1fr; gap:14px; }
+    @media (min-width: 760px){ .fields-grid.two-col{ grid-template-columns: 1fr 1fr; } }
 
-        .message .material-icons {
-            font-size: 22px;
-            flex-shrink: 0;
-        }
+    .form-group { position: relative; }
+    .form-label { display:block; font-size: 12px; font-weight:600; color: var(--color-text-main); margin-bottom:8px; }
 
-        .message strong { font-weight: 700; }
+    .help-text { margin-top:6px; font-size:12px; color: var(--color-text-muted); line-height:1.4; }
 
-        .message-steps {
-            display: flex;
-            gap: 16px;
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
+    /* ====== AUTOCOMPLETE STYLES (igual a ingreso_form) ====== */
+    .autocomplete-wrapper { position: relative; }
 
-        .message-step {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 500;
-        }
+    .autocomplete-field {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 0 12px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-soft);
+      background: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .autocomplete-field:focus-within {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(0,151,167,0.12);
+    }
+    .autocomplete-field.has-selection {
+      background: rgba(0,151,167,0.04);
+      border-color: rgba(0,151,167,0.3);
+    }
 
-        .step-num {
-            width: 22px;
-            height: 22px;
-            border-radius: 999px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--color-primary);
-            color: #fff;
-            font-size: 12px;
-            font-weight: 700;
-        }
+    .autocomplete-search {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      padding: 12px 0;
+      background: transparent;
+      color: var(--color-text-main);
+    }
+    .autocomplete-search::placeholder { color: var(--color-text-muted); }
 
-        /* ALERTA ERROR */
-        .alert-error {
-            display: flex;
-            gap: 10px;
-            padding: 14px 16px;
-            margin-bottom: 18px;
-            border-radius: var(--radius-soft);
-            background: rgba(239, 68, 68, 0.08);
-            border: 1px solid rgba(239, 68, 68, 0.35);
-            color: #b91c1c;
-            font-size: 13px;
-            line-height: 1.4;
-        }
-        .alert-error .material-icons { font-size: 20px; }
+    /* Chip de selección */
+    .autocomplete-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px 6px 6px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(0,151,167,0.08), rgba(0,151,167,0.12));
+      border: 1px solid rgba(0,151,167,0.25);
+    }
 
-        /* SECCIONES */
-        .form-section {
-            margin-top: 22px;
-            padding-top: 22px;
-            border-top: 1px solid var(--color-border);
-        }
+    .chip-avatar {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--color-primary), #5c9ead);
+      color: #fff;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      text-transform: uppercase;
+    }
 
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
+    .chip-text { display: flex; flex-direction: column; line-height: 1.3; }
+    .chip-name { font-size: 13px; font-weight: 600; color: var(--color-text-main); }
+    .chip-code { font-size: 11px; color: var(--color-text-muted); }
 
-        .section-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 12px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--color-primary-soft);
-            border: 1px solid rgba(0,151,167,0.25);
-            color: var(--color-primary-dark);
-        }
+    .chip-remove {
+      width: 24px; height: 24px;
+      border: none; background: transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .chip-remove:hover { background: rgba(239,68,68,0.1); color: #dc2626; }
+    .chip-remove .material-icons { font-size: 18px; }
 
-        .section-icon .material-icons { font-size: 20px; }
+    /* Dropdown */
+    .autocomplete-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0; right: 0;
+      background: #fff;
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+      z-index: 100;
+      max-height: 280px;
+      overflow-y: auto;
+      display: none;
+    }
+    .autocomplete-dropdown.open { display: block; }
 
-        .section-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--color-text-main);
-        }
+    .autocomplete-list { list-style: none; padding: 6px; margin: 0; }
 
-        /* GRID */
-        .fields-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 14px;
-        }
+    .autocomplete-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .autocomplete-item:hover { background: rgba(0,151,167,0.06); }
 
-        @media (min-width: 760px) {
-            .fields-grid.two-col { grid-template-columns: 1fr 1fr; }
-        }
+    .autocomplete-item-avatar {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--color-primary), #5c9ead);
+      color: #fff;
+      font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
 
-        .form-group { position: relative; }
+    .autocomplete-item-info { flex: 1; min-width: 0; }
+    .autocomplete-item-name {
+      font-size: 13px; font-weight: 600;
+      color: var(--color-text-main);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .autocomplete-item-meta {
+      font-size: 12px; color: var(--color-text-muted);
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .autocomplete-item-code {
+      background: rgba(0,151,167,0.1);
+      color: var(--color-primary-dark);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
 
-        .form-label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--color-text-main);
-            margin-bottom: 8px;
-        }
+    .autocomplete-empty, .autocomplete-loading {
+      padding: 20px;
+      text-align: center;
+      color: var(--color-text-muted);
+      font-size: 13px;
+    }
+    .autocomplete-empty .material-icons,
+    .autocomplete-loading .material-icons {
+      font-size: 32px;
+      margin-bottom: 8px;
+      display: block;
+    }
 
-        .input-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; }
 
-        .input-wrapper .material-icons {
-            position: absolute;
-            left: 12px;
-            font-size: 18px;
-            color: var(--color-text-muted);
-            pointer-events: none;
-        }
+    /* ====== FIN AUTOCOMPLETE ====== */
 
-        .input-wrapper input {
-            width: 100%;
-            padding: 13px 12px 13px 42px;
-            border-radius: var(--radius-soft);
-            border: 1px solid var(--color-border);
-            outline: none;
-            font-size: 14px;
-            color: var(--color-text-main);
-            background: #fff;
-            transition: box-shadow 0.15s, border-color 0.15s;
-        }
+    .children-list { display:flex; flex-direction:column; gap:12px; }
+    .child-row { border:1px solid var(--color-border); border-radius:14px; padding:14px; background:#fff; }
+    .row-actions { display:flex; gap:10px; margin-top:10px; }
 
-        .input-wrapper input:focus {
-            border-color: rgba(0,151,167,0.65);
-            box-shadow: 0 0 0 4px rgba(0,151,167,0.12);
-        }
+    .btn-secondary {
+      border: 1px solid rgba(0,151,167,0.35);
+      background: rgba(0,151,167,0.08);
+      color: var(--color-primary-dark);
+      padding:10px 12px; border-radius:12px;
+      cursor:pointer; font-size:13px; font-weight:600;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    .btn-secondary .material-icons { font-size:18px; }
 
-        .help-text {
-            margin-top: 6px;
-            font-size: 12px;
-            color: var(--color-text-muted);
-            line-height: 1.4;
-        }
+    .submit-btn {
+      width:100%; margin-top:28px; padding:16px;
+      border-radius: var(--radius-soft);
+      border:none;
+      background: linear-gradient(135deg, var(--color-primary), #5c9ead);
+      color:#fff; font-size:15px; font-weight:600;
+      cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,151,167,0.3); }
+    .submit-btn:active { transform: translateY(0); }
 
-        /* BUSCADOR */
-        .search-results {
-            position: absolute;
-            z-index: 20;
-            top: calc(100% + 6px);
-            left: 0;
-            right: 0;
-            background: #fff;
-            border: 1px solid var(--color-border);
-            border-radius: 12px;
-            box-shadow: 0 18px 40px rgba(0,0,0,0.10);
-            overflow: hidden;
-            display: none;
-            max-height: 280px;
-        }
+    .form-footer { margin-top:18px; padding-top:18px; border-top:1px solid var(--color-border); text-align:center; font-size:12px; color: var(--color-text-muted); }
+    .powered-by { margin-top:22px; text-align:center; font-size:11px; color: rgba(255,255,255,0.75); }
 
-        .search-item {
-            padding: 10px 12px;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
+    /* Bienvenida */
+    .welcome {
+      display:flex; gap:12px; padding:16px;
+      margin-bottom: 18px;
+      border-radius: var(--radius-soft);
+      background: var(--color-primary-soft);
+      border: 1px solid var(--color-primary);
+      color: var(--color-primary-dark);
+      font-size: 13px; line-height: 1.6;
+    }
+    .welcome .material-icons { font-size:22px; flex-shrink:0; }
+    .welcome strong { font-weight:700; }
 
-        .search-item:hover { background: rgba(0,151,167,0.06); }
+    .welcome-actions { margin-top: 12px; display:flex; justify-content:flex-end; }
+    .btn-start {
+      border:none;
+      background: linear-gradient(135deg, var(--color-primary), #5c9ead);
+      color:#fff;
+      padding: 12px 14px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-size:13px;
+      font-weight:700;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
 
-        .search-name {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--color-text-main);
-        }
-
-        .search-meta {
-            font-size: 12px;
-            color: var(--color-text-muted);
-        }
-
-        .selected-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            border-radius: 999px;
-            background: rgba(0,151,167,0.08);
-            border: 1px solid rgba(0,151,167,0.25);
-            color: var(--color-primary-dark);
-            font-size: 12px;
-            font-weight: 600;
-            margin-top: 10px;
-        }
-
-        .chip-remove {
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            color: var(--color-primary-dark);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-        }
-
-        .chip-remove .material-icons { font-size: 18px; }
-
-        /* HIJOS LISTA */
-        .children-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .child-row {
-            border: 1px solid var(--color-border);
-            border-radius: 14px;
-            padding: 14px;
-            background: #fff;
-        }
-
-        .row-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .btn-secondary {
-            border: 1px solid rgba(0,151,167,0.35);
-            background: rgba(0,151,167,0.08);
-            color: var(--color-primary-dark);
-            padding: 10px 12px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-secondary .material-icons { font-size: 18px; }
-
-        /* SUBMIT */
-        .submit-btn {
-            width: 100%;
-            margin-top: 28px;
-            padding: 16px;
-            border-radius: var(--radius-soft);
-            border: none;
-            background: linear-gradient(135deg, var(--color-primary), #5c9ead);
-            color: #fff;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,151,167,0.3);
-        }
-
-        .submit-btn:active { transform: translateY(0); }
-
-        /* FOOTER */
-        .form-footer {
-            margin-top: 18px;
-            padding-top: 18px;
-            border-top: 1px solid var(--color-border);
-            text-align: center;
-            font-size: 12px;
-            color: var(--color-text-muted);
-        }
-
-        .powered-by {
-            margin-top: 22px;
-            text-align: center;
-            font-size: 11px;
-            color: rgba(255,255,255,0.75);
-        }
-    </style>
+    .hidden { display:none; }
+  </style>
 </head>
 
-<body>
+<body data-alta-familia-token="{{ acceso.token }}">
+
 <div class="form-container">
 
-    <!-- LOGO INSTITUCIONAL -->
-    <div class="brand-top">
-        {% if CFG.logo %}
-            <img src="{{ CFG.logo.url }}"
-                 alt="{{ CFG.nombre_iglesia|default:'Iglesia' }}"
-                 class="church-logo">
+  <div class="brand-top">
+    {% if CFG and CFG.logo %}
+      <img src="{{ CFG.logo.url }}" alt="{{ CFG.nombre_iglesia|default:'Iglesia' }}" class="church-logo">
+    {% endif %}
+  </div>
+
+  <div class="form-header">
+    <h1>Alta de Familia</h1>
+    <p>Organización de relaciones básicas del hogar</p>
+  </div>
+
+  <div class="form-card">
+
+    {% if messages %}
+      {% for m in messages %}
+        {% if m.tags == "error" %}
+          <div class="alert-error">
+            <span class="material-icons">error</span>
+            <div>{{ m }}</div>
+          </div>
         {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    <!-- BIENVENIDA -->
+    <div id="welcomeBox" class="welcome">
+      <span class="material-icons">info</span>
+      <div>
+        <strong>Bienvenido/a</strong><br>
+        Este formulario te ayudará a organizar tu núcleo familiar en el sistema.
+        <br><br>
+        <strong>¿Cómo funciona?</strong>
+        <ul style="margin:8px 0 0 18px;">
+          <li>Primero elegirás el <strong>miembro principal</strong> (debe existir en el sistema).</li>
+          <li>Luego podrás elegir cónyuge, padre, madre e hijos (si ya están registrados).</li>
+          <li>Si alguien no aparece en la búsqueda, consulta con el equipo para registrarlo primero.</li>
+        </ul>
+
+        <div class="welcome-actions">
+          <button type="button" class="btn-start" id="btnStart">
+            <span class="material-icons">arrow_forward</span>
+            Comenzar
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div class="form-header">
-        <h1>Alta de Familia</h1>
-        <p>Registro de relaciones básicas del hogar</p>
-    </div>
+    <form method="post" autocomplete="off" id="familyForm" class="hidden">
+      {% csrf_token %}
 
-    <div class="form-card">
-
-        <!-- MENSAJE DE PROCESO -->
-        <div class="message">
-            <span class="material-icons">family_restroom</span>
-            <div>
-                <strong>Formulario de alta familiar</strong><br>
-                Aquí registrarás tu familia (cónyuge, padres e hijos) para que el sistema organice el hogar de forma correcta.
-                <div class="message-steps">
-                    <div class="message-step">
-                        <span class="step-num">1</span>
-                        <span>Buscar y seleccionar</span>
-                    </div>
-                    <div class="message-step">
-                        <span class="step-num">2</span>
-                        <span>Revisar la familia</span>
-                    </div>
-                    <div class="message-step">
-                        <span class="step-num">3</span>
-                        <span>Enviar</span>
-                    </div>
-                </div>
-            </div>
+      <!-- PRINCIPAL -->
+      <div class="form-section" style="margin-top:0; padding-top:0; border-top:none;">
+        <div class="section-header">
+          <div class="section-icon"><span class="material-icons">person</span></div>
+          <span class="section-title">Miembro principal</span>
         </div>
 
-        {% if messages %}
-            {% for m in messages %}
-                {% if m.tags == "error" %}
-                <div class="alert-error">
-                    <span class="material-icons">error</span>
-                    <div>{{ m }}</div>
-                </div>
-                {% endif %}
-            {% endfor %}
-        {% endif %}
-
-        <form method="post" autocomplete="off">
-            {% csrf_token %}
-
-            <!-- SECCIÓN: QUIÉN ERES -->
-            <div class="form-section" style="margin-top:0; padding-top:0; border-top:none;">
-                <div class="section-header">
-                    <div class="section-icon">
-                        <span class="material-icons">person</span>
-                    </div>
-                    <span class="section-title">Miembro principal</span>
-                </div>
-
-                <div class="fields-grid">
-                    <div class="form-group">
-                        <label class="form-label">Tú eres</label>
-                        <div class="input-wrapper">
-                            <span class="material-icons">verified</span>
-                            <input type="text"
-                                   value="{{ jefe.nombres }} {{ jefe.apellidos }}"
-                                   disabled>
-                        </div>
-                        <div class="help-text">Este enlace está asignado a este miembro principal.</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SECCIÓN: CÓNYUGE -->
-            <div class="form-section">
-                <div class="section-header">
-                    <div class="section-icon">
-                        <span class="material-icons">favorite</span>
-                    </div>
-                    <span class="section-title">Cónyuge</span>
-                </div>
-
-                <div class="fields-grid">
-                    <div class="form-group" id="group-conyuge">
-                        <label class="form-label">Buscar cónyuge (opcional)</label>
-                        <div class="input-wrapper">
-                            <span class="material-icons">search</span>
-                            <input id="q_conyuge" type="text" placeholder="Escribe un nombre o cédula…">
-                        </div>
-
-                        <input type="hidden" name="conyuge_id" id="conyuge_id">
-
-                        <div class="search-results" id="res_conyuge"></div>
-
-                        <div id="chip_conyuge"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SECCIÓN: PADRES -->
-            <div class="form-section">
-                <div class="section-header">
-                    <div class="section-icon">
-                        <span class="material-icons">groups</span>
-                    </div>
-                    <span class="section-title">Padre y madre</span>
-                </div>
-
-                <div class="fields-grid two-col">
-                    <!-- Padre -->
-                    <div class="form-group" id="group-padre">
-                        <label class="form-label">Buscar padre (opcional)</label>
-                        <div class="input-wrapper">
-                            <span class="material-icons">search</span>
-                            <input id="q_padre" type="text" placeholder="Escribe un nombre o cédula…">
-                        </div>
-
-                        <input type="hidden" name="padre_id" id="padre_id">
-                        <div class="search-results" id="res_padre"></div>
-                        <div id="chip_padre"></div>
-                    </div>
-
-                    <!-- Madre -->
-                    <div class="form-group" id="group-madre">
-                        <label class="form-label">Buscar madre (opcional)</label>
-                        <div class="input-wrapper">
-                            <span class="material-icons">search</span>
-                            <input id="q_madre" type="text" placeholder="Escribe un nombre o cédula…">
-                        </div>
-
-                        <input type="hidden" name="madre_id" id="madre_id">
-                        <div class="search-results" id="res_madre"></div>
-                        <div id="chip_madre"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SECCIÓN: HIJOS -->
-            <div class="form-section">
-                <div class="section-header">
-                    <div class="section-icon">
-                        <span class="material-icons">child_care</span>
-                    </div>
-                    <span class="section-title">Hijos</span>
-                </div>
-
-                <div class="help-text" style="margin-bottom: 12px;">
-                    Agrega todos tus hijos que ya estén registrados en el sistema.
-                </div>
-
-                <div class="children-list" id="childrenList"></div>
-
-                <button type="button" class="btn-secondary" id="btnAddChild">
-                    <span class="material-icons">add</span>
-                    Añadir hijo
+        <div class="fields-grid">
+          <div class="form-group autocomplete-wrapper" data-field="principal">
+            <label class="form-label">Buscar miembro principal (obligatorio)</label>
+            
+            <input type="hidden" name="principal_id" class="autocomplete-hidden">
+            
+            <div class="autocomplete-field">
+              <div class="autocomplete-chip" style="display: none;">
+                <span class="chip-avatar"></span>
+                <span class="chip-text">
+                  <span class="chip-name"></span>
+                  <span class="chip-code"></span>
+                </span>
+                <button type="button" class="chip-remove" title="Quitar">
+                  <span class="material-icons">close</span>
                 </button>
+              </div>
+              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off">
+            </div>
+            
+            <div class="autocomplete-dropdown">
+              <ul class="autocomplete-list"></ul>
+              <div class="autocomplete-empty" style="display:none;">
+                <span class="material-icons">person_search</span>
+                <p>No se encontraron miembros</p>
+              </div>
+              <div class="autocomplete-loading" style="display:none;">
+                <span class="material-icons spinner">sync</span>
+                <p>Buscando...</p>
+              </div>
             </div>
 
-            <button type="submit" class="submit-btn">
-                <span class="material-icons">send</span>
-                Enviar familia
-            </button>
+            <div class="help-text">Este será el miembro base a partir del cual se construirán las relaciones.</div>
+          </div>
+        </div>
+      </div>
 
-            <div class="form-footer">
-                Si algún dato no aparece en la búsqueda, consulta con el equipo para registrarlo primero.
+      <!-- CÓNYUGE -->
+      <div class="form-section">
+        <div class="section-header">
+          <div class="section-icon"><span class="material-icons">favorite</span></div>
+          <span class="section-title">Cónyuge</span>
+        </div>
+
+        <div class="fields-grid">
+          <div class="form-group autocomplete-wrapper" data-field="conyuge">
+            <label class="form-label">Buscar cónyuge (opcional)</label>
+            
+            <input type="hidden" name="conyuge_id" class="autocomplete-hidden">
+            
+            <div class="autocomplete-field">
+              <div class="autocomplete-chip" style="display: none;">
+                <span class="chip-avatar"></span>
+                <span class="chip-text">
+                  <span class="chip-name"></span>
+                  <span class="chip-code"></span>
+                </span>
+                <button type="button" class="chip-remove" title="Quitar">
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off">
             </div>
-        </form>
-    </div>
+            
+            <div class="autocomplete-dropdown">
+              <ul class="autocomplete-list"></ul>
+              <div class="autocomplete-empty" style="display:none;">
+                <span class="material-icons">person_search</span>
+                <p>No se encontraron miembros</p>
+              </div>
+              <div class="autocomplete-loading" style="display:none;">
+                <span class="material-icons spinner">sync</span>
+                <p>Buscando...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="powered-by">
-        Desarrollado con ❤️ por <strong>{{ CFG.nombre_iglesia|default:"Torre Fuerte" }}</strong>
-    </div>
+      <!-- PADRES -->
+      <div class="form-section">
+        <div class="section-header">
+          <div class="section-icon"><span class="material-icons">groups</span></div>
+          <span class="section-title">Padre y madre</span>
+        </div>
+
+        <div class="fields-grid two-col">
+          <div class="form-group autocomplete-wrapper" data-field="padre">
+            <label class="form-label">Buscar padre (opcional)</label>
+            
+            <input type="hidden" name="padre_id" class="autocomplete-hidden">
+            
+            <div class="autocomplete-field">
+              <div class="autocomplete-chip" style="display: none;">
+                <span class="chip-avatar"></span>
+                <span class="chip-text">
+                  <span class="chip-name"></span>
+                  <span class="chip-code"></span>
+                </span>
+                <button type="button" class="chip-remove" title="Quitar">
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off">
+            </div>
+            
+            <div class="autocomplete-dropdown">
+              <ul class="autocomplete-list"></ul>
+              <div class="autocomplete-empty" style="display:none;">
+                <span class="material-icons">person_search</span>
+                <p>No se encontraron miembros</p>
+              </div>
+              <div class="autocomplete-loading" style="display:none;">
+                <span class="material-icons spinner">sync</span>
+                <p>Buscando...</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group autocomplete-wrapper" data-field="madre">
+            <label class="form-label">Buscar madre (opcional)</label>
+            
+            <input type="hidden" name="madre_id" class="autocomplete-hidden">
+            
+            <div class="autocomplete-field">
+              <div class="autocomplete-chip" style="display: none;">
+                <span class="chip-avatar"></span>
+                <span class="chip-text">
+                  <span class="chip-name"></span>
+                  <span class="chip-code"></span>
+                </span>
+                <button type="button" class="chip-remove" title="Quitar">
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+              <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off">
+            </div>
+            
+            <div class="autocomplete-dropdown">
+              <ul class="autocomplete-list"></ul>
+              <div class="autocomplete-empty" style="display:none;">
+                <span class="material-icons">person_search</span>
+                <p>No se encontraron miembros</p>
+              </div>
+              <div class="autocomplete-loading" style="display:none;">
+                <span class="material-icons spinner">sync</span>
+                <p>Buscando...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HIJOS -->
+      <div class="form-section">
+        <div class="section-header">
+          <div class="section-icon"><span class="material-icons">child_care</span></div>
+          <span class="section-title">Hijos</span>
+        </div>
+
+        <div class="help-text" style="margin-bottom: 12px;">
+          Agrega todos tus hijos que ya estén registrados en el sistema.
+        </div>
+
+        <div class="children-list" id="childrenList"></div>
+
+        <button type="button" class="btn-secondary" id="btnAddChild">
+          <span class="material-icons">add</span>
+          Añadir hijo
+        </button>
+      </div>
+
+      <button type="submit" class="submit-btn">
+        <span class="material-icons">send</span>
+        Enviar familia
+      </button>
+
+      <div class="form-footer">
+        Si algún dato no aparece en la búsqueda, consulta con el equipo para registrarlo primero.
+      </div>
+    </form>
+  </div>
+
+  <div class="powered-by">
+    Desarrollado con ❤️ por <strong>{{ CFG.nombre_iglesia|default:"Torre Fuerte" }}</strong>
+  </div>
 
 </div>
 
 <script>
-/**
- * Buscador reutilizable:
- * - input de texto (q_)
- * - contenedor resultados (res_)
- * - hidden input id (xxx_id)
- * - contenedor chip (chip_)
- *
- * Requiere endpoint JSON:
- *   GET /.../api/buscar-miembros/?q=texto
- * Respuesta:
- *   { results: [ {id, nombre, cedula, telefono}, ... ] }
- */
-const SEARCH_URL = "{% url 'actualizacion_datos_miembros:api_buscar_miembros' %}";
+(function() {
+  'use strict';
 
-function debounce(fn, wait=250){
-  let t=null;
-  return (...args)=>{
-    clearTimeout(t);
-    t=setTimeout(()=>fn(...args), wait);
-  };
-}
+  // =============================================
+  // CONFIG
+  // =============================================
+  const SEARCH_URL = "{% url 'actualizacion_datos_miembros:api_buscar_miembros' %}";
+  const MIN_CHARS = 2;
+  const DEBOUNCE_DELAY = 300;
 
-async function buscarMiembros(q){
-  const url = new URL(SEARCH_URL, window.location.origin);
-  url.searchParams.set("q", q);
-  const r = await fetch(url.toString(), { headers: { "X-Requested-With":"XMLHttpRequest" } });
-  if(!r.ok) return {results:[]};
-  return await r.json();
-}
-
-function renderResults(container, items, onPick){
-  if(!items || items.length===0){
-    container.style.display = "none";
-    container.innerHTML = "";
-    return;
+  function getToken() {
+    return document.body.dataset.altaFamiliaToken || "";
   }
-  container.innerHTML = items.map(x => {
-    const metaParts = [];
-    if(x.cedula) metaParts.push("Cédula: " + x.cedula);
-    if(x.telefono) metaParts.push("Tel: " + x.telefono);
-    const meta = metaParts.join(" · ");
-    return `
-      <div class="search-item" data-id="${x.id}" data-nombre="${escapeHtml(x.nombre || '')}">
-        <div class="search-name">${escapeHtml(x.nombre || '')}</div>
-        <div class="search-meta">${escapeHtml(meta)}</div>
-      </div>
-    `;
-  }).join("");
 
-  container.style.display = "block";
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return "";
+    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+    return String(text).replace(/[&<>"']/g, (m) => map[m]);
+  }
 
-  container.querySelectorAll(".search-item").forEach(el=>{
-    el.addEventListener("click", ()=>{
-      const id = el.getAttribute("data-id");
-      const nombre = el.getAttribute("data-nombre");
-      onPick({id, nombre});
-    });
-  });
-}
+  function getInitials(nombre) {
+    if (!nombre) return "?";
+    const parts = nombre.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return nombre.trim().substring(0, 2).toUpperCase();
+  }
 
-function escapeHtml(s){
-  return (s || "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
+  // =============================================
+  // AUTOCOMPLETE CLASS
+  // =============================================
+  class AutocompleteMiembro {
+    constructor(wrapper) {
+      this.wrapper = wrapper;
+      this.debounceTimer = null;
 
-function setChip(chipContainer, label, onRemove){
-  chipContainer.innerHTML = `
-    <span class="selected-chip">
-      <span class="material-icons" style="font-size:18px;">check</span>
-      ${escapeHtml(label)}
-      <button type="button" class="chip-remove" title="Quitar">
-        <span class="material-icons">close</span>
-      </button>
-    </span>
-  `;
-  chipContainer.querySelector(".chip-remove").addEventListener("click", onRemove);
-}
+      // Elementos
+      this.hiddenInput = wrapper.querySelector('.autocomplete-hidden');
+      this.fieldContainer = wrapper.querySelector('.autocomplete-field');
+      this.searchInput = wrapper.querySelector('.autocomplete-search');
+      this.dropdown = wrapper.querySelector('.autocomplete-dropdown');
+      this.listEl = wrapper.querySelector('.autocomplete-list');
+      this.emptyEl = wrapper.querySelector('.autocomplete-empty');
+      this.loadingEl = wrapper.querySelector('.autocomplete-loading');
+      
+      // Chip
+      this.chip = wrapper.querySelector('.autocomplete-chip');
+      this.chipAvatar = wrapper.querySelector('.chip-avatar');
+      this.chipName = wrapper.querySelector('.chip-name');
+      this.chipCode = wrapper.querySelector('.chip-code');
+      this.chipRemove = wrapper.querySelector('.chip-remove');
 
-function clearChip(chipContainer){
-  chipContainer.innerHTML = "";
-}
+      if (!this.searchInput || !this.dropdown || !this.hiddenInput) return;
 
-function attachSearch({qInput, resBox, hiddenId, chipBox}){
-  const doSearch = debounce(async ()=>{
-    const q = qInput.value.trim();
-    if(q.length < 2){
-      resBox.style.display="none";
-      resBox.innerHTML="";
-      return;
+      this.bind();
     }
-    const data = await buscarMiembros(q);
-    renderResults(resBox, data.results || [], (picked)=>{
-      hiddenId.value = picked.id;
-      qInput.value = picked.nombre;
-      resBox.style.display="none";
-      setChip(chipBox, picked.nombre, ()=>{
-        hiddenId.value = "";
-        qInput.value = "";
-        clearChip(chipBox);
+
+    bind() {
+      // Input con debounce
+      this.searchInput.addEventListener('input', (e) => {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => {
+          this.search(e.target.value || "");
+        }, DEBOUNCE_DELAY);
       });
-    });
-  }, 250);
 
-  qInput.addEventListener("input", doSearch);
+      // Focus
+      this.searchInput.addEventListener('focus', () => {
+        if ((this.searchInput.value || "").length >= MIN_CHARS) {
+          this.openDropdown();
+        }
+      });
 
-  // cerrar resultados al click fuera
-  document.addEventListener("click", (e)=>{
-    if(!resBox.contains(e.target) && e.target !== qInput){
-      resBox.style.display="none";
+      // Teclas
+      this.searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          this.closeDropdown();
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          const firstItem = this.listEl.querySelector('.autocomplete-item');
+          if (firstItem) {
+            this.selectMiembro(firstItem.dataset.id, firstItem.dataset.nombre, firstItem.dataset.codigo);
+          }
+        }
+      });
+
+      // Quitar chip
+      if (this.chipRemove) {
+        this.chipRemove.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.clearSelection();
+        });
+      }
+
+      // Click fuera
+      document.addEventListener('click', (e) => {
+        if (!this.wrapper.contains(e.target)) this.closeDropdown();
+      });
     }
+
+    async search(query) {
+      query = (query || "").trim();
+
+      if (query.length < MIN_CHARS) {
+        this.closeDropdown();
+        return;
+      }
+
+      this.showLoading();
+
+      try {
+        const token = getToken();
+        const url = `${SEARCH_URL}?q=${encodeURIComponent(query)}&filtro=activos&limit=15` +
+                    (token ? `&token=${encodeURIComponent(token)}` : "");
+
+        const response = await fetch(url, {
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+
+        // Compatible con {success: true, resultados: [...]}
+        if (data.success && Array.isArray(data.resultados) && data.resultados.length > 0) {
+          this.renderResults(data.resultados);
+        } else {
+          this.showEmpty();
+        }
+      } catch (err) {
+        console.error('AutocompleteMiembro error:', err);
+        this.showEmpty();
+      }
+    }
+
+    renderResults(resultados) {
+      this.listEl.innerHTML = '';
+
+      resultados.forEach((miembro) => {
+        const li = document.createElement('li');
+        li.className = 'autocomplete-item';
+        li.dataset.id = String(miembro.id);
+        li.dataset.nombre = miembro.nombre || '';
+        li.dataset.codigo = miembro.codigo || '';
+
+        const initials = getInitials(miembro.nombre || '');
+
+        li.innerHTML = `
+          <div class="autocomplete-item-avatar">${escapeHtml(initials)}</div>
+          <div class="autocomplete-item-info">
+            <div class="autocomplete-item-name">${escapeHtml(miembro.nombre || '')}</div>
+            <div class="autocomplete-item-meta">
+              ${miembro.codigo ? `<span class="autocomplete-item-code">${escapeHtml(miembro.codigo)}</span>` : ''}
+              ${miembro.telefono && miembro.telefono !== '—' ? `<span>${escapeHtml(miembro.telefono)}</span>` : ''}
+            </div>
+          </div>
+        `;
+
+        li.addEventListener('click', () => {
+          this.selectMiembro(miembro.id, miembro.nombre, miembro.codigo);
+        });
+
+        this.listEl.appendChild(li);
+      });
+
+      if (this.loadingEl) this.loadingEl.style.display = 'none';
+      if (this.emptyEl) this.emptyEl.style.display = 'none';
+      this.listEl.style.display = 'block';
+      this.openDropdown();
+    }
+
+    selectMiembro(id, nombre, codigo) {
+      this.hiddenInput.value = String(id);
+
+      // Actualizar chip
+      if (this.chipAvatar) this.chipAvatar.textContent = getInitials(nombre || '');
+      if (this.chipName) this.chipName.textContent = nombre || '';
+      if (this.chipCode) this.chipCode.textContent = codigo || 'Sin código';
+
+      // Mostrar chip, ocultar input
+      this.chip.style.display = 'inline-flex';
+      this.searchInput.value = '';
+      this.searchInput.style.display = 'none';
+      if (this.fieldContainer) this.fieldContainer.classList.add('has-selection');
+
+      this.closeDropdown();
+    }
+
+    clearSelection() {
+      this.hiddenInput.value = '';
+      this.chip.style.display = 'none';
+      this.searchInput.style.display = '';
+      if (this.fieldContainer) this.fieldContainer.classList.remove('has-selection');
+      this.searchInput.value = '';
+      this.listEl.innerHTML = '';
+      this.closeDropdown();
+      this.searchInput.focus();
+    }
+
+    showLoading() {
+      this.listEl.innerHTML = '';
+      this.listEl.style.display = 'none';
+      if (this.emptyEl) this.emptyEl.style.display = 'none';
+      if (this.loadingEl) this.loadingEl.style.display = 'block';
+      this.openDropdown();
+    }
+
+    showEmpty() {
+      this.listEl.innerHTML = '';
+      this.listEl.style.display = 'none';
+      if (this.loadingEl) this.loadingEl.style.display = 'none';
+      if (this.emptyEl) this.emptyEl.style.display = 'block';
+      this.openDropdown();
+    }
+
+    openDropdown() {
+      this.dropdown.classList.add('open');
+    }
+
+    closeDropdown() {
+      this.dropdown.classList.remove('open');
+      if (this.loadingEl) this.loadingEl.style.display = 'none';
+      if (this.emptyEl) this.emptyEl.style.display = 'none';
+    }
+  }
+
+  // =============================================
+  // INIT
+  // =============================================
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // Bienvenida -> mostrar formulario
+    document.getElementById('btnStart').addEventListener('click', function() {
+      document.getElementById('welcomeBox').style.display = 'none';
+      document.getElementById('familyForm').classList.remove('hidden');
+      // Focus al primer campo
+      const firstSearch = document.querySelector('.autocomplete-wrapper .autocomplete-search');
+      if (firstSearch) firstSearch.focus();
+    });
+
+    // Inicializar autocompletes existentes (principal, cónyuge, padre, madre)
+    document.querySelectorAll('.autocomplete-wrapper').forEach(wrapper => {
+      new AutocompleteMiembro(wrapper);
+    });
+
+    // =============================================
+    // HIJOS DINÁMICOS
+    // =============================================
+    const childrenList = document.getElementById('childrenList');
+    const btnAddChild = document.getElementById('btnAddChild');
+    let childCounter = 0;
+
+    function addChildRow() {
+      childCounter++;
+      const idx = childCounter;
+
+      const row = document.createElement('div');
+      row.className = 'child-row';
+      row.innerHTML = `
+        <div class="form-group autocomplete-wrapper" data-field="hijo_${idx}">
+          <label class="form-label">Buscar hijo</label>
+          
+          <input type="hidden" name="hijos_ids" class="autocomplete-hidden">
+          
+          <div class="autocomplete-field">
+            <div class="autocomplete-chip" style="display: none;">
+              <span class="chip-avatar"></span>
+              <span class="chip-text">
+                <span class="chip-name"></span>
+                <span class="chip-code"></span>
+              </span>
+              <button type="button" class="chip-remove" title="Quitar">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+            <input type="text" class="autocomplete-search" placeholder="Escribe un nombre o cédula…" autocomplete="off">
+          </div>
+          
+          <div class="autocomplete-dropdown">
+            <ul class="autocomplete-list"></ul>
+            <div class="autocomplete-empty" style="display:none;">
+              <span class="material-icons">person_search</span>
+              <p>No se encontraron miembros</p>
+            </div>
+            <div class="autocomplete-loading" style="display:none;">
+              <span class="material-icons spinner">sync</span>
+              <p>Buscando...</p>
+            </div>
+          </div>
+
+          <div class="row-actions">
+            <button type="button" class="btn-secondary btn-remove-child">
+              <span class="material-icons">delete</span>
+              Quitar
+            </button>
+          </div>
+        </div>
+      `;
+
+      childrenList.appendChild(row);
+
+      // Inicializar autocomplete para este hijo
+      const wrapper = row.querySelector('.autocomplete-wrapper');
+      new AutocompleteMiembro(wrapper);
+
+      // Botón quitar
+      row.querySelector('.btn-remove-child').addEventListener('click', function() {
+        row.remove();
+      });
+    }
+
+    btnAddChild.addEventListener('click', addChildRow);
+
+    // Agregar un hijo por defecto
+    addChildRow();
+
   });
-}
 
-/* CÓNYUGE */
-attachSearch({
-  qInput: document.getElementById("q_conyuge"),
-  resBox: document.getElementById("res_conyuge"),
-  hiddenId: document.getElementById("conyuge_id"),
-  chipBox: document.getElementById("chip_conyuge")
-});
-
-/* PADRE */
-attachSearch({
-  qInput: document.getElementById("q_padre"),
-  resBox: document.getElementById("res_padre"),
-  hiddenId: document.getElementById("padre_id"),
-  chipBox: document.getElementById("chip_padre")
-});
-
-/* MADRE */
-attachSearch({
-  qInput: document.getElementById("q_madre"),
-  resBox: document.getElementById("res_madre"),
-  hiddenId: document.getElementById("madre_id"),
-  chipBox: document.getElementById("chip_madre")
-});
-
-/* HIJOS dinámicos */
-const childrenList = document.getElementById("childrenList");
-const btnAddChild = document.getElementById("btnAddChild");
-
-function addChildRow(){
-  const idx = Date.now().toString(36);
-  const row = document.createElement("div");
-  row.className = "child-row";
-  row.innerHTML = `
-    <div class="form-group">
-      <label class="form-label">Buscar hijo</label>
-      <div class="input-wrapper">
-        <span class="material-icons">search</span>
-        <input id="q_hijo_${idx}" type="text" placeholder="Escribe un nombre o cédula…">
-      </div>
-
-      <input type="hidden" name="hijos_ids" id="hijo_id_${idx}">
-      <div class="search-results" id="res_hijo_${idx}"></div>
-      <div id="chip_hijo_${idx}"></div>
-
-      <div class="row-actions">
-        <button type="button" class="btn-secondary" id="btnRemove_${idx}">
-          <span class="material-icons">delete</span>
-          Quitar
-        </button>
-      </div>
-    </div>
-  `;
-
-  childrenList.appendChild(row);
-
-  const qInput = row.querySelector(`#q_hijo_${idx}`);
-  const resBox = row.querySelector(`#res_hijo_${idx}`);
-  const hiddenId = row.querySelector(`#hijo_id_${idx}`);
-  const chipBox = row.querySelector(`#chip_hijo_${idx}`);
-  const btnRemove = row.querySelector(`#btnRemove_${idx}`);
-
-  attachSearch({qInput, resBox, hiddenId, chipBox});
-
-  btnRemove.addEventListener("click", ()=>{
-    row.remove();
-  });
-}
-
-btnAddChild.addEventListener("click", addChildRow);
-
-/* Arrancamos con 1 hijo visible (opcional, puedes quitar si quieres) */
-addChildRow();
+})();
 </script>
 </body>
 </html>
