@@ -3,7 +3,7 @@
 miembros_app/urls.py
 URLs del módulo de miembros organizadas por sección.
 """
-from miembros_app.views.familiares import familias_home, familia_detalle
+from miembros_app.views.familiares import familias_home, familia_detalle, familia_editar
 
 from django.urls import path
 from . import views
@@ -126,5 +126,7 @@ urlpatterns = [
     path("miembros/<int:miembro_id>/padre/<int:padre_id>/remove/", views.padre_espiritual_remove_simple, name="padre_remove_simple"),
       path("familias/", familias_home, name="familias_home"),
     path("familias/<int:hogar_id>/", familia_detalle, name="familia_detalle"),
+    path("familias/<int:hogar_id>/editar/", familia_editar, name="familia_editar"),
+
 
 ]

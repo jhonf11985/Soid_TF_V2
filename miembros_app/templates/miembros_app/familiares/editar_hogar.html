@@ -1,0 +1,98 @@
+{% extends 'miembros_app/base_miembros.html' %}
+
+{% block title %}Editar familia{% endblock %}
+
+{% block miembros_content %}
+
+<div class="odoo-form">
+
+  <div class="odoo-control-bar">
+    <div class="odoo-control-left">
+      <a href="{% url 'miembros_app:familia_detalle' hogar.id %}" class="odoo-breadcrumb-link">
+        <span class="material-icons">arrow_back</span>
+        Volver al hogar
+      </a>
+      <span class="odoo-breadcrumb-sep">/</span>
+      <span class="odoo-breadcrumb-current">Editar</span>
+    </div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+```
+<div class="odoo-form-container">
+  <div class="odoo-form-main">
+
+    <h2>Editar familia</h2>
+
+    <div class="odoo-field">
+      <label class="odoo-label">Nombre del hogar</label>
+      <input type="text" name="nombre" class="odoo-input" value="{{ hogar.nombre|default:'' }}">
+    </div>
+
+    <h3 style="margin-top:25px">Miembros</h3>
+
+    <div class="miembros-editar">
+      {% for hm in hogar_miembros %}
+      <div class="miembro-edit-card">
+
+        <div class="miembro-nombre">
+          {{ hm.miembro.nombres }} {{ hm.miembro.apellidos }}
+        </div>
+
+        <div class="miembro-edit-options">
+
+          <label>
+            <input type="radio" name="principal" value="{{ hm.miembro.id }}"
+            {% if hm.es_principal %}checked{% endif %}>
+            Principal
+          </label>
+
+          <select name="rol_{{ hm.id }}">
+            <option value="padre" {% if hm.rol == 'padre' %}selected{% endif %}>Padre</option>
+            <option value="madre" {% if hm.rol == 'madre' %}selected{% endif %}>Madre</option>
+            <option value="hijo" {% if hm.rol == 'hijo' %}selected{% endif %}>Hijo/a</option>
+            <option value="otro" {% if hm.rol == 'otro' %}selected{% endif %}>Otro</option>
+          </select>
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div style="margin-top:30px">
+      <a href="{% url 'miembros_app:familia_detalle' hogar.id %}" class="odoo-btn odoo-btn-secondary">
+        Cancelar
+      </a>
+
+      <button type="submit" class="odoo-btn odoo-btn-primary">
+        Guardar cambios
+      </button>
+    </div>
+
+  </div>
+</div>
+```
+
+  </form>
+</div>
+
+<style>
+.miembro-edit-card{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px;
+  border:1px solid #ddd;
+  border-radius:10px;
+  margin-top:10px;
+}
+.miembro-edit-options{
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+</style>
+
+{% endblock %}

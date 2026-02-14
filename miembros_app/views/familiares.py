@@ -636,3 +636,41 @@ def familia_detalle(request, hogar_id):
         "hogar": hogar,
         "hogar_miembros": hogar_miembros,
     })
+
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+def familia_editar(request, hogar_id):
+    from miembros_app.models import HogarFamiliar, HogarMiembro, Miembro
+
+    hogar = get_object_or_404(
+        HogarFamiliar.objects.prefetch_related("miembros__miembro"),
+        pk=hogar_id
+    )
+
+    hogar_miembros = hogar.miembros.select_related("miembro").all()
+
+    if request.method == "POST":
+        nombre = request.POST.get("nombre", "").strip()
+        principal_id = request.POST.get("principal")
+
+        # actualizar nombre
+        hogar.nombre = nombre or None
+        hogar.save()
+
+        # actualizar roles y principal
+        for hm in hogar_miembros:
+            rol = request.POST.get(f"rol_{hm.id}", "").strip()
+            es_principal = str(hm.miembro.id) == principal_id
+
+            hm.rol = rol
+            hm.es_principal = es_principal
+            hm.save()
+
+        messages.success(request, "Familia actualizada correctamente.")
+        return redirect("miembros_app:familia_detalle", hogar_id=hogar.id)
+
+    return render(request, "miembros_app/familiares/editar_hogar.html", {
+        "hogar": hogar,
+        "hogar_miembros": hogar_miembros,
+    })
+
