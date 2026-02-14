@@ -12,9 +12,12 @@ from django.views.decorators.http import require_POST, require_GET
 from django.http import JsonResponse
 from django.urls import reverse
 from django.db.models import Q
-
+import re
+from django.db import transaction
 from miembros_app.models import Miembro, MiembroRelacion
 from miembros_app.validators import validar_relacion_familiar
+from miembros_app.models import HogarFamiliar, HogarMiembro, Miembro, MiembroRelacion
+
 
 
 from .utils import (
@@ -730,85 +733,139 @@ def familia_editar(request, hogar_id):
 # AGREGAR ESTO AL FINAL DE familiares.py
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @login_required
 @permission_required("miembros_app.add_miembro", raise_exception=True)
 def familia_crear(request):
-    """Crear un nuevo hogar familiar."""
-    from miembros_app.models import HogarFamiliar, HogarMiembro, Miembro
+    """
+    Crear una familia (HogarFamiliar como GRUPO) desde un miembro base,
+    y construir relaciones (MiembroRelacion) como antes: una por una,
+    infiriendo inversas al mostrar.
+    """
+    if request.method != "POST":
+        return render(request, "miembros_app/familiares/crear_hogar.html", {})
 
-    if request.method == "POST":
-        nombre = request.POST.get("nombre", "").strip()
-        principal_id = request.POST.get("principal_id")
-        conyuge_id = request.POST.get("conyuge_id")
-        
-        if not principal_id:
-            messages.error(request, "Debe seleccionar un miembro principal.")
+    nombre = (request.POST.get("nombre") or "").strip()
+    base_id = request.POST.get("base_id")  # <- viene del nuevo crear_hogar.html
+
+    if not base_id:
+        messages.error(request, "Debe seleccionar un miembro base.")
+        return redirect("miembros_app:familia_crear")
+
+    try:
+        base = Miembro.objects.get(pk=base_id)
+    except Miembro.DoesNotExist:
+        messages.error(request, "El miembro base no existe.")
+        return redirect("miembros_app:familia_crear")
+
+    # --- 1) Leer relaciones dinámicas rel_{n}_tipo + rel_{n}_id ---
+    relaciones = []
+    patron = re.compile(r"^rel_(\d+)_id$")
+    for key in request.POST.keys():
+        m = patron.match(key)
+        if not m:
+            continue
+        idx = m.group(1)
+        otro_id = request.POST.get(f"rel_{idx}_id")
+        tipo = (request.POST.get(f"rel_{idx}_tipo") or "").strip()
+
+        if not otro_id and not tipo:
+            continue
+        if not otro_id or not tipo:
+            messages.error(request, "Hay una relación incompleta (falta miembro o tipo).")
             return redirect("miembros_app:familia_crear")
-        
+
+        relaciones.append((tipo, otro_id))
+
+    # --- 2) Validar todo ANTES de crear hogar (para no crear datos a medias) ---
+    # Evitar repetir el mismo miembro en varias filas
+    ids_en_formulario = set()
+    miembros_rel = []
+
+    for tipo, otro_id in relaciones:
+        if str(otro_id) == str(base.id):
+            messages.error(request, "No puede relacionar el miembro base consigo mismo.")
+            return redirect("miembros_app:familia_crear")
+
+        if otro_id in ids_en_formulario:
+            messages.error(request, "No puede repetir el mismo miembro en varias relaciones.")
+            return redirect("miembros_app:familia_crear")
+        ids_en_formulario.add(otro_id)
+
         try:
-            principal = Miembro.objects.get(pk=principal_id)
+            otro = Miembro.objects.get(pk=otro_id)
         except Miembro.DoesNotExist:
-            messages.error(request, "El miembro principal no existe.")
+            messages.error(request, "Uno de los miembros seleccionados no existe.")
             return redirect("miembros_app:familia_crear")
-        
-        # Crear el hogar
+
+        # Validación de negocio (edad, duplicados, inconsistencias, etc.)
+        res = validar_relacion_familiar(miembro=base, familiar=otro, tipo_relacion=tipo, relacion_id=None)
+        if not res.get("valid", False):
+            # Muestra todos los errores
+            for err in res.get("errors", []):
+                messages.error(request, err)
+            return redirect("miembros_app:familia_crear")
+
+        # Warnings: por ahora los dejamos pasar como hoy (si luego quieres confirmación, lo añadimos)
+        for w in res.get("warnings", []):
+            messages.warning(request, w)
+
+        miembros_rel.append((tipo, otro))
+
+    # --- 3) Crear hogar + miembros del hogar + relaciones ---
+    with transaction.atomic():
         hogar = HogarFamiliar.objects.create(
-            nombre=nombre or f"Hogar de {principal.nombres} {principal.apellidos}"
+            nombre=nombre or f"Familia de {base.nombres} {base.apellidos}"
         )
-        
-        # Determinar rol del principal según género
-        rol_principal = "madre" if principal.genero == "femenino" else "padre"
-        
-        # Agregar miembro principal
+
+        # El base es "punto de partida", no jefe. Lo guardamos como principal solo para ancla del grupo.
         HogarMiembro.objects.create(
             hogar=hogar,
-            miembro=principal,
-            rol=rol_principal,
+            miembro=base,
+            rol="otro",
             es_principal=True
         )
-        
-        miembros_agregados = 1
-        
-        # Agregar cónyuge si existe
-        if conyuge_id:
-            try:
-                conyuge = Miembro.objects.get(pk=conyuge_id)
-                rol_conyuge = "madre" if conyuge.genero == "femenino" else "padre"
-                HogarMiembro.objects.create(
-                    hogar=hogar,
-                    miembro=conyuge,
-                    rol=rol_conyuge,
-                    es_principal=False
+
+        # Agregar al grupo (HogarMiembro) todos los relacionados directos del base
+        for tipo, otro in miembros_rel:
+            # rol en el grupo (no tiene que ser perfecto; es solo agrupación)
+            # si quieres, luego lo afinamos: p.ej. tipo padre/madre/hijo -> rol equivalente
+            rol = "otro"
+            if tipo in ("padre", "madre", "hijo"):
+                rol = tipo
+
+            HogarMiembro.objects.get_or_create(
+                hogar=hogar,
+                miembro=otro,
+                defaults={"rol": rol, "es_principal": False}
+            )
+
+        # Crear las relaciones como antes (UNA fila; la inversa se infiere al mostrar)
+        creadas = 0
+        for tipo, otro in miembros_rel:
+            # Evitar duplicado simple (misma dirección)
+            existe = MiembroRelacion.objects.filter(
+                miembro=base, familiar=otro, tipo_relacion=tipo
+            ).exists()
+
+            # En cónyuge, también evitamos duplicado si ya existe al revés
+            if not existe and tipo == "conyuge":
+                existe = MiembroRelacion.objects.filter(
+                    miembro=otro, familiar=base, tipo_relacion="conyuge"
+                ).exists()
+
+            if not existe:
+                MiembroRelacion.objects.create(
+                    miembro=base,
+                    familiar=otro,
+                    tipo_relacion=tipo,
+                    # es_inferida=False porque el usuario lo está creando explícitamente desde la pantalla
+                    es_inferida=False
                 )
-                miembros_agregados += 1
-            except Miembro.DoesNotExist:
-                pass
-        
-        # Agregar hijos
-        for key in request.POST:
-            if key.startswith("hijo_") and key.endswith("_id"):
-                hijo_id = request.POST.get(key)
-                if hijo_id:
-                    try:
-                        hijo = Miembro.objects.get(pk=hijo_id)
-                        # Verificar que no esté ya en el hogar
-                        existe = HogarMiembro.objects.filter(hogar=hogar, miembro=hijo).exists()
-                        if not existe:
-                            HogarMiembro.objects.create(
-                                hogar=hogar,
-                                miembro=hijo,
-                                rol="hijo",
-                                es_principal=False
-                            )
-                            miembros_agregados += 1
-                    except Miembro.DoesNotExist:
-                        pass
-        
-        messages.success(request, f"Hogar creado con {miembros_agregados} miembro(s).")
+                creadas += 1
+
+        messages.success(request, f"Familia creada. Relaciones creadas: {creadas}.")
         return redirect("miembros_app:familia_detalle", hogar_id=hogar.id)
-
-    return render(request, "miembros_app/familiares/crear_hogar.html", {})
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # AGREGAR A familiares.py - REPORTE DE FAMILIAS
