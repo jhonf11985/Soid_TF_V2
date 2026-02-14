@@ -808,3 +808,174 @@ def familia_crear(request):
         return redirect("miembros_app:familia_detalle", hogar_id=hogar.id)
 
     return render(request, "miembros_app/familiares/crear_hogar.html", {})
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGREGAR A familiares.py - REPORTE DE FAMILIAS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def familias_reporte(request):
+    """Reporte completo de estadísticas familiares."""
+    from miembros_app.models import (
+        HogarFamiliar, HogarMiembro, ClanFamiliar, MiembroRelacion, Miembro
+    )
+    from django.db.models import Count, Q, Prefetch
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ESTADÍSTICAS DE PAREJAS (desde MiembroRelacion)
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    # Total de relaciones de cónyuge (cada pareja tiene 1 registro, no 2)
+    total_parejas = MiembroRelacion.objects.filter(tipo_relacion="conyuge").count()
+    
+    # Parejas con hijos: al menos uno de los cónyuges tiene relación tipo "hijo"
+    parejas_con_hijos = 0
+    parejas_sin_hijos = 0
+    
+    relaciones_conyuge = MiembroRelacion.objects.filter(
+        tipo_relacion="conyuge"
+    ).select_related("miembro", "familiar")
+    
+    for rel in relaciones_conyuge:
+        # Verificar si alguno de los dos tiene hijos
+        tiene_hijos = MiembroRelacion.objects.filter(
+            Q(miembro=rel.miembro, tipo_relacion="hijo") |
+            Q(miembro=rel.familiar, tipo_relacion="hijo")
+        ).exists()
+        
+        if tiene_hijos:
+            parejas_con_hijos += 1
+        else:
+            parejas_sin_hijos += 1
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ESTADÍSTICAS DE HOGARES (Familias Nucleares)
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    hogares = HogarFamiliar.objects.prefetch_related(
+        Prefetch("miembros", queryset=HogarMiembro.objects.select_related("miembro"))
+    ).annotate(
+        total_miembros=Count("miembros"),
+        total_padres=Count("miembros", filter=Q(miembros__rol="padre")),
+        total_madres=Count("miembros", filter=Q(miembros__rol="madre")),
+        total_hijos=Count("miembros", filter=Q(miembros__rol="hijo")),
+    )
+    
+    total_hogares = hogares.count()
+    hogares_completos = 0  # padre + madre + hijos
+    hogares_pareja_sin_hijos = 0  # padre + madre, sin hijos
+    hogares_monoparentales = 0  # solo padre o solo madre + hijos
+    hogares_unipersonales = 0  # solo 1 persona
+    hogares_otros = 0  # otros casos
+    
+    for hogar in hogares:
+        tiene_padre = hogar.total_padres > 0
+        tiene_madre = hogar.total_madres > 0
+        tiene_hijos = hogar.total_hijos > 0
+        total = hogar.total_miembros
+        
+        if total == 1:
+            hogares_unipersonales += 1
+        elif tiene_padre and tiene_madre and tiene_hijos:
+            hogares_completos += 1
+        elif tiene_padre and tiene_madre and not tiene_hijos:
+            hogares_pareja_sin_hijos += 1
+        elif (tiene_padre or tiene_madre) and tiene_hijos:
+            hogares_monoparentales += 1
+        else:
+            hogares_otros += 1
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ESTADÍSTICAS DE CLANES (Familias Extendidas)
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    clanes = ClanFamiliar.objects.annotate(
+        total_hogares=Count("hogares"),
+        total_miembros=Count("hogares__miembros", distinct=True)
+    ).order_by("-total_miembros")
+    
+    total_clanes = clanes.count()
+    clanes_multiples = clanes.filter(total_hogares__gt=1).count()
+    clanes_simples = clanes.filter(total_hogares=1).count()
+    
+    # Top 5 clanes más grandes
+    top_clanes = clanes[:5]
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ESTADÍSTICAS GENERALES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    total_miembros = Miembro.objects.filter(activo=True).count()
+    miembros_en_hogares = HogarMiembro.objects.values("miembro").distinct().count()
+    miembros_sin_hogar = total_miembros - miembros_en_hogares
+    
+    # Promedio de miembros por hogar
+    promedio_por_hogar = round(miembros_en_hogares / total_hogares, 1) if total_hogares > 0 else 0
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # LISTADOS PARA DETALLE
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    # Lista de parejas sin hijos (para seguimiento pastoral)
+    lista_parejas_sin_hijos = []
+    for rel in relaciones_conyuge:
+        tiene_hijos = MiembroRelacion.objects.filter(
+            Q(miembro=rel.miembro, tipo_relacion="hijo") |
+            Q(miembro=rel.familiar, tipo_relacion="hijo")
+        ).exists()
+        
+        if not tiene_hijos:
+            lista_parejas_sin_hijos.append({
+                "miembro1": rel.miembro,
+                "miembro2": rel.familiar,
+            })
+    
+    # Lista de hogares monoparentales
+    lista_monoparentales = []
+    for hogar in hogares:
+        tiene_padre = hogar.total_padres > 0
+        tiene_madre = hogar.total_madres > 0
+        tiene_hijos = hogar.total_hijos > 0
+        
+        if (tiene_padre or tiene_madre) and not (tiene_padre and tiene_madre) and tiene_hijos:
+            cabeza = hogar.miembros.filter(rol__in=["padre", "madre"]).first()
+            lista_monoparentales.append({
+                "hogar": hogar,
+                "cabeza": cabeza.miembro if cabeza else None,
+                "num_hijos": hogar.total_hijos,
+            })
+    
+    context = {
+        # Parejas
+        "total_parejas": total_parejas,
+        "parejas_con_hijos": parejas_con_hijos,
+        "parejas_sin_hijos": parejas_sin_hijos,
+        
+        # Hogares (Nucleares)
+        "total_hogares": total_hogares,
+        "hogares_completos": hogares_completos,
+        "hogares_pareja_sin_hijos": hogares_pareja_sin_hijos,
+        "hogares_monoparentales": hogares_monoparentales,
+        "hogares_unipersonales": hogares_unipersonales,
+        "hogares_otros": hogares_otros,
+        
+        # Clanes (Extendidas)
+        "total_clanes": total_clanes,
+        "clanes_multiples": clanes_multiples,
+        "clanes_simples": clanes_simples,
+        "top_clanes": top_clanes,
+        
+        # Generales
+        "total_miembros": total_miembros,
+        "miembros_en_hogares": miembros_en_hogares,
+        "miembros_sin_hogar": miembros_sin_hogar,
+        "promedio_por_hogar": promedio_por_hogar,
+        
+        # Listados
+        "lista_parejas_sin_hijos": lista_parejas_sin_hijos[:10],  # Top 10
+        "lista_monoparentales": lista_monoparentales[:10],  # Top 10
+    }
+    
+    return render(request, "miembros_app/familiares/reporte.html", context)

@@ -14,7 +14,7 @@ from miembros_app.views.familiares import (
     familiares_editar,
     familiares_eliminar,
     ajax_buscar_miembros,
-    ajax_validar_relacion,
+    ajax_validar_relacion,familias_reporte, 
 )
 
 
@@ -125,6 +125,7 @@ urlpatterns = [
     path("miembros/<int:miembro_id>/padre/add/", views.padre_espiritual_add_simple, name="padre_add_simple"),
     path("miembros/<int:miembro_id>/padre/<int:padre_id>/remove/", views.padre_espiritual_remove_simple, name="padre_remove_simple"),
     path("familias/crear/", familia_crear, name="familia_crear"),  # <-- NUEVA
+    path("familias/reporte/", familias_reporte, name="familias_reporte"), 
       path("familias/", familias_home, name="familias_home"),
     path("familias/<int:hogar_id>/", familia_detalle, name="familia_detalle"),
     path("familias/<int:hogar_id>/editar/", familia_editar, name="familia_editar"),

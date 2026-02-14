@@ -1,0 +1,835 @@
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
+
+{% block title %}Reporte de Familias{% endblock %}
+
+{% block miembros_content %}
+<div class="odoo-form">
+
+    <!-- Breadcrumb -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:familias_home' %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                Familias
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">Reporte</span>
+        </div>
+        <div class="odoo-control-right">
+            <button onclick="window.print()" class="btn-print">
+                <span class="material-icons">print</span>
+                Imprimir
+            </button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="reporte-header">
+        <div class="header-icon">
+            <span class="material-icons">assessment</span>
+        </div>
+        <div class="header-text">
+            <h1>Reporte de Familias</h1>
+            <p>Estadísticas generales de parejas, hogares y familias extendidas</p>
+        </div>
+    </div>
+
+    <!-- Resumen general -->
+    <div class="stats-overview">
+        <div class="stat-card principal">
+            <div class="stat-icon">
+                <span class="material-icons">groups</span>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ miembros_en_hogares }}</div>
+                <div class="stat-label">Miembros en hogares</div>
+                <div class="stat-detail">de {{ total_miembros }} activos</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <span class="material-icons">favorite</span>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_parejas }}</div>
+                <div class="stat-label">Parejas</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <span class="material-icons">home</span>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_hogares }}</div>
+                <div class="stat-label">Hogares</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <span class="material-icons">account_tree</span>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_clanes }}</div>
+                <div class="stat-label">Familias extendidas</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secciones de detalle -->
+    <div class="reporte-grid">
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             PAREJAS
+             ═══════════════════════════════════════════════════════════════ -->
+        <div class="reporte-section">
+            <div class="section-header">
+                <span class="material-icons">favorite</span>
+                <h2>Parejas</h2>
+            </div>
+            
+            <div class="section-stats">
+                <div class="mini-stat">
+                    <div class="mini-value">{{ total_parejas }}</div>
+                    <div class="mini-label">Total parejas</div>
+                </div>
+                <div class="mini-stat success">
+                    <div class="mini-value">{{ parejas_con_hijos }}</div>
+                    <div class="mini-label">Con hijos</div>
+                </div>
+                <div class="mini-stat warning">
+                    <div class="mini-value">{{ parejas_sin_hijos }}</div>
+                    <div class="mini-label">Sin hijos</div>
+                </div>
+            </div>
+
+            {% if parejas_con_hijos or parejas_sin_hijos %}
+            <div class="chart-bar">
+                <div class="bar-segment success" style="width: {% widthratio parejas_con_hijos total_parejas 100 %}%;" title="Con hijos: {{ parejas_con_hijos }}"></div>
+                <div class="bar-segment warning" style="width: {% widthratio parejas_sin_hijos total_parejas 100 %}%;" title="Sin hijos: {{ parejas_sin_hijos }}"></div>
+            </div>
+            <div class="chart-legend">
+                <span class="legend-item"><span class="dot success"></span> Con hijos</span>
+                <span class="legend-item"><span class="dot warning"></span> Sin hijos</span>
+            </div>
+            {% endif %}
+
+            {% if lista_parejas_sin_hijos %}
+            <div class="section-list">
+                <h4>Parejas sin hijos registrados</h4>
+                <ul>
+                    {% for pareja in lista_parejas_sin_hijos %}
+                    <li>
+                        <span class="material-icons">couple</span>
+                        <a href="{% url 'miembros_app:detalle' pareja.miembro1.pk %}">{{ pareja.miembro1.nombres }} {{ pareja.miembro1.apellidos }}</a>
+                        <span class="separator">&</span>
+                        <a href="{% url 'miembros_app:detalle' pareja.miembro2.pk %}">{{ pareja.miembro2.nombres }} {{ pareja.miembro2.apellidos }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             HOGARES (FAMILIAS NUCLEARES)
+             ═══════════════════════════════════════════════════════════════ -->
+        <div class="reporte-section">
+            <div class="section-header">
+                <span class="material-icons">home</span>
+                <h2>Hogares</h2>
+                <span class="section-subtitle">Familias nucleares</span>
+            </div>
+            
+            <div class="section-stats">
+                <div class="mini-stat">
+                    <div class="mini-value">{{ total_hogares }}</div>
+                    <div class="mini-label">Total hogares</div>
+                </div>
+                <div class="mini-stat info">
+                    <div class="mini-value">{{ promedio_por_hogar }}</div>
+                    <div class="mini-label">Promedio miembros</div>
+                </div>
+            </div>
+
+            <div class="breakdown-list">
+                <div class="breakdown-item">
+                    <span class="breakdown-icon complete">
+                        <span class="material-icons">family_restroom</span>
+                    </span>
+                    <div class="breakdown-info">
+                        <span class="breakdown-label">Familias completas</span>
+                        <span class="breakdown-desc">Padre + Madre + Hijos</span>
+                    </div>
+                    <span class="breakdown-value">{{ hogares_completos }}</span>
+                </div>
+                
+                <div class="breakdown-item">
+                    <span class="breakdown-icon pareja">
+                        <span class="material-icons">favorite</span>
+                    </span>
+                    <div class="breakdown-info">
+                        <span class="breakdown-label">Parejas sin hijos</span>
+                        <span class="breakdown-desc">Solo padre y madre</span>
+                    </div>
+                    <span class="breakdown-value">{{ hogares_pareja_sin_hijos }}</span>
+                </div>
+                
+                <div class="breakdown-item">
+                    <span class="breakdown-icon mono">
+                        <span class="material-icons">person</span>
+                    </span>
+                    <div class="breakdown-info">
+                        <span class="breakdown-label">Monoparentales</span>
+                        <span class="breakdown-desc">Un padre/madre + hijos</span>
+                    </div>
+                    <span class="breakdown-value">{{ hogares_monoparentales }}</span>
+                </div>
+                
+                <div class="breakdown-item">
+                    <span class="breakdown-icon uni">
+                        <span class="material-icons">person_outline</span>
+                    </span>
+                    <div class="breakdown-info">
+                        <span class="breakdown-label">Unipersonales</span>
+                        <span class="breakdown-desc">Una sola persona</span>
+                    </div>
+                    <span class="breakdown-value">{{ hogares_unipersonales }}</span>
+                </div>
+
+                {% if hogares_otros > 0 %}
+                <div class="breakdown-item">
+                    <span class="breakdown-icon other">
+                        <span class="material-icons">more_horiz</span>
+                    </span>
+                    <div class="breakdown-info">
+                        <span class="breakdown-label">Otros</span>
+                        <span class="breakdown-desc">Otras configuraciones</span>
+                    </div>
+                    <span class="breakdown-value">{{ hogares_otros }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if lista_monoparentales %}
+            <div class="section-list">
+                <h4>Hogares monoparentales</h4>
+                <ul>
+                    {% for item in lista_monoparentales %}
+                    <li>
+                        <span class="material-icons">person</span>
+                        {% if item.cabeza %}
+                        <a href="{% url 'miembros_app:detalle' item.cabeza.pk %}">{{ item.cabeza.nombres }} {{ item.cabeza.apellidos }}</a>
+                        {% else %}
+                        {{ item.hogar.nombre }}
+                        {% endif %}
+                        <span class="badge-hijos">{{ item.num_hijos }} hijo{{ item.num_hijos|pluralize:"s" }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             FAMILIAS EXTENDIDAS (CLANES)
+             ═══════════════════════════════════════════════════════════════ -->
+        <div class="reporte-section full-width">
+            <div class="section-header">
+                <span class="material-icons">account_tree</span>
+                <h2>Familias Extendidas</h2>
+                <span class="section-subtitle">Clanes familiares</span>
+            </div>
+            
+            <div class="section-stats">
+                <div class="mini-stat">
+                    <div class="mini-value">{{ total_clanes }}</div>
+                    <div class="mini-label">Total clanes</div>
+                </div>
+                <div class="mini-stat success">
+                    <div class="mini-value">{{ clanes_multiples }}</div>
+                    <div class="mini-label">Con múltiples hogares</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="mini-value">{{ clanes_simples }}</div>
+                    <div class="mini-label">Con un hogar</div>
+                </div>
+            </div>
+
+            {% if top_clanes %}
+            <div class="top-clanes">
+                <h4>Familias más grandes</h4>
+                <div class="clanes-grid">
+                    {% for clan in top_clanes %}
+                    <div class="clan-card">
+                        <div class="clan-avatar">
+                            {{ clan.nombre|slice:":2"|upper }}
+                        </div>
+                        <div class="clan-info">
+                            <div class="clan-nombre">{{ clan.nombre }}</div>
+                            <div class="clan-stats">
+                                <span><span class="material-icons">home</span> {{ clan.total_hogares }} hogar{{ clan.total_hogares|pluralize:"es" }}</span>
+                                <span><span class="material-icons">person</span> {{ clan.total_miembros }} miembro{{ clan.total_miembros|pluralize:"s" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             MIEMBROS SIN HOGAR
+             ═══════════════════════════════════════════════════════════════ -->
+        {% if miembros_sin_hogar > 0 %}
+        <div class="reporte-section alert-section">
+            <div class="section-header">
+                <span class="material-icons">warning</span>
+                <h2>Miembros sin hogar asignado</h2>
+            </div>
+            
+            <div class="alert-content">
+                <div class="alert-number">{{ miembros_sin_hogar }}</div>
+                <div class="alert-text">
+                    <p>miembros activos no están asignados a ningún hogar.</p>
+                    <a href="{% url 'miembros_app:lista' %}?sin_hogar=1" class="btn-ver">
+                        Ver listado
+                        <span class="material-icons">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+</div>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════════
+   REPORTE DE FAMILIAS - ESTILOS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --color-primary: #5c9ead;
+    --color-primary-dark: #4a8a99;
+    --color-primary-soft: rgba(92, 158, 173, 0.1);
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-info: #3b82f6;
+    --color-danger: #ef4444;
+    --color-border: #e5e7eb;
+    --color-text-main: #111827;
+    --color-text-muted: #6b7280;
+}
+
+/* Header */
+.reporte-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 28px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, #7ab5c2 100%);
+    border-radius: 16px;
+    color: #fff;
+    margin-bottom: 24px;
+}
+
+.header-icon {
+    width: 56px;
+    height: 56px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-icon .material-icons {
+    font-size: 28px;
+}
+
+.header-text h1 {
+    margin: 0 0 4px 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.header-text p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.95rem;
+}
+
+.btn-print {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-main);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-print:hover {
+    background: #f5f5f5;
+}
+
+/* Overview stats */
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.stat-card.principal {
+    background: linear-gradient(135deg, var(--color-primary-soft), rgba(92, 158, 173, 0.05));
+    border-color: var(--color-primary);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--color-primary-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+}
+
+.stat-icon .material-icons {
+    font-size: 24px;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+}
+
+.stat-detail {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+/* Grid de secciones */
+.reporte-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.reporte-section {
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.reporte-section.full-width {
+    grid-column: 1 / -1;
+}
+
+.reporte-section.alert-section {
+    background: linear-gradient(135deg, #fef3c7, #fef9c3);
+    border-color: #fbbf24;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.section-header .material-icons {
+    font-size: 22px;
+    color: var(--color-primary);
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.section-subtitle {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-left: auto;
+}
+
+/* Mini stats */
+.section-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.mini-stat {
+    flex: 1;
+    min-width: 80px;
+    text-align: center;
+    padding: 14px;
+    background: #f9fafb;
+    border-radius: 10px;
+}
+
+.mini-stat.success { background: rgba(16, 185, 129, 0.1); }
+.mini-stat.warning { background: rgba(245, 158, 11, 0.1); }
+.mini-stat.info { background: rgba(59, 130, 246, 0.1); }
+
+.mini-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.mini-stat.success .mini-value { color: var(--color-success); }
+.mini-stat.warning .mini-value { color: var(--color-warning); }
+.mini-stat.info .mini-value { color: var(--color-info); }
+
+.mini-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+}
+
+/* Chart bar */
+.chart-bar {
+    display: flex;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #e5e7eb;
+    margin-bottom: 10px;
+}
+
+.bar-segment {
+    height: 100%;
+    transition: width 0.3s;
+}
+
+.bar-segment.success { background: var(--color-success); }
+.bar-segment.warning { background: var(--color-warning); }
+
+.chart-legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.dot.success { background: var(--color-success); }
+.dot.warning { background: var(--color-warning); }
+
+/* Breakdown list */
+.breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.breakdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #f9fafb;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+
+.breakdown-item:hover {
+    background: #f3f4f6;
+}
+
+.breakdown-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.breakdown-icon .material-icons {
+    font-size: 20px;
+    color: #fff;
+}
+
+.breakdown-icon.complete { background: linear-gradient(135deg, #10b981, #34d399); }
+.breakdown-icon.pareja { background: linear-gradient(135deg, #ec4899, #f472b6); }
+.breakdown-icon.mono { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+.breakdown-icon.uni { background: linear-gradient(135deg, #6b7280, #9ca3af); }
+.breakdown-icon.other { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+
+.breakdown-info {
+    flex: 1;
+}
+
+.breakdown-label {
+    font-weight: 600;
+    color: var(--color-text-main);
+    font-size: 0.95rem;
+}
+
+.breakdown-desc {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.breakdown-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+/* Section list */
+.section-list {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--color-border);
+}
+
+.section-list h4 {
+    margin: 0 0 12px 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.section-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.section-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.9rem;
+}
+
+.section-list li:last-child {
+    border-bottom: none;
+}
+
+.section-list li .material-icons {
+    font-size: 18px;
+    color: var(--color-text-muted);
+}
+
+.section-list li a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.section-list li a:hover {
+    text-decoration: underline;
+}
+
+.separator {
+    color: var(--color-text-muted);
+    margin: 0 4px;
+}
+
+.badge-hijos {
+    margin-left: auto;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+/* Top clanes */
+.top-clanes h4 {
+    margin: 0 0 16px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.clanes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.clan-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: #f9fafb;
+    border-radius: 12px;
+    transition: background 0.2s;
+}
+
+.clan-card:hover {
+    background: #f3f4f6;
+}
+
+.clan-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--color-primary), #7ab5c2);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.clan-nombre {
+    font-weight: 600;
+    color: var(--color-text-main);
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.clan-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.clan-stats span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.clan-stats .material-icons {
+    font-size: 14px;
+}
+
+/* Alert section */
+.alert-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.alert-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #b45309;
+}
+
+.alert-text p {
+    margin: 0 0 10px 0;
+    color: #92400e;
+}
+
+.btn-ver {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: #fff;
+    border: 1px solid #fbbf24;
+    border-radius: 8px;
+    color: #b45309;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.btn-ver:hover {
+    background: #fef3c7;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .reporte-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-overview {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .section-stats {
+        flex-wrap: wrap;
+    }
+    
+    .mini-stat {
+        min-width: calc(50% - 8px);
+    }
+}
+
+/* Print styles */
+@media print {
+    .odoo-control-bar,
+    .btn-print {
+        display: none !important;
+    }
+    
+    .reporte-section {
+        break-inside: avoid;
+    }
+}
+</style>
+
+{% endblock %}
