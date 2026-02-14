@@ -918,168 +918,49 @@
 <div class="odoo-field-full">
   <label class="odoo-separator">Familiares registrados</label>
 
-  <!-- Flag para que el backend sepa que debe sincronizar -->
-  <input type="hidden" name="familiares_sync" value="1">
-
-  <table class="odoo-table" data-current-miembro-id="{{ miembro.id }}">
+  {% if modo == "editar" and miembro.pk %}
+  <table class="odoo-table">
     <thead>
       <tr>
         <th>Nombre</th>
         <th>Relación</th>
         <th>Vive junto</th>
-        <th>Acciones</th>
       </tr>
     </thead>
-
-    <!-- ✅ ÚNICO tbody: aquí van tanto los existentes como los nuevos -->
-<!-- ✅ ÚNICO tbody: aquí van tanto los existentes como los nuevos -->
-<tbody id="familiares-pendientes">
-  {% for rel in familiares %}
-    <tr
-      data-miembro-id="{{ rel.familiar_id }}"
-      data-payload='{"id":"{{ rel.familiar_id }}","nombre":"{{ rel.familiar.nombres }} {{ rel.familiar.apellidos|escapejs }}","codigo":"{{ rel.familiar.codigo|default_if_none:""|escapejs }}","tipo_relacion":"{{ rel.tipo_relacion }}","tipo_relacion_label":"{{ rel.get_tipo_relacion_display }}","vive_junto":{{ rel.vive_junto|yesno:"true,false" }},"es_responsable":{{ rel.es_responsable|yesno:"true,false" }},"notas":"{{ rel.notas|default_if_none:""|escapejs }}"}'
-    >
-      <td>
-        {{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}
-        {% if rel.familiar.codigo %}
-          <div style="font-size:11px;color:#6c757d;">{{ rel.familiar.codigo }}</div>
-        {% endif %}
-      </td>
-      <td>{{ rel.get_tipo_relacion_display }}</td>
-      <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
-      <td>
-        <a href="javascript:void(0)" class="odoo-link-danger js-remove-familiar-line" title="Quitar">
-          <span class="material-icons">delete</span>
-        </a>
-      </td>
-    </tr>
-  {% empty %}
-    <tr id="familiares-empty-row">
-      <td colspan="4" class="odoo-empty-text">No hay familiares registrados.</td>
-    </tr>
-  {% endfor %}
-</tbody>
+    <tbody>
+      {% for rel in familiares %}
+        <tr>
+          <td>
+            {{ rel.familiar.nombres }} {{ rel.familiar.apellidos }}
+            {% if rel.familiar.codigo %}
+              <div style="font-size:11px;color:#6c757d;">{{ rel.familiar.codigo }}</div>
+            {% endif %}
+          </td>
+          <td>{{ rel.get_tipo_relacion_display }}</td>
+          <td>{% if rel.vive_junto %}Sí{% else %}No{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="3" class="odoo-empty-text">No hay familiares registrados.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
   </table>
-</div>
 
-
-    <div class="odoo-add-line" id="btn-add-familiar">
-        <a href="javascript:void(0)" class="odoo-add-link" onclick="toggleFamiliarForm(true)">
-            <span class="material-icons">add</span>
-            Agregar familiar
-        </a>
-    </div>
-
-    <div class="odoo-inline-edit-box" id="familiar-form" style="display:none;">
-        <h5 class="odoo-inline-title">Nuevo familiar</h5>
-        
-        <div class="odoo-tab-grid">
-            
-        <div class="odoo-field-row">
-            <label>Buscar miembro</label>
-        
-            <div class="odoo-field-value autocomplete-wrapper" data-autocomplete-id="id_familiar_miembro">
-                
-                <input type="hidden" id="id_familiar_miembro" name="familiar_miembro" value="">
-                <div id="familiares-hidden-inputs"></div>
-                                        
-                <div class="autocomplete-field">
-                    
-                    <div class="autocomplete-chip" id="chip-familiar" style="display: none;">
-                        <span class="chip-avatar">M</span>
-                        <span class="chip-text">
-                            <span class="chip-name"></span>
-                            <span class="chip-code"></span>
-                        </span>
-                        <button type="button" class="chip-remove" id="chip-remove-familiar" title="Quitar">
-                            <span class="material-icons">close</span>
-                        </button>
-                    </div>
-                    
-                    <input 
-                        type="text" 
-                        id="search-familiar" 
-                        class="autocomplete-search" 
-                        placeholder="Escriba para buscar..."
-                        autocomplete="off"
-                    >
-                </div>  
-
-                <div class="autocomplete-dropdown" id="dropdown-familiar">
-                    <ul class="autocomplete-list" id="list-familiar"></ul>
-                    
-                    <div class="autocomplete-empty" id="empty-familiar">
-                        <span class="material-icons">person_search</span>
-                        <p>No se encontraron miembros</p>
-                    </div>
-                    <div class="autocomplete-loading" id="loading-familiar">
-                        <span class="material-icons spinner">sync</span>
-                        <p>Buscando...</p>
-                    </div>
-                </div>
-
-      <div class="autocomplete-empty" style="display:none;">
-        <span class="material-icons">person_search</span>
-        No se encontraron miembros
-      </div>
-  
-
-    <!-- Mantengo este bloque para el JS, pero lo ocultamos porque usaremos CHIP -->
-    <div class="autocomplete-selected" style="display:none;">
-      <strong class="selected-name"></strong>
-      <span class="selected-codigo"></span>
-      <button type="button" class="selected-remove">×</button>
-    </div>
+  <div class="odoo-add-line" style="margin-top: 12px;">
+    <a href="{% url 'miembros_app:familiares_lista' miembro.pk %}" class="odoo-add-link">
+      <span class="material-icons">family_restroom</span>
+      Gestionar familiares
+    </a>
   </div>
+  {% else %}
+  <div class="odoo-empty-state" style="padding: 24px; text-align: center; color: #6c757d;">
+    <span class="material-icons" style="font-size: 48px; opacity: 0.5;">family_restroom</span>
+    <p style="margin-top: 8px;">Guarda el miembro primero para poder gestionar sus familiares.</p>
+  </div>
+  {% endif %}
+
 </div>
-
-
-
-            <div class="odoo-field">
-                <label class="odoo-label">Relación</label>
-                <div class="odoo-field-stack">
-                <select name="tipo_relacion" class="odoo-input" id="id_tipo_relacion">
-                <option value="" selected disabled>Selecciona…</option>
-                {% for value, label in TIPOS_RELACION_CHOICES %}
-                    <option value="{{ value }}">{{ label }}</option>
-                {% endfor %}
-                </select>
-
-
-                    <div class="odoo-field-row" style="margin-top: 8px;">
-                        <label class="odoo-checkbox-label">
-                            <input type="checkbox" name="vive_junto">
-                            <span>Vive junto</span>
-                        </label>
-                        <label class="odoo-checkbox-label" style="margin-left: 15px;">
-                            <input type="checkbox" name="es_responsable">
-                            <span>Es responsable</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="odoo-field odoo-field-full">
-                <label class="odoo-label">Notas</label>
-                <input type="text" name="notas_familiar" 
-                       placeholder="Observaciones sobre la relación..." 
-                       class="odoo-input">
-            </div>
-
-            <div class="odoo-field odoo-field-full">
-                <div class="odoo-inline-actions">
-                   <button type="button" class="odoo-btn-primary odoo-btn-sm" id="btn-add-familiar-line">
-                    Añadir a la lista
-                    </button>
-
-                    <button type="button" class="odoo-btn-secondary odoo-btn-sm" onclick="toggleFamiliarForm(false)">
-                        Descartar
-                    </button>
-                </div>
-            </div>
-
-        </div>
-    </div>
 </div>
 
 
@@ -3329,12 +3210,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Toggle familiar form
-function toggleFamiliarForm() {
-    const form = document.getElementById('familiar-form');
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // CÁLCULO DE EDAD Y CATEGORÍA
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3498,26 +3373,6 @@ function formatearCedula(valor) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FILTRO DE BÚSQUEDA DE FAMILIARES
-// ═══════════════════════════════════════════════════════════════════════════
-function setupFamiliarSearch() {
-    const searchInput = document.getElementById('familiar_search');
-    const selectList = document.getElementById('id_familiar');
-
-    if (searchInput && selectList) {
-        searchInput.addEventListener('input', function() {
-            const filter = this.value.toLowerCase();
-
-            for (let i = 0; i < selectList.options.length; i++) {
-                const option = selectList.options[i];
-                const text = option.textContent.toLowerCase();
-                option.style.display = text.includes(filter) ? "" : "none";
-            }
-        });
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN AL CARGAR LA PÁGINA
 // ═══════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
@@ -3570,9 +3425,6 @@ document.addEventListener('DOMContentLoaded', function() {
             this.value = formatearCedula(this.value);
         });
     }
-
-    // Búsqueda de familiares
-    setupFamiliarSearch();
 });
 </script>
 {% load static %}
@@ -3591,171 +3443,6 @@ document.addEventListener('DOMContentLoaded', function() {
       .replaceAll('"',"&quot;")
       .replaceAll("'","&#039;");
   }
-
-  function getSelectedMiembro(){
-    const wrapper = q('[data-autocomplete-id="id_familiar_miembro"]');
-    const hidden = wrapper ? q('#id_familiar_miembro', wrapper) : null;
-    const id = hidden ? (hidden.value || "").trim() : "";
-
-    const chipName = wrapper ? q('.autocomplete-chip .chip-name', wrapper) : null;
-    const chipCode = wrapper ? q('.autocomplete-chip .chip-code', wrapper) : null;
-
-    return {
-      id,
-      nombre: chipName ? chipName.textContent.trim() : "",
-      codigo: chipCode ? chipCode.textContent.trim() : "",
-      wrapper
-    };
-  }
-
-
-  function buildHiddenFromRows(){
-  const container = q('#familiares-hidden-inputs');
-  if (!container) return;
-  container.innerHTML = "";
-
-  // ✅ Solo filas que tengan data-payload
-  const rows = qa('#familiares-pendientes tr[data-payload]');
-
-  rows.forEach(tr => {
-    const raw = tr.getAttribute('data-payload');
-    if (!raw) return;
-
-    let payload = null;
-    try {
-      payload = JSON.parse(raw);
-    } catch (e) {
-      return;
-    }
-
-    // ✅ Evitar payload null o sin id
-    if (!payload || !payload.id) return;
-
-    container.insertAdjacentHTML('beforeend', `
-      <input type="hidden" name="familiares_miembro_id[]" value="${payload.id}">
-      <input type="hidden" name="familiares_tipo_relacion[]" value="${payload.tipo_relacion || ''}">
-      <input type="hidden" name="familiares_vive_junto[]" value="${payload.vive_junto ? '1':'0'}">
-      <input type="hidden" name="familiares_es_responsable[]" value="${payload.es_responsable ? '1':'0'}">
-      <input type="hidden" name="familiares_notas[]" value="${escapeHtml(payload.notas || '')}">
-    `);
-  });
-}
-
-
-function clearInline(){
-  const { wrapper } = getSelectedMiembro();
-  if (wrapper){
-    const hidden = q('#id_familiar_miembro', wrapper);
-    if (hidden) hidden.value = "";
-
-    const chip = q('.autocomplete-chip', wrapper);
-    if (chip) chip.style.display = "none";
-
-    // 👇 ESTO ES LO QUE TE FALTABA
-    const field = q('.autocomplete-field', wrapper);
-    if (field) field.classList.remove('has-selection');
-
-    const search = q('.autocomplete-search', wrapper);
-    if (search) {
-      search.value = "";
-      search.style.display = "";     // vuelve a mostrarse
-      search.focus();
-    }
-
-    // opcional: cerrar dropdown si quedó abierto
-    const dd = q('.autocomplete-dropdown', wrapper);
-    if (dd) dd.classList.remove('open');
-  }
-
-    const rel = q('#id_tipo_relacion');
-    if (rel) rel.value = "";
-
-    const vive = q('input[name="vive_junto"]');
-    if (vive) vive.checked = false;
-
-    const resp = q('input[name="es_responsable"]');
-    if (resp) resp.checked = false;
-
-    const notas = q('input[name="notas_familiar"]');
-    if (notas) notas.value = "";
-  }
-
-  function addRow(payload){
-    const tbody = q('#familiares-pendientes');
-    if (!tbody) return;
-
-    if (tbody.querySelector(`tr[data-miembro-id="${payload.id}"]`)){
-      alert("Ese familiar ya está añadido en la lista.");
-      return;
-    }
-
-    const tr = document.createElement('tr');
-    tr.setAttribute('data-miembro-id', payload.id);
-    tr.setAttribute('data-payload', JSON.stringify(payload));
-
-    tr.innerHTML = `
-      <td>
-        ${escapeHtml(payload.nombre || '—')}
-        ${payload.codigo ? `<div style="font-size:11px;color:#6c757d;">${escapeHtml(payload.codigo)}</div>` : ""}
-      </td>
-      <td>${escapeHtml(payload.tipo_relacion_label)}</td>
-      <td>${payload.vive_junto ? "Sí" : "No"}</td>
-      <td>
-        <a href="javascript:void(0)" class="odoo-link-danger js-remove-familiar-line" title="Quitar">
-          <span class="material-icons">delete</span>
-        </a>
-      </td>
-    `;
-
-    tbody.prepend(tr);
-    buildHiddenFromRows();
-  }
-
-  document.addEventListener('click', (e) => {
-    const rm = e.target.closest('.js-remove-familiar-line');
-    if (!rm) return;
-
-    const tr = rm.closest('tr');
-    if (tr) tr.remove();
-    buildHiddenFromRows();
-  });
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = q('#btn-add-familiar-line');
-    if (!btn) return;
-
-    btn.addEventListener('click', () => {
-      const sel = q('#id_tipo_relacion');
-      const vive = q('input[name="vive_junto"]');
-      const resp = q('input[name="es_responsable"]');
-      const notas = q('input[name="notas_familiar"]');
-
-      const { id, nombre, codigo } = getSelectedMiembro();
-      if (!id){
-        alert("Primero selecciona un miembro en el buscador.");
-        return;
-      }
-      if (!sel || !sel.value){
-        alert("Selecciona la relación.");
-        return;
-      }
-
-      const payload = {
-        id,
-        nombre,
-        codigo,
-        tipo_relacion: sel.value,
-        tipo_relacion_label: sel.options[sel.selectedIndex]?.textContent?.trim() || sel.value,
-        vive_junto: !!(vive && vive.checked),
-        es_responsable: !!(resp && resp.checked),
-        notas: notas ? notas.value.trim() : ""
-      };
-
-      addRow(payload);
-      clearInline();
-      toggleFamiliarForm(false);
-    });
-  });
 
     // ====================================
     // AUTOCOMPLETE DE MIEMBROS - ESTILO CHIP
@@ -4047,49 +3734,6 @@ function clearInline(){
             this.value = ''; // Reset para permitir seleccionar el mismo archivo
         });
     }
-    function addRow(payload){
-    const tbody = q('#familiares-pendientes');
-    if (!tbody) return;
-
-    const currentId = parseInt(q('table.odoo-table[data-current-miembro-id]')?.dataset.currentMiembroId || "0", 10);
-    const payloadId = parseInt(payload.id, 10);
-
-    if (currentId && payloadId === currentId){
-        alert("No puedes agregarte a ti mismo como familiar.");
-        return;
-    }
-
-    if (tbody.querySelector(`tr[data-miembro-id="${payload.id}"]`)){
-        alert("Ese familiar ya está añadido en la lista.");
-        return;
-    }
-
-    // Si estaba el mensaje de “No hay familiares…”, lo quitamos
-    const emptyRow = q('#familiares-empty-row');
-    if (emptyRow) emptyRow.remove();
-
-    const tr = document.createElement('tr');
-    tr.setAttribute('data-miembro-id', payload.id);
-    tr.setAttribute('data-payload', JSON.stringify(payload));
-
-    tr.innerHTML = `
-        <td>
-        ${escapeHtml(payload.nombre || '—')}
-        ${payload.codigo ? `<div style="font-size:11px;color:#6c757d;">${escapeHtml(payload.codigo)}</div>` : ""}
-        </td>
-        <td>${escapeHtml(payload.tipo_relacion_label)}</td>
-        <td>${payload.vive_junto ? "Sí" : "No"}</td>
-        <td>
-        <a href="javascript:void(0)" class="odoo-link-danger js-remove-familiar-line" title="Quitar">
-            <span class="material-icons">delete</span>
-        </a>
-        </td>
-    `;
-
-    tbody.prepend(tr);
-    buildHiddenFromRows();
-    }
-     buildHiddenFromRows();
 })();
 
 
@@ -4507,263 +4151,5 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
-<script>
-/**
- * Validación de relaciones familiares
- * Valida vía AJAX antes de agregar a la lista
- */
-(function() {
-    'use strict';
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // CONFIGURACIÓN
-    // ─────────────────────────────────────────────────────────────────────────
-    
-    const URL_VALIDAR = '/miembros/ajax/validar-relacion/';  // Ajustar si tu URL es diferente
-    const MIEMBRO_ACTUAL_ID = '{{ miembro.id|default:"" }}';
-    
-    // Payload pendiente cuando se muestra el modal de confirmación
-    let payloadPendiente = null;
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // FUNCIONES AUXILIARES
-    // ─────────────────────────────────────────────────────────────────────────
-    
-    function mostrarErrores(errores) {
-        // Crear o usar contenedor de errores
-        let alertBox = document.getElementById('familiar-error-alert');
-        
-        if (!alertBox) {
-            alertBox = document.createElement('div');
-            alertBox.id = 'familiar-error-alert';
-            alertBox.className = 'familiar-error-alert';
-            
-            const formBox = document.getElementById('familiar-form');
-            if (formBox) {
-                formBox.insertBefore(alertBox, formBox.firstChild.nextSibling);
-            }
-        }
-        
-        alertBox.innerHTML = `
-            <strong>⚠️ No se puede agregar esta relación:</strong>
-            <ul>
-                ${errores.map(e => `<li>${e}</li>`).join('')}
-            </ul>
-        `;
-        alertBox.style.display = 'block';
-        
-        // Auto-ocultar después de 10 segundos
-        setTimeout(() => {
-            alertBox.style.display = 'none';
-        }, 10000);
-    }
-    
-    function ocultarErrores() {
-        const alertBox = document.getElementById('familiar-error-alert');
-        if (alertBox) {
-            alertBox.style.display = 'none';
-        }
-    }
-    
-    function mostrarModalConfirmacion(warnings, payload) {
-        payloadPendiente = payload;
-        
-        const lista = document.getElementById('lista-warnings-familiar');
-        if (lista) {
-            lista.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
-        }
-        
-        const modal = document.getElementById('modal-confirmar-familiar');
-        if (modal) {
-            modal.style.display = 'flex';
-        }
-    }
-    
-    window.cerrarModalConfirmacion = function() {
-        const modal = document.getElementById('modal-confirmar-familiar');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-        payloadPendiente = null;
-    };
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // VALIDACIÓN AJAX
-    // ─────────────────────────────────────────────────────────────────────────
-    
-    function validarRelacionAjax(familiarId, tipoRelacion, callback) {
-        const params = new URLSearchParams({
-            miembro_id: MIEMBRO_ACTUAL_ID,
-            familiar_id: familiarId,
-            tipo_relacion: tipoRelacion,
-        });
-        
-        fetch(`${URL_VALIDAR}?${params}`)
-            .then(response => response.json())
-            .then(data => {
-                callback(null, data);
-            })
-            .catch(error => {
-                console.error('Error validando relación:', error);
-                // En caso de error de red, permitir continuar
-                callback(null, { valid: true, errors: [], warnings: [] });
-            });
-    }
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // INTEGRACIÓN CON BOTÓN "AÑADIR A LA LISTA"
-    // ─────────────────────────────────────────────────────────────────────────
-    
-    function agregarFamiliarConValidacion() {
-        ocultarErrores();
-        
-        const sel = document.getElementById('id_tipo_relacion');
-        const vive = document.querySelector('input[name="vive_junto"]');
-        const resp = document.querySelector('input[name="es_responsable"]');
-        const notas = document.querySelector('input[name="notas_familiar"]');
-        
-        // Obtener miembro seleccionado (usa tu función existente)
-        const { id, nombre, codigo } = getSelectedMiembro();
-        
-        if (!id) {
-            alert("Primero selecciona un miembro en el buscador.");
-            return;
-        }
-        
-        if (!sel || !sel.value) {
-            alert("Selecciona la relación.");
-            return;
-        }
-        
-        // Verificar si ya está en la lista
-        const tbody = document.getElementById('familiares-pendientes');
-        if (tbody && tbody.querySelector(`tr[data-miembro-id="${id}"]`)) {
-            alert("Ese familiar ya está añadido en la lista.");
-            return;
-        }
-        
-        // Construir payload
-        const payload = {
-            id,
-            nombre,
-            codigo,
-            tipo_relacion: sel.value,
-            tipo_relacion_label: sel.options[sel.selectedIndex]?.textContent?.trim() || sel.value,
-            vive_junto: !!(vive && vive.checked),
-            es_responsable: !!(resp && resp.checked),
-            notas: notas ? notas.value.trim() : ""
-        };
-        
-        // Si es nuevo miembro (no tiene ID aún), agregar sin validar
-        if (!MIEMBRO_ACTUAL_ID) {
-            agregarALista(payload);
-            return;
-        }
-        
-        // Deshabilitar botón mientras valida
-        const btn = document.getElementById('btn-add-familiar-line');
-        const btnTextoOriginal = btn ? btn.innerHTML : '';
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Validando...';
-        }
-        
-        // Validar vía AJAX
-        validarRelacionAjax(id, sel.value, function(err, resultado) {
-            // Restaurar botón
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = btnTextoOriginal;
-            }
-            
-            if (!resultado.valid) {
-                // Hay errores, no permitir agregar
-                mostrarErrores(resultado.errors);
-                return;
-            }
-            
-            if (resultado.warnings && resultado.warnings.length > 0) {
-                // Hay warnings, pedir confirmación
-                mostrarModalConfirmacion(resultado.warnings, payload);
-                return;
-            }
-            
-            // Todo OK, agregar directamente
-            agregarALista(payload);
-        });
-    }
-    
-    function agregarALista(payload) {
-        // Usa tu función existente addRow
-        if (typeof addRow === 'function') {
-            addRow(payload);
-        }
-        
-        // Limpiar formulario inline
-        if (typeof clearInline === 'function') {
-            clearInline();
-        }
-        
-        // Ocultar formulario
-        if (typeof toggleFamiliarForm === 'function') {
-            toggleFamiliarForm(false);
-        }
-    }
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // EVENT LISTENERS
-    // ─────────────────────────────────────────────────────────────────────────
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        // Sobrescribir el listener del botón "Añadir a la lista"
-        const btn = document.getElementById('btn-add-familiar-line');
-        if (btn) {
-            // Remover listeners anteriores clonando el elemento
-            const nuevoBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(nuevoBtn, btn);
-            
-            // Agregar nuevo listener con validación
-            nuevoBtn.addEventListener('click', agregarFamiliarConValidacion);
-        }
-        
-        // Listener para confirmar desde el modal
-        const btnConfirmar = document.getElementById('btn-confirmar-agregar-familiar');
-        if (btnConfirmar) {
-            btnConfirmar.addEventListener('click', function() {
-                if (payloadPendiente) {
-                    agregarALista(payloadPendiente);
-                    cerrarModalConfirmacion();
-                }
-            });
-        }
-        
-        // Cerrar modal al hacer clic fuera
-        const modalOverlay = document.getElementById('modal-confirmar-familiar');
-        if (modalOverlay) {
-            modalOverlay.addEventListener('click', function(e) {
-                if (e.target === modalOverlay) {
-                    cerrarModalConfirmacion();
-                }
-            });
-        }
-        
-        // Cerrar modal con ESC
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                cerrarModalConfirmacion();
-            }
-        });
-    });
-
-})();
-</script>
-
-<!-- Animación de spinner -->
-<style>
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-</style>
 
 {% endblock %}

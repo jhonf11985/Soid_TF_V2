@@ -590,3 +590,47 @@ def ajax_validar_relacion(request):
         "warnings": resultado["warnings"],
         "require_confirmation": len(resultado["warnings"]) > 0 and resultado["valid"],
     })
+
+from miembros_app.models import HogarFamiliar
+
+
+@login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def familias_home(request):
+    from miembros_app.models import HogarFamiliar  # import local por seguridad
+
+    hogares = (
+        HogarFamiliar.objects
+        .prefetch_related("miembros__miembro")
+        .order_by("nombre")
+    )
+
+    familias = []
+    for hogar in hogares:
+        familias.append({
+            "id": hogar.id,
+            "nombre": hogar.nombre or f"Hogar #{hogar.id}",
+            "miembros_count": hogar.miembros.count(),
+        })
+
+    return render(request, "miembros_app/familiares/lista.html", {
+        "familias": familias
+    })
+
+
+@login_required
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def familia_detalle(request, hogar_id):
+    from miembros_app.models import HogarFamiliar
+
+    hogar = get_object_or_404(
+        HogarFamiliar.objects.prefetch_related("miembros__miembro"),
+        pk=hogar_id
+    )
+
+    miembros = [hm.miembro for hm in hogar.miembros.all()]
+
+    return render(request, "miembros_app/familias/detalle.html", {
+        "hogar": hogar,
+        "miembros": miembros,
+    })
