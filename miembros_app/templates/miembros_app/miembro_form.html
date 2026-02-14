@@ -1285,11 +1285,194 @@
 
         </div>
     </div>
+
+    
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PASO 1: MODAL DE CONFIRMACIÓN (agregar antes de </form>)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+<div class="odoo-modal-overlay" id="modal-confirmar-familiar" style="display:none;">
+    <div class="odoo-modal">
+        <div class="odoo-modal-header" style="background: #fff3cd; border-bottom: 1px solid #ffc107;">
+            <h5 class="odoo-modal-title">
+                <span class="material-icons" style="color: #856404; vertical-align: middle;">warning</span>
+                Verificar información
+            </h5>
+            <button type="button" class="odoo-modal-close" onclick="cerrarModalConfirmacion()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        
+        <div class="odoo-modal-body">
+            <p style="color: #666; margin-bottom: 16px;">
+                Se detectaron las siguientes situaciones inusuales:
+            </p>
+            
+            <ul id="lista-warnings-familiar" style="margin: 0; padding-left: 20px;">
+                <!-- Se llena dinámicamente -->
+            </ul>
+            
+            <p style="margin-top: 16px; margin-bottom: 0; font-weight: 500;">
+                ¿Desea agregar la relación de todos modos?
+            </p>
+        </div>
+        
+        <div class="odoo-modal-footer">
+            <button type="button" class="odoo-btn odoo-btn-secondary" onclick="cerrarModalConfirmacion()">
+                <span class="material-icons">close</span>
+                Cancelar
+            </button>
+            <button type="button" class="odoo-btn odoo-btn-warning" id="btn-confirmar-agregar-familiar">
+                <span class="material-icons">check</span>
+                Sí, agregar de todos modos
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PASO 2: ESTILOS DEL MODAL (agregar en tu sección de estilos)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+
+
 </form>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
+
+     <style>
+/* Modal de confirmación de familiar */
+.odoo-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.odoo-modal {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.odoo-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.odoo-modal-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.odoo-modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #6c757d;
+    border-radius: 4px;
+}
+
+.odoo-modal-close:hover {
+    background: rgba(0,0,0,0.1);
+}
+
+.odoo-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.odoo-modal-body ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.odoo-modal-body li {
+    padding: 10px 12px;
+    background: #fff8e1;
+    border-left: 3px solid #ffc107;
+    margin-bottom: 8px;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+}
+
+.odoo-modal-body li:last-child {
+    margin-bottom: 0;
+}
+
+.odoo-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+.odoo-btn-warning {
+    background: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.odoo-btn-warning:hover {
+    background: #e0a800;
+}
+
+/* Alerta de error inline */
+.familiar-error-alert {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    display: none;
+}
+
+.familiar-error-alert ul {
+    margin: 8px 0 0 0;
+    padding-left: 20px;
+}
+
+.familiar-error-alert li {
+    margin-bottom: 4px;
+}
+</style>
+
 <style>
 .odoo-alert{
   padding:10px 12px;
@@ -4323,5 +4506,264 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 </script>
+
+<script>
+/**
+ * Validación de relaciones familiares
+ * Valida vía AJAX antes de agregar a la lista
+ */
+(function() {
+    'use strict';
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CONFIGURACIÓN
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    const URL_VALIDAR = '/miembros/ajax/validar-relacion/';  // Ajustar si tu URL es diferente
+    const MIEMBRO_ACTUAL_ID = '{{ miembro.id|default:"" }}';
+    
+    // Payload pendiente cuando se muestra el modal de confirmación
+    let payloadPendiente = null;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FUNCIONES AUXILIARES
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    function mostrarErrores(errores) {
+        // Crear o usar contenedor de errores
+        let alertBox = document.getElementById('familiar-error-alert');
+        
+        if (!alertBox) {
+            alertBox = document.createElement('div');
+            alertBox.id = 'familiar-error-alert';
+            alertBox.className = 'familiar-error-alert';
+            
+            const formBox = document.getElementById('familiar-form');
+            if (formBox) {
+                formBox.insertBefore(alertBox, formBox.firstChild.nextSibling);
+            }
+        }
+        
+        alertBox.innerHTML = `
+            <strong>⚠️ No se puede agregar esta relación:</strong>
+            <ul>
+                ${errores.map(e => `<li>${e}</li>`).join('')}
+            </ul>
+        `;
+        alertBox.style.display = 'block';
+        
+        // Auto-ocultar después de 10 segundos
+        setTimeout(() => {
+            alertBox.style.display = 'none';
+        }, 10000);
+    }
+    
+    function ocultarErrores() {
+        const alertBox = document.getElementById('familiar-error-alert');
+        if (alertBox) {
+            alertBox.style.display = 'none';
+        }
+    }
+    
+    function mostrarModalConfirmacion(warnings, payload) {
+        payloadPendiente = payload;
+        
+        const lista = document.getElementById('lista-warnings-familiar');
+        if (lista) {
+            lista.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
+        }
+        
+        const modal = document.getElementById('modal-confirmar-familiar');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+    
+    window.cerrarModalConfirmacion = function() {
+        const modal = document.getElementById('modal-confirmar-familiar');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        payloadPendiente = null;
+    };
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // VALIDACIÓN AJAX
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    function validarRelacionAjax(familiarId, tipoRelacion, callback) {
+        const params = new URLSearchParams({
+            miembro_id: MIEMBRO_ACTUAL_ID,
+            familiar_id: familiarId,
+            tipo_relacion: tipoRelacion,
+        });
+        
+        fetch(`${URL_VALIDAR}?${params}`)
+            .then(response => response.json())
+            .then(data => {
+                callback(null, data);
+            })
+            .catch(error => {
+                console.error('Error validando relación:', error);
+                // En caso de error de red, permitir continuar
+                callback(null, { valid: true, errors: [], warnings: [] });
+            });
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // INTEGRACIÓN CON BOTÓN "AÑADIR A LA LISTA"
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    function agregarFamiliarConValidacion() {
+        ocultarErrores();
+        
+        const sel = document.getElementById('id_tipo_relacion');
+        const vive = document.querySelector('input[name="vive_junto"]');
+        const resp = document.querySelector('input[name="es_responsable"]');
+        const notas = document.querySelector('input[name="notas_familiar"]');
+        
+        // Obtener miembro seleccionado (usa tu función existente)
+        const { id, nombre, codigo } = getSelectedMiembro();
+        
+        if (!id) {
+            alert("Primero selecciona un miembro en el buscador.");
+            return;
+        }
+        
+        if (!sel || !sel.value) {
+            alert("Selecciona la relación.");
+            return;
+        }
+        
+        // Verificar si ya está en la lista
+        const tbody = document.getElementById('familiares-pendientes');
+        if (tbody && tbody.querySelector(`tr[data-miembro-id="${id}"]`)) {
+            alert("Ese familiar ya está añadido en la lista.");
+            return;
+        }
+        
+        // Construir payload
+        const payload = {
+            id,
+            nombre,
+            codigo,
+            tipo_relacion: sel.value,
+            tipo_relacion_label: sel.options[sel.selectedIndex]?.textContent?.trim() || sel.value,
+            vive_junto: !!(vive && vive.checked),
+            es_responsable: !!(resp && resp.checked),
+            notas: notas ? notas.value.trim() : ""
+        };
+        
+        // Si es nuevo miembro (no tiene ID aún), agregar sin validar
+        if (!MIEMBRO_ACTUAL_ID) {
+            agregarALista(payload);
+            return;
+        }
+        
+        // Deshabilitar botón mientras valida
+        const btn = document.getElementById('btn-add-familiar-line');
+        const btnTextoOriginal = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Validando...';
+        }
+        
+        // Validar vía AJAX
+        validarRelacionAjax(id, sel.value, function(err, resultado) {
+            // Restaurar botón
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = btnTextoOriginal;
+            }
+            
+            if (!resultado.valid) {
+                // Hay errores, no permitir agregar
+                mostrarErrores(resultado.errors);
+                return;
+            }
+            
+            if (resultado.warnings && resultado.warnings.length > 0) {
+                // Hay warnings, pedir confirmación
+                mostrarModalConfirmacion(resultado.warnings, payload);
+                return;
+            }
+            
+            // Todo OK, agregar directamente
+            agregarALista(payload);
+        });
+    }
+    
+    function agregarALista(payload) {
+        // Usa tu función existente addRow
+        if (typeof addRow === 'function') {
+            addRow(payload);
+        }
+        
+        // Limpiar formulario inline
+        if (typeof clearInline === 'function') {
+            clearInline();
+        }
+        
+        // Ocultar formulario
+        if (typeof toggleFamiliarForm === 'function') {
+            toggleFamiliarForm(false);
+        }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // EVENT LISTENERS
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Sobrescribir el listener del botón "Añadir a la lista"
+        const btn = document.getElementById('btn-add-familiar-line');
+        if (btn) {
+            // Remover listeners anteriores clonando el elemento
+            const nuevoBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(nuevoBtn, btn);
+            
+            // Agregar nuevo listener con validación
+            nuevoBtn.addEventListener('click', agregarFamiliarConValidacion);
+        }
+        
+        // Listener para confirmar desde el modal
+        const btnConfirmar = document.getElementById('btn-confirmar-agregar-familiar');
+        if (btnConfirmar) {
+            btnConfirmar.addEventListener('click', function() {
+                if (payloadPendiente) {
+                    agregarALista(payloadPendiente);
+                    cerrarModalConfirmacion();
+                }
+            });
+        }
+        
+        // Cerrar modal al hacer clic fuera
+        const modalOverlay = document.getElementById('modal-confirmar-familiar');
+        if (modalOverlay) {
+            modalOverlay.addEventListener('click', function(e) {
+                if (e.target === modalOverlay) {
+                    cerrarModalConfirmacion();
+                }
+            });
+        }
+        
+        // Cerrar modal con ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                cerrarModalConfirmacion();
+            }
+        });
+    });
+
+})();
+</script>
+
+<!-- Animación de spinner -->
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
 
 {% endblock %}

@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
 """
 miembros_app/views/familiares.py
-Vistas y funciones relacionadas con las relaciones familiares.
+
+Vistas para gestión de relaciones familiares.
 """
 
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
+from django.http import JsonResponse
 from django.urls import reverse
 from django.db.models import Q
 
 from miembros_app.models import Miembro, MiembroRelacion
-from miembros_app.forms import MiembroRelacionForm
+from miembros_app.validators import validar_relacion_familiar
+
 
 from .utils import (
     TIPOS_NUCLEAR,
@@ -23,13 +26,19 @@ from .utils import (
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FUNCIONES AUXILIARES - RELACIONES
+# CONSTANTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+TIPOS_RELACION = MiembroRelacion.TIPO_RELACION_CHOICES
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FUNCIONES AUXILIARES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _obtener_relaciones_directas(miembro_id):
     """
     Obtiene todas las relaciones directas de un miembro, normalizadas.
-    Retorna: dict con sets de IDs por tipo de relación.
     """
     padres = set()
     hijos = set()
@@ -68,10 +77,7 @@ def _obtener_relaciones_directas(miembro_id):
 
 
 def _obtener_padres_completos(miembro_id, cache=None):
-    """
-    Obtiene TODOS los padres de un miembro (directos + inferidos por cónyuge).
-    Retorna: (padres_directos, padres_inferidos)
-    """
+    """Obtiene TODOS los padres de un miembro (directos + inferidos por cónyuge)."""
     if cache is None:
         cache = {}
     
@@ -94,7 +100,6 @@ def _obtener_padres_completos(miembro_id, cache=None):
         
         for rel in rels_padres:
             conyuge_id = rel.familiar_id if rel.miembro_id in padres_directos else rel.miembro_id
-            
             if conyuge_id not in padres_directos and conyuge_id != miembro_id:
                 padres_inferidos.add(conyuge_id)
     
@@ -104,10 +109,7 @@ def _obtener_padres_completos(miembro_id, cache=None):
 
 
 def _obtener_hijos_completos(miembro_id, cache=None):
-    """
-    Obtiene TODOS los hijos de un miembro (directos + inferidos por cónyuge).
-    Retorna: (hijos_directos, hijos_inferidos)
-    """
+    """Obtiene TODOS los hijos de un miembro (directos + inferidos por cónyuge)."""
     if cache is None:
         cache = {}
     
@@ -124,7 +126,6 @@ def _obtener_hijos_completos(miembro_id, cache=None):
         for conyuge_id in conyuges:
             rels_conyuge = _obtener_relaciones_directas(conyuge_id)
             hijos_conyuge = rels_conyuge["hijos"]
-            
             for hijo_id in hijos_conyuge:
                 if hijo_id not in hijos_directos and hijo_id != miembro_id:
                     hijos_inferidos.add(hijo_id)
@@ -159,45 +160,34 @@ def _obtener_hermanos_completos(miembro_id, todos_padres_ids):
     return hermanos
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# CÁLCULO DE PARENTESCOS INFERIDOS
-# ═══════════════════════════════════════════════════════════════════════════════
-
 def calcular_parentescos_inferidos(miembro):
-    """
-    Calcula TODOS los parentescos inferidos de un miembro.
-    Usa inferencias en cascada para máxima precisión.
-    """
+    """Calcula TODOS los parentescos inferidos de un miembro."""
     mi_id = miembro.id
     cache = {}
 
-    # PASO 1: Mis relaciones directas
     mis_rels = _obtener_relaciones_directas(mi_id)
     padres_directos = mis_rels["padres"]
     hijos_directos = mis_rels["hijos"]
     hermanos_directos = mis_rels["hermanos"]
     conyuges_directos = mis_rels["conyuges"]
 
-    # PASO 2: Padres completos
     padres_dir, padres_inf = _obtener_padres_completos(mi_id, cache)
     todos_mis_padres = padres_dir | padres_inf
 
-    # PASO 3: Hijos completos
     hijos_dir, hijos_inf = _obtener_hijos_completos(mi_id, cache)
     todos_mis_hijos = hijos_dir | hijos_inf
 
-    # PASO 4: Hermanos
     hermanos_inferidos = _obtener_hermanos_completos(mi_id, todos_mis_padres)
     hermanos_inferidos |= hermanos_directos
     todos_mis_hermanos = hermanos_inferidos.copy()
 
-    # PASO 5: Abuelos
+    # Abuelos
     abuelos_ids = set()
     for padre_id in todos_mis_padres:
         p_dir, p_inf = _obtener_padres_completos(padre_id, cache)
         abuelos_ids |= p_dir | p_inf
 
-    # PASO 6: Tíos
+    # Tíos
     tios_ids = set()
     for padre_id in todos_mis_padres:
         p_dir, p_inf = _obtener_padres_completos(padre_id, cache)
@@ -205,25 +195,25 @@ def calcular_parentescos_inferidos(miembro):
         hermanos_del_padre = _obtener_hermanos_completos(padre_id, abuelos_linea)
         tios_ids |= hermanos_del_padre
 
-    # PASO 7: Sobrinos
+    # Sobrinos
     sobrinos_ids = set()
     for hermano_id in todos_mis_hermanos:
         h_dir, h_inf = _obtener_hijos_completos(hermano_id, cache)
         sobrinos_ids |= h_dir | h_inf
 
-    # PASO 8: Primos
+    # Primos
     primos_ids = set()
     for tio_id in tios_ids:
         h_dir, h_inf = _obtener_hijos_completos(tio_id, cache)
         primos_ids |= h_dir | h_inf
 
-    # PASO 9: Nietos
+    # Nietos
     nietos_ids = set()
     for hijo_id in todos_mis_hijos:
         h_dir, h_inf = _obtener_hijos_completos(hijo_id, cache)
         nietos_ids |= h_dir | h_inf
 
-    # PASO 10: Cuñados
+    # Cuñados
     cunados_ids = set()
     for hermano_id in todos_mis_hermanos:
         rels_hermano = _obtener_relaciones_directas(hermano_id)
@@ -234,37 +224,37 @@ def calcular_parentescos_inferidos(miembro):
         hermanos_conyuge = _obtener_hermanos_completos(conyuge_id, p_dir | p_inf)
         cunados_ids |= hermanos_conyuge
 
-    # PASO 11: Suegros
+    # Suegros
     suegros_ids = set()
     for conyuge_id in conyuges_directos:
         p_dir, p_inf = _obtener_padres_completos(conyuge_id, cache)
         suegros_ids |= p_dir | p_inf
 
-    # PASO 12: Yernos/Nueras
+    # Yernos/Nueras
     yernos_ids = set()
     for hijo_id in todos_mis_hijos:
         rels_hijo = _obtener_relaciones_directas(hijo_id)
         yernos_ids |= rels_hijo["conyuges"]
 
-    # PASO 13: Consuegros
+    # Consuegros
     consuegros_ids = set()
     for yerno_id in yernos_ids:
         p_dir, p_inf = _obtener_padres_completos(yerno_id, cache)
         consuegros_ids |= p_dir | p_inf
 
-    # PASO 14: Bisabuelos
+    # Bisabuelos
     bisabuelos_ids = set()
     for abuelo_id in abuelos_ids:
         p_dir, p_inf = _obtener_padres_completos(abuelo_id, cache)
         bisabuelos_ids |= p_dir | p_inf
 
-    # PASO 15: Bisnietos
+    # Bisnietos
     bisnietos_ids = set()
     for nieto_id in nietos_ids:
         h_dir, h_inf = _obtener_hijos_completos(nieto_id, cache)
         bisnietos_ids |= h_dir | h_inf
 
-    # LIMPIEZA
+    # Limpieza
     ids_directos = padres_directos | hijos_directos | hermanos_directos | conyuges_directos
     
     todos_sets = [
@@ -279,14 +269,14 @@ def calcular_parentescos_inferidos(miembro):
     
     hermanos_inferidos -= hermanos_directos
 
-    # CONSTRUIR RESULTADO
+    # Construir resultado
     ids_total = set()
     for s in todos_sets:
         ids_total |= s
     
     miembros_map = {
         m.id: m 
-        for m in Miembro.objects.filter(id__in=ids_total).only("id", "nombres", "apellidos", "genero")
+        for m in Miembro.objects.filter(id__in=ids_total).only("id", "nombres", "apellidos", "genero", "foto")
     }
 
     def pack(ids_set, tipo, razon=""):
@@ -321,9 +311,7 @@ def calcular_parentescos_inferidos(miembro):
 
 
 def obtener_relaciones_organizadas(miembro):
-    """
-    Obtiene todas las relaciones del miembro organizadas en 4 categorías.
-    """
+    """Obtiene todas las relaciones del miembro organizadas en 4 categorías."""
     mi_id = miembro.id
     
     relaciones_qs = (
@@ -343,9 +331,11 @@ def obtener_relaciones_organizadas(miembro):
         if rel.miembro_id == mi_id:
             otro = rel.familiar
             tipo = rel.tipo_relacion
+            relacion_id = rel.id
         else:
             otro = rel.miembro
             tipo = MiembroRelacion.inverse_tipo(rel.tipo_relacion, rel.miembro.genero)
+            relacion_id = rel.id
         
         if otro.id in ids_agregados:
             continue
@@ -357,8 +347,8 @@ def obtener_relaciones_organizadas(miembro):
             "tipo_label": MiembroRelacion.label_por_genero(tipo, otro.genero),
             "vive_junto": rel.vive_junto,
             "es_responsable": rel.es_responsable,
-            "es_inferida": getattr(rel, 'es_inferida', False),
             "notas": rel.notas,
+            "relacion_id": relacion_id,
         }
         
         if tipo in TIPOS_NUCLEAR:
@@ -389,85 +379,214 @@ def obtener_relaciones_organizadas(miembro):
     }
 
 
-def obtener_familia_completa(miembro):
-    """
-    Devuelve TODAS las relaciones de un miembro (directas + inferidas).
-    """
-    mi_id = miembro.id
-    
-    relaciones_directas = []
-    
-    rels_qs = (
-        MiembroRelacion.objects
-        .filter(Q(miembro_id=mi_id) | Q(familiar_id=mi_id))
-        .select_related("miembro", "familiar")
-    )
-    
-    for rel in rels_qs:
-        if rel.miembro_id == mi_id:
-            otro = rel.familiar
-            tipo = rel.tipo_relacion
-        else:
-            otro = rel.miembro
-            tipo = MiembroRelacion.inverse_tipo(rel.tipo_relacion, otro.genero)
-        
-        relaciones_directas.append({
-            "otro": otro,
-            "tipo": tipo,
-            "tipo_label": MiembroRelacion.label_por_genero(tipo, otro.genero),
-            "inferido": False,
-            "vive_junto": rel.vive_junto,
-            "es_responsable": rel.es_responsable,
-            "notas": rel.notas,
-        })
-    
-    relaciones_inferidas = calcular_parentescos_inferidos(miembro)
-    
-    ids_directos = {r["otro"].id for r in relaciones_directas}
-    familia_completa = relaciones_directas.copy()
-    
-    for rel in relaciones_inferidas:
-        if rel["otro"].id not in ids_directos:
-            familia_completa.append(rel)
-    
-    return familia_completa
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
-# VISTAS DE FAMILIARES
+# VISTAS PRINCIPALES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @login_required
-@require_POST
-@permission_required("miembros_app.change_miembro", raise_exception=True)
-def agregar_familiar(request, pk):
-    """Agrega un familiar a un miembro."""
+@permission_required("miembros_app.view_miembro", raise_exception=True)
+def familiares_lista(request, pk):
+    """Lista todos los familiares de un miembro."""
     miembro = get_object_or_404(Miembro, pk=pk)
+    
+    # Obtener relaciones organizadas
+    relaciones = obtener_relaciones_organizadas(miembro)
+    
+    # Obtener inferidos
+    inferidos = calcular_parentescos_inferidos(miembro)
+    
+    context = {
+        "miembro": miembro,
+        "familia_nuclear": relaciones["familia_nuclear"],
+        "familia_origen": relaciones["familia_origen"],
+        "familia_extendida": relaciones["familia_extendida"],
+        "familia_politica": relaciones["familia_politica"],
+        "inferidos": inferidos,
+    }
+    
+    return render(request, "miembros_app/familiares/lista.html", context)
 
-    form = MiembroRelacionForm(request.POST)
-    if form.is_valid():
-        relacion = form.save(commit=False)
-        relacion.miembro = miembro
+
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+def familiares_agregar(request, pk):
+    """Formulario para agregar un familiar."""
+    miembro = get_object_or_404(Miembro, pk=pk)
+    
+    if request.method == "POST":
+        familiar_id = request.POST.get("familiar")
+        tipo_relacion = request.POST.get("tipo_relacion")
+        vive_junto = request.POST.get("vive_junto") == "on"
+        es_responsable = request.POST.get("es_responsable") == "on"
+        notas = request.POST.get("notas", "").strip()
+        
+        # Validar campos requeridos
+        if not familiar_id or not tipo_relacion:
+            messages.error(request, "Debe seleccionar un familiar y tipo de relación.")
+            return redirect("miembros_app:familiares_agregar", pk=pk)
+        
+        try:
+            familiar = Miembro.objects.get(pk=familiar_id)
+        except Miembro.DoesNotExist:
+            messages.error(request, "El familiar seleccionado no existe.")
+            return redirect("miembros_app:familiares_agregar", pk=pk)
+        
+        # Crear relación
+        MiembroRelacion.objects.create(
+            miembro=miembro,
+            familiar=familiar,
+            tipo_relacion=tipo_relacion,
+            vive_junto=vive_junto,
+            es_responsable=es_responsable,
+            notas=notas,
+        )
+        
+        messages.success(request, f"Se agregó a {familiar.nombres} {familiar.apellidos} como {tipo_relacion}.")
+        return redirect("miembros_app:familiares_lista", pk=pk)
+    
+    context = {
+        "miembro": miembro,
+        "TIPOS_RELACION": TIPOS_RELACION,
+        "form": {},  # Placeholder para errores
+    }
+    
+    return render(request, "miembros_app/familiares/agregar.html", context)
+
+
+@login_required
+@permission_required("miembros_app.change_miembro", raise_exception=True)
+def familiares_editar(request, pk, relacion_id):
+    """Formulario para editar una relación familiar."""
+    miembro = get_object_or_404(Miembro, pk=pk)
+    relacion = get_object_or_404(MiembroRelacion, pk=relacion_id)
+    
+    # Verificar que la relación pertenece al miembro
+    if relacion.miembro_id != miembro.id and relacion.familiar_id != miembro.id:
+        messages.error(request, "La relación no pertenece a este miembro.")
+        return redirect("miembros_app:familiares_lista", pk=pk)
+    
+    if request.method == "POST":
+        tipo_relacion = request.POST.get("tipo_relacion")
+        vive_junto = request.POST.get("vive_junto") == "on"
+        es_responsable = request.POST.get("es_responsable") == "on"
+        notas = request.POST.get("notas", "").strip()
+        
+        if not tipo_relacion:
+            messages.error(request, "Debe seleccionar el tipo de relación.")
+            return redirect("miembros_app:familiares_editar", pk=pk, relacion_id=relacion_id)
+        
+        relacion.tipo_relacion = tipo_relacion
+        relacion.vive_junto = vive_junto
+        relacion.es_responsable = es_responsable
+        relacion.notas = notas
         relacion.save()
-        messages.success(request, "Familiar agregado correctamente.")
-    else:
-        for field, errs in form.errors.items():
-            for e in errs:
-                messages.error(request, f"{field}: {e}")
-
-    return redirect("miembros_app:editar", pk=miembro.pk)
+        
+        messages.success(request, "Relación actualizada correctamente.")
+        return redirect("miembros_app:familiares_lista", pk=pk)
+    
+    context = {
+        "miembro": miembro,
+        "relacion": relacion,
+        "TIPOS_RELACION": TIPOS_RELACION,
+    }
+    
+    return render(request, "miembros_app/familiares/editar.html", context)
 
 
 @login_required
 @require_POST
 @permission_required("miembros_app.delete_miembrorelacion", raise_exception=True)
-def eliminar_familiar(request, relacion_id):
+def familiares_eliminar(request, pk, relacion_id):
     """Elimina una relación familiar."""
+    miembro = get_object_or_404(Miembro, pk=pk)
     relacion = get_object_or_404(MiembroRelacion, pk=relacion_id)
-    miembro_pk = relacion.miembro.pk
-
+    
+    # Verificar que la relación pertenece al miembro
+    if relacion.miembro_id != miembro.id and relacion.familiar_id != miembro.id:
+        messages.error(request, "La relación no pertenece a este miembro.")
+        return redirect("miembros_app:familiares_lista", pk=pk)
+    
+    nombre_familiar = f"{relacion.familiar.nombres} {relacion.familiar.apellidos}"
     relacion.delete()
-    messages.success(request, "Familiar quitado correctamente.")
+    
+    messages.success(request, f"Se eliminó la relación con {nombre_familiar}.")
+    return redirect("miembros_app:familiares_lista", pk=pk)
 
-    url = reverse("miembros_app:editar", kwargs={"pk": miembro_pk})
-    return redirect(f"{url}?tab=familiares")
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VISTAS AJAX
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@login_required
+@require_GET
+def ajax_buscar_miembros(request):
+    """Busca miembros para el autocomplete."""
+    q = request.GET.get("q", "").strip()
+    exclude_id = request.GET.get("exclude", "")
+    
+    if len(q) < 2:
+        return JsonResponse({"results": []})
+    
+    miembros = Miembro.objects.filter(
+        Q(nombres__icontains=q) |
+        Q(apellidos__icontains=q) |
+        Q(codigo_miembro__icontains=q) |
+        Q(codigo_seguimiento__icontains=q)
+    )[:15]
+    
+    if exclude_id:
+        miembros = miembros.exclude(pk=exclude_id)
+    
+    results = []
+    for m in miembros:
+        results.append({
+            "id": m.id,
+            "nombre": f"{m.nombres} {m.apellidos}",
+            "codigo": m.codigo_miembro or m.codigo_seguimiento or "",
+            "foto": m.foto.url if m.foto else None,
+        })
+    
+    return JsonResponse({"results": results})
+
+
+@login_required
+@require_GET
+def ajax_validar_relacion(request):
+    """Valida una relación familiar antes de guardarla."""
+    miembro_id = request.GET.get("miembro_id")
+    familiar_id = request.GET.get("familiar_id")
+    tipo_relacion = request.GET.get("tipo_relacion")
+    relacion_id = request.GET.get("relacion_id")  # Para edición
+    
+    if not all([miembro_id, familiar_id, tipo_relacion]):
+        return JsonResponse({
+            "valid": False,
+            "errors": ["Faltan parámetros requeridos."],
+            "warnings": [],
+            "require_confirmation": False,
+        }, status=400)
+    
+    try:
+        miembro = Miembro.objects.get(pk=miembro_id)
+        familiar = Miembro.objects.get(pk=familiar_id)
+    except Miembro.DoesNotExist:
+        return JsonResponse({
+            "valid": False,
+            "errors": ["Miembro no encontrado."],
+            "warnings": [],
+            "require_confirmation": False,
+        }, status=404)
+    
+    resultado = validar_relacion_familiar(
+        miembro=miembro,
+        familiar=familiar,
+        tipo_relacion=tipo_relacion,
+        relacion_id=int(relacion_id) if relacion_id else None,
+    )
+    
+    return JsonResponse({
+        "valid": resultado["valid"],
+        "errors": resultado["errors"],
+        "warnings": resultado["warnings"],
+        "require_confirmation": len(resultado["warnings"]) > 0 and resultado["valid"],
+    })

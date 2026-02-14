@@ -7,6 +7,15 @@ URLs del módulo de miembros organizadas por sección.
 from django.urls import path
 from . import views
 from . import views_reportes
+from miembros_app.views.familiares import (
+    familiares_lista,
+    familiares_agregar,
+    familiares_editar,
+    familiares_eliminar,
+    ajax_buscar_miembros,
+    ajax_validar_relacion,
+)
+
 
 app_name = "miembros_app"
 
@@ -26,10 +35,12 @@ urlpatterns = [
     path("ficha/<int:pk>/", views.miembro_ficha, name="ficha"),
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # FAMILIARES
+    # FAMILIARES (NUEVO MÓDULO)
     # ═══════════════════════════════════════════════════════════════════════════
-    path("<int:pk>/familiares/agregar/", views.agregar_familiar, name="agregar_familiar"),
-    path("miembros/familiares/<int:relacion_id>/eliminar/", views.eliminar_familiar, name="eliminar_familiar"),
+    path("<int:pk>/familiares/", familiares_lista, name="familiares_lista"),
+    path("<int:pk>/familiares/agregar/", familiares_agregar, name="familiares_agregar"),
+    path("<int:pk>/familiares/<int:relacion_id>/editar/", familiares_editar, name="familiares_editar"),
+    path("<int:pk>/familiares/<int:relacion_id>/eliminar/", familiares_eliminar, name="familiares_eliminar"),
 
     # ═══════════════════════════════════════════════════════════════════════════
     # NUEVOS CREYENTES
@@ -93,6 +104,8 @@ urlpatterns = [
     # ═══════════════════════════════════════════════════════════════════════════
     path("ajax/validar-cedula/", views.ajax_validar_cedula, name="ajax_validar_cedula"),
     path("ajax/validar-telefono/", views.validar_telefono, name="ajax_validar_telefono"),
+    path("ajax/buscar-miembros/", ajax_buscar_miembros, name="ajax_buscar_miembros"),
+    path("ajax/validar-relacion/", ajax_validar_relacion, name="ajax_validar_relacion"),
 
     # ═══════════════════════════════════════════════════════════════════════════
     # BITÁCORA

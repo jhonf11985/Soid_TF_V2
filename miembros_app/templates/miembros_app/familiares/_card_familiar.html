@@ -1,0 +1,56 @@
+{% comment %}
+Card de familiar - Partial reutilizable
+Uso: {% include "miembros_app/familiares/_card_familiar.html" with relacion=rel inferido=False %}
+{% endcomment %}
+
+<div class="familiar-card {% if inferido %}inferido{% endif %}">
+    
+    <!-- Avatar -->
+    <div class="familiar-card-avatar">
+        {% if relacion.otro.foto %}
+            <img src="{{ relacion.otro.foto.url }}" alt="{{ relacion.otro.nombres }}">
+        {% else %}
+            <span class="material-icons">person</span>
+        {% endif %}
+    </div>
+    
+    <!-- Info -->
+    <div class="familiar-card-info">
+        <p class="familiar-card-nombre">
+            <a href="{% url 'miembros_app:editar' relacion.otro.pk %}">
+                {{ relacion.otro.nombres }} {{ relacion.otro.apellidos }}
+            </a>
+        </p>
+        <p class="familiar-card-relacion">{{ relacion.tipo_label }}</p>
+        <div class="familiar-card-meta">
+            {% if relacion.vive_junto %}
+                <span><span class="material-icons">home</span> Vive junto</span>
+            {% endif %}
+            {% if relacion.es_responsable %}
+                <span><span class="material-icons">verified_user</span> Responsable</span>
+            {% endif %}
+            {% if inferido %}
+                <span><span class="material-icons">auto_fix_high</span> {{ relacion.razon|default:"Inferido" }}</span>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Acciones (solo para relaciones directas, no inferidas) -->
+    {% if not inferido %}
+    <div class="familiar-card-actions">
+        <a href="{% url 'miembros_app:familiares_editar' miembro.pk relacion.relacion_id %}" 
+           class="familiar-card-btn editar" 
+           title="Editar relación">
+            <span class="material-icons">edit</span>
+        </a>
+        <button type="button" 
+                class="familiar-card-btn eliminar" 
+                title="Eliminar relación"
+                onclick="confirmarEliminar({{ relacion.relacion_id }}, '{{ relacion.otro.nombres }} {{ relacion.otro.apellidos|escapejs }}', '{{ relacion.tipo_label|escapejs }}')">
+            <span class="material-icons">delete</span>
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal de confirmación de eliminación (se incluye una sola vez en lista.html) -->

@@ -1,0 +1,551 @@
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
+
+{% block title %}Editar relación · {{ miembro.nombres }} {{ miembro.apellidos }}{% endblock %}
+
+{% block miembros_content %}
+
+<div class="odoo-form">
+    
+    <!-- ══════════════════════════════════════════════════════════════════
+         BARRA SUPERIOR
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:familiares_lista' miembro.pk %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                Familiares
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">Editar</span>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         FORMULARIO
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-form-container">
+        <div class="odoo-form-main">
+            
+            <div class="familiar-form-header">
+                <h2>Editar relación familiar</h2>
+                <p>Modifica los datos de la relación entre {{ miembro.nombres }} y {{ relacion.familiar.nombres }}</p>
+            </div>
+
+            <!-- Info del familiar (solo lectura) -->
+            <div class="familiar-card-readonly">
+                <div class="familiar-card-avatar">
+                    {% if relacion.familiar.foto %}
+                        <img src="{{ relacion.familiar.foto.url }}" alt="">
+                    {% else %}
+                        <span class="material-icons">person</span>
+                    {% endif %}
+                </div>
+                <div class="familiar-card-info">
+                    <p class="familiar-card-nombre">{{ relacion.familiar.nombres }} {{ relacion.familiar.apellidos }}</p>
+                    <p class="familiar-card-codigo">{{ relacion.familiar.codigo_miembro|default:relacion.familiar.codigo_seguimiento|default:"Sin código" }}</p>
+                </div>
+            </div>
+
+            <!-- Alertas de error -->
+            <div id="alertas-validacion"></div>
+
+            <form method="post" id="form-editar-familiar" class="familiar-form">
+                {% csrf_token %}
+                
+                <!-- Errores del formulario -->
+                {% if form.errors %}
+                <div class="odoo-alert odoo-alert-danger">
+                    <strong>Por favor corrige los errores:</strong>
+                    <ul>
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- ─────────────────────────────────────────────────────────
+                     TIPO DE RELACIÓN
+                     ───────────────────────────────────────────────────────── -->
+                <div class="odoo-field">
+                    <label class="odoo-label required">Tipo de relación</label>
+                    <select name="tipo_relacion" id="id_tipo_relacion" class="odoo-input" required>
+                        <option value="">Seleccione...</option>
+                        {% for value, label in TIPOS_RELACION %}
+                            <option value="{{ value }}" {% if relacion.tipo_relacion == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- ─────────────────────────────────────────────────────────
+                     OPCIONES
+                     ───────────────────────────────────────────────────────── -->
+                <div class="odoo-field">
+                    <label class="odoo-label">Opciones</label>
+                    <div class="odoo-field-row">
+                        <label class="odoo-checkbox-label">
+                            <input type="checkbox" name="vive_junto" {% if relacion.vive_junto %}checked{% endif %}>
+                            <span>Vive junto</span>
+                        </label>
+                        <label class="odoo-checkbox-label">
+                            <input type="checkbox" name="es_responsable" {% if relacion.es_responsable %}checked{% endif %}>
+                            <span>Es responsable</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- ─────────────────────────────────────────────────────────
+                     NOTAS
+                     ───────────────────────────────────────────────────────── -->
+                <div class="odoo-field odoo-field-full">
+                    <label class="odoo-label">Notas</label>
+                    <textarea name="notas" 
+                              id="id_notas" 
+                              class="odoo-textarea" 
+                              rows="2"
+                              placeholder="Observaciones sobre la relación (opcional)">{{ relacion.notas|default:'' }}</textarea>
+                </div>
+
+                <!-- ─────────────────────────────────────────────────────────
+                     BOTONES
+                     ───────────────────────────────────────────────────────── -->
+                <div class="familiar-form-actions">
+                    <a href="{% url 'miembros_app:familiares_lista' miembro.pk %}" class="odoo-btn odoo-btn-secondary">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="odoo-btn odoo-btn-primary" id="btn-guardar">
+                        <span class="material-icons">save</span>
+                        Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL DE CONFIRMACIÓN (Warnings)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-warnings" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header warning">
+            <span class="material-icons">warning</span>
+            <h3>Verificar información</h3>
+        </div>
+        <div class="modal-body">
+            <p>Se detectaron las siguientes situaciones inusuales:</p>
+            <ul id="lista-warnings"></ul>
+            <p class="modal-question">¿Desea guardar los cambios de todos modos?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="odoo-btn odoo-btn-secondary" onclick="cerrarModal()">
+                Cancelar
+            </button>
+            <button type="button" class="odoo-btn odoo-btn-warning" id="btn-confirmar-guardar">
+                <span class="material-icons">check</span>
+                Sí, guardar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
+<style>
+.familiar-form-header {
+    margin-bottom: 24px;
+}
+
+.familiar-form-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.familiar-form-header p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.familiar-form {
+    max-width: 600px;
+}
+
+/* Card del familiar (solo lectura) */
+.familiar-card-readonly {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.familiar-card-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.familiar-card-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.familiar-card-avatar .material-icons {
+    font-size: 24px;
+    color: #6c757d;
+}
+
+.familiar-card-nombre {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.familiar-card-codigo {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.odoo-field {
+    margin-bottom: 20px;
+}
+
+.odoo-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 6px;
+}
+
+.odoo-label.required::after {
+    content: " *";
+    color: #dc3545;
+}
+
+.odoo-input {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.odoo-input:focus {
+    outline: none;
+    border-color: #017e84;
+}
+
+.odoo-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.odoo-textarea:focus {
+    outline: none;
+    border-color: #017e84;
+}
+
+.odoo-field-row {
+    display: flex;
+    gap: 20px;
+}
+
+.odoo-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.odoo-checkbox-label input {
+    accent-color: #017e84;
+}
+
+.familiar-form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Botones */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    border: none;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: #015f64;
+}
+
+.odoo-btn-secondary {
+    background: #f1f3f4;
+    color: #495057;
+}
+
+.odoo-btn-secondary:hover {
+    background: #e2e6ea;
+}
+
+.odoo-btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    max-width: 450px;
+    width: 100%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modal-header.warning {
+    background: #fff3cd;
+}
+
+.modal-header .material-icons {
+    color: #856404;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body ul {
+    list-style: none;
+    padding: 0;
+}
+
+.modal-body li {
+    padding: 10px 12px;
+    background: #fff8e1;
+    border-left: 3px solid #ffc107;
+    margin-bottom: 8px;
+    border-radius: 0 4px 4px 0;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    background: #f8f9fa;
+}
+
+/* Alertas */
+.odoo-alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.odoo-alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Spinner */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+</style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    const URL_VALIDAR = '{% url "miembros_app:ajax_validar_relacion" %}';
+    const MIEMBRO_ID = '{{ miembro.id }}';
+    const FAMILIAR_ID = '{{ relacion.familiar.id }}';
+    const RELACION_ID = '{{ relacion.id }}';
+    
+    const form = document.getElementById('form-editar-familiar');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const alertasDiv = document.getElementById('alertas-validacion');
+    const modal = document.getElementById('modal-warnings');
+    const listaWarnings = document.getElementById('lista-warnings');
+    const btnConfirmar = document.getElementById('btn-confirmar-guardar');
+    
+    let confirmarGuardado = false;
+    
+    form.addEventListener('submit', function(e) {
+        if (confirmarGuardado) return true;
+        
+        e.preventDefault();
+        
+        const tipoRelacion = document.getElementById('id_tipo_relacion').value;
+        
+        if (!tipoRelacion) {
+            mostrarAlerta('error', 'Debe seleccionar el tipo de relación.');
+            return;
+        }
+        
+        validarRelacion(tipoRelacion);
+    });
+    
+    function validarRelacion(tipoRelacion) {
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '<span class="material-icons spin">sync</span> Validando...';
+        ocultarAlertas();
+        
+        const params = new URLSearchParams({
+            miembro_id: MIEMBRO_ID,
+            familiar_id: FAMILIAR_ID,
+            tipo_relacion: tipoRelacion,
+            relacion_id: RELACION_ID
+        });
+        
+        fetch(`${URL_VALIDAR}?${params}`)
+            .then(r => r.json())
+            .then(data => {
+                btnGuardar.disabled = false;
+                btnGuardar.innerHTML = '<span class="material-icons">save</span> Guardar cambios';
+                
+                if (!data.valid) {
+                    mostrarAlertas(data.errors, 'error');
+                    return;
+                }
+                
+                if (data.warnings && data.warnings.length > 0) {
+                    mostrarModalWarnings(data.warnings);
+                    return;
+                }
+                
+                enviarFormulario();
+            })
+            .catch(err => {
+                console.error(err);
+                btnGuardar.disabled = false;
+                btnGuardar.innerHTML = '<span class="material-icons">save</span> Guardar cambios';
+                enviarFormulario();
+            });
+    }
+    
+    function enviarFormulario() {
+        confirmarGuardado = true;
+        form.submit();
+    }
+    
+    function mostrarAlerta(tipo, mensaje) {
+        alertasDiv.innerHTML = `<div class="odoo-alert odoo-alert-danger">${mensaje}</div>`;
+    }
+    
+    function mostrarAlertas(mensajes, tipo) {
+        alertasDiv.innerHTML = `
+            <div class="odoo-alert odoo-alert-danger">
+                <ul style="margin: 0; padding-left: 20px;">
+                    ${mensajes.map(m => `<li>${m}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    function ocultarAlertas() {
+        alertasDiv.innerHTML = '';
+    }
+    
+    function mostrarModalWarnings(warnings) {
+        listaWarnings.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
+        modal.style.display = 'flex';
+    }
+    
+    window.cerrarModal = function() {
+        modal.style.display = 'none';
+    };
+    
+    btnConfirmar.addEventListener('click', function() {
+        cerrarModal();
+        enviarFormulario();
+    });
+    
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) cerrarModal();
+    });
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') cerrarModal();
+    });
+});
+</script>
+
+{% endblock %}

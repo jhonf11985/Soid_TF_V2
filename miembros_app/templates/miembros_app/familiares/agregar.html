@@ -1,0 +1,912 @@
+{% extends 'miembros_app/base_miembros.html' %}
+{% load static %}
+
+{% block title %}Agregar familiar · {{ miembro.nombres }} {{ miembro.apellidos }}{% endblock %}
+
+{% block miembros_content %}
+
+<div class="odoo-form">
+    
+    <!-- ══════════════════════════════════════════════════════════════════
+         BARRA SUPERIOR
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:familiares_lista' miembro.pk %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                Familiares
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">Agregar</span>
+            <span class="odoo-new-badge">Nuevo</span>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         FORMULARIO
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="odoo-form-container">
+        <div class="odoo-form-main">
+            
+            <div class="familiar-form-header">
+                <h2>Agregar familiar a {{ miembro.nombres }} {{ miembro.apellidos }}</h2>
+                <p>Busca un miembro existente y define la relación familiar</p>
+            </div>
+
+            <!-- Alertas de error -->
+            <div id="alertas-validacion"></div>
+
+            <form method="post" id="form-agregar-familiar" class="familiar-form">
+                {% csrf_token %}
+                
+                <!-- Errores del formulario -->
+                {% if form.errors %}
+                <div class="odoo-alert odoo-alert-danger">
+                    <strong>Por favor corrige los errores:</strong>
+                    <ul>
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- ─────────────────────────────────────────────────────────
+                     BUSCAR MIEMBRO
+                     ───────────────────────────────────────────────────────── -->
+                <div class="odoo-field odoo-field-full">
+                    <label class="odoo-label required">Buscar miembro</label>
+                    <div class="autocomplete-wrapper">
+                        <input type="hidden" name="familiar" id="id_familiar" value="{{ form.familiar.value|default:'' }}">
+                        
+                        <div class="autocomplete-field" id="autocomplete-field">
+                            <!-- Chip del seleccionado -->
+                            <div class="autocomplete-chip" id="chip-familiar" style="display: none;">
+                                <span class="chip-avatar">M</span>
+                                <span class="chip-text">
+                                    <span class="chip-name"></span>
+                                    <span class="chip-code"></span>
+                                </span>
+                                <button type="button" class="chip-remove" id="btn-quitar-familiar">
+                                    <span class="material-icons">close</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Input de búsqueda -->
+                            <input type="text" 
+                                   id="search-familiar" 
+                                   class="odoo-input autocomplete-search" 
+                                   placeholder="Escriba nombre o código..."
+                                   autocomplete="off">
+                        </div>
+                        
+                        <!-- Dropdown de resultados -->
+                        <div class="autocomplete-dropdown" id="dropdown-familiar">
+                            <ul class="autocomplete-list" id="list-familiar"></ul>
+                            <div class="autocomplete-empty" id="empty-familiar">
+                                <span class="material-icons">person_search</span>
+                                <p>No se encontraron miembros</p>
+                            </div>
+                            <div class="autocomplete-loading" id="loading-familiar">
+                                <span class="material-icons spin">sync</span>
+                                <p>Buscando...</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% if form.familiar.errors %}
+                        <div class="odoo-field-error">{{ form.familiar.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- ─────────────────────────────────────────────────────────
+                     TIPO DE RELACIÓN
+                     ───────────────────────────────────────────────────────── -->
+                <div class="odoo-field">
+                    <label class="odoo-label required">Tipo de relación</label>
+                    <select name="tipo_relacion" id="id_tipo_relacion" class="odoo-input" required>
+                        <option value="">Seleccione...</option>
+                        {% for value, label in TIPOS_RELACION %}
+                            <option value="{{ value }}" {% if form.tipo_relacion.value == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.tipo_relacion.errors %}
+                        <div class="odoo-field-error">{{ form.tipo_relacion.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- ─────────────────────────────────────────────────────────
+                     OPCIONES
+                     ───────────────────────────────────────────────────────── -->
+                <div class="odoo-field">
+                    <label class="odoo-label">Opciones</label>
+                    <div class="odoo-field-row">
+                        <label class="odoo-checkbox-label">
+                            <input type="checkbox" name="vive_junto" {% if form.vive_junto.value %}checked{% endif %}>
+                            <span>Vive junto</span>
+                        </label>
+                        <label class="odoo-checkbox-label">
+                            <input type="checkbox" name="es_responsable" {% if form.es_responsable.value %}checked{% endif %}>
+                            <span>Es responsable</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- ─────────────────────────────────────────────────────────
+                     NOTAS
+                     ───────────────────────────────────────────────────────── -->
+                <div class="odoo-field odoo-field-full">
+                    <label class="odoo-label">Notas</label>
+                    <textarea name="notas" 
+                              id="id_notas" 
+                              class="odoo-textarea" 
+                              rows="2"
+                              placeholder="Observaciones sobre la relación (opcional)">{{ form.notas.value|default:'' }}</textarea>
+                </div>
+
+                <!-- ─────────────────────────────────────────────────────────
+                     BOTONES
+                     ───────────────────────────────────────────────────────── -->
+                <div class="familiar-form-actions">
+                    <a href="{% url 'miembros_app:familiares_lista' miembro.pk %}" class="odoo-btn odoo-btn-secondary">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="odoo-btn odoo-btn-primary" id="btn-guardar">
+                        <span class="material-icons">save</span>
+                        Guardar familiar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL DE CONFIRMACIÓN (Warnings)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-warnings" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header warning">
+            <span class="material-icons">warning</span>
+            <h3>Verificar información</h3>
+        </div>
+        <div class="modal-body">
+            <p>Se detectaron las siguientes situaciones inusuales:</p>
+            <ul id="lista-warnings"></ul>
+            <p class="modal-question">¿Desea guardar la relación de todos modos?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="odoo-btn odoo-btn-secondary" onclick="cerrarModal()">
+                Cancelar
+            </button>
+            <button type="button" class="odoo-btn odoo-btn-warning" id="btn-confirmar-guardar">
+                <span class="material-icons">check</span>
+                Sí, guardar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
+<style>
+.familiar-form-header {
+    margin-bottom: 24px;
+}
+
+.familiar-form-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.familiar-form-header p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.familiar-form {
+    max-width: 600px;
+}
+
+.odoo-field {
+    margin-bottom: 20px;
+}
+
+.odoo-field-full {
+    grid-column: 1 / -1;
+}
+
+.odoo-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 6px;
+}
+
+.odoo-label.required::after {
+    content: " *";
+    color: #dc3545;
+}
+
+.odoo-input {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    transition: border-color 0.2s ease;
+}
+
+.odoo-input:focus {
+    outline: none;
+    border-color: #017e84;
+}
+
+.odoo-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.odoo-textarea:focus {
+    outline: none;
+    border-color: #017e84;
+}
+
+.odoo-field-row {
+    display: flex;
+    gap: 20px;
+}
+
+.odoo-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #495057;
+}
+
+.odoo-checkbox-label input {
+    accent-color: #017e84;
+    width: 16px;
+    height: 16px;
+}
+
+.odoo-field-error {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* Autocomplete */
+.autocomplete-wrapper {
+    position: relative;
+}
+
+.autocomplete-field {
+    position: relative;
+}
+
+.autocomplete-field.has-selection .autocomplete-search {
+    display: none;
+}
+
+.autocomplete-search {
+    width: 100%;
+}
+
+.autocomplete-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #e8f5f5;
+    border: 1px solid #017e84;
+    border-radius: 4px;
+}
+
+.chip-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #017e84;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.chip-text {
+    flex: 1;
+}
+
+.chip-name {
+    display: block;
+    font-weight: 500;
+    color: #212529;
+}
+
+.chip-code {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.chip-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6c757d;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+}
+
+.chip-remove:hover {
+    background: rgba(0,0,0,0.1);
+    color: #dc3545;
+}
+
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.autocomplete-dropdown.open {
+    display: block;
+}
+
+.autocomplete-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.autocomplete-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.autocomplete-item:hover {
+    background: #f8f9fa;
+}
+
+.autocomplete-item-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.autocomplete-item-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.autocomplete-item-avatar .material-icons {
+    font-size: 20px;
+    color: #6c757d;
+}
+
+.autocomplete-item-info {
+    flex: 1;
+}
+
+.autocomplete-item-name {
+    font-weight: 500;
+    color: #212529;
+}
+
+.autocomplete-item-code {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.autocomplete-empty,
+.autocomplete-loading {
+    padding: 20px;
+    text-align: center;
+    color: #6c757d;
+}
+
+.autocomplete-empty .material-icons,
+.autocomplete-loading .material-icons {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Acciones del formulario */
+.familiar-form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Botones */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.odoo-btn-primary {
+    background: #017e84;
+    color: white;
+}
+
+.odoo-btn-primary:hover {
+    background: #015f64;
+}
+
+.odoo-btn-secondary {
+    background: #f1f3f4;
+    color: #495057;
+}
+
+.odoo-btn-secondary:hover {
+    background: #e2e6ea;
+}
+
+.odoo-btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.odoo-btn-warning:hover {
+    background: #e0a800;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    max-width: 450px;
+    width: 100%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modal-header.warning {
+    background: #fff3cd;
+}
+
+.modal-header .material-icons {
+    color: #856404;
+    font-size: 24px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body p {
+    margin: 0 0 12px;
+    color: #495057;
+}
+
+.modal-body ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.modal-body li {
+    padding: 10px 12px;
+    background: #fff8e1;
+    border-left: 3px solid #ffc107;
+    margin-bottom: 8px;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+}
+
+.modal-question {
+    font-weight: 500;
+    margin-top: 16px !important;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Alertas */
+.odoo-alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.odoo-alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.odoo-alert-danger ul {
+    margin: 8px 0 0;
+    padding-left: 20px;
+}
+
+.odoo-alert-warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* Spinner */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .familiar-form-actions {
+        flex-direction: column;
+    }
+    
+    .familiar-form-actions .odoo-btn {
+        justify-content: center;
+    }
+    
+    .odoo-field-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
+</style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONFIGURACIÓN
+    // ═══════════════════════════════════════════════════════════════════════
+    const URL_BUSCAR = '{% url "miembros_app:ajax_buscar_miembros" %}';
+    const URL_VALIDAR = '{% url "miembros_app:ajax_validar_relacion" %}';
+    const MIEMBRO_ID = '{{ miembro.id }}';
+    const DEBOUNCE_MS = 300;
+    const MIN_CHARS = 2;
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // ELEMENTOS
+    // ═══════════════════════════════════════════════════════════════════════
+    const searchInput = document.getElementById('search-familiar');
+    const hiddenInput = document.getElementById('id_familiar');
+    const dropdown = document.getElementById('dropdown-familiar');
+    const listEl = document.getElementById('list-familiar');
+    const emptyEl = document.getElementById('empty-familiar');
+    const loadingEl = document.getElementById('loading-familiar');
+    const chip = document.getElementById('chip-familiar');
+    const autocompleteField = document.getElementById('autocomplete-field');
+    const btnQuitar = document.getElementById('btn-quitar-familiar');
+    const form = document.getElementById('form-agregar-familiar');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const alertasDiv = document.getElementById('alertas-validacion');
+    
+    let debounceTimer = null;
+    let confirmarGuardado = false;
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // AUTOCOMPLETE
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    function buscarMiembros(query) {
+        listEl.innerHTML = '';
+        emptyEl.style.display = 'none';
+        loadingEl.style.display = 'block';
+        dropdown.classList.add('open');
+        
+        fetch(`${URL_BUSCAR}?q=${encodeURIComponent(query)}&exclude=${MIEMBRO_ID}`)
+            .then(r => r.json())
+            .then(data => {
+                loadingEl.style.display = 'none';
+                
+                if (!data.results || data.results.length === 0) {
+                    emptyEl.style.display = 'block';
+                    return;
+                }
+                
+                data.results.forEach(m => {
+                    const li = document.createElement('li');
+                    li.className = 'autocomplete-item';
+                    li.innerHTML = `
+                        <div class="autocomplete-item-avatar">
+                            ${m.foto 
+                                ? `<img src="${m.foto}" alt="">` 
+                                : '<span class="material-icons">person</span>'}
+                        </div>
+                        <div class="autocomplete-item-info">
+                            <div class="autocomplete-item-name">${m.nombre}</div>
+                            <div class="autocomplete-item-code">${m.codigo || ''}</div>
+                        </div>
+                    `;
+                    li.addEventListener('click', () => seleccionarMiembro(m));
+                    listEl.appendChild(li);
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                loadingEl.style.display = 'none';
+                emptyEl.style.display = 'block';
+            });
+    }
+    
+    function seleccionarMiembro(miembro) {
+        hiddenInput.value = miembro.id;
+        
+        chip.querySelector('.chip-avatar').textContent = miembro.nombre.charAt(0).toUpperCase();
+        chip.querySelector('.chip-name').textContent = miembro.nombre;
+        chip.querySelector('.chip-code').textContent = miembro.codigo || '';
+        
+        chip.style.display = 'flex';
+        autocompleteField.classList.add('has-selection');
+        dropdown.classList.remove('open');
+        searchInput.value = '';
+    }
+    
+    function quitarSeleccion() {
+        hiddenInput.value = '';
+        chip.style.display = 'none';
+        autocompleteField.classList.remove('has-selection');
+        searchInput.focus();
+    }
+    
+    // Event listeners autocomplete
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const q = this.value.trim();
+        
+        if (q.length < MIN_CHARS) {
+            dropdown.classList.remove('open');
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => buscarMiembros(q), DEBOUNCE_MS);
+    });
+    
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim().length >= MIN_CHARS) {
+            dropdown.classList.add('open');
+        }
+    });
+    
+    btnQuitar.addEventListener('click', quitarSeleccion);
+    
+    // Cerrar dropdown al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.autocomplete-wrapper')) {
+            dropdown.classList.remove('open');
+        }
+    });
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // VALIDACIÓN Y ENVÍO
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    form.addEventListener('submit', function(e) {
+        // Si ya está confirmado, dejar pasar
+        if (confirmarGuardado) {
+            return true;
+        }
+        
+        e.preventDefault();
+        
+        const familiarId = hiddenInput.value;
+        const tipoRelacion = document.getElementById('id_tipo_relacion').value;
+        
+        // Validaciones básicas del form
+        if (!familiarId) {
+            mostrarAlerta('error', 'Debe seleccionar un miembro.');
+            return;
+        }
+        
+        if (!tipoRelacion) {
+            mostrarAlerta('error', 'Debe seleccionar el tipo de relación.');
+            return;
+        }
+        
+        // Validar vía AJAX
+        validarRelacion(familiarId, tipoRelacion);
+    });
+    
+    function validarRelacion(familiarId, tipoRelacion) {
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '<span class="material-icons spin">sync</span> Validando...';
+        ocultarAlertas();
+        
+        const params = new URLSearchParams({
+            miembro_id: MIEMBRO_ID,
+            familiar_id: familiarId,
+            tipo_relacion: tipoRelacion
+        });
+        
+        fetch(`${URL_VALIDAR}?${params}`)
+            .then(r => r.json())
+            .then(data => {
+                btnGuardar.disabled = false;
+                btnGuardar.innerHTML = '<span class="material-icons">save</span> Guardar familiar';
+                
+                if (!data.valid) {
+                    // Hay errores, mostrar y no guardar
+                    mostrarAlertas(data.errors, 'error');
+                    return;
+                }
+                
+                if (data.warnings && data.warnings.length > 0) {
+                    // Hay warnings, pedir confirmación
+                    mostrarModalWarnings(data.warnings);
+                    return;
+                }
+                
+                // Todo OK, enviar formulario
+                enviarFormulario();
+            })
+            .catch(err => {
+                console.error(err);
+                btnGuardar.disabled = false;
+                btnGuardar.innerHTML = '<span class="material-icons">save</span> Guardar familiar';
+                // En caso de error de red, permitir guardar
+                enviarFormulario();
+            });
+    }
+    
+    function enviarFormulario() {
+        confirmarGuardado = true;
+        form.submit();
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // ALERTAS
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    function mostrarAlerta(tipo, mensaje) {
+        alertasDiv.innerHTML = `
+            <div class="odoo-alert odoo-alert-${tipo === 'error' ? 'danger' : tipo}">
+                ${mensaje}
+            </div>
+        `;
+    }
+    
+    function mostrarAlertas(mensajes, tipo) {
+        if (!mensajes || mensajes.length === 0) return;
+        
+        alertasDiv.innerHTML = `
+            <div class="odoo-alert odoo-alert-${tipo === 'error' ? 'danger' : tipo}">
+                <ul style="margin: 0; padding-left: 20px;">
+                    ${mensajes.map(m => `<li>${m}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    function ocultarAlertas() {
+        alertasDiv.innerHTML = '';
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // MODAL DE WARNINGS
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    const modal = document.getElementById('modal-warnings');
+    const listaWarnings = document.getElementById('lista-warnings');
+    const btnConfirmar = document.getElementById('btn-confirmar-guardar');
+    
+    function mostrarModalWarnings(warnings) {
+        listaWarnings.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
+        modal.style.display = 'flex';
+    }
+    
+    window.cerrarModal = function() {
+        modal.style.display = 'none';
+    };
+    
+    btnConfirmar.addEventListener('click', function() {
+        cerrarModal();
+        enviarFormulario();
+    });
+    
+    // Cerrar modal con ESC o clic fuera
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) cerrarModal();
+    });
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') cerrarModal();
+    });
+});
+</script>
+
+{% endblock %}

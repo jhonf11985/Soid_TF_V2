@@ -18,13 +18,16 @@ from .miembros import (
     filtrar_miembros,
 )
 
-# Familiares
+# Familiares (ACTUALIZADO)
 from .familiares import (
-    agregar_familiar,
-    eliminar_familiar,
+    familiares_lista,
+    familiares_agregar,
+    familiares_editar,
+    familiares_eliminar,
+    ajax_buscar_miembros,
+    ajax_validar_relacion,
     calcular_parentescos_inferidos,
     obtener_relaciones_organizadas,
-    obtener_familia_completa,
 )
 
 # API / JSON
