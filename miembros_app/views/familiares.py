@@ -618,6 +618,7 @@ def familias_home(request):
     })
 
 
+
 @login_required
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def familia_detalle(request, hogar_id):
@@ -628,9 +629,10 @@ def familia_detalle(request, hogar_id):
         pk=hogar_id
     )
 
-    miembros = [hm.miembro for hm in hogar.miembros.all()]
+    # En vez de lista de Miembro, traemos HogarMiembro (tiene rol y es_principal)
+    hogar_miembros = hogar.miembros.select_related("miembro").all()
 
-    return render(request, "miembros_app/familias/detalle.html", {
+    return render(request, "miembros_app/familiares/detalle.html", {
         "hogar": hogar,
-        "miembros": miembros,
+        "hogar_miembros": hogar_miembros,
     })
