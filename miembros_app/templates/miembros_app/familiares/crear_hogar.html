@@ -1,0 +1,1186 @@
+{% extends 'miembros_app/base_miembros.html' %}
+
+{% block title %}Crear Hogar{% endblock %}
+
+{% block miembros_content %}
+<div class="odoo-form">
+
+    <!-- Breadcrumb -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:familias_home' %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                Familias
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">Crear hogar</span>
+        </div>
+    </div>
+
+    <form method="post" id="formCrearHogar">
+        {% csrf_token %}
+        
+        <div class="hogar-crear-container">
+            
+            <!-- Header -->
+            <div class="crear-header">
+                <div class="header-icon">
+                    <span class="material-icons">add_home</span>
+                </div>
+                <div class="header-text">
+                    <h2>Crear nuevo hogar</h2>
+                    <p>Selecciona el miembro principal para comenzar</p>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 PASO 1: MIEMBRO PRINCIPAL
+                 ═══════════════════════════════════════════════════════════════ -->
+            <div class="form-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <span class="material-icons">person</span>
+                    </div>
+                    <div class="section-title">Miembro principal</div>
+                    <div class="section-badge">Requerido</div>
+                </div>
+
+                <div class="autocomplete-wrapper" id="autocompletePrincipal" data-field="principal">
+                    <label class="form-label">Buscar miembro</label>
+                    
+                    <input type="hidden" name="principal_id" id="principalId" class="autocomplete-hidden">
+                    
+                    <div class="autocomplete-field">
+                        <div class="autocomplete-chip" style="display: none;">
+                            <span class="chip-avatar"></span>
+                            <span class="chip-text">
+                                <span class="chip-name"></span>
+                                <span class="chip-code"></span>
+                            </span>
+                            <button type="button" class="chip-remove" title="Quitar">
+                                <span class="material-icons">close</span>
+                            </button>
+                        </div>
+                        <input type="text" 
+                               class="autocomplete-search" 
+                               placeholder="Escribe un nombre o código…" 
+                               autocomplete="off">
+                    </div>
+                    
+                    <div class="autocomplete-dropdown">
+                        <ul class="autocomplete-list"></ul>
+                        <div class="autocomplete-empty" style="display:none;">
+                            <span class="material-icons">person_search</span>
+                            <p>No se encontraron miembros</p>
+                        </div>
+                        <div class="autocomplete-loading" style="display:none;">
+                            <span class="material-icons spinner">sync</span>
+                            <p>Buscando...</p>
+                        </div>
+                    </div>
+                    
+                    <p class="help-text">Este miembro será la referencia principal del hogar</p>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 PASO 2: NOMBRE DEL HOGAR (se desbloquea al seleccionar principal)
+                 ═══════════════════════════════════════════════════════════════ -->
+            <div class="form-section locked-section" id="seccionNombre">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <span class="material-icons">home</span>
+                    </div>
+                    <div class="section-title">Nombre del hogar</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nombre</label>
+                    <div class="input-line">
+                        <input type="text" 
+                               id="nombreHogar" 
+                               name="nombre" 
+                               placeholder="Se generará automáticamente..."
+                               disabled>
+                    </div>
+                    <p class="help-text">Puedes personalizar el nombre o dejarlo automático</p>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 PASO 3: AGREGAR FAMILIARES (se desbloquea al seleccionar principal)
+                 ═══════════════════════════════════════════════════════════════ -->
+            <div class="form-section locked-section" id="seccionFamiliares">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <span class="material-icons">group_add</span>
+                    </div>
+                    <div class="section-title">Agregar familiares</div>
+                    <div class="section-badge optional">Opcional</div>
+                </div>
+
+                <div class="locked-message" id="lockedMessage">
+                    <span class="material-icons">lock</span>
+                    <p>Selecciona el miembro principal para agregar familiares</p>
+                </div>
+
+                <div class="familiares-content" id="familiaresContent" style="display: none;">
+                    
+                    <!-- Cónyuge -->
+                    <div class="familiar-group">
+                        <div class="familiar-group-header">
+                            <span class="material-icons">favorite</span>
+                            <span>Cónyuge</span>
+                        </div>
+                        
+                        <div class="autocomplete-wrapper" data-field="conyuge" data-rol="conyuge">
+                            <input type="hidden" name="conyuge_id" class="autocomplete-hidden">
+                            
+                            <div class="autocomplete-field">
+                                <div class="autocomplete-chip" style="display: none;">
+                                    <span class="chip-avatar"></span>
+                                    <span class="chip-text">
+                                        <span class="chip-name"></span>
+                                        <span class="chip-code"></span>
+                                    </span>
+                                    <button type="button" class="chip-remove" title="Quitar">
+                                        <span class="material-icons">close</span>
+                                    </button>
+                                </div>
+                                <input type="text" 
+                                       class="autocomplete-search" 
+                                       placeholder="Buscar cónyuge…" 
+                                       autocomplete="off">
+                            </div>
+                            
+                            <div class="autocomplete-dropdown">
+                                <ul class="autocomplete-list"></ul>
+                                <div class="autocomplete-empty" style="display:none;">
+                                    <span class="material-icons">person_search</span>
+                                    <p>No se encontraron miembros</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hijos -->
+                    <div class="familiar-group">
+                        <div class="familiar-group-header">
+                            <span class="material-icons">child_care</span>
+                            <span>Hijos</span>
+                        </div>
+                        
+                        <div id="hijosLista"></div>
+                        
+                        <button type="button" class="btn-add-familiar" id="btnAgregarHijo">
+                            <span class="material-icons">add</span>
+                            Agregar hijo
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ACCIONES
+                 ═══════════════════════════════════════════════════════════════ -->
+            <div class="form-actions">
+                <a href="{% url 'miembros_app:familias_home' %}" class="btn-cancelar">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-guardar" id="btnGuardar" disabled>
+                    <span class="material-icons">save</span>
+                    Crear hogar
+                </button>
+            </div>
+
+        </div>
+    </form>
+
+</div>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CREAR HOGAR - ESTILOS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --color-primary: #5c9ead;
+    --color-primary-dark: #4a8a99;
+    --color-primary-soft: rgba(92, 158, 173, 0.08);
+    --color-border: #e5e7eb;
+    --color-text-main: #111827;
+    --color-text-muted: #6b7280;
+    --radius-soft: 12px;
+}
+
+.hogar-crear-container {
+    max-width: 640px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 20px;
+    border: 1px solid #e8e8e8;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Header */
+.crear-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 28px 32px;
+    background: linear-gradient(135deg, #5c9ead 0%, #7ab5c2 100%);
+    color: #fff;
+}
+
+.header-icon {
+    width: 56px;
+    height: 56px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-icon .material-icons {
+    font-size: 28px;
+}
+
+.header-text h2 {
+    margin: 0 0 4px 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.header-text p {
+    margin: 0;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+/* Sections */
+.form-section {
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.section-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.section-icon .material-icons {
+    font-size: 20px;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    flex: 1;
+}
+
+.section-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.section-badge.optional {
+    background: #e5e7eb;
+    color: var(--color-text-muted);
+}
+
+/* Locked section */
+.locked-section {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.locked-section.unlocked {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.locked-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 30px;
+    background: #f9fafb;
+    border-radius: 12px;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.locked-message .material-icons {
+    font-size: 20px;
+}
+
+/* Form labels */
+.form-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.help-text {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+/* Input line style */
+.input-line {
+    position: relative;
+}
+
+.input-line input {
+    width: 100%;
+    padding: 12px 0;
+    border: none;
+    border-bottom: 2px solid var(--color-border);
+    background: transparent;
+    font-size: 1rem;
+    color: var(--color-text-main);
+    transition: border-color 0.2s;
+}
+
+.input-line input:focus {
+    outline: none;
+    border-bottom-color: var(--color-primary);
+}
+
+.input-line input:disabled {
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   AUTOCOMPLETE STYLES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.autocomplete-wrapper {
+    position: relative;
+}
+
+.autocomplete-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0;
+    border: none;
+    border-bottom: 2px solid var(--color-border);
+    background: transparent;
+    transition: border-color 0.2s;
+}
+
+.autocomplete-field:focus-within {
+    border-bottom-color: var(--color-primary);
+}
+
+.autocomplete-field.has-selection {
+    border-bottom-color: var(--color-primary);
+}
+
+.autocomplete-search {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    padding: 12px 0;
+    background: transparent;
+    color: var(--color-text-main);
+}
+
+.autocomplete-search::placeholder {
+    color: var(--color-text-muted);
+}
+
+/* Chip */
+.autocomplete-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px 8px 8px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--color-primary-soft), rgba(113, 75, 103, 0.12));
+    border: 1px solid rgba(113, 75, 103, 0.25);
+}
+
+.chip-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #5c9ead, #7ab5c2);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+}
+
+.chip-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.chip-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.chip-code {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.chip-remove {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.chip-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+.chip-remove .material-icons {
+    font-size: 18px;
+}
+
+/* Dropdown */
+.autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+    z-index: 100;
+    max-height: 280px;
+    overflow-y: auto;
+    display: none;
+}
+
+.autocomplete-dropdown.open {
+    display: block;
+}
+
+.autocomplete-list {
+    list-style: none;
+    padding: 6px;
+    margin: 0;
+}
+
+.autocomplete-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.autocomplete-item:hover {
+    background: var(--color-primary-soft);
+}
+
+.autocomplete-item-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #5c9ead, #7ab5c2);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.autocomplete-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.autocomplete-item-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.autocomplete-item-meta {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+.autocomplete-empty,
+.autocomplete-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.autocomplete-empty .material-icons,
+.autocomplete-loading .material-icons {
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.autocomplete-empty p,
+.autocomplete-loading p {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FAMILIAR GROUPS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.familiar-group {
+    margin-bottom: 24px;
+}
+
+.familiar-group:last-child {
+    margin-bottom: 0;
+}
+
+.familiar-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.familiar-group-header .material-icons {
+    font-size: 18px;
+    color: var(--color-primary);
+}
+
+/* Hijo row */
+.hijo-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 12px;
+}
+
+.hijo-row .autocomplete-wrapper {
+    flex: 1;
+}
+
+.hijo-row .autocomplete-field {
+    background: #fff;
+    border-radius: 8px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.hijo-row .autocomplete-field:focus-within {
+    border-color: var(--color-primary);
+}
+
+.btn-remove-hijo {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+
+.btn-remove-hijo:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+/* Add button */
+.btn-add-familiar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: transparent;
+    border: 2px dashed var(--color-border);
+    border-radius: 10px;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-add-familiar:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
+}
+
+.btn-add-familiar .material-icons {
+    font-size: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ACTIONS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 32px;
+    background: #f9fafb;
+    border-top: 1px solid var(--color-border);
+}
+
+.btn-cancelar {
+    padding: 12px 24px;
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.btn-cancelar:hover {
+    background: #f5f5f5;
+    color: var(--color-text-main);
+}
+
+.btn-guardar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: var(--color-primary);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-guardar:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+}
+
+.btn-guardar:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+}
+
+.btn-guardar .material-icons {
+    font-size: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+    .hogar-crear-container {
+        margin: 0 -12px;
+        border-radius: 0;
+    }
+    
+    .crear-header,
+    .form-section,
+    .form-actions {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-cancelar,
+    .btn-guardar {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+(function() {
+    'use strict';
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // UTILIDADES
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    function getInitials(name) {
+        if (!name) return '?';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AUTOCOMPLETE CLASS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    const autocompleteInstances = [];
+    
+    class AutocompleteMiembro {
+        constructor(wrapper, options = {}) {
+            this.wrapper = wrapper;
+            this.isPrincipal = wrapper.id === 'autocompletePrincipal';
+            this.onSelect = options.onSelect || null;
+            this.onClear = options.onClear || null;
+            
+            this.hiddenInput = wrapper.querySelector('.autocomplete-hidden');
+            this.fieldContainer = wrapper.querySelector('.autocomplete-field');
+            this.searchInput = wrapper.querySelector('.autocomplete-search');
+            this.chip = wrapper.querySelector('.autocomplete-chip');
+            this.chipAvatar = wrapper.querySelector('.chip-avatar');
+            this.chipName = wrapper.querySelector('.chip-name');
+            this.chipCode = wrapper.querySelector('.chip-code');
+            this.chipRemove = wrapper.querySelector('.chip-remove');
+            this.dropdown = wrapper.querySelector('.autocomplete-dropdown');
+            this.listEl = wrapper.querySelector('.autocomplete-list');
+            this.emptyEl = wrapper.querySelector('.autocomplete-empty');
+            this.loadingEl = wrapper.querySelector('.autocomplete-loading');
+            
+            this.debounceTimer = null;
+            this.selectedId = null;
+            
+            this.init();
+            autocompleteInstances.push(this);
+        }
+        
+        init() {
+            // Input search
+            this.searchInput.addEventListener('input', () => {
+                clearTimeout(this.debounceTimer);
+                const q = this.searchInput.value.trim();
+                
+                if (q.length < 2) {
+                    this.closeDropdown();
+                    return;
+                }
+                
+                this.debounceTimer = setTimeout(() => {
+                    this.search(q);
+                }, 300);
+            });
+            
+            // Focus
+            this.searchInput.addEventListener('focus', () => {
+                const q = this.searchInput.value.trim();
+                if (q.length >= 2) {
+                    this.search(q);
+                }
+            });
+            
+            // Chip remove
+            if (this.chipRemove) {
+                this.chipRemove.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.clearSelection();
+                });
+            }
+            
+            // Click outside
+            document.addEventListener('click', (e) => {
+                if (!this.wrapper.contains(e.target)) {
+                    this.closeDropdown();
+                }
+            });
+        }
+        
+        async search(query) {
+            this.showLoading();
+            
+            try {
+                const url = `{% url 'miembros_app:ajax_buscar_miembros' %}?q=${encodeURIComponent(query)}`;
+                const response = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    this.renderResults(data.results);
+                } else {
+                    this.showEmpty();
+                }
+            } catch (err) {
+                console.error('Autocomplete error:', err);
+                this.showEmpty();
+            }
+        }
+        
+        renderResults(results) {
+            this.listEl.innerHTML = '';
+            
+            // Filtrar miembros ya seleccionados
+            const selectedIds = getSelectedMemberIds();
+            const filtered = results.filter(m => !selectedIds.includes(m.id));
+            
+            if (filtered.length === 0) {
+                this.showEmpty();
+                return;
+            }
+            
+            filtered.forEach(miembro => {
+                const li = document.createElement('li');
+                li.className = 'autocomplete-item';
+                
+                const initials = getInitials(miembro.nombre);
+                
+                li.innerHTML = `
+                    <div class="autocomplete-item-avatar">${escapeHtml(initials)}</div>
+                    <div class="autocomplete-item-info">
+                        <div class="autocomplete-item-name">${escapeHtml(miembro.nombre)}</div>
+                        <div class="autocomplete-item-meta">${escapeHtml(miembro.codigo || 'Sin código')}</div>
+                    </div>
+                `;
+                
+                li.addEventListener('click', () => {
+                    this.selectMiembro(miembro.id, miembro.nombre, miembro.codigo);
+                });
+                
+                this.listEl.appendChild(li);
+            });
+            
+            if (this.loadingEl) this.loadingEl.style.display = 'none';
+            if (this.emptyEl) this.emptyEl.style.display = 'none';
+            this.listEl.style.display = 'block';
+            this.openDropdown();
+        }
+        
+        selectMiembro(id, nombre, codigo) {
+            this.selectedId = id;
+            this.hiddenInput.value = String(id);
+            
+            // Actualizar chip
+            if (this.chipAvatar) this.chipAvatar.textContent = getInitials(nombre);
+            if (this.chipName) this.chipName.textContent = nombre;
+            if (this.chipCode) this.chipCode.textContent = codigo || 'Sin código';
+            
+            // Mostrar chip, ocultar input
+            this.chip.style.display = 'inline-flex';
+            this.searchInput.value = '';
+            this.searchInput.style.display = 'none';
+            if (this.fieldContainer) this.fieldContainer.classList.add('has-selection');
+            
+            this.closeDropdown();
+            
+            // Callback
+            if (this.onSelect) {
+                this.onSelect(id, nombre, codigo);
+            }
+            
+            // Si es el principal, desbloquear secciones
+            if (this.isPrincipal) {
+                unlockSections(nombre);
+            }
+        }
+        
+        clearSelection() {
+            this.selectedId = null;
+            this.hiddenInput.value = '';
+            this.chip.style.display = 'none';
+            this.searchInput.style.display = '';
+            if (this.fieldContainer) this.fieldContainer.classList.remove('has-selection');
+            this.searchInput.value = '';
+            this.closeDropdown();
+            this.searchInput.focus();
+            
+            // Callback
+            if (this.onClear) {
+                this.onClear();
+            }
+            
+            // Si es el principal, bloquear secciones
+            if (this.isPrincipal) {
+                lockSections();
+            }
+        }
+        
+        showLoading() {
+            this.listEl.innerHTML = '';
+            this.listEl.style.display = 'none';
+            if (this.emptyEl) this.emptyEl.style.display = 'none';
+            if (this.loadingEl) this.loadingEl.style.display = 'flex';
+            this.openDropdown();
+        }
+        
+        showEmpty() {
+            this.listEl.innerHTML = '';
+            this.listEl.style.display = 'none';
+            if (this.loadingEl) this.loadingEl.style.display = 'none';
+            if (this.emptyEl) this.emptyEl.style.display = 'flex';
+            this.openDropdown();
+        }
+        
+        openDropdown() {
+            this.dropdown.classList.add('open');
+        }
+        
+        closeDropdown() {
+            this.dropdown.classList.remove('open');
+            if (this.loadingEl) this.loadingEl.style.display = 'none';
+            if (this.emptyEl) this.emptyEl.style.display = 'none';
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FUNCIONES DE CONTROL
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    function getSelectedMemberIds() {
+        const ids = [];
+        autocompleteInstances.forEach(inst => {
+            if (inst.selectedId) {
+                ids.push(inst.selectedId);
+            }
+        });
+        return ids;
+    }
+    
+    function unlockSections(nombrePrincipal) {
+        // Desbloquear sección nombre
+        const seccionNombre = document.getElementById('seccionNombre');
+        seccionNombre.classList.add('unlocked');
+        
+        const inputNombre = document.getElementById('nombreHogar');
+        inputNombre.disabled = false;
+        inputNombre.placeholder = `Hogar de ${nombrePrincipal}`;
+        inputNombre.value = `Hogar de ${nombrePrincipal}`;
+        
+        // Desbloquear sección familiares
+        const seccionFamiliares = document.getElementById('seccionFamiliares');
+        seccionFamiliares.classList.add('unlocked');
+        
+        document.getElementById('lockedMessage').style.display = 'none';
+        document.getElementById('familiaresContent').style.display = 'block';
+        
+        // Habilitar botón guardar
+        document.getElementById('btnGuardar').disabled = false;
+    }
+    
+    function lockSections() {
+        // Bloquear sección nombre
+        const seccionNombre = document.getElementById('seccionNombre');
+        seccionNombre.classList.remove('unlocked');
+        
+        const inputNombre = document.getElementById('nombreHogar');
+        inputNombre.disabled = true;
+        inputNombre.value = '';
+        inputNombre.placeholder = 'Se generará automáticamente...';
+        
+        // Bloquear sección familiares
+        const seccionFamiliares = document.getElementById('seccionFamiliares');
+        seccionFamiliares.classList.remove('unlocked');
+        
+        document.getElementById('lockedMessage').style.display = 'flex';
+        document.getElementById('familiaresContent').style.display = 'none';
+        
+        // Deshabilitar botón guardar
+        document.getElementById('btnGuardar').disabled = true;
+        
+        // Limpiar selecciones de familiares
+        autocompleteInstances.forEach(inst => {
+            if (!inst.isPrincipal && inst.selectedId) {
+                inst.clearSelection();
+            }
+        });
+        
+        // Limpiar hijos
+        document.getElementById('hijosLista').innerHTML = '';
+        hijoCounter = 0;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // HIJOS DINÁMICOS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    let hijoCounter = 0;
+    
+    function addHijoRow() {
+        hijoCounter++;
+        const idx = hijoCounter;
+        
+        const hijosLista = document.getElementById('hijosLista');
+        
+        const row = document.createElement('div');
+        row.className = 'hijo-row';
+        row.id = `hijoRow${idx}`;
+        row.innerHTML = `
+            <div class="autocomplete-wrapper" data-field="hijo_${idx}" data-rol="hijo">
+                <input type="hidden" name="hijo_${idx}_id" class="autocomplete-hidden">
+                
+                <div class="autocomplete-field">
+                    <div class="autocomplete-chip" style="display: none;">
+                        <span class="chip-avatar"></span>
+                        <span class="chip-text">
+                            <span class="chip-name"></span>
+                            <span class="chip-code"></span>
+                        </span>
+                        <button type="button" class="chip-remove" title="Quitar">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+                    <input type="text" 
+                           class="autocomplete-search" 
+                           placeholder="Buscar hijo/a…" 
+                           autocomplete="off">
+                </div>
+                
+                <div class="autocomplete-dropdown">
+                    <ul class="autocomplete-list"></ul>
+                    <div class="autocomplete-empty" style="display:none;">
+                        <span class="material-icons">person_search</span>
+                        <p>No se encontraron miembros</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button type="button" class="btn-remove-hijo" title="Quitar">
+                <span class="material-icons">delete</span>
+            </button>
+        `;
+        
+        hijosLista.appendChild(row);
+        
+        // Inicializar autocomplete
+        const wrapper = row.querySelector('.autocomplete-wrapper');
+        const instance = new AutocompleteMiembro(wrapper);
+        
+        // Botón quitar
+        row.querySelector('.btn-remove-hijo').addEventListener('click', () => {
+            // Remover instancia
+            const instIdx = autocompleteInstances.indexOf(instance);
+            if (instIdx > -1) {
+                autocompleteInstances.splice(instIdx, 1);
+            }
+            row.remove();
+        });
+        
+        // Focus
+        row.querySelector('.autocomplete-search').focus();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar autocompletes existentes
+        document.querySelectorAll('.autocomplete-wrapper').forEach(wrapper => {
+            new AutocompleteMiembro(wrapper);
+        });
+        
+        // Botón agregar hijo
+        document.getElementById('btnAgregarHijo').addEventListener('click', addHijoRow);
+    });
+
+})();
+</script>
+
+{% endblock %}

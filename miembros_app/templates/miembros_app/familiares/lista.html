@@ -6,182 +6,547 @@
 {% block miembros_content %}
 
 <div class="odoo-form">
-  <!-- Barra superior -->
-  <div class="odoo-control-bar">
-    <div class="odoo-control-left">
-      <span class="odoo-breadcrumb-current">Familias</span>
-      <span class="odoo-badge">{{ familias|length }} hogares</span>
+
+    <!-- Barra superior -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <span class="material-icons page-icon">home</span>
+            <span class="odoo-breadcrumb-current">Familias</span>
+        </div>
+
+        <div class="odoo-control-right">
+            <div class="odoo-search">
+                <span class="material-icons">search</span>
+                <input id="familiasSearch" type="text" placeholder="Buscar familia…">
+            </div>
+            <a href="{% url 'miembros_app:familia_crear' %}" class="btn-crear">
+                <span class="material-icons">add</span>
+                Crear hogar
+            </a>
+        </div>
     </div>
 
-    <div class="odoo-control-right">
-      <div class="odoo-search">
-        <span class="material-icons">search</span>
-        <input id="familiasSearch" type="text" placeholder="Buscar familia por nombre…">
-      </div>
+    <!-- Stats rápidos -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #5c9ead 0%, #7ab5c2 100%);">
+                <span class="material-icons">home</span>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ familias|length }}</div>
+                <div class="stat-label">Hogares</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #1565c0 0%, #42a5f5 100%);">
+                <span class="material-icons">group</span>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ total_miembros|default:"--" }}</div>
+                <div class="stat-label">Miembros en hogares</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%);">
+                <span class="material-icons">diversity_3</span>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ promedio_miembros|default:"--" }}</div>
+                <div class="stat-label">Promedio por hogar</div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="odoo-form-container">
-    <div class="odoo-form-main">
+    <!-- Contenido principal -->
+    <div class="familias-container">
 
-      <div class="familiar-seccion">
-        <h3 class="familiar-seccion-titulo">
-          <span class="material-icons">home</span>
-          Hogares
-        </h3>
+        <div class="familias-header">
+            <h3>
+                <span class="material-icons">family_restroom</span>
+                Todos los hogares
+            </h3>
+            <span class="contador-resultados" id="contadorResultados">{{ familias|length }} hogares</span>
+        </div>
 
         <div class="familias-grid" id="familiasGrid">
 
-          {% for f in familias %}
-          <a class="familia-card" href="{% url 'miembros_app:familia_detalle' f.id %}" data-name="{{ f.nombre|lower }}">
-            <div class="familia-card-left">
-              <div class="familia-avatar">
-                <span class="material-icons">family_restroom</span>
-              </div>
+            {% for f in familias %}
+            <a class="familia-card" href="{% url 'miembros_app:familia_detalle' f.id %}" data-name="{{ f.nombre|lower }}">
+                
+                <div class="familia-card-header">
+                    <div class="familia-avatar">
+                        <span class="material-icons">home</span>
+                    </div>
+                    <div class="familia-count">
+                        <span class="count-number">{{ f.miembros_count }}</span>
+                        <span class="count-label">miembros</span>
+                    </div>
+                </div>
 
-              <div class="familia-info">
-                <div class="familia-nombre">{{ f.nombre }}</div>
-                <div class="familia-meta">{{ f.miembros_count }} miembros</div>
-              </div>
+                <div class="familia-card-body">
+                    <div class="familia-nombre">{{ f.nombre }}</div>
+                    
+                    {% if f.miembro_principal %}
+                    <div class="familia-referencia">
+                        <span class="material-icons">person</span>
+                        {{ f.miembro_principal }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="familia-card-footer">
+                    <span class="ver-detalle">Ver hogar</span>
+                    <span class="material-icons">arrow_forward</span>
+                </div>
+
+            </a>
+            {% empty %}
+
+            <div class="familias-vacio">
+                <div class="vacio-icon">
+                    <span class="material-icons">home_work</span>
+                </div>
+                <h4>No hay hogares registrados</h4>
+                <p>Crea el primer hogar para comenzar a organizar las familias de tu iglesia.</p>
+                <a href="{% url 'miembros_app:familia_crear' %}" class="btn-crear-vacio">
+                    <span class="material-icons">add</span>
+                    Crear primer hogar
+                </a>
             </div>
 
-            <div class="familia-card-right">
-              <span class="material-icons">chevron_right</span>
-            </div>
-          </a>
-          {% empty %}
-
-          <div class="familiar-vacio">
-            <span class="material-icons">family_restroom</span>
-            <p>No hay familias creadas todavía</p>
-          </div>
-
-          {% endfor %}
+            {% endfor %}
 
         </div>
-      </div>
 
     </div>
-  </div>
+
 </div>
 
-<!-- Estilos (solo para esta pantalla) -->
 <style>
-  .odoo-badge{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    margin-left:10px;
-    padding:2px 10px;
-    border-radius:999px;
-    font-size:12px;
-    background:rgba(0,0,0,.06);
-  }
+/* ═══════════════════════════════════════════════════════════════════════════════
+   LISTA DE FAMILIAS - ESTILOS MEJORADOS
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
-  .odoo-search{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:8px 10px;
-    border-radius:10px;
-    background:#fff;
-    border:1px solid rgba(0,0,0,.08);
-    min-width:320px;
-  }
-  .odoo-search input{
-    border:none;
-    outline:none;
-    width:100%;
-    font-size:14px;
-    background:transparent;
-  }
+.page-icon {
+    font-size: 24px;
+    color: #5c9ead;
+    margin-right: 8px;
+}
 
-  .familias-grid{
-    display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap:12px;
-    margin-top:10px;
-  }
+/* Control bar */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
 
-  .familia-card{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:14px 14px;
-    border-radius:14px;
-    background:#fff;
-    border:1px solid rgba(0,0,0,.08);
-    text-decoration:none;
-    transition:transform .08s ease, box-shadow .08s ease;
-  }
-  .familia-card:hover{
+.odoo-control-left {
+    display: flex;
+    align-items: center;
+}
+
+.odoo-control-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.odoo-breadcrumb-current {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.odoo-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    min-width: 280px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.odoo-search:focus-within {
+    border-color: #5c9ead;
+    box-shadow: 0 0 0 3px rgba(92, 158, 173, 0.1);
+}
+
+.odoo-search .material-icons {
+    color: #999;
+    font-size: 20px;
+}
+
+.odoo-search input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 0.95rem;
+    background: transparent;
+}
+
+.btn-crear {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: #5c9ead;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.btn-crear:hover {
+    background: #4a8a99;
     transform: translateY(-1px);
-    box-shadow:0 10px 22px rgba(0,0,0,.08);
-  }
+}
 
-  .familia-card-left{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    min-width:0;
-  }
+.btn-crear .material-icons {
+    font-size: 20px;
+}
 
-  .familia-avatar{
-    width:42px;
-    height:42px;
-    border-radius:12px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:rgba(0,0,0,.06);
-  }
+/* Stats row */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
 
-  .familia-info{
-    min-width:0;
-  }
-  .familia-nombre{
-    font-weight:700;
-    color:#111;
-    line-height:1.2;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    max-width:460px;
-  }
-  .familia-meta{
-    margin-top:4px;
-    font-size:12px;
-    color:rgba(0,0,0,.55);
-  }
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e8e8e8;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
 
-  .familia-card-right{
-    color:rgba(0,0,0,.45);
-    display:flex;
-    align-items:center;
-  }
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
 
-  @media (max-width: 520px){
-    .odoo-search{ min-width: 0; width:100%; }
-    .familia-nombre{ max-width: 220px; }
-  }
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon .material-icons {
+    color: #fff;
+    font-size: 24px;
+}
+
+.stat-info {
+    min-width: 0;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #888;
+    margin-top: 2px;
+}
+
+/* Familias container */
+.familias-container {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e8e8e8;
+    padding: 20px;
+}
+
+.familias-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #eee;
+}
+
+.familias-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.familias-header h3 .material-icons {
+    color: #5c9ead;
+    font-size: 22px;
+}
+
+.contador-resultados {
+    font-size: 0.85rem;
+    color: #888;
+    background: #f5f5f5;
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+/* Grid de familias */
+.familias-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+/* Card de familia */
+.familia-card {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 14px;
+    text-decoration: none;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.familia-card:hover {
+    border-color: #5c9ead;
+    box-shadow: 0 8px 24px rgba(92, 158, 173, 0.12);
+    transform: translateY(-3px);
+}
+
+.familia-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #faf8f9 0%, #f5f0f3 100%);
+    border-bottom: 1px solid #f0e8ed;
+}
+
+.familia-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #5c9ead 0%, #7ab5c2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(92, 158, 173, 0.25);
+}
+
+.familia-avatar .material-icons {
+    color: #fff;
+    font-size: 24px;
+}
+
+.familia-count {
+    text-align: right;
+}
+
+.count-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #5c9ead;
+    line-height: 1;
+}
+
+.count-label {
+    font-size: 0.75rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.familia-card-body {
+    padding: 16px 18px;
+    flex: 1;
+}
+
+.familia-nombre {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    line-height: 1.3;
+}
+
+.familia-referencia {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.familia-referencia .material-icons {
+    font-size: 16px;
+    color: #999;
+}
+
+.familia-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+}
+
+.ver-detalle {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #5c9ead;
+}
+
+.familia-card-footer .material-icons {
+    font-size: 18px;
+    color: #5c9ead;
+    transition: transform 0.2s;
+}
+
+.familia-card:hover .familia-card-footer .material-icons {
+    transform: translateX(4px);
+}
+
+/* Estado vacío */
+.familias-vacio {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.vacio-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f5f0f3 0%, #ebe4e8 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vacio-icon .material-icons {
+    font-size: 40px;
+    color: #5c9ead;
+    opacity: 0.6;
+}
+
+.familias-vacio h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.familias-vacio p {
+    margin: 0 0 24px 0;
+    color: #888;
+    font-size: 0.95rem;
+    max-width: 360px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.btn-crear-vacio {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #5c9ead;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-crear-vacio:hover {
+    background: #4a8a99;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .odoo-control-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .odoo-control-right {
+        flex-direction: column;
+    }
+    
+    .odoo-search {
+        min-width: 0;
+        width: 100%;
+    }
+    
+    .btn-crear {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .familias-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
-<!-- Buscador client-side -->
 <script>
-  (function(){
+(function(){
     const input = document.getElementById("familiasSearch");
     const grid = document.getElementById("familiasGrid");
+    const contador = document.getElementById("contadorResultados");
+    
     if(!input || !grid) return;
 
     input.addEventListener("input", function(){
-      const q = (this.value || "").toLowerCase().trim();
-      const cards = grid.querySelectorAll(".familia-card");
-      cards.forEach(card => {
-        const name = card.getAttribute("data-name") || "";
-        card.style.display = name.includes(q) ? "" : "none";
-      });
+        const q = (this.value || "").toLowerCase().trim();
+        const cards = grid.querySelectorAll(".familia-card");
+        let visibles = 0;
+        
+        cards.forEach(card => {
+            const name = card.getAttribute("data-name") || "";
+            const mostrar = name.includes(q);
+            card.style.display = mostrar ? "" : "none";
+            if (mostrar) visibles++;
+        });
+        
+        if (contador) {
+            contador.textContent = visibles + (visibles === 1 ? " hogar" : " hogares");
+        }
     });
-  })();
+})();
 </script>
 
 {% endblock %}

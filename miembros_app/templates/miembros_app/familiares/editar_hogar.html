@@ -1,98 +1,991 @@
 {% extends 'miembros_app/base_miembros.html' %}
 
-{% block title %}Editar familia{% endblock %}
+{% block title %}Editar Hogar · {{ hogar.nombre|default:"Sin nombre" }}{% endblock %}
 
-{% block miembros_content %}
-
-<div class="odoo-form">
-
-  <div class="odoo-control-bar">
-    <div class="odoo-control-left">
-      <a href="{% url 'miembros_app:familia_detalle' hogar.id %}" class="odoo-breadcrumb-link">
-        <span class="material-icons">arrow_back</span>
-        Volver al hogar
-      </a>
-      <span class="odoo-breadcrumb-sep">/</span>
-      <span class="odoo-breadcrumb-current">Editar</span>
-    </div>
-  </div>
-
-  <form method="post">
-    {% csrf_token %}
-
-```
-<div class="odoo-form-container">
-  <div class="odoo-form-main">
-
-    <h2>Editar familia</h2>
-
-    <div class="odoo-field">
-      <label class="odoo-label">Nombre del hogar</label>
-      <input type="text" name="nombre" class="odoo-input" value="{{ hogar.nombre|default:'' }}">
-    </div>
-
-    <h3 style="margin-top:25px">Miembros</h3>
-
-    <div class="miembros-editar">
-      {% for hm in hogar_miembros %}
-      <div class="miembro-edit-card">
-
-        <div class="miembro-nombre">
-          {{ hm.miembro.nombres }} {{ hm.miembro.apellidos }}
-        </div>
-
-        <div class="miembro-edit-options">
-
-          <label>
-            <input type="radio" name="principal" value="{{ hm.miembro.id }}"
-            {% if hm.es_principal %}checked{% endif %}>
-            Principal
-          </label>
-
-          <select name="rol_{{ hm.id }}">
-            <option value="padre" {% if hm.rol == 'padre' %}selected{% endif %}>Padre</option>
-            <option value="madre" {% if hm.rol == 'madre' %}selected{% endif %}>Madre</option>
-            <option value="hijo" {% if hm.rol == 'hijo' %}selected{% endif %}>Hijo/a</option>
-            <option value="otro" {% if hm.rol == 'otro' %}selected{% endif %}>Otro</option>
-          </select>
-
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-
-    <div style="margin-top:30px">
-      <a href="{% url 'miembros_app:familia_detalle' hogar.id %}" class="odoo-btn odoo-btn-secondary">
-        Cancelar
-      </a>
-
-      <button type="submit" class="odoo-btn odoo-btn-primary">
-        Guardar cambios
-      </button>
-    </div>
-
-  </div>
-</div>
-```
-
-  </form>
-</div>
-
+{% block extra_css %}
 <style>
-.miembro-edit-card{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:12px;
-  border:1px solid #ddd;
-  border-radius:10px;
-  margin-top:10px;
+/* ═══════════════════════════════════════════════════════════════════════════════
+   EDITAR HOGAR - ESTILOS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.hogar-edit-container {
+    max-width: 800px;
+    margin: 0 auto;
 }
-.miembro-edit-options{
-  display:flex;
-  gap:12px;
-  align-items:center;
+
+.hogar-edit-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.hogar-edit-header .material-icons {
+    font-size: 32px;
+    color: #5c9ead;
+}
+
+.hogar-edit-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: #333;
+}
+
+/* Campo nombre */
+.campo-nombre {
+    margin-bottom: 28px;
+}
+
+.campo-nombre label {
+    display: block;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.campo-nombre input {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.campo-nombre input:focus {
+    outline: none;
+    border-color: #5c9ead;
+    box-shadow: 0 0 0 3px rgba(92, 158, 173, 0.1);
+}
+
+/* Sección miembros */
+.seccion-miembros {
+    margin-bottom: 28px;
+}
+
+.seccion-miembros h3 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #333;
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.seccion-miembros h3 .material-icons {
+    font-size: 20px;
+    color: #5c9ead;
+}
+
+/* Cards de miembros */
+.miembros-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.miembro-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.miembro-card:hover {
+    border-color: #5c9ead;
+    box-shadow: 0 2px 8px rgba(92, 158, 173, 0.08);
+}
+
+.miembro-card.es-principal {
+    border-color: #5c9ead;
+    background: linear-gradient(135deg, rgba(92, 158, 173, 0.03) 0%, rgba(92, 158, 173, 0.06) 100%);
+}
+
+.miembro-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.miembro-avatar.masculino {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #1565c0;
+}
+
+.miembro-avatar.femenino {
+    background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+    color: #c2185b;
+}
+
+.miembro-avatar.otro {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    color: #7b1fa2;
+}
+
+.miembro-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.miembro-nombre {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.miembro-codigo {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 2px;
+}
+
+.miembro-opciones {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.miembro-opciones label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #555;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.miembro-opciones label:hover {
+    background: #f5f5f5;
+}
+
+.miembro-opciones label.principal-label {
+    color: #5c9ead;
+    font-weight: 500;
+}
+
+.miembro-opciones select {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    background: #fff;
+    cursor: pointer;
+    min-width: 100px;
+}
+
+.miembro-opciones select:focus {
+    outline: none;
+    border-color: #5c9ead;
+}
+
+.btn-quitar {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-quitar:hover {
+    background: #ffebee;
+    color: #c62828;
+}
+
+/* Agregar miembro */
+.agregar-miembro-section {
+    margin-top: 20px;
+    padding: 16px;
+    background: #fafafa;
+    border: 2px dashed #ddd;
+    border-radius: 10px;
+}
+
+.agregar-miembro-section.activo {
+    border-color: #5c9ead;
+    background: rgba(92, 158, 173, 0.02);
+}
+
+.btn-mostrar-agregar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #5c9ead;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.btn-mostrar-agregar:hover {
+    background: rgba(92, 158, 173, 0.08);
+}
+
+.agregar-form {
+    display: none;
+}
+
+.agregar-form.visible {
+    display: block;
+}
+
+.agregar-form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.agregar-form-header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.btn-cerrar-agregar {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #999;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-cerrar-agregar:hover {
+    background: #eee;
+    color: #333;
+}
+
+/* Autocomplete */
+.autocomplete-wrapper {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.autocomplete-input {
+    width: 100%;
+    padding: 10px 14px 10px 40px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.autocomplete-input:focus {
+    outline: none;
+    border-color: #5c9ead;
+    box-shadow: 0 0 0 3px rgba(92, 158, 173, 0.1);
+}
+
+.autocomplete-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    font-size: 20px;
+}
+
+.autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+}
+
+.autocomplete-results.visible {
+    display: block;
+}
+
+.autocomplete-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.autocomplete-item:hover {
+    background: #f5f5f5;
+}
+
+.autocomplete-item-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+}
+
+.autocomplete-item-info {
+    flex: 1;
+}
+
+.autocomplete-item-nombre {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.autocomplete-item-codigo {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.autocomplete-empty {
+    padding: 14px;
+    text-align: center;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.agregar-campos {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.agregar-campos .campo {
+    flex: 1;
+    min-width: 120px;
+}
+
+.agregar-campos label {
+    display: block;
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.agregar-campos select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.btn-agregar-miembro {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #5c9ead;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-agregar-miembro:hover {
+    background: #4a8a99;
+}
+
+.btn-agregar-miembro:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Miembros a eliminar (marcados) */
+.miembro-card.marcado-eliminar {
+    opacity: 0.5;
+    background: #ffebee;
+    border-color: #ef9a9a;
+}
+
+.miembro-card.marcado-eliminar .miembro-nombre {
+    text-decoration: line-through;
+    color: #999;
+}
+
+/* Acciones */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.btn-cancelar {
+    padding: 10px 20px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    color: #555;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.btn-cancelar:hover {
+    background: #f5f5f5;
+    border-color: #bbb;
+}
+
+.btn-guardar {
+    padding: 10px 24px;
+    background: #5c9ead;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+}
+
+.btn-guardar:hover {
+    background: #4a8a99;
+}
+
+/* Mensajes */
+.mensaje-vacio {
+    text-align: center;
+    padding: 30px;
+    color: #888;
+}
+
+.mensaje-vacio .material-icons {
+    font-size: 48px;
+    color: #ddd;
+    display: block;
+    margin-bottom: 10px;
+}
+
+/* Nuevos miembros pendientes */
+.nuevos-miembros-lista {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nuevo-miembro-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 8px;
+}
+
+.nuevo-miembro-item .material-icons {
+    color: #43a047;
+}
+
+.nuevo-miembro-info {
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.nuevo-miembro-info strong {
+    color: #333;
+}
+
+.nuevo-miembro-info span {
+    color: #666;
+    margin-left: 8px;
+}
+
+.btn-quitar-nuevo {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #999;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-quitar-nuevo:hover {
+    background: #ffcdd2;
+    color: #c62828;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .miembro-card {
+        flex-wrap: wrap;
+    }
+    
+    .miembro-opciones {
+        width: 100%;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+    }
+    
+    .agregar-campos {
+        flex-direction: column;
+    }
+    
+    .agregar-campos .campo {
+        width: 100%;
+    }
 }
 </style>
+{% endblock %}
 
+{% block miembros_content %}
+<div class="odoo-form">
+
+    <!-- Breadcrumb -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:familia_detalle' hogar.id %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                {{ hogar.nombre|default:"Hogar" }}
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">Editar</span>
+        </div>
+    </div>
+
+    <form method="post" id="formEditarHogar">
+        {% csrf_token %}
+        
+        <div class="hogar-edit-container">
+            
+            <!-- Header -->
+            <div class="hogar-edit-header">
+                <span class="material-icons">home</span>
+                <h2>Editar Hogar</h2>
+            </div>
+
+            <!-- Nombre del hogar -->
+            <div class="campo-nombre">
+                <label for="nombre">Nombre del hogar</label>
+                <input type="text" 
+                       id="nombre" 
+                       name="nombre" 
+                       value="{{ hogar.nombre|default:'' }}"
+                       placeholder="Ej: Familia García López">
+            </div>
+
+            <!-- Miembros actuales -->
+            <div class="seccion-miembros">
+                <h3>
+                    <span class="material-icons">group</span>
+                    Miembros del hogar
+                </h3>
+
+                {% if hogar_miembros %}
+                <div class="miembros-lista" id="listaMiembros">
+                    {% for hm in hogar_miembros %}
+                    <div class="miembro-card {% if hm.es_principal %}es-principal{% endif %}" 
+                         data-hm-id="{{ hm.id }}"
+                         id="miembroCard{{ hm.id }}">
+                        
+                        <!-- Avatar -->
+                        <div class="miembro-avatar {% if hm.miembro.genero == 'masculino' %}masculino{% elif hm.miembro.genero == 'femenino' %}femenino{% else %}otro{% endif %}">
+                            {{ hm.miembro.nombres|slice:":1" }}{{ hm.miembro.apellidos|slice:":1" }}
+                        </div>
+                        
+                        <!-- Info -->
+                        <div class="miembro-info">
+                            <div class="miembro-nombre">{{ hm.miembro.nombres }} {{ hm.miembro.apellidos }}</div>
+                            <div class="miembro-codigo">{{ hm.miembro.codigo_miembro|default:hm.miembro.codigo_seguimiento|default:"Sin código" }}</div>
+                        </div>
+                        
+                        <!-- Opciones -->
+                        <div class="miembro-opciones">
+                            <label class="principal-label" title="Marcar como miembro principal del hogar">
+                                <input type="radio" 
+                                       name="principal" 
+                                       value="{{ hm.miembro.id }}"
+                                       {% if hm.es_principal %}checked{% endif %}>
+                                Principal
+                            </label>
+                            
+                            <select name="rol_{{ hm.id }}" title="Rol en el hogar">
+                                <option value="conyuge" {% if hm.rol == 'conyuge' %}selected{% endif %}>Cónyuge</option>
+                                <option value="padre" {% if hm.rol == 'padre' %}selected{% endif %}>Padre</option>
+                                <option value="madre" {% if hm.rol == 'madre' %}selected{% endif %}>Madre</option>
+                                <option value="hijo" {% if hm.rol == 'hijo' %}selected{% endif %}>Hijo/a</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Botón quitar -->
+                        <button type="button" 
+                                class="btn-quitar" 
+                                title="Quitar del hogar"
+                                onclick="quitarMiembro({{ hm.id }}, '{{ hm.miembro.nombres }} {{ hm.miembro.apellidos }}')">
+                            <span class="material-icons">close</span>
+                        </button>
+                        
+                        <!-- Campo oculto para marcar eliminación -->
+                        <input type="hidden" name="eliminar_{{ hm.id }}" value="0" id="eliminar{{ hm.id }}">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="mensaje-vacio">
+                    <span class="material-icons">group_off</span>
+                    <p>No hay miembros en este hogar</p>
+                </div>
+                {% endif %}
+
+                <!-- Nuevos miembros agregados (dinámico) -->
+                <div class="nuevos-miembros-lista" id="nuevosMiembrosLista"></div>
+
+                <!-- Sección agregar miembro -->
+                <div class="agregar-miembro-section" id="agregarSection">
+                    <button type="button" class="btn-mostrar-agregar" id="btnMostrarAgregar">
+                        <span class="material-icons">person_add</span>
+                        Agregar miembro al hogar
+                    </button>
+                    
+                    <div class="agregar-form" id="agregarForm">
+                        <div class="agregar-form-header">
+                            <h4>Agregar miembro</h4>
+                            <button type="button" class="btn-cerrar-agregar" id="btnCerrarAgregar">
+                                <span class="material-icons">close</span>
+                            </button>
+                        </div>
+                        
+                        <div class="autocomplete-wrapper">
+                            <span class="material-icons autocomplete-icon">search</span>
+                            <input type="text" 
+                                   class="autocomplete-input" 
+                                   id="buscarMiembro"
+                                   placeholder="Buscar miembro por nombre o código..."
+                                   autocomplete="off">
+                            <div class="autocomplete-results" id="resultadosBusqueda"></div>
+                        </div>
+                        
+                        <div class="agregar-campos">
+                            <div class="campo">
+                                <label>Rol en el hogar</label>
+                                <select id="nuevoRol">
+                                    <option value="conyuge">Cónyuge</option>
+                                    <option value="padre">Padre</option>
+                                    <option value="madre">Madre</option>
+                                    <option value="hijo" selected>Hijo/a</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-agregar-miembro" id="btnConfirmarAgregar" disabled>
+                                <span class="material-icons">add</span>
+                                Agregar
+                            </button>
+                        </div>
+                        
+                        <!-- Campo oculto para el miembro seleccionado -->
+                        <input type="hidden" id="miembroSeleccionadoId" value="">
+                        <input type="hidden" id="miembroSeleccionadoNombre" value="">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campos ocultos para nuevos miembros -->
+            <div id="camposNuevosMiembros"></div>
+
+            <!-- Acciones -->
+            <div class="form-actions">
+                <a href="{% url 'miembros_app:familia_detalle' hogar.id %}" class="btn-cancelar">
+                    <span class="material-icons">close</span>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-guardar">
+                    <span class="material-icons">save</span>
+                    Guardar cambios
+                </button>
+            </div>
+
+        </div>
+    </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnMostrar = document.getElementById('btnMostrarAgregar');
+    const btnCerrar = document.getElementById('btnCerrarAgregar');
+    const agregarSection = document.getElementById('agregarSection');
+    const agregarForm = document.getElementById('agregarForm');
+    const buscarInput = document.getElementById('buscarMiembro');
+    const resultadosDiv = document.getElementById('resultadosBusqueda');
+    const btnConfirmar = document.getElementById('btnConfirmarAgregar');
+    const nuevoRol = document.getElementById('nuevoRol');
+    
+    let miembroSeleccionado = null;
+    let nuevosMiembros = [];
+    let miembrosActuales = new Set();
+    let contadorNuevos = 0;
+    
+    // IDs de miembros actuales del hogar
+    {% for hm in hogar_miembros %}
+    miembrosActuales.add({{ hm.miembro.id }});
+    {% endfor %}
+    
+    // Mostrar/ocultar formulario agregar
+    btnMostrar.addEventListener('click', function() {
+        btnMostrar.style.display = 'none';
+        agregarForm.classList.add('visible');
+        agregarSection.classList.add('activo');
+        buscarInput.focus();
+    });
+    
+    btnCerrar.addEventListener('click', function() {
+        cerrarFormularioAgregar();
+    });
+    
+    function cerrarFormularioAgregar() {
+        btnMostrar.style.display = 'flex';
+        agregarForm.classList.remove('visible');
+        agregarSection.classList.remove('activo');
+        buscarInput.value = '';
+        resultadosDiv.innerHTML = '';
+        resultadosDiv.classList.remove('visible');
+        miembroSeleccionado = null;
+        btnConfirmar.disabled = true;
+    }
+    
+    // Búsqueda de miembros
+    let timeoutBusqueda = null;
+    
+    buscarInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        clearTimeout(timeoutBusqueda);
+        
+        if (query.length < 2) {
+            resultadosDiv.classList.remove('visible');
+            return;
+        }
+        
+        timeoutBusqueda = setTimeout(() => {
+            buscarMiembros(query);
+        }, 300);
+    });
+    
+    function buscarMiembros(query) {
+        fetch(`{% url 'miembros_app:ajax_buscar_miembros' %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                mostrarResultados(data.results);
+            })
+            .catch(error => {
+                console.error('Error buscando:', error);
+            });
+    }
+    
+    function mostrarResultados(results) {
+        if (results.length === 0) {
+            resultadosDiv.innerHTML = '<div class="autocomplete-empty">No se encontraron miembros</div>';
+            resultadosDiv.classList.add('visible');
+            return;
+        }
+        
+        // Filtrar miembros que ya están en el hogar o pendientes de agregar
+        const filtrados = results.filter(m => {
+            const yaExiste = miembrosActuales.has(m.id);
+            const yaPendiente = nuevosMiembros.some(nm => nm.id === m.id);
+            return !yaExiste && !yaPendiente;
+        });
+        
+        if (filtrados.length === 0) {
+            resultadosDiv.innerHTML = '<div class="autocomplete-empty">Los miembros encontrados ya están en el hogar</div>';
+            resultadosDiv.classList.add('visible');
+            return;
+        }
+        
+        let html = '';
+        filtrados.forEach(m => {
+            const iniciales = (m.nombre.split(' ')[0][0] || '') + (m.nombre.split(' ').slice(-1)[0][0] || '');
+            html += `
+                <div class="autocomplete-item" data-id="${m.id}" data-nombre="${m.nombre}">
+                    <div class="autocomplete-item-avatar">${iniciales.toUpperCase()}</div>
+                    <div class="autocomplete-item-info">
+                        <div class="autocomplete-item-nombre">${m.nombre}</div>
+                        <div class="autocomplete-item-codigo">${m.codigo || 'Sin código'}</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        resultadosDiv.innerHTML = html;
+        resultadosDiv.classList.add('visible');
+        
+        // Event listeners para seleccionar
+        resultadosDiv.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener('click', function() {
+                seleccionarMiembro(this.dataset.id, this.dataset.nombre);
+            });
+        });
+    }
+    
+    function seleccionarMiembro(id, nombre) {
+        miembroSeleccionado = { id: parseInt(id), nombre: nombre };
+        buscarInput.value = nombre;
+        resultadosDiv.classList.remove('visible');
+        btnConfirmar.disabled = false;
+    }
+    
+    // Confirmar agregar
+    btnConfirmar.addEventListener('click', function() {
+        if (!miembroSeleccionado) return;
+        
+        const rol = nuevoRol.value;
+        contadorNuevos++;
+        
+        // Agregar a la lista visual
+        const nuevoItem = {
+            id: miembroSeleccionado.id,
+            nombre: miembroSeleccionado.nombre,
+            rol: rol,
+            idx: contadorNuevos
+        };
+        nuevosMiembros.push(nuevoItem);
+        
+        // Crear elemento visual
+        const listaDiv = document.getElementById('nuevosMiembrosLista');
+        const itemHtml = `
+            <div class="nuevo-miembro-item" id="nuevoMiembro${contadorNuevos}">
+                <span class="material-icons">person_add</span>
+                <div class="nuevo-miembro-info">
+                    <strong>${miembroSeleccionado.nombre}</strong>
+                    <span>como ${obtenerTextoRol(rol)}</span>
+                </div>
+                <button type="button" class="btn-quitar-nuevo" onclick="quitarNuevoMiembro(${contadorNuevos}, ${miembroSeleccionado.id})">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+        `;
+        listaDiv.insertAdjacentHTML('beforeend', itemHtml);
+        
+        // Agregar campo oculto
+        const camposDiv = document.getElementById('camposNuevosMiembros');
+        camposDiv.insertAdjacentHTML('beforeend', `
+            <input type="hidden" name="nuevo_miembro_${contadorNuevos}" value="${miembroSeleccionado.id}" id="inputNuevo${contadorNuevos}">
+            <input type="hidden" name="nuevo_rol_${contadorNuevos}" value="${rol}" id="inputNuevoRol${contadorNuevos}">
+        `);
+        
+        // Limpiar y preparar para otro
+        buscarInput.value = '';
+        miembroSeleccionado = null;
+        btnConfirmar.disabled = true;
+        buscarInput.focus();
+    });
+    
+    function obtenerTextoRol(rol) {
+        const roles = {
+            'conyuge': 'Cónyuge',
+            'padre': 'Padre',
+            'madre': 'Madre',
+            'hijo': 'Hijo/a'
+        };
+        return roles[rol] || rol;
+    }
+    
+    // Cerrar resultados al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (!buscarInput.contains(e.target) && !resultadosDiv.contains(e.target)) {
+            resultadosDiv.classList.remove('visible');
+        }
+    });
+    
+    // Exponer funciones globalmente
+    window.quitarNuevoMiembro = function(idx, miembroId) {
+        // Quitar de la lista
+        nuevosMiembros = nuevosMiembros.filter(m => m.idx !== idx);
+        
+        // Quitar elemento visual
+        const elem = document.getElementById(`nuevoMiembro${idx}`);
+        if (elem) elem.remove();
+        
+        // Quitar campos ocultos
+        const input = document.getElementById(`inputNuevo${idx}`);
+        const inputRol = document.getElementById(`inputNuevoRol${idx}`);
+        if (input) input.remove();
+        if (inputRol) inputRol.remove();
+    };
+});
+
+// Función global para quitar miembro existente
+function quitarMiembro(hmId, nombre) {
+    if (!confirm(`¿Quitar a ${nombre} del hogar?`)) return;
+    
+    const card = document.getElementById(`miembroCard${hmId}`);
+    const input = document.getElementById(`eliminar${hmId}`);
+    
+    if (card && input) {
+        card.classList.add('marcado-eliminar');
+        input.value = '1';
+        
+        // Deshabilitar controles
+        card.querySelectorAll('input, select').forEach(el => {
+            if (el.name !== `eliminar_${hmId}`) {
+                el.disabled = true;
+            }
+        });
+    }
+}
+</script>
 {% endblock %}

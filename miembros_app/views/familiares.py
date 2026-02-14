@@ -637,6 +637,8 @@ def familia_detalle(request, hogar_id):
         "hogar_miembros": hogar_miembros,
     })
 
+# Reemplazar la función familia_editar en familiares.py con esta versión:
+
 @login_required
 @permission_required("miembros_app.change_miembro", raise_exception=True)
 def familia_editar(request, hogar_id):
@@ -653,20 +655,66 @@ def familia_editar(request, hogar_id):
         nombre = request.POST.get("nombre", "").strip()
         principal_id = request.POST.get("principal")
 
-        # actualizar nombre
+        # Actualizar nombre del hogar
         hogar.nombre = nombre or None
         hogar.save()
 
-        # actualizar roles y principal
+        # ═══════════════════════════════════════════════════════════════════════
+        # PROCESAR ELIMINACIONES
+        # ═══════════════════════════════════════════════════════════════════════
         for hm in hogar_miembros:
+            eliminar = request.POST.get(f"eliminar_{hm.id}", "0")
+            if eliminar == "1":
+                hm.delete()
+                continue
+            
+            # Actualizar rol y principal solo si no se elimina
             rol = request.POST.get(f"rol_{hm.id}", "").strip()
             es_principal = str(hm.miembro.id) == principal_id
 
-            hm.rol = rol
+            if rol:
+                hm.rol = rol
             hm.es_principal = es_principal
             hm.save()
 
-        messages.success(request, "Familia actualizada correctamente.")
+        # ═══════════════════════════════════════════════════════════════════════
+        # PROCESAR NUEVOS MIEMBROS
+        # ═══════════════════════════════════════════════════════════════════════
+        # Buscar todos los campos nuevo_miembro_X
+        nuevos_agregados = 0
+        for key in request.POST:
+            if key.startswith("nuevo_miembro_"):
+                idx = key.replace("nuevo_miembro_", "")
+                miembro_id = request.POST.get(key)
+                rol = request.POST.get(f"nuevo_rol_{idx}", "otro")
+                
+                if miembro_id:
+                    try:
+                        miembro = Miembro.objects.get(pk=miembro_id)
+                        
+                        # Verificar que no exista ya en el hogar
+                        existe = HogarMiembro.objects.filter(
+                            hogar=hogar, 
+                            miembro=miembro
+                        ).exists()
+                        
+                        if not existe:
+                            HogarMiembro.objects.create(
+                                hogar=hogar,
+                                miembro=miembro,
+                                rol=rol,
+                                es_principal=False
+                            )
+                            nuevos_agregados += 1
+                    except Miembro.DoesNotExist:
+                        pass
+
+        # Mensaje de éxito
+        msg_parts = ["Hogar actualizado"]
+        if nuevos_agregados > 0:
+            msg_parts.append(f"{nuevos_agregados} miembro(s) agregado(s)")
+        
+        messages.success(request, ". ".join(msg_parts) + ".")
         return redirect("miembros_app:familia_detalle", hogar_id=hogar.id)
 
     return render(request, "miembros_app/familiares/editar_hogar.html", {
@@ -674,3 +722,89 @@ def familia_editar(request, hogar_id):
         "hogar_miembros": hogar_miembros,
     })
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGREGAR ESTO AL FINAL DE familiares.py
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGREGAR ESTO AL FINAL DE familiares.py
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@login_required
+@permission_required("miembros_app.add_miembro", raise_exception=True)
+def familia_crear(request):
+    """Crear un nuevo hogar familiar."""
+    from miembros_app.models import HogarFamiliar, HogarMiembro, Miembro
+
+    if request.method == "POST":
+        nombre = request.POST.get("nombre", "").strip()
+        principal_id = request.POST.get("principal_id")
+        conyuge_id = request.POST.get("conyuge_id")
+        
+        if not principal_id:
+            messages.error(request, "Debe seleccionar un miembro principal.")
+            return redirect("miembros_app:familia_crear")
+        
+        try:
+            principal = Miembro.objects.get(pk=principal_id)
+        except Miembro.DoesNotExist:
+            messages.error(request, "El miembro principal no existe.")
+            return redirect("miembros_app:familia_crear")
+        
+        # Crear el hogar
+        hogar = HogarFamiliar.objects.create(
+            nombre=nombre or f"Hogar de {principal.nombres} {principal.apellidos}"
+        )
+        
+        # Determinar rol del principal según género
+        rol_principal = "madre" if principal.genero == "femenino" else "padre"
+        
+        # Agregar miembro principal
+        HogarMiembro.objects.create(
+            hogar=hogar,
+            miembro=principal,
+            rol=rol_principal,
+            es_principal=True
+        )
+        
+        miembros_agregados = 1
+        
+        # Agregar cónyuge si existe
+        if conyuge_id:
+            try:
+                conyuge = Miembro.objects.get(pk=conyuge_id)
+                rol_conyuge = "madre" if conyuge.genero == "femenino" else "padre"
+                HogarMiembro.objects.create(
+                    hogar=hogar,
+                    miembro=conyuge,
+                    rol=rol_conyuge,
+                    es_principal=False
+                )
+                miembros_agregados += 1
+            except Miembro.DoesNotExist:
+                pass
+        
+        # Agregar hijos
+        for key in request.POST:
+            if key.startswith("hijo_") and key.endswith("_id"):
+                hijo_id = request.POST.get(key)
+                if hijo_id:
+                    try:
+                        hijo = Miembro.objects.get(pk=hijo_id)
+                        # Verificar que no esté ya en el hogar
+                        existe = HogarMiembro.objects.filter(hogar=hogar, miembro=hijo).exists()
+                        if not existe:
+                            HogarMiembro.objects.create(
+                                hogar=hogar,
+                                miembro=hijo,
+                                rol="hijo",
+                                es_principal=False
+                            )
+                            miembros_agregados += 1
+                    except Miembro.DoesNotExist:
+                        pass
+        
+        messages.success(request, f"Hogar creado con {miembros_agregados} miembro(s).")
+        return redirect("miembros_app:familia_detalle", hogar_id=hogar.id)
+
+    return render(request, "miembros_app/familiares/crear_hogar.html", {})

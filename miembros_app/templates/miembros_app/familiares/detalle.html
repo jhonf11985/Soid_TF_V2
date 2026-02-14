@@ -1,444 +1,814 @@
 {% extends 'miembros_app/base_miembros.html' %}
 {% load static %}
 
-{% block title %}{{ hogar.nombre }}{% endblock %}
+{% block title %}{{ hogar.nombre|default:"Hogar" }}{% endblock %}
 
 {% block miembros_content %}
 
 <div class="odoo-form">
 
-  <!-- Barra superior -->
-  <div class="odoo-control-bar">
-    <div class="odoo-control-left">
-      <a href="{% url 'miembros_app:familias_home' %}" class="odoo-breadcrumb-link">
-        <span class="material-icons">arrow_back</span>
-        Familias
-      </a>
-      <span class="odoo-breadcrumb-sep">/</span>
-      <span class="odoo-breadcrumb-current">{{ hogar.nombre }}</span>
-    </div>
-
-    <div class="odoo-control-right">
-      <div class="odoo-search">
-        <span class="material-icons">search</span>
-        <input id="miembrosSearch" type="text" placeholder="Buscar miembro…">
-      </div>
-    </div>
-  </div>
-
-  <!-- Encabezado tipo “hero” -->
-  <div class="familia-hero">
-    <div class="familia-hero-left">
-      <div class="familia-hero-icon">
-        <span class="material-icons">family_restroom</span>
-      </div>
-
-      <div class="familia-hero-info">
-        <div class="familia-hero-title">{{ hogar.nombre }}</div>
-        <div class="familia-hero-subtitle">
-          Hogar • <strong>{{ hogar_miembros|length }}</strong> miembros
+    <!-- Barra superior -->
+    <div class="odoo-control-bar">
+        <div class="odoo-control-left">
+            <a href="{% url 'miembros_app:familias_home' %}" class="odoo-breadcrumb-link">
+                <span class="material-icons">arrow_back</span>
+                Familias
+            </a>
+            <span class="odoo-breadcrumb-sep">/</span>
+            <span class="odoo-breadcrumb-current">{{ hogar.nombre|default:"Hogar" }}</span>
         </div>
 
-        <div class="familia-hero-chips">
-          <span class="chip">
-            <span class="material-icons">group</span>
-            Miembros: {{ hogar_miembros|length }}
-          </span>
-
-          {% if hogar.miembro_referencia %}
-          <span class="chip">
-            <span class="material-icons">verified</span>
-            Referencia: {{ hogar.miembro_referencia.nombres }} {{ hogar.miembro_referencia.apellidos }}
-          </span>
-          {% endif %}
+        <div class="odoo-control-right">
+            <div class="odoo-search">
+                <span class="material-icons">search</span>
+                <input id="miembrosSearch" type="text" placeholder="Buscar miembro…">
+            </div>
         </div>
-      </div>
     </div>
 
-    <div class="familia-hero-actions">
-<a href="{% url 'miembros_app:familia_editar' hogar.id %}" class="odoo-btn odoo-btn-primary">
-    <span class="material-icons">edit</span>
-    Editar familia
-</a>
-
-
-      {% if hogar.miembro_referencia %}
-      <a class="btn-primary" href="{% url 'miembros_app:familiares_lista' hogar.miembro_referencia.pk %}">
-        <span class="material-icons">family_restroom</span>
-        Ver relaciones
-      </a>
-      {% endif %}
+    <!-- Hero del hogar -->
+    <div class="hogar-hero">
+        <div class="hero-bg"></div>
+        
+        <div class="hero-content">
+            <div class="hero-left">
+                <div class="hero-icon">
+                    <span class="material-icons">home</span>
+                </div>
+                
+                <div class="hero-info">
+                    <h1 class="hero-title">{{ hogar.nombre|default:"Sin nombre" }}</h1>
+                    <div class="hero-subtitle">
+                        <span class="material-icons">group</span>
+                        {{ hogar_miembros|length }} miembro{{ hogar_miembros|length|pluralize:"s" }}
+                    </div>
+                    
+                    <!-- Miembro principal -->
+                    {% for hm in hogar_miembros %}
+                        {% if hm.es_principal %}
+                        <div class="hero-referencia">
+                            <span class="material-icons">star</span>
+                            Referencia: <strong>{{ hm.miembro.nombres }} {{ hm.miembro.apellidos }}</strong>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="hero-actions">
+                <a href="{% url 'miembros_app:familia_editar' hogar.id %}" class="btn-primary">
+                    <span class="material-icons">edit</span>
+                    Editar hogar
+                </a>
+                
+                {% if hogar.miembro_referencia %}
+                <a href="{% url 'miembros_app:familiares_lista' hogar.miembro_referencia.pk %}" class="btn-secondary">
+                    <span class="material-icons">account_tree</span>
+                    Ver relaciones
+                </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="odoo-form-container">
-    <div class="odoo-form-main">
+    <!-- Estadísticas rápidas -->
+    <div class="mini-stats">
+        {% regroup hogar_miembros by rol as roles_list %}
+        {% for rol in roles_list %}
+        <div class="mini-stat">
+            <span class="mini-stat-count">{{ rol.list|length }}</span>
+            <span class="mini-stat-label">{{ rol.grouper|default:"Otro"|title }}</span>
+        </div>
+        {% endfor %}
+    </div>
 
-      <!-- Sección miembros -->
-      <div class="familiar-seccion">
-        <h3 class="familiar-seccion-titulo">
-          <span class="material-icons">group</span>
-          Miembros del hogar
-          <span class="odoo-badge">{{ hogar_miembros|length }}</span>
-        </h3>
+    <!-- Grid de miembros -->
+    <div class="miembros-section">
+        <div class="section-header">
+            <h3>
+                <span class="material-icons">people</span>
+                Miembros del hogar
+            </h3>
+            <span class="section-count" id="contadorMiembros">{{ hogar_miembros|length }} miembro{{ hogar_miembros|length|pluralize:"s" }}</span>
+        </div>
 
         <div class="miembros-grid" id="miembrosGrid">
 
-          {% for hm in hogar_miembros %}
-          {% with m=hm.miembro %}
+            {% for hm in hogar_miembros %}
+            {% with m=hm.miembro %}
 
-          <a class="miembro-card"
-             href="{% url 'miembros_app:detalle' m.pk %}"
-             data-name="{{ m.nombres|lower }} {{ m.apellidos|lower }}">
+            <a class="miembro-card {% if hm.es_principal %}es-principal{% endif %}"
+               href="{% url 'miembros_app:detalle' m.pk %}"
+               data-name="{{ m.nombres|lower }} {{ m.apellidos|lower }}">
 
-            <div class="miembro-card-left">
-              <div class="miembro-avatar">
-                {% if m.foto %}
-                  <img src="{{ m.foto.url }}" alt="{{ m.nombres }}">
-                {% else %}
-                  <span class="material-icons">person</span>
-                {% endif %}
-              </div>
-
-              <div class="miembro-info">
-                <div class="miembro-nombre">{{ m.nombres }} {{ m.apellidos }}</div>
-
-                <!-- ROLES + REFERENCIA -->
-                <div class="miembro-rol-line">
-                  <span class="rol-badge rol-{{ hm.rol }}">
-                    {{ hm.get_rol_display }}
-                  </span>
-
-                  {% if hm.es_principal %}
-                  <span class="principal-badge">
+                <!-- Badge de principal -->
+                {% if hm.es_principal %}
+                <div class="principal-ribbon">
                     <span class="material-icons">star</span>
-                    Referencia familiar
-                  </span>
-                  {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Avatar -->
+                <div class="miembro-avatar {% if m.genero == 'masculino' %}masculino{% elif m.genero == 'femenino' %}femenino{% else %}otro{% endif %}">
+                    {% if m.foto %}
+                        <img src="{{ m.foto.url }}" alt="{{ m.nombres }}">
+                    {% else %}
+                        <span class="avatar-initials">{{ m.nombres|slice:":1" }}{{ m.apellidos|slice:":1" }}</span>
+                    {% endif %}
                 </div>
 
-                <div class="miembro-meta">
-                  {% if m.codigo_miembro %}Código: {{ m.codigo_miembro }}{% endif %}
-                  {% if not m.codigo_miembro and m.codigo_seguimiento %}Código: {{ m.codigo_seguimiento }}{% endif %}
+                <!-- Info -->
+                <div class="miembro-info">
+                    <div class="miembro-nombre">{{ m.nombres }} {{ m.apellidos }}</div>
+                    
+                    <div class="miembro-rol">
+                        <span class="rol-badge rol-{{ hm.rol }}">
+                            {% if hm.rol == 'padre' %}
+                                <span class="material-icons">man</span>
+                            {% elif hm.rol == 'madre' %}
+                                <span class="material-icons">woman</span>
+                            {% elif hm.rol == 'hijo' %}
+                                <span class="material-icons">child_care</span>
+                            {% elif hm.rol == 'abuelo' %}
+                                <span class="material-icons">elderly</span>
+                            {% else %}
+                                <span class="material-icons">person</span>
+                            {% endif %}
+                            {{ hm.get_rol_display|default:hm.rol|title }}
+                        </span>
+                    </div>
+                    
+                    <div class="miembro-meta">
+                        {% if m.codigo_miembro %}
+                            <span class="meta-item">
+                                <span class="material-icons">badge</span>
+                                {{ m.codigo_miembro }}
+                            </span>
+                        {% elif m.codigo_seguimiento %}
+                            <span class="meta-item">
+                                <span class="material-icons">qr_code</span>
+                                {{ m.codigo_seguimiento }}
+                            </span>
+                        {% endif %}
+                        
+                        {% if m.telefono %}
+                            <span class="meta-item">
+                                <span class="material-icons">phone</span>
+                                {{ m.telefono }}
+                            </span>
+                        {% endif %}
+                    </div>
                 </div>
-              </div>
+
+                <!-- Flecha -->
+                <div class="miembro-arrow">
+                    <span class="material-icons">chevron_right</span>
+                </div>
+
+            </a>
+
+            {% endwith %}
+            {% empty %}
+
+            <div class="miembros-vacio">
+                <div class="vacio-icon">
+                    <span class="material-icons">group_off</span>
+                </div>
+                <h4>No hay miembros</h4>
+                <p>Este hogar aún no tiene miembros registrados.</p>
+                <a href="{% url 'miembros_app:familia_editar' hogar.id %}" class="btn-agregar">
+                    <span class="material-icons">person_add</span>
+                    Agregar miembros
+                </a>
             </div>
 
-            <div class="miembro-card-right">
-              <span class="material-icons">chevron_right</span>
-            </div>
-          </a>
-
-          {% endwith %}
-          {% empty %}
-          <div class="familiar-vacio">
-            <span class="material-icons">group</span>
-            <p>No hay miembros en este hogar</p>
-          </div>
-          {% endfor %}
+            {% endfor %}
 
         </div>
-      </div>
-
-      <!-- Nota inferior -->
-      <div class="familia-footer-note">
-        <span class="material-icons">info</span>
-        <div>
-          Este listado se actualiza automáticamente cuando agregas o editas relaciones familiares.
-        </div>
-      </div>
-
     </div>
-  </div>
+
+    <!-- Nota informativa -->
+    <div class="info-note">
+        <span class="material-icons">info</span>
+        <span>Los miembros del hogar se gestionan desde el botón "Editar hogar". Las relaciones familiares detalladas se configuran en la ficha de cada miembro.</span>
+    </div>
+
 </div>
 
 <style>
-  /* ========= Controles superiores ========= */
-  .odoo-search{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:8px 10px;
-    border-radius:10px;
-    background:#fff;
-    border:1px solid rgba(0,0,0,.08);
-    min-width:320px;
-  }
-  .odoo-search input{
-    border:none;
-    outline:none;
-    width:100%;
-    font-size:14px;
-    background:transparent;
-  }
-  .odoo-badge{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    margin-left:10px;
-    padding:2px 10px;
-    border-radius:999px;
-    font-size:12px;
-    background:rgba(0,0,0,.06);
-  }
+/* ═══════════════════════════════════════════════════════════════════════════════
+   DETALLE DE HOGAR - ESTILOS MEJORADOS
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
-  /* ========= HERO ========= */
-  .familia-hero{
-    display:flex;
-    align-items:flex-start;
-    justify-content:space-between;
-    gap:16px;
-    margin:12px 0 16px 0;
-    padding:16px;
-    border-radius:16px;
-    background:#fff;
-    border:1px solid rgba(0,0,0,.08);
-  }
-  .familia-hero-left{
-    display:flex;
-    align-items:flex-start;
-    gap:14px;
-    min-width:0;
-  }
-  .familia-hero-icon{
-    width:52px;
-    height:52px;
-    border-radius:16px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:rgba(0,0,0,.06);
-    flex:0 0 auto;
-  }
-  .familia-hero-title{
-    font-size:20px;
-    font-weight:800;
-    line-height:1.2;
-    color:#111;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    max-width:640px;
-  }
-  .familia-hero-subtitle{
-    margin-top:4px;
-    color:rgba(0,0,0,.55);
-    font-size:13px;
-  }
-  .familia-hero-chips{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    margin-top:10px;
-  }
-  .chip{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:6px 10px;
-    border-radius:999px;
-    background:rgba(0,0,0,.05);
-    font-size:12px;
-    color:#111;
-  }
-  .chip .material-icons{ font-size:16px; color:rgba(0,0,0,.6); }
+/* Control bar */
+.odoo-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
 
-  .familia-hero-actions{
-    display:flex;
-    gap:10px;
-    flex:0 0 auto;
-    align-items:center;
-  }
-  .btn-soft, .btn-primary{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    padding:10px 12px;
-    border-radius:12px;
-    text-decoration:none;
-    border:1px solid rgba(0,0,0,.10);
-    background:#fff;
-    cursor:pointer;
-    font-weight:700;
-    font-size:13px;
-  }
-  .btn-soft[disabled]{
-    opacity:.55;
-    cursor:not-allowed;
-  }
-  .btn-primary{
-    background:#111;
-    color:#fff;
-    border-color:#111;
-  }
-  .btn-primary .material-icons{ color:#fff; font-size:18px; }
-  .btn-soft .material-icons{ color:rgba(0,0,0,.65); font-size:18px; }
+.odoo-control-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 
-  /* ========= GRID miembros ========= */
-  .miembros-grid{
-    display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap:12px;
-    margin-top:10px;
-  }
-  .miembro-card{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:14px;
-    border-radius:14px;
-    background:#fff;
-    border:1px solid rgba(0,0,0,.08);
-    text-decoration:none;
-    transition:transform .08s ease, box-shadow .08s ease;
-  }
-  .miembro-card:hover{
+.odoo-breadcrumb-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #5c9ead;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+}
+
+.odoo-breadcrumb-link:hover {
+    color: #4a8a99;
+}
+
+.odoo-breadcrumb-sep {
+    color: #ccc;
+    margin: 0 4px;
+}
+
+.odoo-breadcrumb-current {
+    font-weight: 600;
+    color: #333;
+}
+
+.odoo-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    min-width: 260px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.odoo-search:focus-within {
+    border-color: #5c9ead;
+    box-shadow: 0 0 0 3px rgba(92, 158, 173, 0.1);
+}
+
+.odoo-search .material-icons {
+    color: #999;
+    font-size: 20px;
+}
+
+.odoo-search input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 0.95rem;
+    background: transparent;
+}
+
+/* Hero del hogar */
+.hogar-hero {
+    position: relative;
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid #e8e8e8;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.hero-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(135deg, #5c9ead 0%, #7ab5c2 50%, #c4a4b8 100%);
+}
+
+.hero-content {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 24px;
+    padding-top: 50px;
+    gap: 20px;
+}
+
+.hero-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.hero-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    background: #fff;
+    border: 4px solid #fff;
+    box-shadow: 0 8px 24px rgba(92, 158, 173, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.hero-icon .material-icons {
+    font-size: 36px;
+    color: #5c9ead;
+}
+
+.hero-info {
+    padding-top: 30px;
+}
+
+.hero-title {
+    margin: 0 0 8px 0;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.hero-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+}
+
+.hero-subtitle .material-icons {
+    font-size: 18px;
+    color: #888;
+}
+
+.hero-referencia {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    border: 1px solid #ffe082;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #f57f17;
+}
+
+.hero-referencia .material-icons {
+    font-size: 16px;
+}
+
+.hero-referencia strong {
+    color: #e65100;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 40px;
+    flex-shrink: 0;
+}
+
+.btn-primary, .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: #5c9ead;
+    color: #fff;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #4a8a99;
     transform: translateY(-1px);
-    box-shadow:0 10px 22px rgba(0,0,0,.08);
-  }
-  .miembro-card-left{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    min-width:0;
-  }
-  .miembro-avatar{
-    width:44px;
-    height:44px;
-    border-radius:14px;
-    background:rgba(0,0,0,.06);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    overflow:hidden;
-    flex:0 0 auto;
-  }
-  .miembro-avatar img{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    display:block;
-  }
-  .miembro-info{ min-width:0; }
-  .miembro-nombre{
-    font-weight:800;
-    color:#111;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    max-width:520px;
-  }
+}
 
-  /* ===== ROLES ===== */
-  .miembro-rol-line{
-    display:flex;
-    gap:8px;
-    align-items:center;
-    margin-top:6px;
-    flex-wrap:wrap;
-  }
+.btn-secondary {
+    background: #fff;
+    color: #333;
+    border: 1px solid #ddd;
+}
 
-  .rol-badge{
-    padding:4px 10px;
-    border-radius:999px;
-    font-size:12px;
-    font-weight:700;
-  }
+.btn-secondary:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
 
-  /* Padre */
-  .rol-padre{
-    background:#e3f2fd;
-    color:#1565c0;
-  }
+.btn-primary .material-icons,
+.btn-secondary .material-icons {
+    font-size: 18px;
+}
 
-  /* Madre */
-  .rol-madre{
-    background:#fce4ec;
-    color:#ad1457;
-  }
+/* Mini stats */
+.mini-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
 
-  /* Hijo-Hija */
-  .rol-hijo{
-    background:#e8f5e9;
-    color:#2e7d32;
-  }
+.mini-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+}
 
-  /* Otro */
-  .rol-otro{
-    background:#f5f5f5;
-    color:#444;
-  }
+.mini-stat-count {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #5c9ead;
+}
 
-  /* Principal (Referencia familiar) */
-  .principal-badge{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:4px 10px;
-    border-radius:999px;
-    font-size:12px;
-    font-weight:700;
-    background:#fff3cd;
-    color:#856404;
-    border:1px solid #ffeeba;
-  }
-  .principal-badge .material-icons{
-    font-size:16px;
-  }
+.mini-stat-label {
+    font-size: 0.85rem;
+    color: #666;
+}
 
-  .miembro-meta{
-    margin-top:6px;
-    font-size:12px;
-    color:rgba(0,0,0,.55);
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    max-width:520px;
-  }
-  .miembro-card-right{
-    color:rgba(0,0,0,.45);
-    display:flex;
-    align-items:center;
-  }
+/* Sección miembros */
+.miembros-section {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e8e8e8;
+    padding: 20px;
+    margin-bottom: 16px;
+}
 
-  /* ========= Footer info ========= */
-  .familia-footer-note{
-    margin-top:14px;
-    padding:12px 14px;
-    border-radius:14px;
-    background:rgba(0,0,0,.04);
-    display:flex;
-    gap:10px;
-    align-items:flex-start;
-    color:rgba(0,0,0,.7);
-    font-size:13px;
-  }
-  .familia-footer-note .material-icons{ color:rgba(0,0,0,.55); }
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #eee;
+}
 
-  @media (max-width: 520px){
-    .odoo-search{ min-width:0; width:100%; }
-    .familia-hero{ flex-direction:column; }
-    .familia-hero-actions{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
-    .familia-hero-title{ max-width: 320px; }
-    .miembro-nombre, .miembro-meta{ max-width: 240px; }
-  }
+.section-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.section-header h3 .material-icons {
+    color: #5c9ead;
+    font-size: 22px;
+}
+
+.section-count {
+    font-size: 0.85rem;
+    color: #888;
+    background: #f5f5f5;
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+/* Grid de miembros */
+.miembros-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+}
+
+/* Card de miembro */
+.miembro-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 14px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.miembro-card:hover {
+    border-color: #5c9ead;
+    box-shadow: 0 6px 20px rgba(92, 158, 173, 0.1);
+    transform: translateY(-2px);
+}
+
+.miembro-card.es-principal {
+    background: linear-gradient(135deg, #fffdf5 0%, #fff9e6 100%);
+    border-color: #ffe082;
+}
+
+.miembro-card.es-principal:hover {
+    border-color: #ffca28;
+    box-shadow: 0 6px 20px rgba(255, 193, 7, 0.15);
+}
+
+/* Ribbon de principal */
+.principal-ribbon {
+    position: absolute;
+    top: -1px;
+    right: 12px;
+    background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+    padding: 4px 8px 6px;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.principal-ribbon .material-icons {
+    font-size: 16px;
+    color: #fff;
+}
+
+/* Avatar de miembro */
+.miembro-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.miembro-avatar.masculino {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+}
+
+.miembro-avatar.femenino {
+    background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+}
+
+.miembro-avatar.otro {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+}
+
+.miembro-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-initials {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #555;
+}
+
+.miembro-avatar.masculino .avatar-initials { color: #1565c0; }
+.miembro-avatar.femenino .avatar-initials { color: #c2185b; }
+.miembro-avatar.otro .avatar-initials { color: #7b1fa2; }
+
+/* Info del miembro */
+.miembro-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.miembro-nombre {
+    font-weight: 600;
+    color: #333;
+    font-size: 1rem;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.miembro-rol {
+    margin-bottom: 8px;
+}
+
+.rol-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.rol-badge .material-icons {
+    font-size: 15px;
+}
+
+.rol-padre {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #1565c0;
+}
+
+.rol-madre {
+    background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+    color: #c2185b;
+}
+
+.rol-hijo {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    color: #2e7d32;
+}
+
+.rol-abuelo {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    color: #e65100;
+}
+
+.rol-otro {
+    background: #f5f5f5;
+    color: #666;
+}
+
+.miembro-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.meta-item .material-icons {
+    font-size: 14px;
+    color: #aaa;
+}
+
+.miembro-arrow {
+    color: #ccc;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.miembro-card:hover .miembro-arrow {
+    color: #5c9ead;
+    transform: translateX(4px);
+}
+
+/* Estado vacío */
+.miembros-vacio {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 50px 20px;
+}
+
+.vacio-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vacio-icon .material-icons {
+    font-size: 32px;
+    color: #ccc;
+}
+
+.miembros-vacio h4 {
+    margin: 0 0 6px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.miembros-vacio p {
+    margin: 0 0 20px 0;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.btn-agregar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: #5c9ead;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.btn-agregar:hover {
+    background: #4a8a99;
+}
+
+/* Nota informativa */
+.info-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 18px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border-left: 4px solid #5c9ead;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.info-note .material-icons {
+    color: #5c9ead;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero-content {
+        flex-direction: column;
+    }
+    
+    .hero-actions {
+        width: 100%;
+        padding-top: 16px;
+    }
+    
+    .hero-actions a {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .hero-info {
+        padding-top: 20px;
+    }
+    
+    .hero-title {
+        font-size: 1.3rem;
+    }
+    
+    .mini-stats {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 8px;
+    }
+    
+    .mini-stat {
+        flex-shrink: 0;
+    }
+    
+    .miembros-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .odoo-search {
+        min-width: 0;
+        width: 100%;
+    }
+}
 </style>
 
 <script>
-  (function(){
+(function(){
     const input = document.getElementById("miembrosSearch");
     const grid = document.getElementById("miembrosGrid");
+    const contador = document.getElementById("contadorMiembros");
+    
     if(!input || !grid) return;
 
     input.addEventListener("input", function(){
-      const q = (this.value || "").toLowerCase().trim();
-      const cards = grid.querySelectorAll(".miembro-card");
-      cards.forEach(card => {
-        const name = card.getAttribute("data-name") || "";
-        card.style.display = name.includes(q) ? "" : "none";
-      });
+        const q = (this.value || "").toLowerCase().trim();
+        const cards = grid.querySelectorAll(".miembro-card");
+        let visibles = 0;
+        
+        cards.forEach(card => {
+            const name = card.getAttribute("data-name") || "";
+            const mostrar = name.includes(q);
+            card.style.display = mostrar ? "" : "none";
+            if (mostrar) visibles++;
+        });
+        
+        if (contador) {
+            contador.textContent = visibles + (visibles === 1 ? " miembro" : " miembros");
+        }
     });
-  })();
+})();
 </script>
 
 {% endblock %}
