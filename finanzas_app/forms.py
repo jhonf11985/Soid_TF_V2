@@ -166,11 +166,25 @@ class CuentaFinancieraForm(forms.ModelForm):
             }),
         }
 
+    def clean_nombre(self):
+        """Validar que el nombre sea único."""
+        nombre = self.cleaned_data.get("nombre")
+        if nombre:
+            nombre = nombre.strip()
+            qs = CuentaFinanciera.objects.filter(nombre__iexact=nombre)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise ValidationError("Ya existe una cuenta con este nombre.")
+        return nombre
+
     def clean_saldo_inicial(self):
-        """Si no se proporciona saldo inicial, usar 0."""
+        """Si no se proporciona saldo inicial, usar 0. No puede ser negativo."""
         valor = self.cleaned_data.get("saldo_inicial")
         if valor is None:
             return Decimal("0")
+        if valor < 0:
+            raise ValidationError("El saldo inicial no puede ser negativo.")
         return valor
 
 
@@ -201,6 +215,27 @@ class CategoriaMovimientoForm(forms.ModelForm):
             "tipo": "Tipo de categoría",
             "activo": "Categoría activa",
         }
+
+    def clean(self):
+        """Validar nombre único por tipo."""
+        cleaned = super().clean()
+        nombre = cleaned.get("nombre")
+        tipo = cleaned.get("tipo")
+
+        if nombre and tipo:
+            nombre = nombre.strip()
+            qs = CategoriaMovimiento.objects.filter(
+                nombre__iexact=nombre,
+                tipo=tipo
+            )
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise ValidationError(
+                    f"Ya existe una categoría '{nombre}' de tipo {tipo}."
+                )
+
+        return cleaned
 
 
 # ============================================
@@ -285,6 +320,20 @@ class MovimientoIngresoForm(forms.ModelForm):
                 "placeholder": "Nº transferencia, cheque, etc.",
             }),
         }
+
+    def clean_monto(self):
+        """Monto debe ser mayor a cero."""
+        monto = self.cleaned_data.get("monto")
+        if monto is not None and monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")
+        return monto
+
+    def clean_fecha(self):
+        """No permitir fechas futuras."""
+        fecha = self.cleaned_data.get("fecha")
+        if fecha and fecha > timezone.localdate():
+            raise ValidationError("No puedes registrar movimientos con fecha futura.")
+        return fecha
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -389,6 +438,20 @@ class MovimientoEgresoForm(forms.ModelForm):
             }),
         }
 
+    def clean_monto(self):
+        """Monto debe ser mayor a cero."""
+        monto = self.cleaned_data.get("monto")
+        if monto is not None and monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")
+        return monto
+
+    def clean_fecha(self):
+        """No permitir fechas futuras."""
+        fecha = self.cleaned_data.get("fecha")
+        if fecha and fecha > timezone.localdate():
+            raise ValidationError("No puedes registrar movimientos con fecha futura.")
+        return fecha
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filtrar categorías a solo tipo ingreso y activas
@@ -486,6 +549,7 @@ class TransferenciaForm(forms.Form):
         cleaned_data = super().clean()
         cuenta_origen = cleaned_data.get("cuenta_origen")
         cuenta_destino = cleaned_data.get("cuenta_destino")
+        monto = cleaned_data.get("monto")
         
         # Validar que no sean la misma cuenta
         if cuenta_origen and cuenta_destino and cuenta_origen == cuenta_destino:
@@ -499,6 +563,28 @@ class TransferenciaForm(forms.Form):
                 raise forms.ValidationError(
                     f"Las cuentas deben ser de la misma moneda. "
                     f"Origen: {cuenta_origen.moneda}, Destino: {cuenta_destino.moneda}."
+                )
+
+        # Validar saldo disponible en cuenta origen
+        if cuenta_origen and monto:
+            from django.db.models import Sum, Q
+            from .models import MovimientoFinanciero
+            
+            # Calcular saldo de la cuenta
+            movs = MovimientoFinanciero.objects.filter(
+                cuenta=cuenta_origen
+            ).exclude(estado="anulado").aggregate(
+                ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+                egresos=Sum("monto", filter=Q(tipo="egreso")),
+            )
+            ingresos = movs.get("ingresos") or Decimal("0")
+            egresos = movs.get("egresos") or Decimal("0")
+            saldo = cuenta_origen.saldo_inicial + ingresos - egresos
+
+            if monto > saldo:
+                raise forms.ValidationError(
+                    f"Saldo insuficiente en '{cuenta_origen.nombre}'. "
+                    f"Disponible: ${saldo:,.2f}, Solicitado: ${monto:,.2f}"
                 )
         
         return cleaned_data
@@ -541,6 +627,36 @@ class ProveedorFinancieroForm(forms.ModelForm):
             "titular_cuenta": forms.TextInput(attrs={"placeholder": "Titular (opcional)"}),
             "notas": forms.Textarea(attrs={"rows": 2, "placeholder": "Notas (opcional)"}),
         }
+
+    def clean_nombre(self):
+        """Validar que el nombre sea único."""
+        nombre = self.cleaned_data.get("nombre")
+        if nombre:
+            nombre = nombre.strip()
+            qs = ProveedorFinanciero.objects.filter(nombre__iexact=nombre)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise ValidationError("Ya existe un proveedor con este nombre.")
+        return nombre
+
+    def clean_telefono(self):
+        """Limpiar y validar teléfono."""
+        telefono = self.cleaned_data.get("telefono")
+        if telefono:
+            # Quitar caracteres no numéricos excepto + al inicio
+            telefono_limpio = re.sub(r'[^\d+]', '', telefono)
+            if telefono_limpio and len(telefono_limpio.replace('+', '')) < 7:
+                raise ValidationError("El teléfono debe tener al menos 7 dígitos.")
+            return telefono_limpio
+        return telefono
+
+    def clean_email(self):
+        """Normalizar email."""
+        email = self.cleaned_data.get("email")
+        if email:
+            return email.lower().strip()
+        return email
 
     def clean_documento(self):
         cleaned = getattr(self, "cleaned_data", {})
@@ -644,6 +760,37 @@ class CuentaPorPagarForm(forms.ModelForm):
             "descripcion": forms.Textarea(attrs={"rows": 2, "placeholder": "Detalle (opcional)"}),
             "referencia": forms.TextInput(attrs={"placeholder": "Factura / recibo / contrato (opcional)"}),
         }
+
+    def clean_monto_total(self):
+        """Monto debe ser mayor a cero."""
+        monto = self.cleaned_data.get("monto_total")
+        if monto is not None and monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")
+        return monto
+
+    def clean(self):
+        """Validaciones cruzadas."""
+        cleaned = super().clean()
+        fecha_emision = cleaned.get("fecha_emision")
+        fecha_vencimiento = cleaned.get("fecha_vencimiento")
+        proveedor = cleaned.get("proveedor")
+
+        # Fecha vencimiento no puede ser anterior a emisión
+        if fecha_emision and fecha_vencimiento:
+            if fecha_vencimiento < fecha_emision:
+                self.add_error(
+                    "fecha_vencimiento",
+                    "La fecha de vencimiento no puede ser anterior a la emisión."
+                )
+
+        # Proveedor bloqueado no puede tener nuevas CxP
+        if proveedor and proveedor.bloqueado and not self.instance.pk:
+            self.add_error(
+                "proveedor",
+                f"El proveedor '{proveedor.nombre}' está bloqueado."
+            )
+
+        return cleaned
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

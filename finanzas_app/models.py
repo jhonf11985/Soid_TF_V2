@@ -1,9 +1,11 @@
 from django.db import models
 from django.conf import settings
-from miembros_app.models import Miembro  # 👈 NUEVO IMPORT
+from miembros_app.models import Miembro
 import uuid
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import Q
+from django.core.exceptions import ValidationError
+from decimal import Decimal
 
 
 class CuentaFinanciera(models.Model):
@@ -40,6 +42,7 @@ class CuentaFinanciera(models.Model):
         max_digits=12,
         decimal_places=2,
         default=0,
+        validators=[MinValueValidator(Decimal("0"))],  # 👈 VALIDADOR AGREGADO
         help_text="Saldo inicial de la cuenta."
     )
     esta_activa = models.BooleanField(
@@ -51,9 +54,29 @@ class CuentaFinanciera(models.Model):
         verbose_name = "Cuenta financiera"
         verbose_name_plural = "Cuentas financieras"
         ordering = ["nombre"]
+        constraints = [
+            # 👈 CONSTRAINT: Nombre único
+            models.UniqueConstraint(
+                fields=["nombre"],
+                name="uq_cuenta_financiera_nombre"
+            ),
+        ]
 
     def __str__(self):
         return f"{self.nombre} ({self.moneda})"
+
+    def clean(self):
+        """Validaciones a nivel de modelo."""
+        super().clean()
+        # Validar saldo inicial no negativo
+        if self.saldo_inicial is not None and self.saldo_inicial < 0:
+            raise ValidationError({
+                "saldo_inicial": "El saldo inicial no puede ser negativo."
+            })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class CategoriaMovimiento(models.Model):
@@ -91,6 +114,13 @@ class CategoriaMovimiento(models.Model):
         verbose_name = "Categoría de movimiento"
         verbose_name_plural = "Categorías de movimiento"
         ordering = ["tipo", "nombre"]
+        constraints = [
+            # 👈 CONSTRAINT: Nombre único por tipo
+            models.UniqueConstraint(
+                fields=["nombre", "tipo"],
+                name="uq_categoria_nombre_tipo"
+            ),
+        ]
 
     def __str__(self):
         return f"{self.nombre} ({self.tipo})"
@@ -197,6 +227,7 @@ class MovimientoFinanciero(models.Model):
     monto = models.DecimalField(
         max_digits=12,
         decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],  # 👈 VALIDADOR: Monto > 0
         help_text="Monto del movimiento."
     )
     descripcion = models.CharField(
@@ -227,7 +258,7 @@ class MovimientoFinanciero(models.Model):
         blank=True,
         help_text="Nombre del evento o actividad. Ej: Noche de tacos, Campamento juvenil."
     )
-    persona_asociada = models.ForeignKey(   # 👈 AHORA ES FOREIGNKEY
+    persona_asociada = models.ForeignKey(
         Miembro,
         on_delete=models.SET_NULL,
         null=True,
@@ -277,12 +308,43 @@ class MovimientoFinanciero(models.Model):
         verbose_name_plural = "Movimientos financieros"
         ordering = ["-fecha", "-creado_en"]
         permissions = [
-        ("ver_dashboard_finanzas", "Puede ver el Dashboard de Finanzas"),
+            ("ver_dashboard_finanzas", "Puede ver el Dashboard de Finanzas"),
         ]
 
     def __str__(self):
         signo = "+" if self.tipo == "ingreso" else "-"
         return f"{self.fecha} · {self.categoria} · {signo}{self.monto}"
+
+    def clean(self):
+        """Validaciones a nivel de modelo."""
+        super().clean()
+        errors = {}
+
+        # 1. Monto debe ser mayor a cero
+        if self.monto is not None and self.monto <= 0:
+            errors["monto"] = "El monto debe ser mayor a cero."
+
+        # 2. Categoría debe coincidir con el tipo de movimiento
+        if self.categoria_id and self.tipo:
+            if hasattr(self, 'categoria') and self.categoria:
+                if self.categoria.tipo != self.tipo:
+                    errors["categoria"] = (
+                        f"La categoría '{self.categoria.nombre}' es de tipo "
+                        f"'{self.categoria.tipo}', pero el movimiento es de tipo '{self.tipo}'."
+                    )
+
+        # 3. Cuenta debe estar activa (solo para nuevos registros)
+        if not self.pk and self.cuenta_id:
+            if hasattr(self, 'cuenta') and self.cuenta and not self.cuenta.esta_activa:
+                errors["cuenta"] = "No puedes registrar movimientos en una cuenta inactiva."
+
+        # 4. Si está anulado, debe tener motivo
+        if self.estado == "anulado" and not self.motivo_anulacion:
+            errors["motivo_anulacion"] = "Debe indicar el motivo de anulación."
+
+        if errors:
+            raise ValidationError(errors)
+
     def get_transferencia_par(self):
         """
         Retorna el movimiento relacionado si este es una transferencia.
@@ -293,11 +355,16 @@ class MovimientoFinanciero(models.Model):
         return MovimientoFinanciero.objects.filter(
             transferencia_id=self.transferencia_id
         ).exclude(pk=self.pk).first()
+
+
 class AdjuntoMovimiento(models.Model):
     """
     Archivos adjuntos a movimientos financieros.
     Permite almacenar comprobantes, facturas, recibos, etc.
     """
+    
+    EXTENSIONES_PERMITIDAS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'doc', 'docx', 'xls', 'xlsx']
+    MAX_TAMAÑO_MB = 10  # 👈 Tamaño máximo en MB
     
     movimiento = models.ForeignKey(
         MovimientoFinanciero,
@@ -347,6 +414,27 @@ class AdjuntoMovimiento(models.Model):
     
     def __str__(self):
         return f"{self.nombre_original} - {self.movimiento}"
+
+    def clean(self):
+        """Validaciones del adjunto."""
+        super().clean()
+        errors = {}
+
+        # Validar extensión
+        if self.nombre_original:
+            extension = self.nombre_original.split('.')[-1].lower()
+            if extension not in self.EXTENSIONES_PERMITIDAS:
+                errors["archivo"] = (
+                    f"Extensión '{extension}' no permitida. "
+                    f"Use: {', '.join(self.EXTENSIONES_PERMITIDAS)}"
+                )
+
+        # Validar tamaño
+        if self.tamaño and self.tamaño > (self.MAX_TAMAÑO_MB * 1024 * 1024):
+            errors["archivo"] = f"El archivo excede el tamaño máximo de {self.MAX_TAMAÑO_MB}MB."
+
+        if errors:
+            raise ValidationError(errors)
     
     def get_icono(self):
         """
@@ -392,18 +480,15 @@ class AdjuntoMovimiento(models.Model):
         """
         Verifica si un usuario puede eliminar este adjunto.
         """
-        # Administradores pueden eliminar cualquiera
         if usuario.is_staff or usuario.is_superuser:
             return True
-        
-        # El usuario que lo subió puede eliminarlo
         if self.subido_por == usuario:
             return True
-        
         return False
 
+
 # ==========================================================
-# CUENTAS POR PAGAR (CxP) – MODELOS BASE (SIN PAGOS AÚN)
+# CUENTAS POR PAGAR (CxP) – MODELOS BASE
 # ==========================================================
 class ProveedorFinanciero(models.Model):
     """
@@ -411,7 +496,6 @@ class ProveedorFinanciero(models.Model):
     Puede ser persona o empresa. Se usa en Cuentas por Pagar (CxP).
     """
 
-    # Identidad
     TIPO_CHOICES = [
         ("persona", "Persona"),
         ("empresa", "Empresa"),
@@ -423,7 +507,6 @@ class ProveedorFinanciero(models.Model):
         ("mixto", "Mixto"),
     ]
 
-    # Documento (RD)
     TIPO_DOCUMENTO_CHOICES = [
         ("", "—"),
         ("cedula", "Cédula"),
@@ -432,7 +515,6 @@ class ProveedorFinanciero(models.Model):
         ("otro", "Otro"),
     ]
 
-    # Pago
     METODO_PAGO_CHOICES = [
         ("", "—"),
         ("efectivo", "Efectivo"),
@@ -482,7 +564,6 @@ class ProveedorFinanciero(models.Model):
     email = models.EmailField(blank=True)
     direccion = models.CharField(max_length=255, blank=True)
 
-    # Términos de pago
     plazo_dias_pago = models.PositiveIntegerField(
         default=30,
         validators=[MinValueValidator(0), MaxValueValidator(365)],
@@ -496,7 +577,6 @@ class ProveedorFinanciero(models.Model):
         blank=True
     )
 
-    # Datos bancarios (para transferencias)
     banco = models.CharField(max_length=80, blank=True)
     tipo_cuenta = models.CharField(
         max_length=15,
@@ -515,7 +595,6 @@ class ProveedorFinanciero(models.Model):
         help_text="Titular de la cuenta si difiere del proveedor (opcional)."
     )
 
-    # Control
     bloqueado = models.BooleanField(
         default=False,
         help_text="Si está bloqueado, no se deben permitir nuevas CxP para este proveedor."
@@ -531,17 +610,44 @@ class ProveedorFinanciero(models.Model):
         verbose_name_plural = "Proveedores financieros"
         ordering = ["nombre"]
         constraints = [
-            # Evita duplicados por documento cuando exista (tipo_documento + documento)
             models.UniqueConstraint(
                 fields=["tipo_documento", "documento"],
-                condition=Q(documento__isnull=False),
+                condition=Q(documento__isnull=False) & ~Q(documento=""),
                 name="uq_proveedor_tipo_doc_documento",
-            )
+            ),
+            # 👈 NUEVO: Nombre único
+            models.UniqueConstraint(
+                fields=["nombre"],
+                name="uq_proveedor_nombre"
+            ),
         ]
 
     def __str__(self):
         return self.nombre
 
+    def clean(self):
+        """Validaciones del proveedor."""
+        super().clean()
+        errors = {}
+
+        # Si tiene datos bancarios parciales, exigir completos
+        tiene_banco = bool(self.banco)
+        tiene_cuenta = bool(self.numero_cuenta)
+
+        if tiene_banco and not tiene_cuenta:
+            errors["numero_cuenta"] = "Si indica banco, debe completar el número de cuenta."
+        if tiene_cuenta and not tiene_banco:
+            errors["banco"] = "Si indica número de cuenta, debe completar el banco."
+
+        # Si método es transferencia, exigir datos bancarios
+        if self.metodo_pago_preferido == "transferencia":
+            if not tiene_banco:
+                errors["banco"] = "Para transferencia debe indicar el banco."
+            if not tiene_cuenta:
+                errors["numero_cuenta"] = "Para transferencia debe indicar el número de cuenta."
+
+        if errors:
+            raise ValidationError(errors)
 
 
 class CuentaPorPagar(models.Model):
@@ -568,7 +674,6 @@ class CuentaPorPagar(models.Model):
     fecha_emision = models.DateField()
     fecha_vencimiento = models.DateField(null=True, blank=True)
 
-    # Categoría (solo egresos)
     categoria = models.ForeignKey(
         CategoriaMovimiento,
         on_delete=models.PROTECT,
@@ -577,7 +682,6 @@ class CuentaPorPagar(models.Model):
         help_text="Categoría de egreso para reportes (luz, alquiler, honorarios, etc.)."
     )
 
-    # Cuenta sugerida (opcional)
     cuenta_sugerida = models.ForeignKey(
         CuentaFinanciera,
         on_delete=models.SET_NULL,
@@ -596,8 +700,17 @@ class CuentaPorPagar(models.Model):
         help_text="Nº factura, recibo, contrato, etc. (opcional)."
     )
 
-    monto_total = models.DecimalField(max_digits=12, decimal_places=2)
-    monto_pagado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    monto_total = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],  # 👈 VALIDADOR
+    )
+    monto_pagado = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal("0"))],  # 👈 VALIDADOR
+    )
 
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="pendiente")
 
@@ -626,3 +739,48 @@ class CuentaPorPagar(models.Model):
     @property
     def saldo_pendiente(self):
         return (self.monto_total or 0) - (self.monto_pagado or 0)
+
+    def clean(self):
+        """Validaciones de la CxP."""
+        super().clean()
+        errors = {}
+
+        # 1. Monto total debe ser mayor a cero
+        if self.monto_total is not None and self.monto_total <= 0:
+            errors["monto_total"] = "El monto debe ser mayor a cero."
+
+        # 2. Monto pagado no puede ser mayor al total
+        if self.monto_pagado and self.monto_total:
+            if self.monto_pagado > self.monto_total:
+                errors["monto_pagado"] = "El monto pagado no puede superar el monto total."
+
+        # 3. Fecha vencimiento no puede ser anterior a emisión
+        if self.fecha_emision and self.fecha_vencimiento:
+            if self.fecha_vencimiento < self.fecha_emision:
+                errors["fecha_vencimiento"] = (
+                    "La fecha de vencimiento no puede ser anterior a la fecha de emisión."
+                )
+
+        # 4. No crear CxP para proveedor bloqueado (solo nuevos)
+        if not self.pk and self.proveedor_id:
+            if hasattr(self, 'proveedor') and self.proveedor and self.proveedor.bloqueado:
+                errors["proveedor"] = (
+                    f"El proveedor '{self.proveedor.nombre}' está bloqueado. "
+                    "No se pueden crear nuevas cuentas por pagar."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def actualizar_estado(self):
+        """Actualiza el estado según el monto pagado."""
+        from django.utils import timezone
+        
+        if self.monto_pagado >= self.monto_total:
+            self.estado = "pagada"
+        elif self.monto_pagado > 0:
+            self.estado = "parcial"
+        elif self.fecha_vencimiento and self.fecha_vencimiento < timezone.localdate():
+            self.estado = "vencida"
+        else:
+            self.estado = "pendiente"

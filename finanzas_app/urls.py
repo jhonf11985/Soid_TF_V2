@@ -112,4 +112,13 @@ path("reportes/cxp/vencidas/", views.reporte_cxp_vencidas, name="reporte_cxp_ven
 path("reportes/cxp/antiguedad/", views.reporte_antiguedad_cxp, name="reporte_antiguedad_cxp"),
 path("reportes/cxp/pagos/", views.reporte_pagos_cxp, name="reporte_pagos_cxp"),
 path("reportes/estado-resultados/", views.reporte_estado_resultados, name="reporte_estado_resultados"),
+
+
+# ============================================
+# AGREGAR ESTAS URLS A finanzas_app/urls.py
+# ============================================
+
+# Reportes por Unidad
+path("reportes/ingresos-por-unidad/", views.reporte_ingresos_por_unidad, name="reporte_ingresos_por_unidad"),
+path("reportes/movimientos-unidad/", views.reporte_movimientos_unidad, name="reporte_movimientos_unidad"),
 ]

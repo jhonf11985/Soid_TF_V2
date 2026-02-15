@@ -2807,13 +2807,17 @@ def reporte_pagos_cxp(request):
 # AGREGAR ESTA VISTA A finanzas_app/views.py
 # ============================================
 
+# ============================================
+# AGREGAR ESTA VISTA A finanzas_app/views.py
+# ============================================
+
 @login_required
 def reporte_estado_resultados(request):
     """
     Estado de Resultados (Ingresos vs Egresos).
+    Muestra todas las cuentas consolidadas (sin filtro de cuenta).
     Filtros:
       - year, month (por defecto mes actual)
-      - cuenta (opcional)
       - print=1 (opcional)
     """
     hoy = timezone.now().date()
@@ -2821,7 +2825,6 @@ def reporte_estado_resultados(request):
     # ---- Filtros ----
     year = request.GET.get("year")
     month = request.GET.get("month")
-    cuenta_id = (request.GET.get("cuenta") or "").strip()
     auto_print = request.GET.get("print") in ("1", "true", "True")
 
     try:
@@ -2833,7 +2836,7 @@ def reporte_estado_resultados(request):
         year = hoy.year
         month = hoy.month
 
-    # ---- Query base ----
+    # ---- Query base (todas las cuentas consolidadas) ----
     qs = MovimientoFinanciero.objects.filter(
         fecha__year=year,
         fecha__month=month,
@@ -2842,11 +2845,6 @@ def reporte_estado_resultados(request):
     ).exclude(
         es_transferencia=True  # Las transferencias no son ingresos/egresos reales
     )
-
-    cuenta_obj = None
-    if cuenta_id:
-        qs = qs.filter(cuenta_id=cuenta_id)
-        cuenta_obj = CuentaFinanciera.objects.filter(pk=cuenta_id).first()
 
     # ---- INGRESOS por categoría ----
     ingresos_por_categoria = (
@@ -2888,25 +2886,6 @@ def reporte_estado_resultados(request):
     resultado = total_ingresos - total_egresos
     es_superavit = resultado >= 0
 
-    # ---- Porcentajes ----
-    for item in ingresos_detalle:
-        if total_ingresos > 0:
-            item["porcentaje"] = (item["monto"] / total_ingresos * 100)
-        else:
-            item["porcentaje"] = Decimal("0")
-
-    for item in egresos_detalle:
-        if total_egresos > 0:
-            item["porcentaje"] = (item["monto"] / total_egresos * 100)
-        else:
-            item["porcentaje"] = Decimal("0")
-
-    # ---- Margen operativo ----
-    if total_ingresos > 0:
-        margen_operativo = (resultado / total_ingresos * 100)
-    else:
-        margen_operativo = Decimal("0")
-
     # ---- Período label ----
     NOMBRES_MESES = [
         "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -2914,8 +2893,6 @@ def reporte_estado_resultados(request):
     ]
     periodo_label = f"{NOMBRES_MESES[month]} {year}"
 
-    # ---- Combos ----
-    cuentas = CuentaFinanciera.objects.filter(esta_activa=True).order_by("nombre")
     CFG = get_config()
 
     context = {
@@ -2929,10 +2906,6 @@ def reporte_estado_resultados(request):
         "periodo_label": periodo_label,
         "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
 
-        "cuentas": cuentas,
-        "cuenta_id": cuenta_id,
-        "cuenta_obj": cuenta_obj,
-
         # Datos de ingresos
         "ingresos_detalle": ingresos_detalle,
         "total_ingresos": total_ingresos,
@@ -2944,6 +2917,248 @@ def reporte_estado_resultados(request):
         # Resultado
         "resultado": resultado,
         "es_superavit": es_superavit,
-        "margen_operativo": margen_operativo,
     }
     return render(request, "finanzas_app/reportes/estado_resultados.html", context)
+
+# ============================================
+# AGREGAR ESTAS VISTAS A finanzas_app/views.py
+# ============================================
+
+# ============================================
+# AGREGAR ESTAS VISTAS A finanzas_app/views.py
+# ============================================
+
+@login_required
+def reporte_ingresos_por_unidad(request):
+    """
+    Reporte de ingresos (MovimientoFinanciero) agrupados por unidad.
+    Muestra qué unidades generan ingresos para la iglesia.
+    Filtros:
+      - year, month
+      - unidad (opcional)
+      - print=1
+    """
+    from estructura_app.models import Unidad
+    
+    hoy = timezone.now().date()
+
+    # ---- Filtros ----
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    unidad_id = (request.GET.get("unidad") or "").strip()
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+
+    try:
+        year = int(year) if year else hoy.year
+        month = int(month) if month else hoy.month
+        if month < 1 or month > 12:
+            raise ValueError
+    except Exception:
+        year = hoy.year
+        month = hoy.month
+
+    # ---- Query base: solo ingresos ----
+    qs = MovimientoFinanciero.objects.filter(
+        fecha__year=year,
+        fecha__month=month,
+        tipo="ingreso",
+    ).exclude(
+        estado="anulado"
+    ).exclude(
+        es_transferencia=True
+    ).select_related("unidad", "categoria")
+
+    if unidad_id:
+        qs = qs.filter(unidad_id=unidad_id)
+
+    # ---- Agrupar por unidad ----
+    from django.db.models import Sum, Count
+
+    # Ingresos CON unidad asignada
+    ingresos_por_unidad = (
+        qs.filter(unidad__isnull=False)
+        .values("unidad__id", "unidad__nombre")
+        .annotate(
+            total=Sum("monto"),
+            cantidad=Count("id")
+        )
+        .order_by("-total")
+    )
+
+    # Detalle por unidad y categoría
+    detalle_unidades = []
+    total_con_unidad = Decimal("0")
+
+    for item in ingresos_por_unidad:
+        unidad_data = {
+            "id": item["unidad__id"],
+            "nombre": item["unidad__nombre"],
+            "total": item["total"] or Decimal("0"),
+            "cantidad": item["cantidad"],
+            "categorias": []
+        }
+        total_con_unidad += unidad_data["total"]
+
+        # Detalle por categoría de esta unidad
+        categorias = (
+            qs.filter(unidad_id=item["unidad__id"])
+            .values("categoria__nombre")
+            .annotate(subtotal=Sum("monto"))
+            .order_by("-subtotal")
+        )
+        for cat in categorias:
+            unidad_data["categorias"].append({
+                "nombre": cat["categoria__nombre"] or "Sin categoría",
+                "monto": cat["subtotal"] or Decimal("0"),
+            })
+
+        detalle_unidades.append(unidad_data)
+
+    # Total general (solo los que tienen unidad)
+    total_general = total_con_unidad
+
+    # ---- Período label ----
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    periodo_label = f"{NOMBRES_MESES[month]} {year}"
+
+    # ---- Combos ----
+    unidades = Unidad.objects.filter(activa=True, visible=True).order_by("nombre")
+    CFG = get_config()
+
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+
+        # Filtros
+        "year": year,
+        "month": month,
+        "periodo_label": periodo_label,
+        "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
+        "unidad_id": unidad_id,
+        "unidades": unidades,
+
+        # Datos
+        "detalle_unidades": detalle_unidades,
+        "total_general": total_general,
+    }
+    return render(request, "finanzas_app/reportes/ingresos_por_unidad.html", context)
+
+# ============================================
+# AGREGAR ESTA VISTA A estructura_app/views.py
+# (o finanzas_app/views.py si prefieres centralizar)
+# ============================================
+
+@login_required
+def reporte_movimientos_unidad(request):
+    """
+    Reporte de movimientos internos de unidades (MovimientoUnidad).
+    Muestra ingresos y egresos del fondo propio de cada unidad.
+    Filtros:
+      - year, month
+      - unidad (opcional)
+      - print=1
+    """
+    from estructura_app.models import Unidad, MovimientoUnidad
+    from django.db.models import Sum, Count, Q
+    
+    hoy = timezone.now().date()
+
+    # ---- Filtros ----
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    unidad_id = (request.GET.get("unidad") or "").strip()
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+
+    try:
+        year = int(year) if year else hoy.year
+        month = int(month) if month else hoy.month
+        if month < 1 or month > 12:
+            raise ValueError
+    except Exception:
+        year = hoy.year
+        month = hoy.month
+
+    # ---- Query base ----
+    qs = MovimientoUnidad.objects.filter(
+        fecha__year=year,
+        fecha__month=month,
+        anulado=False,
+    ).select_related("unidad")
+
+    if unidad_id:
+        qs = qs.filter(unidad_id=unidad_id)
+
+    # ---- Agrupar por unidad ----
+    resumen_por_unidad = (
+        qs.values("unidad__id", "unidad__nombre")
+        .annotate(
+            ingresos=Sum("monto", filter=Q(tipo="INGRESO")),
+            egresos=Sum("monto", filter=Q(tipo="EGRESO")),
+            cantidad=Count("id"),
+        )
+        .order_by("unidad__nombre")
+    )
+
+    # Construir detalle
+    detalle_unidades = []
+    total_ingresos = Decimal("0")
+    total_egresos = Decimal("0")
+
+    for item in resumen_por_unidad:
+        ing = item["ingresos"] or Decimal("0")
+        egr = item["egresos"] or Decimal("0")
+        resultado = ing - egr
+
+        total_ingresos += ing
+        total_egresos += egr
+
+        # Obtener movimientos detallados de esta unidad
+        movimientos = qs.filter(unidad_id=item["unidad__id"]).order_by("fecha", "id")
+
+        detalle_unidades.append({
+            "id": item["unidad__id"],
+            "nombre": item["unidad__nombre"],
+            "ingresos": ing,
+            "egresos": egr,
+            "resultado": resultado,
+            "cantidad": item["cantidad"],
+            "movimientos": movimientos,
+        })
+
+    total_resultado = total_ingresos - total_egresos
+
+    # ---- Período label ----
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    periodo_label = f"{NOMBRES_MESES[month]} {year}"
+
+    # ---- Combos ----
+    unidades = Unidad.objects.filter(activa=True, visible=True).order_by("nombre")
+    CFG = get_config()
+
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+
+        # Filtros
+        "year": year,
+        "month": month,
+        "periodo_label": periodo_label,
+        "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
+        "unidad_id": unidad_id,
+        "unidades": unidades,
+
+        # Datos
+        "detalle_unidades": detalle_unidades,
+        "total_ingresos": total_ingresos,
+        "total_egresos": total_egresos,
+        "total_resultado": total_resultado,
+    }
+    return render(request, "finanzas_app/reportes/movimientos_unidad.html", context)

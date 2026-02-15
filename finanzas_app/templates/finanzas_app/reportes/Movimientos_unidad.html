@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Movimientos Internos de Unidad - {{ periodo_label }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <style>
+    :root {
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --bg: #f8f9fa;
+      --bg-white: #ffffff;
+    }
+
+    @page { size: A4; margin: 12mm; }
+
+    * { box-sizing: border-box; }
+
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      margin: 0;
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .print-only { display: none; }
+    @media print {
+      body { background: white; padding: 0; }
+      .container { border: none; max-width: 100%; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+    }
+
+    /* Header */
+    .header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .header-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      padding: 16px 24px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-group label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .filter-control {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      background: var(--bg-white);
+    }
+
+    .filter-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-white);
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .btn:hover { background: var(--bg); }
+
+    .btn-primary {
+      background: #212529;
+      color: white;
+      border-color: #212529;
+    }
+
+    .btn .material-icons { font-size: 16px; }
+
+    /* Content */
+    .content {
+      padding: 24px;
+    }
+
+    /* Unidad Block */
+    .unidad-block {
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .unidad-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--bg);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .unidad-header .nombre {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .unidad-header .material-icons {
+      font-size: 18px;
+      color: var(--text-muted);
+    }
+
+    /* Tabla de movimientos */
+    .mov-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .mov-table th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mov-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .mov-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .mov-table .right {
+      text-align: right;
+    }
+
+    .mov-table .center {
+      text-align: center;
+    }
+
+    .monto {
+      font-variant-numeric: tabular-nums;
+      font-family: "SF Mono", "Consolas", monospace;
+    }
+
+    .tipo-ingreso {
+      color: var(--text);
+    }
+
+    .tipo-egreso {
+      color: var(--text);
+    }
+
+    /* Resumen unidad */
+    .unidad-resumen {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-top: 1px solid var(--border);
+    }
+
+    .resumen-item {
+      background: var(--bg);
+      padding: 12px 16px;
+      text-align: center;
+    }
+
+    .resumen-item .label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .resumen-item .valor {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Total general */
+    .total-general {
+      margin-top: 24px;
+      border: 2px solid var(--text);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .total-general-header {
+      background: var(--text);
+      color: white;
+      padding: 12px 16px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .total-general-body {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .total-general-body .resumen-item {
+      background: white;
+    }
+
+    /* Sin datos */
+    .sin-datos {
+      padding: 40px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 768px) {
+      .filters {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .filter-actions {
+        margin-left: 0;
+        margin-top: 12px;
+      }
+      .unidad-resumen,
+      .total-general-body {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- Filters -->
+  <form method="get" class="filters no-print">
+    <div class="filter-group">
+      <label>Año</label>
+      <input class="filter-control" type="number" name="year" value="{{ year }}" style="width: 80px;">
+    </div>
+
+    <div class="filter-group">
+      <label>Mes</label>
+      <select class="filter-control" name="month" style="width: 130px;">
+        {% for m, nombre in meses %}
+          <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Unidad</label>
+      <select class="filter-control" name="unidad" style="min-width: 160px;">
+        <option value="">Todas</option>
+        {% for u in unidades %}
+          <option value="{{ u.id }}" {% if unidad_id == u.id|stringformat:"s" %}selected{% endif %}>
+            {{ u.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-actions">
+      <a href="{% url 'finanzas_app:reportes_home' %}" class="btn">
+        <span class="material-icons">arrow_back</span>
+        Volver
+      </a>
+      <button type="submit" class="btn">
+        <span class="material-icons">refresh</span>
+      </button>
+      <button type="submit" name="print" value="1" class="btn btn-primary">
+        <span class="material-icons">print</span>
+        Imprimir
+      </button>
+    </div>
+  </form>
+
+  <!-- Header -->
+  <div class="header">
+    {% if CFG.nombre_organizacion %}
+      <div class="header-meta" style="margin-bottom: 4px;">
+        <strong>{{ CFG.nombre_organizacion }}</strong>
+      </div>
+    {% endif %}
+    <h1 class="header-title">Movimientos Internos de Unidad</h1>
+    <div class="header-meta">{{ periodo_label }}</div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    {% if detalle_unidades %}
+
+      {% for unidad in detalle_unidades %}
+      <div class="unidad-block">
+        <div class="unidad-header">
+          <span class="nombre">
+            <span class="material-icons">groups</span>
+            {{ unidad.nombre }}
+          </span>
+          <span>{{ unidad.cantidad }} movimiento{{ unidad.cantidad|pluralize:"s" }}</span>
+        </div>
+
+        <table class="mov-table">
+          <thead>
+            <tr>
+              <th style="width: 90px;">Fecha</th>
+              <th style="width: 80px;">Tipo</th>
+              <th>Concepto</th>
+              <th class="right" style="width: 110px;">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mov in unidad.movimientos %}
+            <tr>
+              <td>{{ mov.fecha|date:"d/m/Y" }}</td>
+              <td>
+                {% if mov.tipo == "INGRESO" %}
+                  Ingreso
+                {% else %}
+                  Egreso
+                {% endif %}
+              </td>
+              <td>{{ mov.concepto }}</td>
+              <td class="right monto {% if mov.tipo == 'INGRESO' %}tipo-ingreso{% else %}tipo-egreso{% endif %}">
+                {% if mov.tipo == "EGRESO" %}({% endif %}{{ mov.monto|floatformat:2 }}{% if mov.tipo == "EGRESO" %}){% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="unidad-resumen">
+          <div class="resumen-item">
+            <div class="label">Ingresos</div>
+            <div class="valor monto">{{ unidad.ingresos|floatformat:2 }}</div>
+          </div>
+          <div class="resumen-item">
+            <div class="label">Egresos</div>
+            <div class="valor monto">({{ unidad.egresos|floatformat:2 }})</div>
+          </div>
+          <div class="resumen-item">
+            <div class="label">Resultado</div>
+            <div class="valor monto">
+              {% if unidad.resultado < 0 %}({% endif %}{{ unidad.resultado|floatformat:2 }}{% if unidad.resultado < 0 %}){% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Total general -->
+      <div class="total-general">
+        <div class="total-general-header">
+          Resumen General
+        </div>
+        <div class="total-general-body">
+          <div class="resumen-item">
+            <div class="label">Total Ingresos</div>
+            <div class="valor monto">{{ total_ingresos|floatformat:2 }}</div>
+          </div>
+          <div class="resumen-item">
+            <div class="label">Total Egresos</div>
+            <div class="valor monto">({{ total_egresos|floatformat:2 }})</div>
+          </div>
+          <div class="resumen-item">
+            <div class="label">Resultado</div>
+            <div class="valor monto">
+              {% if total_resultado < 0 %}({% endif %}{{ total_resultado|floatformat:2 }}{% if total_resultado < 0 %}){% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    {% else %}
+      <div class="sin-datos">
+        <span class="material-icons" style="font-size: 48px; opacity: 0.3;">inbox</span>
+        <p>No hay movimientos internos registrados en este período</p>
+      </div>
+    {% endif %}
+
+    <div class="print-only" style="margin-top: 40px; font-size: 11px; color: var(--text-muted); text-align: center;">
+      Generado el {{ fecha_hoy|date:"d/m/Y" }}
+    </div>
+
+  </div>
+
+</div>
+
+{% if auto_print %}
+  <script>window.addEventListener('load', () => window.print());</script>
+{% endif %}
+
+</body>
+</html>
