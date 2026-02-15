@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Estado de Resultados - {{ periodo_label }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #714B67;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --success: #28a745;
+      --danger: #dc3545;
+      --border: #dee2e6;
+      --bg: #f8f9fa;
+      --bg-white: #ffffff;
+    }
+
+    @page { size: A4; margin: 12mm; }
+
+    * { box-sizing: border-box; }
+
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      margin: 0;
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    /* Print */
+    .print-only { display: none; }
+    @media print {
+      body { background: white; padding: 0; }
+      .container { border: none; max-width: 100%; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      color: var(--text);
+    }
+
+    .header-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .header-meta strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+    }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      padding: 16px 24px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-group label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .filter-control {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      background: var(--bg-white);
+    }
+
+    .filter-control:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .filter-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 7px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-white);
+      color: var(--text);
+      transition: background 0.15s;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background: var(--bg);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .btn-primary:hover {
+      background: #5d3d55;
+    }
+
+    .btn .material-icons {
+      font-size: 16px;
+    }
+
+    /* Content */
+    .content {
+      padding: 24px;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-white);
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 6px;
+    }
+
+    .kpi-value {
+      font-size: 22px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-value.positive { color: var(--success); }
+    .kpi-value.negative { color: var(--danger); }
+    .kpi-value.neutral { color: var(--primary); }
+
+    /* Estado de Resultados */
+    .estado-resultados {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .seccion-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .seccion-header.ingresos {
+      background: rgba(40, 167, 69, 0.1);
+      color: var(--success);
+      border-bottom: 1px solid rgba(40, 167, 69, 0.2);
+    }
+
+    .seccion-header.egresos {
+      background: rgba(220, 53, 69, 0.1);
+      color: var(--danger);
+      border-bottom: 1px solid rgba(220, 53, 69, 0.2);
+    }
+
+    .seccion-header .material-icons {
+      font-size: 18px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px 10px 32px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 13px;
+    }
+
+    .item-row:last-child {
+      border-bottom: none;
+    }
+
+    .item-row:hover {
+      background: var(--bg);
+    }
+
+    .item-nombre {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .item-bullet {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #adb5bd;
+    }
+
+    .item-bullet.ingreso { background: var(--success); }
+    .item-bullet.egreso { background: var(--danger); }
+
+    .item-monto {
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .item-porcentaje {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-left: 8px;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      font-weight: 600;
+      background: var(--bg);
+      border-top: 2px solid var(--border);
+    }
+
+    .total-row.ingresos {
+      color: var(--success);
+    }
+
+    .total-row.egresos {
+      color: var(--danger);
+    }
+
+    /* Resultado Final */
+    .resultado-final {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      font-size: 16px;
+      font-weight: 700;
+      border-top: 2px solid var(--border);
+    }
+
+    .resultado-final.superavit {
+      background: linear-gradient(135deg, rgba(40, 167, 69, 0.08), rgba(40, 167, 69, 0.15));
+      color: #1e7e34;
+    }
+
+    .resultado-final.deficit {
+      background: linear-gradient(135deg, rgba(220, 53, 69, 0.08), rgba(220, 53, 69, 0.15));
+      color: #bd2130;
+    }
+
+    .resultado-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .resultado-label .material-icons {
+      font-size: 24px;
+    }
+
+    .resultado-monto {
+      font-size: 24px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Sin datos */
+    .sin-datos {
+      padding: 32px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .sin-datos .material-icons {
+      font-size: 40px;
+      opacity: 0.4;
+      margin-bottom: 12px;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-success {
+      background: rgba(40, 167, 69, 0.1);
+      color: var(--success);
+    }
+
+    .badge-danger {
+      background: rgba(220, 53, 69, 0.1);
+      color: var(--danger);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .filters {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .filter-actions {
+        margin-left: 0;
+        margin-top: 12px;
+      }
+
+      .kpi-value {
+        font-size: 18px;
+      }
+
+      .resultado-monto {
+        font-size: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- Filters -->
+  <form method="get" class="filters no-print">
+    <div class="filter-group">
+      <label>Año</label>
+      <input class="filter-control" type="number" name="year" value="{{ year }}" style="width: 80px;">
+    </div>
+
+    <div class="filter-group">
+      <label>Mes</label>
+      <select class="filter-control" name="month" style="width: 120px;">
+        {% for m, nombre in meses %}
+          <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Cuenta</label>
+      <select class="filter-control" name="cuenta" style="min-width: 160px;">
+        <option value="">Todas</option>
+        {% for c in cuentas %}
+          <option value="{{ c.id }}" {% if cuenta_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+            {{ c.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-actions">
+      <a href="{% url 'finanzas_app:reportes_home' %}" class="btn">
+        <span class="material-icons">arrow_back</span>
+        Volver
+      </a>
+      <button type="submit" class="btn">
+        <span class="material-icons">refresh</span>
+      </button>
+      <button type="submit" name="print" value="1" class="btn btn-primary">
+        <span class="material-icons">print</span>
+        Imprimir
+      </button>
+    </div>
+  </form>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1 class="header-title">Estado de Resultados</h1>
+      <div class="header-meta">
+        <strong>{{ periodo_label }}</strong>
+        &nbsp;·&nbsp;
+        {% if cuenta_obj %}{{ cuenta_obj.nombre }}{% else %}Todas las cuentas{% endif %}
+      </div>
+      <div class="header-meta print-only" style="margin-top: 4px;">
+        Generado: {{ fecha_hoy|date:"d/m/Y" }}
+        {% if CFG.nombre_organizacion %} · {{ CFG.nombre_organizacion }}{% endif %}
+      </div>
+    </div>
+    {% if CFG.logo %}
+      <img class="logo" src="{{ CFG.logo.url }}" alt="Logo">
+    {% endif %}
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Ingresos</div>
+        <div class="kpi-value positive">+{{ total_ingresos|floatformat:2 }}</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Total Egresos</div>
+        <div class="kpi-value negative">-{{ total_egresos|floatformat:2 }}</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Resultado</div>
+        <div class="kpi-value {% if es_superavit %}positive{% else %}negative{% endif %}">
+          {% if es_superavit %}+{% endif %}{{ resultado|floatformat:2 }}
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Margen</div>
+        <div class="kpi-value neutral">{{ margen_operativo|floatformat:1 }}%</div>
+      </div>
+    </div>
+
+    <!-- Estado de Resultados -->
+    <div class="estado-resultados">
+
+      <!-- INGRESOS -->
+      <div class="seccion-header ingresos">
+        <span>
+          <span class="material-icons">trending_up</span>
+          Ingresos
+        </span>
+        <span>Monto</span>
+      </div>
+
+      {% if ingresos_detalle %}
+        {% for item in ingresos_detalle %}
+        <div class="item-row">
+          <div class="item-nombre">
+            <span class="item-bullet ingreso"></span>
+            {{ item.categoria }}
+          </div>
+          <div>
+            <span class="item-monto">{{ item.monto|floatformat:2 }}</span>
+            <span class="item-porcentaje">({{ item.porcentaje|floatformat:1 }}%)</span>
+          </div>
+        </div>
+        {% endfor %}
+        <div class="total-row ingresos">
+          <span>TOTAL INGRESOS</span>
+          <span>{{ total_ingresos|floatformat:2 }}</span>
+        </div>
+      {% else %}
+        <div class="sin-datos">
+          <span class="material-icons">inbox</span>
+          <p>No hay ingresos en este período</p>
+        </div>
+      {% endif %}
+
+      <!-- EGRESOS -->
+      <div class="seccion-header egresos">
+        <span>
+          <span class="material-icons">trending_down</span>
+          Egresos
+        </span>
+        <span>Monto</span>
+      </div>
+
+      {% if egresos_detalle %}
+        {% for item in egresos_detalle %}
+        <div class="item-row">
+          <div class="item-nombre">
+            <span class="item-bullet egreso"></span>
+            {{ item.categoria }}
+          </div>
+          <div>
+            <span class="item-monto">{{ item.monto|floatformat:2 }}</span>
+            <span class="item-porcentaje">({{ item.porcentaje|floatformat:1 }}%)</span>
+          </div>
+        </div>
+        {% endfor %}
+        <div class="total-row egresos">
+          <span>TOTAL EGRESOS</span>
+          <span>{{ total_egresos|floatformat:2 }}</span>
+        </div>
+      {% else %}
+        <div class="sin-datos">
+          <span class="material-icons">inbox</span>
+          <p>No hay egresos en este período</p>
+        </div>
+      {% endif %}
+
+      <!-- RESULTADO FINAL -->
+      <div class="resultado-final {% if es_superavit %}superavit{% else %}deficit{% endif %}">
+        <div class="resultado-label">
+          <span class="material-icons">
+            {% if es_superavit %}arrow_circle_up{% else %}arrow_circle_down{% endif %}
+          </span>
+          <span>{% if es_superavit %}SUPERÁVIT{% else %}DÉFICIT{% endif %} DEL PERÍODO</span>
+        </div>
+        <span class="resultado-monto">
+          {% if es_superavit %}+{% endif %}{{ resultado|floatformat:2 }}
+        </span>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+{% if auto_print %}
+  <script>window.addEventListener('load', () => window.print());</script>
+{% endif %}
+
+</body>
+</html>

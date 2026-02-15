@@ -166,6 +166,13 @@ class CuentaFinancieraForm(forms.ModelForm):
             }),
         }
 
+    def clean_saldo_inicial(self):
+        """Si no se proporciona saldo inicial, usar 0."""
+        valor = self.cleaned_data.get("saldo_inicial")
+        if valor is None:
+            return Decimal("0")
+        return valor
+
 
 # ============================================
 # FORMULARIO DE CATEGORÍA DE MOVIMIENTO

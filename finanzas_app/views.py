@@ -2801,3 +2801,149 @@ def reporte_pagos_cxp(request):
         "proveedores": proveedores,
     }
     return render(request, "finanzas_app/reportes/reporte_pagos_cxp.html", context)
+
+
+# ============================================
+# AGREGAR ESTA VISTA A finanzas_app/views.py
+# ============================================
+
+@login_required
+def reporte_estado_resultados(request):
+    """
+    Estado de Resultados (Ingresos vs Egresos).
+    Filtros:
+      - year, month (por defecto mes actual)
+      - cuenta (opcional)
+      - print=1 (opcional)
+    """
+    hoy = timezone.now().date()
+
+    # ---- Filtros ----
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    cuenta_id = (request.GET.get("cuenta") or "").strip()
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+
+    try:
+        year = int(year) if year else hoy.year
+        month = int(month) if month else hoy.month
+        if month < 1 or month > 12:
+            raise ValueError
+    except Exception:
+        year = hoy.year
+        month = hoy.month
+
+    # ---- Query base ----
+    qs = MovimientoFinanciero.objects.filter(
+        fecha__year=year,
+        fecha__month=month,
+    ).exclude(
+        estado="anulado"
+    ).exclude(
+        es_transferencia=True  # Las transferencias no son ingresos/egresos reales
+    )
+
+    cuenta_obj = None
+    if cuenta_id:
+        qs = qs.filter(cuenta_id=cuenta_id)
+        cuenta_obj = CuentaFinanciera.objects.filter(pk=cuenta_id).first()
+
+    # ---- INGRESOS por categoría ----
+    ingresos_por_categoria = (
+        qs.filter(tipo="ingreso")
+        .values("categoria__nombre")
+        .annotate(total=Sum("monto"))
+        .order_by("-total")
+    )
+
+    ingresos_detalle = []
+    total_ingresos = Decimal("0")
+    for row in ingresos_por_categoria:
+        monto = row["total"] or Decimal("0")
+        total_ingresos += monto
+        ingresos_detalle.append({
+            "categoria": row["categoria__nombre"] or "Sin categoría",
+            "monto": monto,
+        })
+
+    # ---- EGRESOS por categoría ----
+    egresos_por_categoria = (
+        qs.filter(tipo="egreso")
+        .values("categoria__nombre")
+        .annotate(total=Sum("monto"))
+        .order_by("-total")
+    )
+
+    egresos_detalle = []
+    total_egresos = Decimal("0")
+    for row in egresos_por_categoria:
+        monto = row["total"] or Decimal("0")
+        total_egresos += monto
+        egresos_detalle.append({
+            "categoria": row["categoria__nombre"] or "Sin categoría",
+            "monto": monto,
+        })
+
+    # ---- RESULTADO ----
+    resultado = total_ingresos - total_egresos
+    es_superavit = resultado >= 0
+
+    # ---- Porcentajes ----
+    for item in ingresos_detalle:
+        if total_ingresos > 0:
+            item["porcentaje"] = (item["monto"] / total_ingresos * 100)
+        else:
+            item["porcentaje"] = Decimal("0")
+
+    for item in egresos_detalle:
+        if total_egresos > 0:
+            item["porcentaje"] = (item["monto"] / total_egresos * 100)
+        else:
+            item["porcentaje"] = Decimal("0")
+
+    # ---- Margen operativo ----
+    if total_ingresos > 0:
+        margen_operativo = (resultado / total_ingresos * 100)
+    else:
+        margen_operativo = Decimal("0")
+
+    # ---- Período label ----
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    periodo_label = f"{NOMBRES_MESES[month]} {year}"
+
+    # ---- Combos ----
+    cuentas = CuentaFinanciera.objects.filter(esta_activa=True).order_by("nombre")
+    CFG = get_config()
+
+    context = {
+        "CFG": CFG,
+        "fecha_hoy": hoy,
+        "auto_print": auto_print,
+
+        # Filtros
+        "year": year,
+        "month": month,
+        "periodo_label": periodo_label,
+        "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
+
+        "cuentas": cuentas,
+        "cuenta_id": cuenta_id,
+        "cuenta_obj": cuenta_obj,
+
+        # Datos de ingresos
+        "ingresos_detalle": ingresos_detalle,
+        "total_ingresos": total_ingresos,
+
+        # Datos de egresos
+        "egresos_detalle": egresos_detalle,
+        "total_egresos": total_egresos,
+
+        # Resultado
+        "resultado": resultado,
+        "es_superavit": es_superavit,
+        "margen_operativo": margen_operativo,
+    }
+    return render(request, "finanzas_app/reportes/estado_resultados.html", context)

@@ -1177,3 +1177,5 @@ def grupo_detalle(request, pk):
     }
 
     return render(request, "formacion_app/grupo_detalle.html", ctx)
+
+

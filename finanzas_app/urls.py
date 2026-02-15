@@ -111,5 +111,5 @@ path("reportes/cxp/por-proveedor/", views.reporte_cxp_por_proveedor, name="repor
 path("reportes/cxp/vencidas/", views.reporte_cxp_vencidas, name="reporte_cxp_vencidas"),
 path("reportes/cxp/antiguedad/", views.reporte_antiguedad_cxp, name="reporte_antiguedad_cxp"),
 path("reportes/cxp/pagos/", views.reporte_pagos_cxp, name="reporte_pagos_cxp"),
-
+path("reportes/estado-resultados/", views.reporte_estado_resultados, name="reporte_estado_resultados"),
 ]
