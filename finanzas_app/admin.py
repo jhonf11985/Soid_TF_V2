@@ -47,3 +47,15 @@ class CasillaF001Admin(admin.ModelAdmin):
     list_filter = ("seccion", "activo")
     search_fields = ("codigo", "nombre")
     ordering = ("seccion", "orden", "nombre")
+
+
+def has_delete_permission(self, request, obj=None):
+    if obj and not obj.es_editable:
+        return False
+    return super().has_delete_permission(request, obj)
+
+
+def has_change_permission(self, request, obj=None):
+    if obj and not obj.es_editable:
+        return False
+    return super().has_change_permission(request, obj)

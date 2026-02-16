@@ -3261,6 +3261,11 @@ def reporte_f001_concilio(request):
         "", "Enero","Febrero","Marzo","Abril","Mayo","Junio",
         "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
     ]
+    totales = {
+        "total_ingresos_iglesia": total_ing_iglesia,
+        "total_ingresos_ministerios": total_ing_min,
+        "total_egresos": total_egresos,
+    }
 
     context = {
         "mes_nombre": meses[mes],
@@ -3269,9 +3274,8 @@ def reporte_f001_concilio(request):
         "ministerios": ministerios,
         "egresos": egresos,
         "envios": envios,
-        "total_ingresos_iglesia": total_ing_iglesia,
-        "total_ingresos_ministerios": total_ing_min,
-        "total_egresos": total_egresos,
+        "totales": totales,
     }
+
 
     return render(request, "finanzas_app/reportes/Informe_f001_concilio.html", context)
