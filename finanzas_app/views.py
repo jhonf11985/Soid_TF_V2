@@ -647,13 +647,10 @@ def movimiento_crear(request):
         "form": form,
     }
     return render(request, "finanzas_app/ingreso_form.html", context)
-
 @login_required
 @require_http_methods(["GET", "POST"])
 @permission_required("finanzas_app.add_movimientofinanciero", raise_exception=True)
 def ingreso_crear(request):
-
-
     """
     Formulario específico para registrar INGRESOS.
     """
@@ -665,7 +662,13 @@ def ingreso_crear(request):
             mov.estado = "confirmado"
             mov.creado_por = request.user
             mov.save()
+
             messages.success(request, "Ingreso registrado y confirmado correctamente.")
+
+            accion = request.POST.get("accion")
+            if accion == "guardar_nuevo":
+                return redirect("finanzas_app:ingreso_crear")
+
             return redirect("/finanzas/movimientos/?tipo=ingreso")
     else:
         form = MovimientoIngresoForm(
@@ -680,11 +683,11 @@ def ingreso_crear(request):
     }
     return render(request, "finanzas_app/ingreso_form.html", context)
 
+
 @login_required
 @require_http_methods(["GET", "POST"])
 @permission_required("finanzas_app.add_movimientofinanciero", raise_exception=True)
 def egreso_crear(request):
-
     """
     Formulario específico para registrar EGRESOS.
     """
@@ -695,7 +698,13 @@ def egreso_crear(request):
             mov.tipo = "egreso"
             mov.creado_por = request.user
             mov.save()
+
             messages.success(request, "Egreso registrado correctamente.")
+
+            accion = request.POST.get("accion")
+            if accion == "guardar_nuevo":
+                return redirect("finanzas_app:egreso_crear")
+
             return redirect("/finanzas/movimientos/?tipo=egreso")
     else:
         form = MovimientoEgresoForm(
