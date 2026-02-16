@@ -3326,3 +3326,53 @@ def reporte_f001_concilio(request):
     }
 
     return render(request, "finanzas_app/reportes/Informe_f001_concilio.html", context)
+
+from django.http import JsonResponse
+from .models import CategoriaMovimiento
+
+
+def categoria_sugerir_codigo(request):
+    tipo = (request.GET.get("tipo") or "").strip()
+    seccion = (request.GET.get("seccion") or "").strip()
+
+    base = None
+
+    # Ingresos
+    if tipo == "ingreso":
+        if seccion == "ingresos_ministerios":
+            base = 1100
+        else:
+            base = 1000
+
+    # Egresos
+    elif tipo == "egreso":
+        if seccion == "envios_ministerios":
+            base = 3000
+        elif seccion == "aportes_especiales":
+            base = 4000
+        else:
+            base = 2000
+
+    if base is None:
+        return JsonResponse({"codigo": ""})
+
+    # buscar codigos existentes dentro del rango
+    existentes = CategoriaMovimiento.objects.filter(
+        codigo__regex=r"^\d+$"
+    ).values_list("codigo", flat=True)
+
+    usados = []
+    for c in existentes:
+        try:
+            n = int(c)
+            if base <= n <= base + 99:
+                usados.append(n)
+        except:
+            pass
+
+    siguiente = max(usados) + 1 if usados else base + 1
+
+    if siguiente > base + 99:
+        return JsonResponse({"codigo": ""})
+
+    return JsonResponse({"codigo": str(siguiente)})

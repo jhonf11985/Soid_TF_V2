@@ -88,7 +88,10 @@ class CasillaF001(models.Model):
         ("ingresos_iglesia", "Ingresos Generales de la Iglesia"),
         ("ingresos_ministerios", "Ingresos de los Ministerios"),
         ("egresos", "Egresos de la Iglesia"),
+        ("envios_ministerios", "Envíos a Ministerios Nacionales"),
+        ("aportes_especiales", "Aportes Especiales"),
     ]
+
 
     codigo = models.CharField(
         max_length=60,

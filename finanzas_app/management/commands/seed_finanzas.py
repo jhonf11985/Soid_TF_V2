@@ -136,60 +136,62 @@ class Command(BaseCommand):
         has_codigo = "codigo" in categoria_fields
         has_casilla = "casilla_f001" in categoria_fields
 
+        
         categorias = [
-            # Ingresos iglesia
-            ("ingreso", "Diezmos", "CAT_ING_DIEZMOS", "ING_DIEZMOS"),
-            ("ingreso", "Ofrendas Voluntarias", "CAT_ING_OFRENDA_VOL", "ING_OFRENDA_VOL"),
-            ("ingreso", "Ofrendas Especiales", "CAT_ING_OFRENDA_ESP", "ING_OFRENDA_ESP"),
-            ("ingreso", "Otras Ofrendas", "CAT_ING_OTRAS_OFR", "ING_OTRAS_OFR"),
-            ("ingreso", "Otros Ingresos", "CAT_ING_OTROS", "ING_OTROS"),
-            ("ingreso", "Ayudas del Concilio", "CAT_ING_AYUDA_CONCILIO", "ING_AYUDA_CONCILIO"),
-            ("ingreso", "Ofrendas del Exterior", "CAT_ING_EXTERIOR", "ING_EXTERIOR"),
 
-            # Ingresos ministerios (como pediste)
-            ("ingreso", "Ofrenda Ministerio Femenil", "CAT_MIN_FEMENIL", "MIN_FEMENIL"),
-            ("ingreso", "Ofrenda Hombres de Honor", "CAT_MIN_HOMBRES", "MIN_HOMBRES"),
-            ("ingreso", "Ofrenda Embajadores de Cristo", "CAT_MIN_EMBAJADORES", "MIN_EMBAJADORES"),
-            ("ingreso", "Ofrenda Escuela Bíblica", "CAT_MIN_ESC_BIBLICA", "MIN_ESC_BIBLICA"),
-            ("ingreso", "Ofrenda Misioneritas", "CAT_MIN_MISIONERITAS", "MIN_MISIONERITAS"),
-            ("ingreso", "Ofrenda Exploradores", "CAT_MIN_EXPLORADORES", "MIN_EXPLORADORES"),
-            ("ingreso", "Ofrenda MDA", "CAT_MIN_MDA", "MIN_MDA"),
-            ("ingreso", "Ofrenda Misiones", "CAT_MIN_MISIONES", "MIN_MISIONES"),
-            ("ingreso", "Ofrenda Otros Ministerios", "CAT_MIN_OTROS", "MIN_OTROS"),
+            # ---------------- INGRESOS GENERALES ----------------
+            ("ingreso", "Diezmos", "1001", "ING_DIEZMOS"),
+            ("ingreso", "Ofrendas Voluntarias", "1002", "ING_OFRENDA_VOL"),
+            ("ingreso", "Ofrendas Especiales", "1003", "ING_OFRENDA_ESP"),
+            ("ingreso", "Otras Ofrendas", "1004", "ING_OTRAS_OFR"),
+            ("ingreso", "Otros Ingresos", "1005", "ING_OTROS"),
+            ("ingreso", "Ayudas del Concilio", "1006", "ING_AYUDA_CONCILIO"),
+            ("ingreso", "Ofrendas del Exterior", "1007", "ING_EXTERIOR"),
 
-            # Egresos base
-            ("egreso", "Asignación Pastoral", "CAT_EGR_ASIG_PASTORAL", "EGR_ASIG_PASTORAL"),
-            ("egreso", "Alquileres Casa/Templo", "CAT_EGR_ALQUILER", "EGR_ALQUILER"),
-            ("egreso", "Evangelismo y Misiones", "CAT_EGR_EVANGELISMO", "EGR_EVANGELISMO"),
-            ("egreso", "Agua, Luz, Teléfono", "CAT_EGR_SERVICIOS", "EGR_SERVICIOS"),
-            ("egreso", "Ayuda a Capillas", "CAT_EGR_CAPILLAS", "EGR_CAPILLAS"),
-            ("egreso", "Ayuda a Necesitados", "CAT_EGR_NECESITADOS", "EGR_NECESITADOS"),
-            ("egreso", "Mantenimientos Varios", "CAT_EGR_MANTENIMIENTO", "EGR_MANTENIMIENTO"),
-            ("egreso", "Apoyo a Minist. Locales", "CAT_EGR_APOYO_MIN", "EGR_APOYO_MIN"),
-            ("egreso", "Otras Salidas", "CAT_EGR_OTRAS", "EGR_OTRAS"),
+            # ---------------- INGRESOS MINISTERIOS ----------------
+            ("ingreso", "Ofrenda Ministerio Femenil", "1101", "MIN_FEMENIL"),
+            ("ingreso", "Ofrenda Hombres de Honor", "1102", "MIN_HOMBRES"),
+            ("ingreso", "Ofrenda Embajadores de Cristo", "1103", "MIN_EMBAJADORES"),
+            ("ingreso", "Ofrenda Escuela Bíblica", "1104", "MIN_ESC_BIBLICA"),
+            ("ingreso", "Ofrenda Misioneritas", "1105", "MIN_MISIONERITAS"),
+            ("ingreso", "Ofrenda Exploradores", "1106", "MIN_EXPLORADORES"),
+            ("ingreso", "Ofrenda MDA", "1107", "MIN_MDA"),
+            ("ingreso", "Ofrenda Misiones", "1108", "MIN_MISIONES"),
+            ("ingreso", "Ofrenda Otros Ministerios", "1109", "MIN_OTROS"),
 
-            # Envíos nacionales (contexto distinto)
-            ("egreso", "Envío a Ministerio Femenil Nacional", "CAT_ENV_FEMENIL", "ENV_MIN_FEMENIL"),
-            ("egreso", "Envío a Hombres de Honor Nacional", "CAT_ENV_HOMBRES", "ENV_MIN_HOMBRES"),
-            ("egreso", "Envío a Embajadores Nacional", "CAT_ENV_EMBAJADORES", "ENV_MIN_EMBAJADORES"),
-            ("egreso", "Envío a Escuela Bíblica Nacional", "CAT_ENV_ESC_BIBLICA", "ENV_MIN_ESC_BIBLICA"),
-            ("egreso", "Envío a Misioneritas Nacional", "CAT_ENV_MISIONERITAS", "ENV_MIN_MISIONERITAS"),
-            ("egreso", "Envío a Misioneros Nacional", "CAT_ENV_MISIONEROS", "ENV_MIN_MISIONEROS"),
-            ("egreso", "Envío a Exploradores Nacional", "CAT_ENV_EXPLORADORES", "ENV_MIN_EXPLORADORES"),
-            ("egreso", "Envío a MDA Nacional", "CAT_ENV_MDA", "ENV_MIN_MDA"),
-            ("egreso", "Envío a Misiones Nacional", "CAT_ENV_MISIONES", "ENV_MIN_MISIONES"),
-            ("egreso", "Envío a Otros Ministerios Nacional", "CAT_ENV_OTROS", "ENV_MIN_OTROS"),
+            # ---------------- EGRESOS IGLESIA ----------------
+            ("egreso", "Asignación Pastoral", "2001", "EGR_ASIG_PASTORAL"),
+            ("egreso", "Alquileres Casa/Templo", "2002", "EGR_ALQUILER"),
+            ("egreso", "Evangelismo y Misiones", "2003", "EGR_EVANGELISMO"),
+            ("egreso", "Agua, Luz, Teléfono", "2004", "EGR_SERVICIOS"),
+            ("egreso", "Ayuda a Capillas", "2005", "EGR_CAPILLAS"),
+            ("egreso", "Ayuda a Necesitados", "2006", "EGR_NECESITADOS"),
+            ("egreso", "Mantenimientos Varios", "2007", "EGR_MANTENIMIENTO"),
+            ("egreso", "Apoyo a Minist. Locales", "2008", "EGR_APOYO_MIN"),
+            ("egreso", "Otras Salidas", "2009", "EGR_OTRAS"),
 
-            # Aportes especiales (A_)
-            ("egreso", "Aporte a Ministerio de Evangelismo", "CAT_A_EVANGELISMO", "A_EVANGELISMO"),
-            ("egreso", "Aporte a DESEAD", "CAT_A_DESEAD", "A_DESEAD"),
-            ("egreso", "Aporte a Plantación de Iglesias", "CAT_A_PLANTACION", "A_PLANTACION"),
-            ("egreso", "Aporte a Misioneros", "CAT_A_MISIONEROS", "A_MISIONEROS"),
-            ("egreso", "Aporte a Huérfanos", "CAT_A_HUERFANOS", "A_HUERFANOS"),
-            ("egreso", "Aporte a Envejecientes", "CAT_A_ENVEJECIENTES", "A_ENVEJECIENTES"),
-            ("egreso", "Aporte a Grupos Vulnerables", "CAT_A_VULNERABLES", "A_VULNERABLES"),
-            ("egreso", "Aporte a Sordos", "CAT_A_SORDOS", "A_SORDOS"),
-            ("egreso", "Aporte a Desarrollo del Concilio", "CAT_A_DESARROLLO", "A_DESARROLLO"),
+            # ---------------- ENVIOS NACIONALES ----------------
+            ("egreso", "Envío a Ministerio Femenil Nacional", "3001", "ENV_MIN_FEMENIL"),
+            ("egreso", "Envío a Hombres de Honor Nacional", "3002", "ENV_MIN_HOMBRES"),
+            ("egreso", "Envío a Embajadores Nacional", "3003", "ENV_MIN_EMBAJADORES"),
+            ("egreso", "Envío a Escuela Bíblica Nacional", "3004", "ENV_MIN_ESC_BIBLICA"),
+            ("egreso", "Envío a Misioneritas Nacional", "3005", "ENV_MIN_MISIONERITAS"),
+            ("egreso", "Envío a Misioneros Nacional", "3006", "ENV_MIN_MISIONEROS"),
+            ("egreso", "Envío a Exploradores Nacional", "3007", "ENV_MIN_EXPLORADORES"),
+            ("egreso", "Envío a MDA Nacional", "3008", "ENV_MIN_MDA"),
+            ("egreso", "Envío a Misiones Nacional", "3009", "ENV_MIN_MISIONES"),
+            ("egreso", "Envío a Otros Ministerios Nacional", "3010", "ENV_MIN_OTROS"),
+
+            # ---------------- APORTES ESPECIALES ----------------
+            ("egreso", "Aporte a Ministerio de Evangelismo", "4001", "A_EVANGELISMO"),
+            ("egreso", "Aporte a DESEAD", "4002", "A_DESEAD"),
+            ("egreso", "Aporte a Plantación de Iglesias", "4003", "A_PLANTACION"),
+            ("egreso", "Aporte a Misioneros", "4004", "A_MISIONEROS"),
+            ("egreso", "Aporte a Huérfanos", "4005", "A_HUERFANOS"),
+            ("egreso", "Aporte a Envejecientes", "4006", "A_ENVEJECIENTES"),
+            ("egreso", "Aporte a Grupos Vulnerables", "4007", "A_VULNERABLES"),
+            ("egreso", "Aporte a Sordos", "4008", "A_SORDOS"),
+            ("egreso", "Aporte a Desarrollo del Concilio", "4009", "A_DESARROLLO"),
         ]
 
         creadas = 0

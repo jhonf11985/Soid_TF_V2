@@ -131,15 +131,45 @@
                     <div class="odoo-field-row">
                         <label>Casilla F.001</label>
                         <div class="odoo-field-value">
-                            <select name="casilla_f001" id="id_casilla_f001" class="odoo-select">
-                                <option value="">— Sin asignar —</option>
-                                {% for c in form.fields.casilla_f001.queryset %}
-                                <option value="{{ c.id }}" data-seccion="{{ c.seccion }}"
-                                    {% if form.instance.casilla_f001_id == c.id %}selected{% endif %}>
-                                    {{ c.nombre }} ({{ c.get_seccion_display }})
-                                </option>
-                                {% endfor %}
-                            </select>
+                            <!-- SELECTOR DE CASILLA F.001 CON BÚSQUEDA -->
+                            <div class="casilla-selector" id="casilla-selector">
+                                <!-- Campo hidden para el valor real -->
+                                <input type="hidden" name="casilla_f001" id="id_casilla_f001" value="{{ form.instance.casilla_f001_id|default:'' }}">
+                                
+                                <!-- Input de búsqueda / display -->
+                                <div class="casilla-input-wrapper">
+                                    <input 
+                                        type="text" 
+                                        id="casilla-search" 
+                                        class="casilla-search"
+                                        placeholder="Buscar casilla..."
+                                        autocomplete="off"
+                                    >
+                                    <span class="casilla-arrow material-icons">expand_more</span>
+                                </div>
+                                
+                                <!-- Dropdown -->
+                                <div class="casilla-dropdown" id="casilla-dropdown">
+                                    <div class="casilla-search-box">
+                                        <span class="material-icons">search</span>
+                                        <input 
+                                            type="text" 
+                                            id="casilla-filter" 
+                                            placeholder="Filtrar casillas..."
+                                            autocomplete="off"
+                                        >
+                                    </div>
+                                    
+                                    <div class="casilla-list" id="casilla-list">
+                                        <!-- Las casillas se renderizan con JS -->
+                                    </div>
+                                    
+                                    <div class="casilla-empty" id="casilla-empty">
+                                        <span class="material-icons">search_off</span>
+                                        <span>No se encontraron casillas</span>
+                                    </div>
+                                </div>
+                            </div>
                             {% if form.casilla_f001.errors %}<span class="odoo-error">{{ form.casilla_f001.errors.0 }}</span>{% endif %}
                             <span class="odoo-field-hint">Define dónde aparecerá en el informe del concilio.</span>
                         </div>
@@ -430,6 +460,289 @@
         gap: 16px;
     }
 
+    /* =====================================
+       SELECTOR DE CASILLA F.001 CON BÚSQUEDA
+       ===================================== */
+
+    .casilla-selector {
+        position: relative;
+        width: 100%;
+    }
+
+    .casilla-input-wrapper {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+
+    .casilla-search {
+        flex: 1;
+        border: none;
+        border-bottom: 1px solid transparent;
+        background: transparent;
+        padding: 4px 24px 4px 0;
+        font-size: 13px;
+        color: var(--odoo-text);
+        font-family: inherit;
+        transition: border-color 0.15s;
+        cursor: pointer;
+    }
+
+    .casilla-search:hover {
+        border-bottom-color: var(--odoo-border);
+    }
+
+    .casilla-search:focus {
+        outline: none;
+        border-bottom-color: var(--odoo-purple);
+        border-bottom-width: 2px;
+        padding-bottom: 3px;
+        cursor: text;
+    }
+
+    .casilla-search.has-value {
+        font-weight: 500;
+        color: var(--odoo-text);
+    }
+
+    .casilla-arrow {
+        position: absolute;
+        right: 0;
+        font-size: 18px;
+        color: var(--odoo-text-muted);
+        pointer-events: none;
+        transition: transform 0.2s;
+    }
+
+    .casilla-selector.open .casilla-arrow {
+        transform: rotate(180deg);
+    }
+
+    /* Dropdown */
+    .casilla-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--odoo-border);
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        z-index: 1000;
+        display: none;
+        max-height: 350px;
+        overflow: hidden;
+        flex-direction: column;
+    }
+
+    .casilla-selector.open .casilla-dropdown {
+        display: flex;
+        animation: dropdownIn 0.15s ease;
+    }
+
+    @keyframes dropdownIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Buscador dentro del dropdown */
+    .casilla-search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--odoo-border);
+        background: var(--odoo-bg-gray);
+    }
+
+    .casilla-search-box .material-icons {
+        font-size: 18px;
+        color: var(--odoo-text-muted);
+    }
+
+    .casilla-search-box input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-size: 13px;
+        color: var(--odoo-text);
+        font-family: inherit;
+        padding: 0;
+    }
+
+    .casilla-search-box input:focus {
+        outline: none;
+    }
+
+    .casilla-search-box input::placeholder {
+        color: #adb5bd;
+    }
+
+    /* Lista de casillas */
+    .casilla-list {
+        overflow-y: auto;
+        max-height: 280px;
+        padding: 6px 0;
+    }
+
+    /* Grupo */
+    .casilla-group {
+        margin-bottom: 4px;
+    }
+
+    .casilla-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .casilla-group-header {
+        padding: 8px 12px 4px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--odoo-text-muted);
+        background: var(--odoo-bg-gray);
+        position: sticky;
+        top: 0;
+    }
+
+    /* Items */
+    .casilla-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background 0.1s;
+    }
+
+    .casilla-item:hover {
+        background: #f3f4f6;
+    }
+
+    .casilla-item.selected {
+        background: rgba(113, 75, 103, 0.08);
+    }
+
+    .casilla-item.hidden {
+        display: none;
+    }
+
+    .casilla-item-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .casilla-item-icon.egresos {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .casilla-item-icon.envios,
+    .casilla-item-icon.aportes {
+        background: #fff3e0;
+        color: #e65100;
+    }
+
+    .casilla-item-text {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .casilla-item-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--odoo-text);
+    }
+
+    .casilla-item-seccion {
+        font-size: 10px;
+        color: var(--odoo-text-muted);
+    }
+
+    .casilla-item-check {
+        color: var(--odoo-purple);
+        font-size: 18px;
+        opacity: 0;
+    }
+
+    .casilla-item.selected .casilla-item-check {
+        opacity: 1;
+    }
+
+    /* Match de búsqueda */
+    .casilla-item-name mark {
+        background: #fef08a;
+        color: inherit;
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+
+    /* Empty state */
+    .casilla-empty {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+        color: var(--odoo-text-muted);
+        gap: 8px;
+    }
+
+    .casilla-empty .material-icons {
+        font-size: 32px;
+        opacity: 0.5;
+    }
+
+    .casilla-empty span:last-child {
+        font-size: 13px;
+    }
+
+    /* Opción sin asignar */
+    .casilla-item-none {
+        color: var(--odoo-text-muted);
+        font-style: italic;
+    }
+
+    @media (max-width: 768px) {
+        .casilla-dropdown {
+            position: fixed;
+            top: auto;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-radius: 16px 16px 0 0;
+            max-height: 70vh;
+        }
+        
+        .casilla-search-box {
+            padding: 14px 16px;
+        }
+        
+        .casilla-item {
+            padding: 12px 16px;
+        }
+        
+        .casilla-group-header {
+            padding: 10px 16px 6px;
+        }
+    }
+
     /* RESPONSIVE */
     @media (max-width: 900px) {
         .odoo-form-content {
@@ -466,42 +779,340 @@
 </style>
 
 <script>
+// =============================================
+// SELECTOR DE CASILLAS F.001 CON BÚSQUEDA
+// =============================================
+(function() {
+    // Datos de casillas desde Django
+    const CASILLAS_DATA = [
+        { id: "", nombre: "— Sin asignar —", seccion: "", seccionNombre: "", isNone: true },
+        {% for c in form.fields.casilla_f001.queryset %}
+        {
+            id: "{{ c.id }}",
+            nombre: "{{ c.nombre|escapejs }}",
+            seccion: "{{ c.seccion }}",
+            seccionNombre: "{{ c.get_seccion_display|escapejs }}"
+        },
+        {% endfor %}
+    ];
+    
+    // Agrupar por sección
+    const GRUPOS_CASILLA = {};
+    CASILLAS_DATA.forEach(cas => {
+        if (cas.isNone) return; // La opción vacía se maneja aparte
+        const key = cas.seccion || 'otros';
+        if (!GRUPOS_CASILLA[key]) {
+            GRUPOS_CASILLA[key] = {
+                nombre: cas.seccionNombre || 'Otros',
+                items: []
+            };
+        }
+        GRUPOS_CASILLA[key].items.push(cas);
+    });
+    
+    // Elementos DOM
+    const cas_selector = document.getElementById('casilla-selector');
+    const cas_hiddenInput = document.getElementById('id_casilla_f001');
+    const cas_searchInput = document.getElementById('casilla-search');
+    const cas_dropdown = document.getElementById('casilla-dropdown');
+    const cas_filterInput = document.getElementById('casilla-filter');
+    const cas_listEl = document.getElementById('casilla-list');
+    const cas_emptyEl = document.getElementById('casilla-empty');
+    const tipoField = document.getElementById('id_tipo');
+    
+    if (!cas_selector || !cas_searchInput) return;
+    
+    let cas_selectedId = cas_hiddenInput ? cas_hiddenInput.value : null;
+    let cas_isOpen = false;
+    
+    // Obtener el tipo actual para filtrar
+    function getTipoActual() {
+        return tipoField ? tipoField.value : '';
+    }
+    
+    // Determinar si una casilla es visible según el tipo
+    function esCasillaVisible(cas, tipo) {
+        if (!tipo || !cas.seccion) return true;
+        
+        if (tipo === 'ingreso') {
+            return cas.seccion.includes('ingresos');
+        } else if (tipo === 'egreso') {
+            return cas.seccion === 'egresos' || 
+                   cas.seccion === 'envios_ministerios' || 
+                   cas.seccion === 'aportes_especiales';
+        }
+        return true;
+    }
+    
+    function cas_renderList(filter) {
+        filter = filter || '';
+        cas_listEl.innerHTML = '';
+        const filterLower = filter.toLowerCase().trim();
+        const tipoActual = getTipoActual();
+        let hasResults = false;
+        
+        // Primero agregar opción "Sin asignar"
+        const noneItem = document.createElement('div');
+        noneItem.className = 'casilla-item casilla-item-none' + (!cas_selectedId ? ' selected' : '');
+        noneItem.innerHTML = `
+            <div class="casilla-item-text">
+                <span class="casilla-item-name">— Sin asignar —</span>
+            </div>
+            <span class="material-icons casilla-item-check">check</span>
+        `;
+        noneItem.addEventListener('click', function(e) {
+            e.stopPropagation();
+            cas_selectCasilla({ id: '', nombre: '— Sin asignar —' });
+        });
+        cas_listEl.appendChild(noneItem);
+        hasResults = true;
+        
+        // Ordenar grupos
+        const ordenGrupos = ['ingresos_iglesia', 'ingresos_ministerios', 'egresos', 'envios_ministerios', 'aportes_especiales', 'otros'];
+        const gruposOrdenados = Object.entries(GRUPOS_CASILLA).sort((a, b) => {
+            const idxA = ordenGrupos.indexOf(a[0]);
+            const idxB = ordenGrupos.indexOf(b[0]);
+            return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+        });
+        
+        gruposOrdenados.forEach(([key, grupo]) => {
+            // Filtrar items del grupo
+            const itemsFiltrados = grupo.items.filter(cas => {
+                // Filtrar por tipo
+                if (!esCasillaVisible(cas, tipoActual)) return false;
+                // Filtrar por texto
+                if (!filterLower) return true;
+                return cas.nombre.toLowerCase().includes(filterLower);
+            });
+            
+            if (itemsFiltrados.length === 0) return;
+            hasResults = true;
+            
+            const groupEl = document.createElement('div');
+            groupEl.className = 'casilla-group';
+            
+            const headerEl = document.createElement('div');
+            headerEl.className = 'casilla-group-header';
+            headerEl.textContent = grupo.nombre;
+            groupEl.appendChild(headerEl);
+            
+            itemsFiltrados.forEach(cas => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'casilla-item' + (cas.id == cas_selectedId ? ' selected' : '');
+                itemEl.dataset.id = cas.id;
+                itemEl.dataset.seccion = cas.seccion;
+                
+                let nombreHtml = cas_escapeHtml(cas.nombre);
+                if (filterLower) {
+                    const regex = new RegExp(`(${cas_escapeRegex(filterLower)})`, 'gi');
+                    nombreHtml = nombreHtml.replace(regex, '<mark>$1</mark>');
+                }
+                
+                // Determinar clase del icono
+                let iconClass = '';
+                if (cas.seccion === 'egresos') iconClass = 'egresos';
+                else if (cas.seccion === 'envios_ministerios' || cas.seccion === 'aportes_especiales') iconClass = 'envios';
+                
+                itemEl.innerHTML = `
+                    <div class="casilla-item-icon ${iconClass}">
+                        <span class="material-icons">assignment</span>
+                    </div>
+                    <div class="casilla-item-text">
+                        <span class="casilla-item-name">${nombreHtml}</span>
+                        <span class="casilla-item-seccion">${cas_escapeHtml(cas.seccionNombre)}</span>
+                    </div>
+                    <span class="material-icons casilla-item-check">check</span>
+                `;
+                
+                itemEl.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    cas_selectCasilla(cas);
+                });
+                groupEl.appendChild(itemEl);
+            });
+            
+            cas_listEl.appendChild(groupEl);
+        });
+        
+        cas_emptyEl.style.display = hasResults ? 'none' : 'flex';
+    }
+    
+    function cas_selectCasilla(cas) {
+        cas_selectedId = cas.id;
+        cas_hiddenInput.value = cas.id;
+        
+        if (cas.id) {
+            cas_searchInput.value = cas.nombre;
+            cas_searchInput.classList.add('has-value');
+        } else {
+            cas_searchInput.value = '';
+            cas_searchInput.classList.remove('has-value');
+            cas_searchInput.placeholder = 'Sin asignar';
+        }
+        
+        cas_closeDropdown();
+        cas_renderList();
+        
+        // Disparar evento change para el código sugerido
+        cas_hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
+    function cas_openDropdown() {
+        if (cas_isOpen) return;
+        cas_isOpen = true;
+        cas_selector.classList.add('open');
+        cas_filterInput.value = '';
+        cas_renderList();
+        setTimeout(() => cas_filterInput.focus(), 50);
+    }
+    
+    function cas_closeDropdown() {
+        if (!cas_isOpen) return;
+        cas_isOpen = false;
+        cas_selector.classList.remove('open');
+    }
+    
+    function cas_escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    
+    function cas_escapeRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
+    // Eventos
+    cas_searchInput.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (cas_isOpen) {
+            cas_closeDropdown();
+        } else {
+            cas_openDropdown();
+        }
+    });
+    
+    cas_searchInput.addEventListener('input', function() {
+        if (!cas_isOpen) {
+            cas_openDropdown();
+        }
+        cas_renderList(this.value);
+    });
+    
+    cas_searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cas_closeDropdown();
+        } else if (e.key === 'ArrowDown' && !cas_isOpen) {
+            e.preventDefault();
+            cas_openDropdown();
+        }
+    });
+    
+    cas_filterInput.addEventListener('input', function() {
+        cas_renderList(this.value);
+    });
+    
+    cas_filterInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cas_closeDropdown();
+            cas_searchInput.focus();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const firstItem = cas_listEl.querySelector('.casilla-item:not(.casilla-item-none)');
+            if (firstItem) {
+                firstItem.click();
+            }
+        }
+    });
+    
+    cas_dropdown.addEventListener('mousedown', function(e) {
+        e.stopPropagation();
+    });
+    
+    document.addEventListener('mousedown', function(e) {
+        if (cas_isOpen && !cas_selector.contains(e.target)) {
+            cas_closeDropdown();
+        }
+    });
+    
+    // Cuando cambia el tipo, re-renderizar y limpiar si la selección ya no es válida
+    if (tipoField) {
+        tipoField.addEventListener('change', function() {
+            const tipoActual = getTipoActual();
+            
+            // Verificar si la casilla seleccionada sigue siendo válida
+            if (cas_selectedId) {
+                const casillaActual = CASILLAS_DATA.find(c => c.id == cas_selectedId);
+                if (casillaActual && !esCasillaVisible(casillaActual, tipoActual)) {
+                    // Limpiar selección
+                    cas_selectCasilla({ id: '', nombre: '— Sin asignar —' });
+                }
+            }
+            
+            // Re-renderizar lista
+            if (cas_isOpen) {
+                cas_renderList(cas_filterInput.value);
+            }
+        });
+    }
+    
+    // Inicialización
+    if (cas_selectedId) {
+        const cas = CASILLAS_DATA.find(c => c.id == cas_selectedId);
+        if (cas) {
+            cas_searchInput.value = cas.nombre;
+            cas_searchInput.classList.add('has-value');
+        }
+    } else {
+        cas_searchInput.placeholder = 'Sin asignar';
+    }
+    
+    cas_renderList();
+})();
+</script>
+
+<script>
 document.addEventListener("DOMContentLoaded", function() {
 
     const tipoField = document.getElementById("id_tipo");
     const casillaField = document.getElementById("id_casilla_f001");
+    const codigoField = document.getElementById("id_codigo");
 
-    function filtrarCasillas() {
-        const tipo = tipoField.value;
+    function sugerirCodigo() {
 
-        for (let option of casillaField.options) {
-            if (!option.dataset.seccion) continue;
+        if (!codigoField || codigoField.value.trim() !== "") return;
 
-            if (tipo === "ingreso") {
-                option.hidden = !(option.dataset.seccion.includes("ingresos"));
-            }
-            else if (tipo === "egreso") {
-                option.hidden = !(option.dataset.seccion === "egresos" || 
-                                  option.dataset.seccion === "envios_ministerios" || 
-                                  option.dataset.seccion === "aportes_especiales");
-            }
-            else {
-                option.hidden = false;
+        const tipo = tipoField?.value || "";
+        
+        // Obtener sección del campo hidden
+        const casillaId = casillaField?.value || "";
+        let seccion = "";
+        
+        // Buscar en los datos (si hay casilla seleccionada)
+        if (casillaId) {
+            // Buscar el item seleccionado en el dropdown para obtener la sección
+            const selectedItem = document.querySelector(`.casilla-item[data-id="${casillaId}"]`);
+            if (selectedItem) {
+                seccion = selectedItem.dataset.seccion || "";
             }
         }
 
-        // Reset selection if current is now hidden
-        const selectedOption = casillaField.options[casillaField.selectedIndex];
-        if (selectedOption && selectedOption.hidden) {
-            casillaField.value = "";
-        }
+        if (!tipo) return;
+
+        fetch("{% url 'finanzas_app:categoria_sugerir_codigo' %}?tipo=" + tipo + "&seccion=" + seccion)
+        .then(r => r.json())
+        .then(data => {
+            if (data.codigo) codigoField.value = data.codigo;
+        });
     }
 
-    if (tipoField && casillaField) {
-        tipoField.addEventListener("change", filtrarCasillas);
-        filtrarCasillas();
-    }
+    tipoField?.addEventListener("change", sugerirCodigo);
+    casillaField?.addEventListener("change", sugerirCodigo);
+
+    sugerirCodigo();
 });
 </script>
+
 
 {% endblock %}

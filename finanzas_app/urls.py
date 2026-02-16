@@ -122,5 +122,7 @@ path("reportes/estado-resultados/", views.reporte_estado_resultados, name="repor
 path("reportes/ingresos-por-unidad/", views.reporte_ingresos_por_unidad, name="reporte_ingresos_por_unidad"),
 path("reportes/movimientos-unidad/", views.reporte_movimientos_unidad, name="reporte_movimientos_unidad"),
 path("reportes/f001/", views.reporte_f001_concilio, name="reporte_f001_concilio"),
+path("categorias/sugerir-codigo/", views.categoria_sugerir_codigo, name="categoria_sugerir_codigo"),
+
 
 ]
