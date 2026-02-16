@@ -21,7 +21,8 @@ from .models import (
     CuentaPorPagar,
 )
 from django.db.models import Count
-
+from types import SimpleNamespace
+from core.models import ConfiguracionSistema
 from .forms import (
     MovimientoFinancieroForm,
     MovimientoIngresoForm,
@@ -3164,6 +3165,14 @@ def reporte_movimientos_unidad(request):
     return render(request, "finanzas_app/reportes/movimientos_unidad.html", context)
 
 
+
+import re
+
+def a_cajitas(valor, tamaño=8):
+    valor = re.sub(r'[^0-9A-Za-z]', '', (valor or '').upper())
+    valor = valor[:tamaño].ljust(tamaño, ' ')
+    return list(valor)
+
 from django.apps import apps
 from django.db.models import Sum
 from django.utils import timezone
@@ -3312,6 +3321,18 @@ def reporte_f001_concilio(request):
         "subtotal_envios_ministerios": subtotal_envios_ministerios,
         "subtotal_aportes": subtotal_aportes,
     }
+    CFG = ConfiguracionSistema.load()
+
+    config = SimpleNamespace(
+        nombre_iglesia=CFG.nombre_iglesia,
+        pastor=CFG.pastor_principal,
+        presbiterio=CFG.presbiterio_nombre,
+        presbitero=CFG.presbitero_nombre,
+        codigo_iglesia=CFG.codigo_iglesia,
+        conyuge=CFG.conyuge_pastor,
+    )
+    config.credencial_pastor_lista = a_cajitas(CFG.credencial_pastor)
+    config.credencial_conyuge_lista = a_cajitas(CFG.credencial_conyuge)
 
     context = {
         "mes_nombre": meses[mes],
@@ -3323,6 +3344,8 @@ def reporte_f001_concilio(request):
         "envios_min": envios_min,
         "aportes": aportes,
         "totales": totales,
+        "config": config,
+
     }
 
     return render(request, "finanzas_app/reportes/Informe_f001_concilio.html", context)

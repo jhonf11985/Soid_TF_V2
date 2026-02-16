@@ -91,6 +91,39 @@ class ConfiguracionSistema(models.Model):
         blank=True,
         help_text="Nombre que se mostrará en cartas y documentos oficiales."
     )
+        # =========================
+    # DATOS GENERALES (F001 - PARTE A)
+    # =========================
+    presbiterio_nombre = models.CharField(
+        max_length=150, blank=True, default="",
+        help_text="Nombre del presbiterio al que pertenece la iglesia."
+    )
+
+    presbitero_nombre = models.CharField(
+        max_length=150, blank=True, default="",
+        help_text="Nombre del presbítero supervisor."
+    )
+
+    codigo_iglesia = models.CharField(
+        max_length=50, blank=True, default="",
+        help_text="Código oficial de la iglesia en el concilio (si aplica)."
+    )
+
+    conyuge_pastor = models.CharField(
+        max_length=150, blank=True, default="",
+        help_text="Nombre del cónyuge del pastor."
+    )
+
+    credencial_pastor = models.CharField(
+        max_length=30, blank=True, default="",
+        help_text="Credencial ministerial del pastor (solo números/letras)."
+    )
+
+    credencial_conyuge = models.CharField(
+        max_length=30, blank=True, default="",
+        help_text="Credencial del cónyuge (solo números/letras)."
+    )
+
     email_pastor = models.EmailField(
         "Correo del pastor / administración",
         blank=True,

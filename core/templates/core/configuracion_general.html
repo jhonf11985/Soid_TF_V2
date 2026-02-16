@@ -8,130 +8,27 @@ Configuración / General
 
 {% block content %}
 
-<section class="page-header">
-    <div>
-        <h1 class="page-title">Configuración general</h1>
-        <p class="page-subtitle">
-            Identidad institucional, denominación y elementos de marca de la iglesia.
-        </p>
-    </div>
-</section>
+<div class="config-page">
 
-<section class="page-section">
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-
-        <div class="form-card">
-            <!-- Identidad institucional -->
-            <div class="form-card-section">
-                <h3 class="form-section-title">Identidad institucional</h3>
-                
-                <div class="form-row">
-                    <label for="{{ form.nombre_iglesia.id_for_label }}">Nombre de la iglesia</label>
-                    <div class="form-row-input">
-                        {{ form.nombre_iglesia }}
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <label for="{{ form.nombre_corto.id_for_label }}">Nombre corto</label>
-                    <div class="form-row-input">
-                        {{ form.nombre_corto }}
-                        <span class="form-hint">Usado en espacios reducidos o en la interfaz móvil.</span>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <label for="{{ form.denominacion.id_for_label }}">Denominación</label>
-                    <div class="form-row-input">
-                        {{ form.denominacion }}
-                        <span class="form-hint">Ej: Pentecostal, Bautista, Independiente, etc.</span>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <label for="{{ form.lema.id_for_label }}">Lema institucional</label>
-                    <div class="form-row-input">
-                        {{ form.lema }}
-                        <span class="form-hint">Puede aparecer en cartas, reportes o en la portada del sistema.</span>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <label for="{{ form.direccion.id_for_label }}">Dirección</label>
-                    <div class="form-row-input">
-                        {{ form.direccion }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pastor / Representante -->
-            <div class="form-card-section">
-                <h3 class="form-section-title">Pastor / Representante</h3>
-                
-                <div class="form-row">
-                    <label for="{{ form.pastor_principal.id_for_label }}">Pastor principal</label>
-                    <div class="form-row-input">
-                        {{ form.pastor_principal }}
-                        <span class="form-hint">Este nombre se usará en cartas y documentos oficiales.</span>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <label for="{{ form.email_pastor.id_for_label }}">Correo del pastor</label>
-                    <div class="form-row-input">
-                        {{ form.email_pastor }}
-                        <span class="form-hint">Para recibir copias de correos y notificaciones del sistema.</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Logos y marca -->
-            <div class="form-card-section">
-                <h3 class="form-section-title">Logos y marca</h3>
-                
-                <div class="form-row">
-                    <label for="{{ form.logo.id_for_label }}">Logo principal</label>
-                    <div class="form-row-input">
-                        {{ form.logo }}
-                        {% if CFG.logo %}
-                            <div class="logo-preview">
-                                <img src="{{ CFG.logo.url }}" alt="Logo actual">
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <label for="{{ form.logo_oscuro.id_for_label }}">Logo fondo oscuro</label>
-                    <div class="form-row-input">
-                        {{ form.logo_oscuro }}
-                        {% if CFG.logo_oscuro %}
-                            <div class="logo-preview dark">
-                                <img src="{{ CFG.logo_oscuro.url }}" alt="Logo oscuro actual">
-                            </div>
-                        {% endif %}
-                        <span class="form-hint">Opcional, para usar sobre fondos oscuros.</span>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <label for="{{ form.plantilla_pdf_fondo.id_for_label }}">Fondo para PDFs</label>
-                    <div class="form-row-input">
-                        {{ form.plantilla_pdf_fondo }}
-                        {% if CFG.plantilla_pdf_fondo %}
-                            <div class="logo-preview">
-                                <img src="{{ CFG.plantilla_pdf_fondo.url }}" alt="Fondo actual">
-                            </div>
-                        {% endif %}
-                        <span class="form-hint">Imagen suave para usar como fondo o marca de agua en documentos PDF.</span>
-                    </div>
-                </div>
-            </div>
+    <!-- Header -->
+    <div class="config-header">
+        <div class="config-header-text">
+            <h1>Configuración general</h1>
+            <p>Identidad institucional, denominación y elementos de marca de la iglesia.</p>
         </div>
+        <div class="config-header-actions">
 
-        <div class="form-actions">
-            <button type="submit" class="btn-primary">
+            {% if form.errors %}
+<div style="background:#fff3cd;border:1px solid #ffeeba;padding:12px;border-radius:6px;margin-bottom:12px;">
+    <strong>⚠️ No se guardó porque hay errores:</strong>
+    <div style="margin-top:8px;">
+        {{ form.non_field_errors }}
+        {{ form.errors }}
+    </div>
+</div>
+{% endif %}
+
+            <button type="submit" form="config-form" class="btn-primary">
                 <span class="material-icons">save</span>
                 Guardar
             </button>
@@ -140,96 +37,383 @@ Configuración / General
                 Volver
             </a>
         </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="config-form">
+        {% csrf_token %}
+
+        <!-- SECCIÓN: Identidad institucional -->
+        <div class="config-section">
+            <div class="config-section-header">
+                <span class="material-icons">church</span>
+                <span>Identidad institucional</span>
+            </div>
+            
+            <div class="config-section-body">
+                <div class="config-grid">
+                    <!-- Columna izquierda -->
+                    <div class="config-col">
+                        <div class="config-field">
+                            <label>Nombre de la iglesia</label>
+                            <div class="config-field-input">
+                                {{ form.nombre_iglesia }}
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Nombre corto</label>
+                            <div class="config-field-input">
+                                {{ form.nombre_corto }}
+                                <span class="config-hint">Usado en espacios reducidos o interfaz móvil.</span>
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Denominación</label>
+                            <div class="config-field-input">
+                                {{ form.denominacion }}
+                                <span class="config-hint">Ej: Pentecostal, Bautista, Independiente.</span>
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Lema institucional</label>
+                            <div class="config-field-input">
+                                {{ form.lema }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columna derecha -->
+                    <div class="config-col">
+                        <div class="config-field">
+                            <label>Código de iglesia</label>
+                            <div class="config-field-input">
+                                {{ form.codigo_iglesia }}
+                                <span class="config-hint">Código oficial en el concilio.</span>
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Dirección</label>
+                            <div class="config-field-input">
+                                {{ form.direccion }}
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Presbiterio</label>
+                            <div class="config-field-input">
+                                {{ form.presbiterio_nombre }}
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Presbítero supervisor</label>
+                            <div class="config-field-input">
+                                {{ form.presbitero_nombre }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN: Pastor / Representante -->
+        <div class="config-section">
+            <div class="config-section-header">
+                <span class="material-icons">person</span>
+                <span>Pastor / Representante</span>
+            </div>
+            
+            <div class="config-section-body">
+                <div class="config-grid">
+                    <!-- Columna izquierda -->
+                    <div class="config-col">
+                        <div class="config-field">
+                            <label>Pastor principal</label>
+                            <div class="config-field-input">
+                                {{ form.pastor_principal }}
+                                <span class="config-hint">Se usará en cartas y documentos oficiales.</span>
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Correo del pastor</label>
+                            <div class="config-field-input">
+                                {{ form.email_pastor }}
+                                <span class="config-hint">Para copias de correos y notificaciones.</span>
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Cónyuge del pastor</label>
+                            <div class="config-field-input">
+                                {{ form.conyuge_pastor }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columna derecha -->
+                    <div class="config-col">
+                        <div class="config-field">
+                            <label>Credencial pastor</label>
+                            <div class="config-field-input">
+                                {{ form.credencial_pastor }}
+                                <span class="config-hint">Para informes como el F.001.</span>
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Credencial cónyuge</label>
+                            <div class="config-field-input">
+                                {{ form.credencial_conyuge }}
+                                <span class="config-hint">Opcional, si el concilio la solicita.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN: Logos y marca -->
+        <div class="config-section">
+            <div class="config-section-header">
+                <span class="material-icons">image</span>
+                <span>Logos y marca</span>
+            </div>
+            
+            <div class="config-section-body">
+                <div class="config-grid">
+                    <!-- Columna izquierda -->
+                    <div class="config-col">
+                        <div class="config-field">
+                            <label>Logo principal</label>
+                            <div class="config-field-input">
+                                {{ form.logo }}
+                                {% if CFG.logo %}
+                                <div class="logo-preview">
+                                    <img src="{{ CFG.logo.url }}" alt="Logo actual">
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="config-field">
+                            <label>Logo fondo oscuro</label>
+                            <div class="config-field-input">
+                                {{ form.logo_oscuro }}
+                                {% if CFG.logo_oscuro %}
+                                <div class="logo-preview dark">
+                                    <img src="{{ CFG.logo_oscuro.url }}" alt="Logo oscuro">
+                                </div>
+                                {% endif %}
+                                <span class="config-hint">Opcional, para usar sobre fondos oscuros.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columna derecha -->
+                    <div class="config-col">
+                        <div class="config-field">
+                            <label>Fondo para PDFs</label>
+                            <div class="config-field-input">
+                                {{ form.plantilla_pdf_fondo }}
+                                {% if CFG.plantilla_pdf_fondo %}
+                                <div class="logo-preview">
+                                    <img src="{{ CFG.plantilla_pdf_fondo.url }}" alt="Fondo actual">
+                                </div>
+                                {% endif %}
+                                <span class="config-hint">Imagen suave como marca de agua en PDFs.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </form>
-</section>
+</div>
 
 <style>
-.form-card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
+:root {
+    --config-primary: var(--color-primary, #714B67);
+    --config-text: #212529;
+    --config-text-muted: #6c757d;
+    --config-border: #dee2e6;
+    --config-bg: #ffffff;
+    --config-bg-gray: #f8f9fa;
+}
+
+.config-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+.config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    gap: 16px;
+}
+
+.config-header-text h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--config-text);
+    margin: 0 0 4px 0;
+}
+
+.config-header-text p {
+    font-size: 13px;
+    color: var(--config-text-muted);
+    margin: 0;
+}
+
+.config-header-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Sección */
+.config-section {
+    background: var(--config-bg);
+    border: 1px solid var(--config-border);
     border-radius: 8px;
+    margin-bottom: 16px;
     overflow: hidden;
 }
 
-.form-card-section {
-    padding: 20px 24px;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.form-card-section:last-child {
-    border-bottom: none;
-}
-
-.form-section-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-    margin: 0 0 16px 0;
-}
-
-.form-row {
+.config-section-header {
     display: flex;
-    align-items: flex-start;
-    padding: 10px 0;
-    border-bottom: 1px solid #f3f4f6;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--config-bg-gray);
+    border-bottom: 1px solid var(--config-border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--config-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.form-row:last-child {
-    border-bottom: none;
+.config-section-header .material-icons {
+    font-size: 16px;
+    color: var(--config-primary);
 }
 
-.form-row > label {
-    width: 180px;
-    min-width: 180px;
+.config-section-body {
+    padding: 20px;
+}
+
+/* Grid de dos columnas */
+.config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+}
+
+.config-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Campos estilo línea */
+.config-field {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+.config-field > label {
     font-size: 13px;
     font-weight: 500;
-    color: #374151;
-    padding-top: 8px;
+    color: var(--config-text);
+    text-align: right;
+    padding-top: 6px;
 }
 
-.form-row-input {
-    flex: 1;
+.config-field-input {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.form-row-input input[type="text"],
-.form-row-input input[type="email"],
-.form-row-input input[type="url"],
-.form-row-input input[type="file"],
-.form-row-input select,
-.form-row-input textarea {
+.config-field-input input[type="text"],
+.config-field-input input[type="email"],
+.config-field-input input[type="url"],
+.config-field-input select,
+.config-field-input textarea {
     width: 100%;
-    max-width: 400px;
-    padding: 8px 12px;
+    border: none;
+    border-bottom: 1px solid transparent;
+    background: transparent;
+    padding: 6px 0;
     font-size: 13px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: #fff;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    color: var(--config-text);
+    font-family: inherit;
+    transition: border-color 0.15s;
 }
 
-.form-row-input input:focus,
-.form-row-input select:focus,
-.form-row-input textarea:focus {
+.config-field-input input:hover,
+.config-field-input select:hover,
+.config-field-input textarea:hover {
+    border-bottom-color: var(--config-border);
+}
+
+.config-field-input input:focus,
+.config-field-input select:focus,
+.config-field-input textarea:focus {
     outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.1);
+    border-bottom-color: var(--config-primary);
+    border-bottom-width: 2px;
+    padding-bottom: 5px;
 }
 
-.form-hint {
-    font-size: 11px;
-    color: #6b7280;
+.config-field-input input::placeholder {
+    color: #adb5bd;
+}
+
+.config-field-input select {
+    appearance: none;
+    cursor: pointer;
+    padding-right: 20px;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    background-size: 16px;
+}
+
+.config-field-input textarea {
+    min-height: 40px;
+    resize: vertical;
     line-height: 1.4;
 }
 
+.config-field-input input[type="file"] {
+    padding: 4px 0;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.config-hint {
+    font-size: 11px;
+    color: var(--config-text-muted);
+    font-style: italic;
+}
+
+/* Logo preview */
 .logo-preview {
     margin-top: 8px;
-    padding: 12px;
-    background: #f9fafb;
+    padding: 10px;
+    background: var(--config-bg-gray);
     border-radius: 6px;
     display: inline-block;
 }
@@ -239,49 +423,44 @@ Configuración / General
 }
 
 .logo-preview img {
-    max-height: 50px;
+    max-height: 40px;
     display: block;
 }
 
-.form-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 20px;
-}
-
+/* Botones */
 .btn-primary,
 .btn-secondary {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 10px 18px;
+    padding: 8px 16px;
     font-size: 13px;
     font-weight: 500;
     border-radius: 6px;
     cursor: pointer;
     text-decoration: none;
     transition: all 0.15s;
+    border: 1px solid transparent;
 }
 
 .btn-primary {
-    background: var(--color-primary);
+    background: var(--config-primary);
     color: #fff;
-    border: none;
+    border-color: var(--config-primary);
 }
 
 .btn-primary:hover {
-    background: var(--color-primary-dark);
+    filter: brightness(0.9);
 }
 
 .btn-secondary {
-    background: #fff;
-    color: #374151;
-    border: 1px solid #d1d5db;
+    background: var(--config-bg);
+    color: var(--config-text);
+    border-color: var(--config-border);
 }
 
 .btn-secondary:hover {
-    background: #f9fafb;
-    border-color: #9ca3af;
+    background: var(--config-bg-gray);
 }
 
 .btn-primary .material-icons,
@@ -289,23 +468,84 @@ Configuración / General
     font-size: 16px;
 }
 
-@media (max-width: 640px) {
-    .form-row {
-        flex-direction: column;
-        gap: 6px;
+/* Responsive */
+@media (max-width: 900px) {
+    .config-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
     
-    .form-row > label {
+    .config-header {
+        flex-direction: column;
+    }
+    
+    .config-header-actions {
         width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+    .config-page {
+        padding: 12px;
+    }
+    
+    .config-field {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+    
+    .config-field > label {
+        text-align: left;
+        font-size: 11px;
+        color: var(--config-text-muted);
         padding-top: 0;
     }
     
-    .form-row-input input,
-    .form-row-input select,
-    .form-row-input textarea {
-        max-width: 100%;
+    .config-section-body {
+        padding: 16px;
+    }
+    
+    .config-header-actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        justify-content: center;
     }
 }
 </style>
+<script>
+(function() {
+  function formatCredencial(value) {
+    const digits = (value || "").replace(/\D/g, "").slice(0, 9);
+    const p1 = digits.slice(0, 3);
+    const p2 = digits.slice(3, 7);
+    const p3 = digits.slice(7, 9);
+
+    let out = p1;
+    if (p2.length) out += "-" + p2;
+    if (p3.length) out += "-" + p3;
+    return out;
+  }
+
+  function attachMask(input) {
+    if (!input) return;
+    input.setAttribute("inputmode", "numeric");
+    input.setAttribute("autocomplete", "off");
+    input.addEventListener("input", function() {
+      this.value = formatCredencial(this.value);
+    });
+    input.value = formatCredencial(input.value);
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    attachMask(document.getElementById("id_credencial_pastor"));
+    attachMask(document.getElementById("id_credencial_conyuge"));
+  });
+})();
+</script>
+
 
 {% endblock %}

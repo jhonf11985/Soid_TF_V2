@@ -5,6 +5,21 @@ from django.contrib.auth.models import User, Group
 
 
 
+import re
+
+def _formatear_cedula(valor):
+    if not valor:
+        return ""
+
+    numeros = re.sub(r"\D", "", valor)[:9]
+
+    if len(numeros) <= 3:
+        return numeros
+    if len(numeros) <= 7:
+        return f"{numeros[:3]}-{numeros[3:]}"
+    return f"{numeros[:3]}-{numeros[3:7]}-{numeros[7:]}"
+
+
 class ConfiguracionGeneralForm(forms.ModelForm):
     class Meta:
         model = ConfiguracionSistema
@@ -16,6 +31,14 @@ class ConfiguracionGeneralForm(forms.ModelForm):
             "direccion",
             "pastor_principal",
             "email_pastor",
+            
+            "codigo_iglesia",
+            "presbiterio_nombre",
+            "presbitero_nombre",
+            "conyuge_pastor",
+            "credencial_pastor",
+            "credencial_conyuge",
+
             "logo",
             "logo_oscuro",
             "plantilla_pdf_fondo",
@@ -29,6 +52,12 @@ class ConfiguracionGeneralForm(forms.ModelForm):
             "pastor_principal": forms.TextInput(attrs={"class": "form-input"}),
             "email_pastor": forms.EmailInput(attrs={"class": "form-input"}),
         }
+    def clean_credencial_pastor(self):
+        return _formatear_cedula(self.cleaned_data.get("credencial_pastor"))
+
+    def clean_credencial_conyuge(self):
+        return _formatear_cedula(self.cleaned_data.get("credencial_conyuge"))
+
 
 class ConfiguracionContactoForm(forms.ModelForm):
     class Meta:
