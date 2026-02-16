@@ -3334,6 +3334,16 @@ def reporte_f001_concilio(request):
     config.credencial_pastor_lista = a_cajitas(CFG.credencial_pastor)
     config.credencial_conyuge_lista = a_cajitas(CFG.credencial_conyuge)
 
+    # TOTAL ENVÍO (solo sección C por ahora)
+    total_envio_cyd = (
+        subtotal_envios_iglesia
+        + subtotal_envios_ministerios
+        + subtotal_aportes
+    )
+
+    totales["total_envio_cyd"] = total_envio_cyd
+
+
     context = {
         "mes_nombre": meses[mes],
         "ano": ano,
