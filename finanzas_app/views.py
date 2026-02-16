@@ -3418,3 +3418,266 @@ def categoria_sugerir_codigo(request):
         return JsonResponse({"codigo": ""})
 
     return JsonResponse({"codigo": str(siguiente)})
+
+# ============================================
+# AGREGAR A finanzas_app/views.py
+# ============================================
+
+@login_required
+def reporte_comparativo_anual(request):
+    """
+    Reporte comparativo mes a mes entre años.
+    Permite comparar 2 o 3 años lado a lado para detectar tendencias y estacionalidad.
+    
+    Filtros:
+      - anio_base: Año principal a comparar (default: año actual)
+      - anios_comparar: Lista de años adicionales a comparar (default: año anterior)
+      - cuenta: Filtrar por cuenta específica (opcional)
+      - incluir_transferencias: Incluir transferencias en el cálculo (default: False)
+    """
+    hoy = timezone.now().date()
+    
+    # ---- Obtener parámetros ----
+    anio_base = request.GET.get("anio_base")
+    anios_comparar = request.GET.getlist("anios_comparar")
+    cuenta_id = (request.GET.get("cuenta") or "").strip()
+    incluir_transferencias = request.GET.get("incluir_transferencias") in ("1", "true", "True", "on")
+    auto_print = request.GET.get("print") in ("1", "true", "True")
+    
+    # Validar año base
+    try:
+        anio_base = int(anio_base) if anio_base else hoy.year
+    except (ValueError, TypeError):
+        anio_base = hoy.year
+    
+    # Validar años a comparar (máximo 2 adicionales)
+    anios_validos = []
+    for a in anios_comparar:
+        try:
+            anio = int(a)
+            if anio != anio_base and anio not in anios_validos:
+                anios_validos.append(anio)
+        except (ValueError, TypeError):
+            continue
+    
+    # Si no hay años para comparar, usar el año anterior
+    if not anios_validos:
+        anios_validos = [anio_base - 1]
+    
+    # Limitar a máximo 2 años de comparación
+    anios_validos = sorted(anios_validos, reverse=True)[:2]
+    
+    # Lista completa de años a procesar (base + comparación)
+    todos_los_anios = sorted([anio_base] + anios_validos, reverse=True)
+    
+    # ---- Query base ----
+    qs_base = MovimientoFinanciero.objects.exclude(estado="anulado")
+    
+    # Filtro por cuenta
+    cuenta_obj = None
+    if cuenta_id:
+        qs_base = qs_base.filter(cuenta_id=cuenta_id)
+        cuenta_obj = CuentaFinanciera.objects.filter(pk=cuenta_id).first()
+    
+    # Excluir transferencias si no se solicitan
+    if not incluir_transferencias:
+        qs_base = qs_base.exclude(es_transferencia=True)
+    
+    # ---- Calcular datos por mes y año ----
+    NOMBRES_MESES = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    
+    # Estructura: {anio: {mes: {ingresos, egresos, balance}}}
+    datos_por_anio = {}
+    totales_por_anio = {}
+    
+    for anio in todos_los_anios:
+        datos_por_anio[anio] = {}
+        totales_por_anio[anio] = {
+            "ingresos": Decimal("0"),
+            "egresos": Decimal("0"),
+            "balance": Decimal("0"),
+        }
+        
+        for mes in range(1, 13):
+            qs_mes = qs_base.filter(fecha__year=anio, fecha__month=mes)
+            
+            totales = qs_mes.aggregate(
+                ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+                egresos=Sum("monto", filter=Q(tipo="egreso")),
+            )
+            
+            ingresos = totales.get("ingresos") or Decimal("0")
+            egresos = totales.get("egresos") or Decimal("0")
+            balance = ingresos - egresos
+            
+            datos_por_anio[anio][mes] = {
+                "ingresos": ingresos,
+                "egresos": egresos,
+                "balance": balance,
+            }
+            
+            totales_por_anio[anio]["ingresos"] += ingresos
+            totales_por_anio[anio]["egresos"] += egresos
+            totales_por_anio[anio]["balance"] += balance
+    
+    # ---- Construir tabla comparativa ----
+    tabla_comparativa = []
+    
+    for mes in range(1, 13):
+        fila = {
+            "mes": mes,
+            "mes_nombre": NOMBRES_MESES[mes],
+            "datos": {},
+        }
+        
+        for anio in todos_los_anios:
+            datos_mes = datos_por_anio[anio][mes]
+            
+            # Calcular variación vs año anterior (si existe)
+            var_ingresos = None
+            var_egresos = None
+            anio_anterior = anio - 1
+            
+            if anio_anterior in datos_por_anio:
+                datos_anterior = datos_por_anio[anio_anterior][mes]
+                
+                # Variación ingresos
+                if datos_anterior["ingresos"] > 0:
+                    var_ingresos = ((datos_mes["ingresos"] - datos_anterior["ingresos"]) / datos_anterior["ingresos"]) * 100
+                elif datos_mes["ingresos"] > 0:
+                    var_ingresos = 100  # De 0 a algo = +100%
+                
+                # Variación egresos
+                if datos_anterior["egresos"] > 0:
+                    var_egresos = ((datos_mes["egresos"] - datos_anterior["egresos"]) / datos_anterior["egresos"]) * 100
+                elif datos_mes["egresos"] > 0:
+                    var_egresos = 100
+            
+            fila["datos"][anio] = {
+                "ingresos": datos_mes["ingresos"],
+                "egresos": datos_mes["egresos"],
+                "balance": datos_mes["balance"],
+                "var_ingresos": var_ingresos,
+                "var_egresos": var_egresos,
+            }
+        
+        tabla_comparativa.append(fila)
+    
+    # ---- KPIs ----
+    kpis = {}
+    for anio in todos_los_anios:
+        datos_anio = datos_por_anio[anio]
+        totales = totales_por_anio[anio]
+        
+        # Encontrar mejor y peor mes
+        mejor_mes = max(range(1, 13), key=lambda m: datos_anio[m]["balance"])
+        peor_mes = min(range(1, 13), key=lambda m: datos_anio[m]["balance"])
+        
+        # Promedio mensual
+        meses_con_datos = sum(1 for m in range(1, 13) if datos_anio[m]["ingresos"] > 0 or datos_anio[m]["egresos"] > 0)
+        promedio_ingresos = totales["ingresos"] / 12
+        promedio_egresos = totales["egresos"] / 12
+        
+        kpis[anio] = {
+            "total_ingresos": totales["ingresos"],
+            "total_egresos": totales["egresos"],
+            "balance_anual": totales["balance"],
+            "promedio_ingresos": promedio_ingresos,
+            "promedio_egresos": promedio_egresos,
+            "mejor_mes": NOMBRES_MESES[mejor_mes],
+            "mejor_mes_balance": datos_anio[mejor_mes]["balance"],
+            "peor_mes": NOMBRES_MESES[peor_mes],
+            "peor_mes_balance": datos_anio[peor_mes]["balance"],
+            "meses_con_movimientos": meses_con_datos,
+        }
+    
+    # Variación interanual (año base vs año anterior)
+    if len(todos_los_anios) > 1:
+        anio_anterior = todos_los_anios[1]
+        if totales_por_anio[anio_anterior]["ingresos"] > 0:
+            kpis[anio_base]["var_ingresos_anual"] = (
+                (totales_por_anio[anio_base]["ingresos"] - totales_por_anio[anio_anterior]["ingresos"]) 
+                / totales_por_anio[anio_anterior]["ingresos"]
+            ) * 100
+        else:
+            kpis[anio_base]["var_ingresos_anual"] = None
+        
+        if totales_por_anio[anio_anterior]["egresos"] > 0:
+            kpis[anio_base]["var_egresos_anual"] = (
+                (totales_por_anio[anio_base]["egresos"] - totales_por_anio[anio_anterior]["egresos"]) 
+                / totales_por_anio[anio_anterior]["egresos"]
+            ) * 100
+        else:
+            kpis[anio_base]["var_egresos_anual"] = None
+    
+    # ---- Datos para gráfico (JSON) ----
+    datos_grafico = {
+        "labels": NOMBRES_MESES[1:],  # Ene, Feb, ... Dic
+        "datasets": []
+    }
+    
+    colores = {
+        0: {"ingreso": "#22c55e", "egreso": "#ef4444"},  # Verde/Rojo - año más reciente
+        1: {"ingreso": "#86efac", "egreso": "#fca5a5"},  # Versiones claras
+        2: {"ingreso": "#bbf7d0", "egreso": "#fecaca"},  # Más claras aún
+    }
+    
+    for idx, anio in enumerate(todos_los_anios):
+        # Dataset de ingresos
+        datos_grafico["datasets"].append({
+            "label": f"Ingresos {anio}",
+            "data": [float(datos_por_anio[anio][m]["ingresos"]) for m in range(1, 13)],
+            "borderColor": colores.get(idx, colores[0])["ingreso"],
+            "backgroundColor": colores.get(idx, colores[0])["ingreso"] + "20",
+            "tension": 0.3,
+        })
+        
+        # Dataset de egresos
+        datos_grafico["datasets"].append({
+            "label": f"Egresos {anio}",
+            "data": [float(datos_por_anio[anio][m]["egresos"]) for m in range(1, 13)],
+            "borderColor": colores.get(idx, colores[0])["egreso"],
+            "backgroundColor": colores.get(idx, colores[0])["egreso"] + "20",
+            "tension": 0.3,
+            "borderDash": [5, 5],  # Línea punteada para egresos
+        })
+    
+    # ---- Opciones para los selectores ----
+    cuentas = CuentaFinanciera.objects.filter(esta_activa=True).order_by("nombre")
+    
+    # Años disponibles (desde el primer movimiento hasta el actual)
+    primer_movimiento = MovimientoFinanciero.objects.order_by("fecha").first()
+    anio_inicio = primer_movimiento.fecha.year if primer_movimiento else hoy.year - 5
+    anios_disponibles = list(range(hoy.year, anio_inicio - 1, -1))
+    
+    CFG = get_config()
+    
+    context = {
+        "CFG": CFG,
+        "auto_print": auto_print,
+        "fecha_hoy": hoy,
+        
+        # Filtros actuales
+        "anio_base": anio_base,
+        "anios_comparar": anios_validos,
+        "todos_los_anios": todos_los_anios,
+        "cuenta_id": cuenta_id,
+        "cuenta_obj": cuenta_obj,
+        "incluir_transferencias": incluir_transferencias,
+        
+        # Datos
+        "tabla_comparativa": tabla_comparativa,
+        "totales_por_anio": totales_por_anio,
+        "kpis": kpis,
+        "datos_grafico_json": json.dumps(datos_grafico),
+        
+        # Selectores
+        "cuentas": cuentas,
+        "anios_disponibles": anios_disponibles,
+        "NOMBRES_MESES": NOMBRES_MESES,
+    }
+    
+    return render(request, "finanzas_app/reportes/comparativo_anual.html", context)

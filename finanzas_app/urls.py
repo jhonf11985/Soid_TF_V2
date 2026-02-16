@@ -124,5 +124,10 @@ path("reportes/movimientos-unidad/", views.reporte_movimientos_unidad, name="rep
 path("reportes/f001/", views.reporte_f001_concilio, name="reporte_f001_concilio"),
 path("categorias/sugerir-codigo/", views.categoria_sugerir_codigo, name="categoria_sugerir_codigo"),
 
+# ============================================
+# AGREGAR A finanzas_app/urls.py
+# ============================================
 
+# En urlpatterns, agregar:
+path("reportes/comparativo-anual/", views.reporte_comparativo_anual, name="reporte_comparativo_anual"),
 ]

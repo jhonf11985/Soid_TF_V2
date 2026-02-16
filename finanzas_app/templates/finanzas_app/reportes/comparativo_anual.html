@@ -1,0 +1,709 @@
+{% extends 'finanzas_app/base_finanzas.html' %}
+{% load static %}
+{% load finanzas_tags %}
+
+{% block finanzas_content %}
+<div class="reporte-container">
+    
+    <!-- Encabezado -->
+    <div class="reporte-header no-print">
+        <div class="reporte-header-left">
+            <h1 class="reporte-titulo">
+                <span class="material-icons">compare_arrows</span>
+                Comparativo Anual
+            </h1>
+            <p class="reporte-subtitulo">Análisis mes a mes entre años</p>
+        </div>
+        <div class="reporte-header-actions">
+            <button type="button" class="btn btn-outline" onclick="window.print()">
+                <span class="material-icons">print</span>
+                Imprimir
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" class="reporte-filtros no-print">
+        <div class="filtros-grid">
+            <div class="filtro-grupo">
+                <label for="anio_base">Año principal</label>
+                <select name="anio_base" id="anio_base" class="form-control">
+                    {% for anio in anios_disponibles %}
+                    <option value="{{ anio }}" {% if anio == anio_base %}selected{% endif %}>{{ anio }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filtro-grupo">
+                <label>Comparar con</label>
+                <div class="checkbox-group">
+                    {% for anio in anios_disponibles %}
+                        {% if anio != anio_base %}
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="anios_comparar" value="{{ anio }}"
+                                   {% if anio in anios_comparar %}checked{% endif %}>
+                            {{ anio }}
+                        </label>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <small class="text-muted">Máximo 2 años</small>
+            </div>
+            
+            <div class="filtro-grupo">
+                <label for="cuenta">Cuenta</label>
+                <select name="cuenta" id="cuenta" class="form-control">
+                    <option value="">Todas las cuentas</option>
+                    {% for c in cuentas %}
+                    <option value="{{ c.pk }}" {% if cuenta_id == c.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ c.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filtro-grupo filtro-checkbox">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="incluir_transferencias" value="1"
+                           {% if incluir_transferencias %}checked{% endif %}>
+                    Incluir transferencias
+                </label>
+            </div>
+            
+            <div class="filtro-grupo filtro-acciones">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">filter_alt</span>
+                    Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- KPIs Cards -->
+    <div class="kpis-section">
+        <h2 class="section-title">Resumen por Año</h2>
+        <div class="kpis-grid">
+            {% for anio in todos_los_anios %}
+            <div class="kpi-card {% if forloop.first %}kpi-card-primary{% endif %}">
+                <div class="kpi-card-header">
+                    <span class="kpi-year">{{ anio }}</span>
+                    {% if forloop.first and kpis|length > 1 %}
+                        {% with var=kpis|get_item:anio %}
+                            {% if var.var_ingresos_anual is not None %}
+                            <span class="kpi-badge {% if var.var_ingresos_anual >= 0 %}badge-success{% else %}badge-danger{% endif %}">
+                                {% if var.var_ingresos_anual >= 0 %}+{% endif %}{{ var.var_ingresos_anual|floatformat:1 }}% vs anterior
+                            </span>
+                            {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </div>
+                <div class="kpi-card-body">
+                    {% with datos=kpis|get_item:anio %}
+                    <div class="kpi-row">
+                        <span class="kpi-label">Total Ingresos</span>
+                        <span class="kpi-value text-success">{{ datos.total_ingresos|floatformat:0|default:"0" }}</span>
+                    </div>
+                    <div class="kpi-row">
+                        <span class="kpi-label">Total Egresos</span>
+                        <span class="kpi-value text-danger">{{ datos.total_egresos|floatformat:0|default:"0" }}</span>
+                    </div>
+                    <div class="kpi-row kpi-row-total">
+                        <span class="kpi-label">Balance Anual</span>
+                        <span class="kpi-value {% if datos.balance_anual >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ datos.balance_anual|floatformat:0|default:"0" }}
+                        </span>
+                    </div>
+                    <div class="kpi-divider"></div>
+                    <div class="kpi-row kpi-row-small">
+                        <span class="kpi-label">Promedio mensual ingresos</span>
+                        <span class="kpi-value-small">{{ datos.promedio_ingresos|floatformat:0 }}</span>
+                    </div>
+                    <div class="kpi-row kpi-row-small">
+                        <span class="kpi-label">Mejor mes</span>
+                        <span class="kpi-value-small text-success">{{ datos.mejor_mes }} ({{ datos.mejor_mes_balance|floatformat:0 }})</span>
+                    </div>
+                    <div class="kpi-row kpi-row-small">
+                        <span class="kpi-label">Mes más bajo</span>
+                        <span class="kpi-value-small text-danger">{{ datos.peor_mes }} ({{ datos.peor_mes_balance|floatformat:0 }})</span>
+                    </div>
+                    {% endwith %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Gráfico -->
+    <div class="chart-section no-print">
+        <h2 class="section-title">Tendencia Mensual</h2>
+        <div class="chart-container">
+            <canvas id="chartComparativo"></canvas>
+        </div>
+    </div>
+
+    <!-- Tabla Comparativa -->
+    <div class="tabla-section">
+        <h2 class="section-title">Detalle Mes a Mes</h2>
+        <div class="tabla-responsive">
+            <table class="tabla-comparativa">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="th-mes">Mes</th>
+                        {% for anio in todos_los_anios %}
+                        <th colspan="3" class="th-anio {% if forloop.first %}th-anio-primary{% endif %}">{{ anio }}</th>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        {% for anio in todos_los_anios %}
+                        <th class="th-valor th-ingreso">Ingresos</th>
+                        <th class="th-valor th-egreso">Egresos</th>
+                        <th class="th-valor th-balance">Balance</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in tabla_comparativa %}
+                    <tr>
+                        <td class="td-mes">{{ fila.mes_nombre }}</td>
+                        {% for anio in todos_los_anios %}
+                            {% with datos=fila.datos|get_item:anio %}
+                            <td class="td-valor td-ingreso">
+                                {{ datos.ingresos|floatformat:0 }}
+                                {% if datos.var_ingresos is not None %}
+                                <span class="variacion {% if datos.var_ingresos >= 0 %}var-positiva{% else %}var-negativa{% endif %}">
+                                    {% if datos.var_ingresos >= 0 %}+{% endif %}{{ datos.var_ingresos|floatformat:0 }}%
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="td-valor td-egreso">
+                                {{ datos.egresos|floatformat:0 }}
+                                {% if datos.var_egresos is not None %}
+                                <span class="variacion {% if datos.var_egresos <= 0 %}var-positiva{% else %}var-negativa{% endif %}">
+                                    {% if datos.var_egresos >= 0 %}+{% endif %}{{ datos.var_egresos|floatformat:0 }}%
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="td-valor td-balance {% if datos.balance >= 0 %}balance-positivo{% else %}balance-negativo{% endif %}">
+                                {{ datos.balance|floatformat:0 }}
+                            </td>
+                            {% endwith %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="fila-totales">
+                        <td class="td-mes"><strong>TOTALES</strong></td>
+                        {% for anio in todos_los_anios %}
+                            {% with totales=totales_por_anio|get_item:anio %}
+                            <td class="td-valor td-ingreso"><strong>{{ totales.ingresos|floatformat:0 }}</strong></td>
+                            <td class="td-valor td-egreso"><strong>{{ totales.egresos|floatformat:0 }}</strong></td>
+                            <td class="td-valor td-balance {% if totales.balance >= 0 %}balance-positivo{% else %}balance-negativo{% endif %}">
+                                <strong>{{ totales.balance|floatformat:0 }}</strong>
+                            </td>
+                            {% endwith %}
+                        {% endfor %}
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pie de reporte (para impresión) -->
+    <div class="reporte-footer print-only">
+        <p>Generado el {{ fecha_hoy|date:"d/m/Y" }} | {{ CFG.NOMBRE_IGLESIA }}</p>
+    </div>
+
+</div>
+
+<style>
+/* ================================
+   ESTILOS DEL REPORTE COMPARATIVO
+   ================================ */
+
+.reporte-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* Header */
+.reporte-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.reporte-titulo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.reporte-titulo .material-icons {
+    color: #5c9ead;
+}
+
+.reporte-subtitulo {
+    color: #6b7280;
+    margin: 0.25rem 0 0 0;
+    font-size: 0.875rem;
+}
+
+/* Filtros */
+.reporte-filtros {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.filtros-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filtro-grupo label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+.filtro-grupo .form-control {
+    min-width: 150px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+.checkbox-group {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.filtro-acciones {
+    margin-left: auto;
+}
+
+/* Botones */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.btn .material-icons {
+    font-size: 1.125rem;
+}
+
+.btn-primary {
+    background: #5c9ead;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #4a8a98;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+/* Secciones */
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* KPIs */
+.kpis-section {
+    margin-bottom: 2rem;
+}
+
+.kpis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.kpi-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.kpi-card-primary {
+    border-color: #5c9ead;
+    box-shadow: 0 2px 8px rgba(92, 158, 173, 0.15);
+}
+
+.kpi-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.kpi-card-primary .kpi-card-header {
+    background: #5c9ead;
+}
+
+.kpi-year {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.kpi-card-primary .kpi-year {
+    color: white;
+}
+
+.kpi-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.kpi-card-body {
+    padding: 1rem;
+}
+
+.kpi-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.375rem 0;
+}
+
+.kpi-row-total {
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+    border-top: 1px dashed #e5e7eb;
+}
+
+.kpi-label {
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+.kpi-value {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.kpi-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 0.75rem 0;
+}
+
+.kpi-row-small .kpi-label {
+    font-size: 0.75rem;
+}
+
+.kpi-value-small {
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+/* Colores de texto */
+.text-success { color: #16a34a; }
+.text-danger { color: #dc2626; }
+.text-muted { color: #9ca3af; font-size: 0.75rem; }
+
+/* Gráfico */
+.chart-section {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 350px;
+}
+
+/* Tabla */
+.tabla-section {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.tabla-responsive {
+    overflow-x: auto;
+}
+
+.tabla-comparativa {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.tabla-comparativa th,
+.tabla-comparativa td {
+    padding: 0.625rem 0.75rem;
+    text-align: right;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.tabla-comparativa th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+}
+
+.th-mes,
+.td-mes {
+    text-align: left;
+    font-weight: 500;
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 1;
+}
+
+.th-anio {
+    text-align: center;
+    border-left: 2px solid #e5e7eb;
+}
+
+.th-anio-primary {
+    background: #5c9ead;
+    color: white;
+}
+
+.th-valor {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+}
+
+.th-ingreso { color: #16a34a; }
+.th-egreso { color: #dc2626; }
+.th-balance { color: #2563eb; }
+
+.td-ingreso { color: #16a34a; }
+.td-egreso { color: #dc2626; }
+
+.balance-positivo { color: #16a34a; font-weight: 600; }
+.balance-negativo { color: #dc2626; font-weight: 600; }
+
+.variacion {
+    display: block;
+    font-size: 0.65rem;
+    margin-top: 0.125rem;
+}
+
+.var-positiva { color: #16a34a; }
+.var-negativa { color: #dc2626; }
+
+.fila-totales {
+    background: #f3f4f6;
+}
+
+.fila-totales td {
+    border-top: 2px solid #d1d5db;
+}
+
+/* Footer impresión */
+.reporte-footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+/* Impresión */
+@media print {
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    
+    .reporte-container {
+        padding: 0;
+        max-width: 100%;
+    }
+    
+    .kpis-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .tabla-comparativa {
+        font-size: 0.7rem;
+    }
+    
+    .tabla-comparativa th,
+    .tabla-comparativa td {
+        padding: 0.375rem 0.5rem;
+    }
+}
+
+.print-only {
+    display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filtros-grid {
+        flex-direction: column;
+    }
+    
+    .filtro-grupo .form-control {
+        width: 100%;
+    }
+    
+    .filtro-acciones {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    .filtro-acciones .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .kpis-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .reporte-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('chartComparativo');
+    if (!ctx) return;
+    
+    const datos = {{ datos_grafico_json|safe }};
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: datos,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: { size: 11 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + 
+                                   new Intl.NumberFormat('es-DO').format(context.raw);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return new Intl.NumberFormat('es-DO', {
+                                notation: 'compact',
+                                compactDisplay: 'short'
+                            }).format(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Limitar selección de años a 2
+    const checkboxes = document.querySelectorAll('input[name="anios_comparar"]');
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            const checked = document.querySelectorAll('input[name="anios_comparar"]:checked');
+            if (checked.length > 2) {
+                this.checked = false;
+                alert('Solo puedes comparar con máximo 2 años adicionales');
+            }
+        });
+    });
+});
+</script>
+
+{% if auto_print %}
+<script>
+window.onload = function() { window.print(); };
+</script>
+{% endif %}
+
+{% endblock %}
