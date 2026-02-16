@@ -197,14 +197,19 @@ class CategoriaMovimientoForm(forms.ModelForm):
         model = CategoriaMovimiento
         fields = [
             "nombre",
+            "codigo",
             "tipo",
             "descripcion",
             "activo",
             "es_editable",
+            "casilla_f001",
         ]
         widgets = {
             "nombre": forms.TextInput(attrs={
                 "placeholder": "Ej: Diezmo, Ofrenda, Mantenimiento...",
+            }),
+            "codigo": forms.TextInput(attrs={
+                "placeholder": "Ej: ING_DIEZMO_NO_REGULAR, EGR_LUZ_TEMPLO...",
             }),
             "descripcion": forms.Textarea(attrs={
                 "rows": 2,
@@ -215,24 +220,57 @@ class CategoriaMovimientoForm(forms.ModelForm):
             "tipo": "Tipo de categoría",
             "activo": "Categoría activa",
         }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Agregar data-seccion a cada opción del select
+        if "casilla_f001" in self.fields:
+            queryset = self.fields["casilla_f001"].queryset
+
+            choices = [("", "---------")]
+            for casilla in queryset:
+                choices.append(
+                    (casilla.pk, f"{casilla.nombre} ({casilla.get_seccion_display()})")
+                )
+
+            self.fields["casilla_f001"].choices = choices
+
+    def clean_codigo(self):
+        codigo = (self.cleaned_data.get("codigo") or "").strip()
+        if not codigo:
+            return None  # permitido (sistema flexible)
+        return codigo.upper().replace(" ", "_")
 
     def clean(self):
-        """Validar nombre único por tipo."""
         cleaned = super().clean()
+
+        # 1) Validar nombre único por tipo
         nombre = cleaned.get("nombre")
         tipo = cleaned.get("tipo")
 
         if nombre and tipo:
-            nombre = nombre.strip()
+            nombre_norm = nombre.strip()
             qs = CategoriaMovimiento.objects.filter(
-                nombre__iexact=nombre,
+                nombre__iexact=nombre_norm,
                 tipo=tipo
             )
             if self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
                 raise ValidationError(
-                    f"Ya existe una categoría '{nombre}' de tipo {tipo}."
+                    f"Ya existe una categoría '{nombre_norm}' de tipo {tipo}."
+                )
+
+        # 2) Validación F.001: si hay casilla, debe cuadrar con el tipo
+        casilla = cleaned.get("casilla_f001")
+        if casilla and tipo:
+            if tipo == "egreso" and casilla.seccion != "egresos":
+                raise ValidationError(
+                    "Esta casilla F.001 no es de EGRESOS. Elige una casilla de Egresos."
+                )
+            if tipo == "ingreso" and casilla.seccion not in ("ingresos_iglesia", "ingresos_ministerios"):
+                raise ValidationError(
+                    "Esta casilla F.001 no es de INGRESOS. Elige una casilla de Ingresos."
                 )
 
         return cleaned

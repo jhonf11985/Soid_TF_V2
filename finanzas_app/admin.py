@@ -1,5 +1,7 @@
 from django.contrib import admin
 from .models import CuentaFinanciera, CategoriaMovimiento, MovimientoFinanciero, AdjuntoMovimiento
+from .models import CasillaF001
+
 
 @admin.register(CuentaFinanciera)
 class CuentaFinancieraAdmin(admin.ModelAdmin):
@@ -10,9 +12,11 @@ class CuentaFinancieraAdmin(admin.ModelAdmin):
 
 @admin.register(CategoriaMovimiento)
 class CategoriaMovimientoAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "tipo", "activo", "es_editable")
-    list_filter = ("tipo", "activo", "es_editable")
-    search_fields = ("nombre",)
+    list_display = ("nombre", "tipo", "codigo", "casilla_f001", "activo", "es_editable")
+    list_filter = ("tipo", "activo")
+    search_fields = ("nombre", "codigo")
+    autocomplete_fields = ("casilla_f001",)
+
 
 
 @admin.register(MovimientoFinanciero)
@@ -36,3 +40,10 @@ class AdjuntoMovimientoAdmin(admin.ModelAdmin):
     search_fields = ("nombre_original", "movimiento__descripcion")
     date_hierarchy = "subido_en"
     readonly_fields = ("tamaño", "tipo_mime", "subido_por", "subido_en")
+
+@admin.register(CasillaF001)
+class CasillaF001Admin(admin.ModelAdmin):
+    list_display = ("codigo", "nombre", "seccion", "orden", "activo")
+    list_filter = ("seccion", "activo")
+    search_fields = ("codigo", "nombre")
+    ordering = ("seccion", "orden", "nombre")

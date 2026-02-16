@@ -66,6 +66,51 @@
                         <label>Tipo</label>
                         <div class="odoo-field-value">
                             {{ form.tipo }}
+                            <hr class="my-4">
+
+<h6 class="text-muted mb-3">
+    <i class="bi bi-journal-check"></i>
+    Integración con Informe F.001 (Concilio)
+</h6>
+
+<div class="row g-3">
+
+    <div class="col-md-4">
+        <label class="form-label">Código interno</label>
+        {{ form.codigo }}
+        <small class="text-muted">
+            Opcional. Si no se define, la categoría no será usada en reportes automáticos.
+        </small>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label">Casilla F001</label>
+        <select name="casilla_f001" id="id_casilla_f001" class="form-select">
+    <option value="">---------</option>
+    {% for c in form.fields.casilla_f001.queryset %}
+        <option value="{{ c.id }}" data-seccion="{{ c.seccion }}"
+        {% if form.instance.casilla_f001_id == c.id %}selected{% endif %}>
+            {{ c.nombre }} ({{ c.get_seccion_display }})
+        </option>
+    {% endfor %}
+</select>
+
+        <small class="text-muted">
+            Define dónde aparecerá en el informe del concilio.
+        </small>
+    </div>
+
+    <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check">
+            {{ form.es_editable }}
+            <label class="form-check-label">
+                Permitir edición por usuario
+            </label>
+        </div>
+    </div>
+
+</div>
+
                             {% if form.tipo.errors %}<span class="odoo-error">{{ form.tipo.errors.0 }}</span>{% endif %}
                             <span class="odoo-field-hint">Ingreso = entra dinero · Egreso = sale dinero</span>
                         </div>
@@ -393,5 +438,36 @@
         }
     }
 </style>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    const tipoField = document.getElementById("id_tipo");
+    const casillaField = document.getElementById("id_casilla_f001");
+
+    function filtrarCasillas() {
+        const tipo = tipoField.value;
+
+        for (let option of casillaField.options) {
+
+            if (!option.dataset.seccion) continue;
+
+            if (tipo === "ingreso") {
+                option.hidden = !(option.dataset.seccion.includes("ingresos"));
+            }
+            else if (tipo === "egreso") {
+                option.hidden = !(option.dataset.seccion === "egresos");
+            }
+            else {
+                option.hidden = false;
+            }
+        }
+
+        casillaField.value = "";
+    }
+
+    tipoField.addEventListener("change", filtrarCasillas);
+    filtrarCasillas();
+});
+</script>
 
 {% endblock %}

@@ -3162,3 +3162,116 @@ def reporte_movimientos_unidad(request):
         "total_resultado": total_resultado,
     }
     return render(request, "finanzas_app/reportes/movimientos_unidad.html", context)
+
+
+from django.apps import apps
+from django.db.models import Sum
+from django.utils import timezone
+from decimal import Decimal
+
+@login_required
+def reporte_f001_concilio(request):
+
+    from django.db.models import Sum
+    from django.utils import timezone
+    from decimal import Decimal
+
+    hoy = timezone.localdate()
+    mes = int(request.GET.get("mes", hoy.month))
+    ano = int(request.GET.get("ano", hoy.year))
+
+    movimientos = (
+        MovimientoFinanciero.objects
+        .filter(fecha__year=ano, fecha__month=mes)
+        .exclude(estado="anulado")
+        .filter(es_transferencia=False)
+        .filter(categoria__casilla_f001__isnull=False)
+    )
+
+    agrupado = (
+        movimientos
+        .values("categoria__casilla_f001__codigo")
+        .annotate(total=Sum("monto"))
+    )
+
+    totales = {r["categoria__casilla_f001__codigo"]: r["total"] for r in agrupado}
+
+    def v(codigo):
+        return totales.get(codigo, Decimal("0.00"))
+
+    # ---------------- INGRESOS IGLESIA ----------------
+    ingresos = {
+        "diezmos": v("ING_DIEZMOS"),
+        "ofrendas_voluntarias": v("ING_OFRENDA_VOL"),
+        "ofrendas_especiales": v("ING_OFRENDA_ESP"),
+        "otras_ofrendas": v("ING_OTRAS_OFR"),
+        "otros_ingresos": v("ING_OTROS"),
+        "ayudas_concilio": v("ING_AYUDA_CONCILIO"),
+        "ofrendas_exterior": v("ING_EXTERIOR"),
+    }
+
+    # ---------------- INGRESOS MINISTERIOS ----------------
+    ministerios = {
+        "femenil": v("MIN_FEMENIL"),
+        "hombres_honor": v("MIN_HOMBRES"),
+        "embajadores": v("MIN_EMBAJADORES"),
+        "escuela_biblica": v("MIN_ESC_BIBLICA"),
+        "misioneritas": v("MIN_MISIONERITAS"),
+        "exploradores": v("MIN_EXPLORADORES"),
+        "mda": v("MIN_MDA"),
+        "misiones": v("MIN_MISIONES"),
+        "otros": v("MIN_OTROS"),
+    }
+
+    # ---------------- EGRESOS ----------------
+    egresos = {
+        "asignacion_pastoral": v("EGR_ASIG_PASTORAL"),
+        "alquileres": v("EGR_ALQUILER"),
+        "evangelismo_misiones": v("EGR_EVANGELISMO"),
+        "servicios_basicos": v("EGR_SERVICIOS"),
+        "ayuda_capillas": v("EGR_CAPILLAS"),
+        "ayuda_necesitados": v("EGR_NECESITADOS"),
+        "mantenimientos": v("EGR_MANTENIMIENTO"),
+        "apoyo_ministerios": v("EGR_APOYO_MIN"),
+        "otras_salidas": v("EGR_OTRAS"),
+    }
+
+    total_ing_iglesia = sum(ingresos.values(), Decimal("0.00"))
+    total_ing_min = sum(ministerios.values(), Decimal("0.00"))
+    total_egresos = sum(egresos.values(), Decimal("0.00"))
+
+    total_ingresos = total_ing_iglesia + total_ing_min
+    asig_past = egresos["asignacion_pastoral"]
+
+    # ---------------- ENVÍOS AUTOMÁTICOS ----------------
+    base_diezmo_iglesia = total_ingresos - asig_past
+    if base_diezmo_iglesia < 0:
+        base_diezmo_iglesia = Decimal("0.00")
+
+    envios = {
+        "diezmo_iglesia": base_diezmo_iglesia * Decimal("0.10"),
+        "instituto_biblico": total_ingresos * Decimal("0.03"),
+        "educacion_cristiana": total_ingresos * Decimal("0.01"),
+        "pension_jubilacion": total_ingresos * Decimal("0.01"),
+        "diezmo_asignacion": asig_past * Decimal("0.10"),
+        "cotizacion_pastor": asig_past * Decimal("0.05"),
+    }
+
+    meses = [
+        "", "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+        "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+    ]
+
+    context = {
+        "mes_nombre": meses[mes],
+        "ano": ano,
+        "ingresos": ingresos,
+        "ministerios": ministerios,
+        "egresos": egresos,
+        "envios": envios,
+        "total_ingresos_iglesia": total_ing_iglesia,
+        "total_ingresos_ministerios": total_ing_min,
+        "total_egresos": total_egresos,
+    }
+
+    return render(request, "finanzas_app/reportes/Informe_f001_concilio.html", context)

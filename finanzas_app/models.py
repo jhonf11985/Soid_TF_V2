@@ -78,6 +78,48 @@ class CuentaFinanciera(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
+class CasillaF001(models.Model):
+    """
+    Casillas oficiales del Informe F.001 (Concilio).
+    Se crean por defecto (seed) pero se pueden editar/agregar desde Admin.
+    """
+
+    SECCION_CHOICES = [
+        ("ingresos_iglesia", "Ingresos Generales de la Iglesia"),
+        ("ingresos_ministerios", "Ingresos de los Ministerios"),
+        ("egresos", "Egresos de la Iglesia"),
+    ]
+
+    codigo = models.CharField(
+        max_length=60,
+        unique=True,
+        help_text="Código interno estable. Ej: ING_DIEZMOS, MIN_FEMENIL, EGR_SERVICIOS"
+    )
+    nombre = models.CharField(
+        max_length=120,
+        help_text="Nombre visible en Admin. Ej: Diezmos, Ministerio Femenil, Agua/Luz/Teléfono"
+    )
+    seccion = models.CharField(
+        max_length=30,
+        choices=SECCION_CHOICES,
+        help_text="Sección del F.001 donde aparece esta casilla."
+    )
+    orden = models.PositiveIntegerField(
+        default=0,
+        help_text="Orden de aparición (opcional)."
+    )
+    activo = models.BooleanField(
+        default=True,
+        help_text="Si está activo para usarse en categorías."
+    )
+
+    class Meta:
+        ordering = ["seccion", "orden", "nombre"]
+        verbose_name = "Casilla F.001"
+        verbose_name_plural = "Casillas F.001"
+
+    def __str__(self):
+        return f"{self.codigo} · {self.nombre}"
 
 class CategoriaMovimiento(models.Model):
     """
@@ -89,6 +131,23 @@ class CategoriaMovimiento(models.Model):
         ("ingreso", "Ingreso"),
         ("egreso", "Egreso"),
     ]
+
+    codigo = models.CharField(
+        max_length=60,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Código interno estable. Ej: CAT_DIEZMO_NO_REGULAR. Recomendado."
+    )
+
+    casilla_f001 = models.ForeignKey(
+        CasillaF001,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="categorias",
+        help_text="Opcional. Si se asigna, esta categoría alimenta el Informe F.001."
+    )
 
     nombre = models.CharField(max_length=100)
     tipo = models.CharField(
