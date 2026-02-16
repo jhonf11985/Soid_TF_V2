@@ -50,7 +50,7 @@
             <!-- CONTENIDO EN DOS COLUMNAS -->
             <div class="odoo-form-content">
 
-                <!-- COLUMNA IZQUIERDA -->
+                <!-- COLUMNA IZQUIERDA: Datos básicos -->
                 <div class="odoo-form-col">
 
                     <div class="odoo-field-row">
@@ -66,63 +66,27 @@
                         <label>Tipo</label>
                         <div class="odoo-field-value">
                             {{ form.tipo }}
-                            <hr class="my-4">
-
-<h6 class="text-muted mb-3">
-    <i class="bi bi-journal-check"></i>
-    Integración con Informe F.001 (Concilio)
-</h6>
-
-<div class="row g-3">
-
-    <div class="col-md-4">
-        <label class="form-label">Código interno</label>
-        {{ form.codigo }}
-        <small class="text-muted">
-            Opcional. Si no se define, la categoría no será usada en reportes automáticos.
-        </small>
-    </div>
-
-    <div class="col-md-4">
-        <label class="form-label">Casilla F001</label>
-        <select name="casilla_f001" id="id_casilla_f001" class="form-select">
-    <option value="">---------</option>
-    {% for c in form.fields.casilla_f001.queryset %}
-        <option value="{{ c.id }}" data-seccion="{{ c.seccion }}"
-        {% if form.instance.casilla_f001_id == c.id %}selected{% endif %}>
-            {{ c.nombre }} ({{ c.get_seccion_display }})
-        </option>
-    {% endfor %}
-</select>
-
-        <small class="text-muted">
-            Define dónde aparecerá en el informe del concilio.
-        </small>
-    </div>
-
-    <div class="col-md-4 d-flex align-items-end">
-        <div class="form-check">
-            {{ form.es_editable }}
-            <label class="form-check-label">
-                Permitir edición por usuario
-            </label>
-        </div>
-    </div>
-
-</div>
-
                             {% if form.tipo.errors %}<span class="odoo-error">{{ form.tipo.errors.0 }}</span>{% endif %}
                             <span class="odoo-field-hint">Ingreso = entra dinero · Egreso = sale dinero</span>
                         </div>
                     </div>
 
+                    <div class="odoo-field-row">
+                        <label>Descripción</label>
+                        <div class="odoo-field-value">
+                            {{ form.descripcion }}
+                            {% if form.descripcion.errors %}<span class="odoo-error">{{ form.descripcion.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Opcional. Agrega notas sobre esta categoría.</span>
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- COLUMNA DERECHA -->
+                <!-- COLUMNA DERECHA: Estado y configuración -->
                 <div class="odoo-form-col">
 
                     <div class="odoo-field-row">
-                        <label>Activo</label>
+                        <label>Estado</label>
                         <div class="odoo-field-value">
                             <div class="odoo-checkbox">
                                 {{ form.activo }}
@@ -133,18 +97,52 @@
                         </div>
                     </div>
 
+                    <div class="odoo-field-row">
+                        <label>Editable</label>
+                        <div class="odoo-field-value">
+                            <div class="odoo-checkbox">
+                                {{ form.es_editable }}
+                                <span class="odoo-checkbox-label">Permitir edición por usuario</span>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
             </div>
 
-            <!-- DESCRIPCIÓN - ANCHO COMPLETO -->
-            <div class="odoo-form-full">
-                <div class="odoo-field-row">
-                    <label>Descripción</label>
-                    <div class="odoo-field-value">
-                        {{ form.descripcion }}
-                        {% if form.descripcion.errors %}<span class="odoo-error">{{ form.descripcion.errors.0 }}</span>{% endif %}
-                        <span class="odoo-field-hint">Opcional. Agrega notas sobre esta categoría.</span>
+            <!-- SECCIÓN F.001 - ANCHO COMPLETO -->
+            <div class="odoo-form-section">
+                <div class="odoo-section-header">
+                    <span class="material-icons">description</span>
+                    <span>Integración con Informe F.001 (Concilio)</span>
+                </div>
+                
+                <div class="odoo-section-content">
+                    <div class="odoo-field-row">
+                        <label>Código interno</label>
+                        <div class="odoo-field-value">
+                            {{ form.codigo }}
+                            {% if form.codigo.errors %}<span class="odoo-error">{{ form.codigo.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Opcional. Si no se define, la categoría no será usada en reportes automáticos.</span>
+                        </div>
+                    </div>
+
+                    <div class="odoo-field-row">
+                        <label>Casilla F.001</label>
+                        <div class="odoo-field-value">
+                            <select name="casilla_f001" id="id_casilla_f001" class="odoo-select">
+                                <option value="">— Sin asignar —</option>
+                                {% for c in form.fields.casilla_f001.queryset %}
+                                <option value="{{ c.id }}" data-seccion="{{ c.seccion }}"
+                                    {% if form.instance.casilla_f001_id == c.id %}selected{% endif %}>
+                                    {{ c.nombre }} ({{ c.get_seccion_display }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.casilla_f001.errors %}<span class="odoo-error">{{ form.casilla_f001.errors.0 }}</span>{% endif %}
+                            <span class="odoo-field-hint">Define dónde aparecerá en el informe del concilio.</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -309,7 +307,7 @@
         display: grid;
         grid-template-columns: 140px 1fr;
         gap: 12px;
-        align-items: center;
+        align-items: start;
     }
 
     .odoo-field-row label {
@@ -317,6 +315,7 @@
         font-weight: 600;
         color: var(--odoo-text);
         text-align: right;
+        padding-top: 4px;
     }
 
     .odoo-field-value {
@@ -354,7 +353,8 @@
         padding-bottom: 3px;
     }
 
-    .odoo-form-sheet select {
+    .odoo-form-sheet select,
+    .odoo-select {
         appearance: none;
         cursor: pointer;
         padding-right: 20px;
@@ -368,17 +368,6 @@
         min-height: 60px;
         resize: vertical;
         line-height: 1.5;
-    }
-
-    .odoo-form-full {
-        padding: 0 24px 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .odoo-form-full .odoo-field-row {
-        grid-template-columns: 140px 1fr;
     }
 
     .odoo-error {
@@ -411,6 +400,36 @@
         color: var(--odoo-text-muted);
     }
 
+    /* SECCIÓN CON HEADER */
+    .odoo-form-section {
+        border-top: 1px solid var(--odoo-border);
+    }
+
+    .odoo-section-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: var(--odoo-bg-gray);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--odoo-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .odoo-section-header .material-icons {
+        font-size: 16px;
+        color: var(--odoo-purple);
+    }
+
+    .odoo-section-content {
+        padding: 20px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
     /* RESPONSIVE */
     @media (max-width: 900px) {
         .odoo-form-content {
@@ -418,15 +437,13 @@
             gap: 16px;
         }
 
-        .odoo-field-row,
-        .odoo-form-full .odoo-field-row {
+        .odoo-field-row {
             grid-template-columns: 120px 1fr;
         }
     }
 
     @media (max-width: 600px) {
-        .odoo-field-row,
-        .odoo-form-full .odoo-field-row {
+        .odoo-field-row {
             grid-template-columns: 1fr;
             gap: 4px;
         }
@@ -435,9 +452,19 @@
             text-align: left;
             font-size: 11px;
             color: var(--odoo-text-muted);
+            padding-top: 0;
+        }
+
+        .odoo-section-header {
+            padding: 10px 16px;
+        }
+
+        .odoo-section-content {
+            padding: 16px;
         }
     }
 </style>
+
 <script>
 document.addEventListener("DOMContentLoaded", function() {
 
@@ -448,25 +475,32 @@ document.addEventListener("DOMContentLoaded", function() {
         const tipo = tipoField.value;
 
         for (let option of casillaField.options) {
-
             if (!option.dataset.seccion) continue;
 
             if (tipo === "ingreso") {
                 option.hidden = !(option.dataset.seccion.includes("ingresos"));
             }
             else if (tipo === "egreso") {
-                option.hidden = !(option.dataset.seccion === "egresos");
+                option.hidden = !(option.dataset.seccion === "egresos" || 
+                                  option.dataset.seccion === "envios_ministerios" || 
+                                  option.dataset.seccion === "aportes_especiales");
             }
             else {
                 option.hidden = false;
             }
         }
 
-        casillaField.value = "";
+        // Reset selection if current is now hidden
+        const selectedOption = casillaField.options[casillaField.selectedIndex];
+        if (selectedOption && selectedOption.hidden) {
+            casillaField.value = "";
+        }
     }
 
-    tipoField.addEventListener("change", filtrarCasillas);
-    filtrarCasillas();
+    if (tipoField && casillaField) {
+        tipoField.addEventListener("change", filtrarCasillas);
+        filtrarCasillas();
+    }
 });
 </script>
 

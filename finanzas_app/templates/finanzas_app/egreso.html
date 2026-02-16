@@ -64,10 +64,48 @@
                         </div>
                     </div>
 
+                    <!-- SELECTOR DE CATEGORÍA CON BÚSQUEDA -->
                     <div class="odoo-field-row">
                         <label>Categoría</label>
                         <div class="odoo-field-value">
-                            {{ form.categoria }}
+                            <div class="categoria-selector" id="categoria-selector">
+                                <!-- Campo hidden para el valor real -->
+                                <input type="hidden" name="categoria" id="id_categoria" value="{{ form.categoria.value|default:'' }}">
+                                
+                                <!-- Input de búsqueda / display -->
+                                <div class="categoria-input-wrapper">
+                                    <input 
+                                        type="text" 
+                                        id="categoria-search" 
+                                        class="categoria-search"
+                                        placeholder="Buscar categoría..."
+                                        autocomplete="off"
+                                    >
+                                    <span class="categoria-arrow material-icons">expand_more</span>
+                                </div>
+                                
+                                <!-- Dropdown -->
+                                <div class="categoria-dropdown" id="categoria-dropdown">
+                                    <div class="categoria-search-box">
+                                        <span class="material-icons">search</span>
+                                        <input 
+                                            type="text" 
+                                            id="categoria-filter" 
+                                            placeholder="Filtrar categorías..."
+                                            autocomplete="off"
+                                        >
+                                    </div>
+                                    
+                                    <div class="categoria-list" id="categoria-list">
+                                        <!-- Las categorías se renderizan con JS -->
+                                    </div>
+                                    
+                                    <div class="categoria-empty" id="categoria-empty">
+                                        <span class="material-icons">search_off</span>
+                                        <span>No se encontraron categorías</span>
+                                    </div>
+                                </div>
+                            </div>
                             {% if form.categoria.errors %}<span class="odoo-error">{{ form.categoria.errors.0 }}</span>{% endif %}
                         </div>
                     </div>
@@ -214,6 +252,276 @@
         --odoo-bg-gray: #f8f9fa;
         --odoo-success: #28a745;
         --odoo-error: #dc3545;
+    }
+
+    /* =====================================
+       SELECTOR DE CATEGORÍA CON BÚSQUEDA
+       ===================================== */
+
+    .categoria-selector {
+        position: relative;
+        width: 100%;
+    }
+
+    .categoria-input-wrapper {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+
+    .categoria-search {
+        flex: 1;
+        border: none;
+        border-bottom: 1px solid transparent;
+        background: transparent;
+        padding: 4px 24px 4px 0;
+        font-size: 13px;
+        color: var(--odoo-text);
+        font-family: inherit;
+        transition: border-color 0.15s;
+        cursor: pointer;
+    }
+
+    .categoria-search:hover {
+        border-bottom-color: var(--odoo-border);
+    }
+
+    .categoria-search:focus {
+        outline: none;
+        border-bottom-color: var(--odoo-purple);
+        border-bottom-width: 2px;
+        padding-bottom: 3px;
+        cursor: text;
+    }
+
+    .categoria-search.has-value {
+        font-weight: 500;
+        color: var(--odoo-text);
+    }
+
+    .categoria-arrow {
+        position: absolute;
+        right: 0;
+        font-size: 18px;
+        color: var(--odoo-text-muted);
+        pointer-events: none;
+        transition: transform 0.2s;
+    }
+
+    .categoria-selector.open .categoria-arrow {
+        transform: rotate(180deg);
+    }
+
+    /* Dropdown */
+    .categoria-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--odoo-border);
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        z-index: 1000;
+        display: none;
+        max-height: 350px;
+        overflow: hidden;
+        flex-direction: column;
+    }
+
+    .categoria-selector.open .categoria-dropdown {
+        display: flex;
+        animation: dropdownIn 0.15s ease;
+    }
+
+    @keyframes dropdownIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Buscador dentro del dropdown */
+    .categoria-search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--odoo-border);
+        background: var(--odoo-bg-gray);
+    }
+
+    .categoria-search-box .material-icons {
+        font-size: 18px;
+        color: var(--odoo-text-muted);
+    }
+
+    .categoria-search-box input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-size: 13px;
+        color: var(--odoo-text);
+        font-family: inherit;
+        padding: 0;
+    }
+
+    .categoria-search-box input:focus {
+        outline: none;
+    }
+
+    .categoria-search-box input::placeholder {
+        color: #adb5bd;
+    }
+
+    /* Lista de categorías */
+    .categoria-list {
+        overflow-y: auto;
+        max-height: 280px;
+        padding: 6px 0;
+    }
+
+    /* Grupo */
+    .categoria-group {
+        margin-bottom: 4px;
+    }
+
+    .categoria-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .categoria-group-header {
+        padding: 8px 12px 4px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--odoo-text-muted);
+        background: var(--odoo-bg-gray);
+        position: sticky;
+        top: 0;
+    }
+
+    /* Items */
+    .categoria-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background 0.1s;
+    }
+
+    .categoria-item:hover {
+        background: #f3f4f6;
+    }
+
+    .categoria-item.selected {
+        background: rgba(113, 75, 103, 0.08);
+    }
+
+    .categoria-item-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+
+    .categoria-item-icon.ingreso {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .categoria-item-icon.egreso {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .categoria-item-text {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .categoria-item-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--odoo-text);
+    }
+
+    .categoria-item-code {
+        font-size: 10px;
+        color: var(--odoo-text-muted);
+    }
+
+    .categoria-item-check {
+        color: var(--odoo-purple);
+        font-size: 18px;
+        opacity: 0;
+    }
+
+    .categoria-item.selected .categoria-item-check {
+        opacity: 1;
+    }
+
+    /* Match de búsqueda */
+    .categoria-item-name mark {
+        background: #fef08a;
+        color: inherit;
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+
+    /* Empty state */
+    .categoria-empty {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+        color: var(--odoo-text-muted);
+        gap: 8px;
+    }
+
+    .categoria-empty .material-icons {
+        font-size: 32px;
+        opacity: 0.5;
+    }
+
+    .categoria-empty span:last-child {
+        font-size: 13px;
+    }
+
+    @media (max-width: 768px) {
+        .categoria-dropdown {
+            position: fixed;
+            top: auto;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-radius: 16px 16px 0 0;
+            max-height: 70vh;
+        }
+        
+        .categoria-search-box {
+            padding: 14px 16px;
+        }
+        
+        .categoria-item {
+            padding: 12px 16px;
+        }
+        
+        .categoria-group-header {
+            padding: 10px 16px 6px;
+        }
     }
 
     .odoo-page {
@@ -1366,6 +1674,242 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 });
+</script>
+
+<!-- =============================================
+     SELECTOR DE CATEGORÍAS CON BÚSQUEDA
+     ============================================= -->
+<script>
+(function() {
+    // IIFE para evitar conflictos de variables
+    
+    // ====================================
+    // DATOS DE CATEGORÍAS (desde Django)
+    // ====================================
+    const CATEGORIAS_DATA = [
+        {% for cat in form.categoria.field.queryset %}
+        {
+            id: "{{ cat.id }}",
+            nombre: "{{ cat.nombre|escapejs }}",
+            codigo: "{{ cat.codigo|default:''|escapejs }}",
+            tipo: "{{ cat.tipo }}",
+            seccion: "{{ cat.casilla_f001.seccion|default:'otros'|escapejs }}",
+            seccionNombre: "{{ cat.casilla_f001.get_seccion_display|default:'Otros'|escapejs }}"
+        },
+        {% endfor %}
+    ];
+    
+    // Agrupar por sección
+    const GRUPOS_CAT = {};
+    CATEGORIAS_DATA.forEach(cat => {
+        const key = cat.seccion || 'otros';
+        if (!GRUPOS_CAT[key]) {
+            GRUPOS_CAT[key] = {
+                nombre: cat.seccionNombre || 'Otros',
+                items: []
+            };
+        }
+        GRUPOS_CAT[key].items.push(cat);
+    });
+    
+    // ====================================
+    // ELEMENTOS DOM (con prefijo cat_)
+    // ====================================
+    const cat_selector = document.getElementById('categoria-selector');
+    const cat_hiddenInput = document.getElementById('id_categoria');
+    const cat_searchInput = document.getElementById('categoria-search');
+    const cat_dropdown = document.getElementById('categoria-dropdown');
+    const cat_filterInput = document.getElementById('categoria-filter');
+    const cat_listEl = document.getElementById('categoria-list');
+    const cat_emptyEl = document.getElementById('categoria-empty');
+    
+    if (!cat_selector || !cat_searchInput) return;
+    
+    let cat_selectedId = cat_hiddenInput ? cat_hiddenInput.value : null;
+    let cat_isOpen = false;
+    
+    // ====================================
+    // FUNCIONES
+    // ====================================
+    
+    function cat_renderList(filter) {
+        filter = filter || '';
+        cat_listEl.innerHTML = '';
+        const filterLower = filter.toLowerCase().trim();
+        let hasResults = false;
+        
+        // Ordenar grupos
+        const ordenGrupos = ['egresos', 'envios_ministerios', 'aportes_especiales', 'otros'];
+        const gruposOrdenados = Object.entries(GRUPOS_CAT).sort((a, b) => {
+            const idxA = ordenGrupos.indexOf(a[0]);
+            const idxB = ordenGrupos.indexOf(b[0]);
+            return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+        });
+        
+        gruposOrdenados.forEach(([key, grupo]) => {
+            const itemsFiltrados = grupo.items.filter(cat => {
+                if (!filterLower) return true;
+                return cat.nombre.toLowerCase().includes(filterLower) ||
+                       (cat.codigo && cat.codigo.toLowerCase().includes(filterLower));
+            });
+            
+            if (itemsFiltrados.length === 0) return;
+            hasResults = true;
+            
+            const groupEl = document.createElement('div');
+            groupEl.className = 'categoria-group';
+            
+            const headerEl = document.createElement('div');
+            headerEl.className = 'categoria-group-header';
+            headerEl.textContent = grupo.nombre;
+            groupEl.appendChild(headerEl);
+            
+            itemsFiltrados.forEach(cat => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'categoria-item' + (cat.id == cat_selectedId ? ' selected' : '');
+                itemEl.dataset.id = cat.id;
+                
+                let nombreHtml = cat_escapeHtml(cat.nombre);
+                if (filterLower) {
+                    const regex = new RegExp(`(${cat_escapeRegex(filterLower)})`, 'gi');
+                    nombreHtml = nombreHtml.replace(regex, '<mark>$1</mark>');
+                }
+                
+                itemEl.innerHTML = `
+                    <div class="categoria-item-icon ${cat.tipo}">
+                        <span class="material-icons">${cat.tipo === 'ingreso' ? 'arrow_downward' : 'arrow_upward'}</span>
+                    </div>
+                    <div class="categoria-item-text">
+                        <span class="categoria-item-name">${nombreHtml}</span>
+                        ${cat.codigo ? `<span class="categoria-item-code">${cat_escapeHtml(cat.codigo)}</span>` : ''}
+                    </div>
+                    <span class="material-icons categoria-item-check">check</span>
+                `;
+                
+                itemEl.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    cat_selectCategoria(cat);
+                });
+                groupEl.appendChild(itemEl);
+            });
+            
+            cat_listEl.appendChild(groupEl);
+        });
+        
+        cat_emptyEl.style.display = hasResults ? 'none' : 'flex';
+    }
+    
+    function cat_selectCategoria(cat) {
+        cat_selectedId = cat.id;
+        cat_hiddenInput.value = cat.id;
+        cat_searchInput.value = cat.nombre;
+        cat_searchInput.classList.add('has-value');
+        cat_closeDropdown();
+        cat_renderList();
+    }
+    
+    function cat_openDropdown() {
+        if (cat_isOpen) return;
+        cat_isOpen = true;
+        cat_selector.classList.add('open');
+        cat_filterInput.value = '';
+        cat_renderList();
+        setTimeout(() => cat_filterInput.focus(), 50);
+    }
+    
+    function cat_closeDropdown() {
+        if (!cat_isOpen) return;
+        cat_isOpen = false;
+        cat_selector.classList.remove('open');
+    }
+    
+    function cat_escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    
+    function cat_escapeRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
+    // ====================================
+    // EVENTOS
+    // ====================================
+    
+    // Click en input principal - toggle dropdown
+    cat_searchInput.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (cat_isOpen) {
+            cat_closeDropdown();
+        } else {
+            cat_openDropdown();
+        }
+    });
+    
+    // Typing en input principal (búsqueda directa)
+    cat_searchInput.addEventListener('input', function() {
+        if (!cat_isOpen) {
+            cat_openDropdown();
+        }
+        cat_renderList(this.value);
+    });
+    
+    // Teclas en input principal
+    cat_searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cat_closeDropdown();
+        } else if (e.key === 'ArrowDown' && !cat_isOpen) {
+            e.preventDefault();
+            cat_openDropdown();
+        }
+    });
+    
+    // Filtro dentro del dropdown
+    cat_filterInput.addEventListener('input', function() {
+        cat_renderList(this.value);
+    });
+    
+    // Teclas en filtro
+    cat_filterInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cat_closeDropdown();
+            cat_searchInput.focus();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const firstItem = cat_listEl.querySelector('.categoria-item');
+            if (firstItem) {
+                firstItem.click();
+            }
+        }
+    });
+    
+    // Prevenir que clicks dentro del dropdown lo cierren
+    cat_dropdown.addEventListener('mousedown', function(e) {
+        e.stopPropagation();
+    });
+    
+    // Click fuera cierra
+    document.addEventListener('mousedown', function(e) {
+        if (cat_isOpen && !cat_selector.contains(e.target)) {
+            cat_closeDropdown();
+        }
+    });
+    
+    // ====================================
+    // INICIALIZACIÓN
+    // ====================================
+    if (cat_selectedId) {
+        const cat = CATEGORIAS_DATA.find(c => c.id == cat_selectedId);
+        if (cat) {
+            cat_searchInput.value = cat.nombre;
+            cat_searchInput.classList.add('has-value');
+        }
+    }
+    
+    cat_renderList();
+})();
 </script>
 
 <script>

@@ -3194,12 +3194,15 @@ def reporte_f001_concilio(request):
         .annotate(total=Sum("monto"))
     )
 
-    totales = {r["categoria__casilla_f001__codigo"]: r["total"] for r in agrupado}
+    totales_casillas = {r["categoria__casilla_f001__codigo"]: r["total"] for r in agrupado}
 
     def v(codigo):
-        return totales.get(codigo, Decimal("0.00"))
+        return totales_casillas.get(codigo, Decimal("0.00"))
 
-    # ---------------- INGRESOS IGLESIA ----------------
+    # ============================================
+    # SECCIÓN B: INGRESOS Y EGRESOS
+    # ============================================
+    
     ingresos = {
         "diezmos": v("ING_DIEZMOS"),
         "ofrendas_voluntarias": v("ING_OFRENDA_VOL"),
@@ -3210,7 +3213,6 @@ def reporte_f001_concilio(request):
         "ofrendas_exterior": v("ING_EXTERIOR"),
     }
 
-    # ---------------- INGRESOS MINISTERIOS ----------------
     ministerios = {
         "femenil": v("MIN_FEMENIL"),
         "hombres_honor": v("MIN_HOMBRES"),
@@ -3223,7 +3225,6 @@ def reporte_f001_concilio(request):
         "otros": v("MIN_OTROS"),
     }
 
-    # ---------------- EGRESOS ----------------
     egresos = {
         "asignacion_pastoral": v("EGR_ASIG_PASTORAL"),
         "alquileres": v("EGR_ALQUILER"),
@@ -3239,32 +3240,77 @@ def reporte_f001_concilio(request):
     total_ing_iglesia = sum(ingresos.values(), Decimal("0.00"))
     total_ing_min = sum(ministerios.values(), Decimal("0.00"))
     total_egresos = sum(egresos.values(), Decimal("0.00"))
-
     total_ingresos = total_ing_iglesia + total_ing_min
     asig_past = egresos["asignacion_pastoral"]
 
-    # ---------------- ENVÍOS AUTOMÁTICOS ----------------
+    # ============================================
+    # SECCIÓN C: ENVÍOS A LA OFICINA NACIONAL
+    # ============================================
+
     base_diezmo_iglesia = total_ingresos - asig_past
     if base_diezmo_iglesia < 0:
         base_diezmo_iglesia = Decimal("0.00")
 
+    # Envíos de la Iglesia (CALCULADOS)
     envios = {
         "diezmo_iglesia": base_diezmo_iglesia * Decimal("0.10"),
         "instituto_biblico": total_ingresos * Decimal("0.03"),
         "educacion_cristiana": total_ingresos * Decimal("0.01"),
         "pension_jubilacion": total_ingresos * Decimal("0.01"),
         "diezmo_asignacion": asig_past * Decimal("0.10"),
+        "diezmo_pastor_otro": Decimal("0.00"),
+        "diezmo_conyuge": Decimal("0.00"),
         "cotizacion_pastor": asig_past * Decimal("0.05"),
     }
 
+    subtotal_envios_iglesia = sum(envios.values(), Decimal("0.00"))
+
+    # Ministerios Locales a Nacionales (códigos: ENV_MIN_*)
+    envios_min = {
+        "femenil": v("ENV_MIN_FEMENIL"),
+        "hombres_honor": v("ENV_MIN_HOMBRES"),
+        "embajadores": v("ENV_MIN_EMBAJADORES"),
+        "escuela_biblica": v("ENV_MIN_ESC_BIBLICA"),
+        "misioneritas": v("ENV_MIN_MISIONERITAS"),
+        "misioneros": v("ENV_MIN_MISIONEROS"),
+        "exploradores": v("ENV_MIN_EXPLORADORES"),
+        "mda": v("ENV_MIN_MDA"),
+        "misiones": v("ENV_MIN_MISIONES"),
+        "otros": v("ENV_MIN_OTROS"),
+    }
+
+    subtotal_envios_ministerios = sum(envios_min.values(), Decimal("0.00"))
+
+    # Aportes Especiales (códigos: A_*)
+    aportes = {
+        "evangelismo": v("A_EVANGELISMO"),
+        "desead": v("A_DESEAD"),
+        "plantacion": v("A_PLANTACION"),
+        "misioneros": v("A_MISIONEROS"),
+        "huerfanos": v("A_HUERFANOS"),
+        "envejecientes": v("A_ENVEJECIENTES"),
+        "grupos_vulnerables": v("A_VULNERABLES"),
+        "sordos": v("A_SORDOS"),
+        "desarrollo_concilio": v("A_DESARROLLO"),
+    }
+
+    subtotal_aportes = sum(aportes.values(), Decimal("0.00"))
+
+    # ============================================
+    # TOTALES
+    # ============================================
     meses = [
-        "", "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-        "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     ]
+
     totales = {
         "total_ingresos_iglesia": total_ing_iglesia,
         "total_ingresos_ministerios": total_ing_min,
         "total_egresos": total_egresos,
+        "subtotal_envios_iglesia": subtotal_envios_iglesia,
+        "subtotal_envios_ministerios": subtotal_envios_ministerios,
+        "subtotal_aportes": subtotal_aportes,
     }
 
     context = {
@@ -3274,8 +3320,9 @@ def reporte_f001_concilio(request):
         "ministerios": ministerios,
         "egresos": egresos,
         "envios": envios,
+        "envios_min": envios_min,
+        "aportes": aportes,
         "totales": totales,
     }
-
 
     return render(request, "finanzas_app/reportes/Informe_f001_concilio.html", context)

@@ -1,0 +1,639 @@
+{% extends 'finanzas_app/base_finanzas.html' %}
+{% load static humanize %}
+
+{% block title %}Cuentas por pagar · Soid_Tf_2{% endblock %}
+
+{% block finanzas_content %}
+
+<div class="cxp-content">
+
+    <!-- ENCABEZADO -->
+    <div class="page-header-flex">
+        <div>
+            <h1 class="page-title">Cuentas por pagar</h1>
+            <p class="page-subtitle">{{ items|length }} registro{{ items|length|pluralize:"s" }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'finanzas_app:cxp_create' %}" class="odoo-btn odoo-btn-primary">
+                <span class="material-icons">add</span>
+                Nueva cuenta
+            </a>
+        </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="summary-row">
+        <div class="summary-item summary-pending">
+            <span class="summary-label">Pendiente total</span>
+            <span class="summary-value">RD$ {{ total_pendiente|floatformat:2|intcomma|default:"0.00" }}</span>
+        </div>
+        <div class="summary-item summary-paid">
+            <span class="summary-label">Pagado total</span>
+            <span class="summary-value">RD$ {{ total_pagado|floatformat:2|intcomma|default:"0.00" }}</span>
+        </div>
+        <button type="button" class="btn-filter" id="toggle-filters">
+            <span class="material-icons">filter_list</span>
+            Filtros
+        </button>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="filters-panel" id="filters-panel">
+        <form method="get" class="filters-form">
+            <div class="filters-grid">
+                <div class="filter-field">
+                    <label for="id_q">Buscar</label>
+                    <input type="text" id="id_q" name="q" value="{{ q }}" placeholder="Proveedor, concepto, referencia...">
+                </div>
+
+                <div class="filter-field">
+                    <label for="id_estado">Estado</label>
+                    <select id="id_estado" name="estado">
+                        <option value="">Todos</option>
+                        {% for val, label in ESTADOS %}
+                            <option value="{{ val }}" {% if estado == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label for="id_proveedor">Proveedor</label>
+                    <select id="id_proveedor" name="proveedor">
+                        <option value="">Todos</option>
+                        {% for prov in proveedores %}
+                            <option value="{{ prov.id }}" {% if proveedor == prov.id|stringformat:"s" %}selected{% endif %}>
+                                {{ prov.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label for="id_fecha_desde">Desde</label>
+                    <input type="date" id="id_fecha_desde" name="fecha_desde" value="{{ fecha_desde }}">
+                </div>
+
+                <div class="filter-field">
+                    <label for="id_fecha_hasta">Hasta</label>
+                    <input type="date" id="id_fecha_hasta" name="fecha_hasta" value="{{ fecha_hasta }}">
+                </div>
+            </div>
+
+            <div class="filters-actions">
+                <button type="submit" class="btn-primary btn-sm">Aplicar</button>
+                <a href="{% url 'finanzas_app:cxp_list' %}" class="btn-secondary btn-sm">Limpiar</a>
+
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Vencimiento</th>
+                    <th>Proveedor</th>
+                    <th>Concepto</th>
+                    <th class="text-right">Monto</th>
+                    <th class="text-right">Pagado</th>
+                    <th class="text-right">Saldo</th>
+                    <th>Estado</th>
+                    <th class="col-actions"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if items %}
+                    {% for i in items %}
+                        <tr class="row-clickable" data-href="{% url 'finanzas_app:cxp_detail' i.pk %}">
+                            <td>{{ i.fecha_emision|date:"d M Y" }}</td>
+                            <td>
+                                {% if i.fecha_vencimiento %}
+                                    <span class="vencimiento-cell {% if i.esta_vencida %}vencida{% elif i.proxima_a_vencer %}proxima{% endif %}">
+                                        {% if i.esta_vencida %}
+                                        <span class="material-icons venc-icon">warning</span>
+                                        {% elif i.proxima_a_vencer %}
+                                        <span class="material-icons venc-icon">schedule</span>
+                                        {% endif %}
+                                        {{ i.fecha_vencimiento|date:"d M Y" }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ i.proveedor.nombre }}</strong></td>
+                            <td>{{ i.concepto|truncatewords:6 }}</td>
+                            <td class="text-right">{{ i.monto_total|floatformat:2|intcomma }}</td>
+                            <td class="text-right text-success">{{ i.monto_pagado|floatformat:2|intcomma }}</td>
+                            <td class="text-right text-danger"><strong>{{ i.saldo_pendiente|floatformat:2|intcomma }}</strong></td>
+                            <td>
+                                {% if i.estado == 'pagada' %}
+                                    <span class="badge badge-success">Pagada</span>
+                                {% elif i.estado == 'parcial' %}
+                                    <span class="badge badge-warning">Parcial</span>
+                                {% elif i.estado == 'vencida' %}
+                                    <span class="badge badge-danger">Vencida</span>
+                                {% else %}
+                                    <span class="badge badge-pending">Pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-actions">
+                                <div class="row-actions">
+                                    {% if i.estado != 'pagada' and i.estado != 'cancelada' %}
+                                    <a href="{% url 'finanzas_app:cxp_pagar' i.pk %}" class="action-btn action-success" title="Pagar">
+                                        <span class="material-icons">payments</span>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'finanzas_app:cxp_detail' i.pk %}" class="action-btn" title="Ver detalle">
+                                        <span class="material-icons">visibility</span>
+                                    </a>
+                                    {% if i.estado != 'pagada' and i.estado != 'cancelada' %}
+                                    <a href="{% url 'finanzas_app:cxp_edit' i.pk %}" class="action-btn" title="Editar">
+                                        <span class="material-icons">edit</span>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="empty-row">
+                            <span class="material-icons">receipt_long</span>
+                            <p>No hay cuentas por pagar con los filtros actuales</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<style>
+/* =====================================
+   BOTONES ESTILO ODOO
+   ===================================== */
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all .15s;
+    text-decoration: none;
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.odoo-btn-primary {
+    background: #714B67;
+    color: #fff;
+    border-color: #714B67;
+}
+.odoo-btn-primary:hover {
+    background: #5d3d54;
+    border-color: #5d3d54;
+}
+
+.odoo-btn-secondary {
+    background: #fff;
+    color: #495057;
+}
+.odoo-btn-secondary:hover {
+    background: #f8f9fa;
+}
+
+.odoo-btn .material-icons {
+    font-size: 18px;
+}
+
+/* =====================================
+   ENCABEZADO
+   ===================================== */
+.cxp-content {
+    padding: 0;
+}
+
+.page-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 4px 0 0 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* =====================================
+   RESUMEN
+   ===================================== */
+.summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 20px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    min-width: 140px;
+}
+
+.summary-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+}
+
+.summary-value {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.summary-pending .summary-value {
+    color: #dc2626;
+}
+
+.summary-paid .summary-value {
+    color: #059669;
+}
+
+.btn-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: auto;
+}
+
+.btn-filter:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.btn-filter .material-icons {
+    font-size: 18px;
+}
+
+/* =====================================
+   FILTROS
+   ===================================== */
+.filters-panel {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: none;
+}
+
+.filters-panel.active {
+    display: block;
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.filter-field input,
+.filter-field select {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.filters-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: #714B67;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-primary:hover {
+    background: #5d3d54;
+}
+
+.btn-secondary {
+    background: #fff;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-secondary:hover {
+    background: #f9fafb;
+}
+
+.btn-sm {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+}
+
+/* =====================================
+   TABLA
+   ===================================== */
+.table-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table thead {
+    background: #f9fafb;
+}
+
+.data-table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #111827;
+}
+
+.data-table tbody tr:hover {
+    background: #f8f4f7;
+}
+
+.row-clickable {
+    cursor: pointer;
+}
+
+/* =====================================
+   BADGES
+   ===================================== */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-pending {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+/* =====================================
+   UTILIDADES
+   ===================================== */
+.text-right { text-align: right; }
+.text-success { color: #059669 !important; }
+.text-danger { color: #dc2626 !important; }
+
+.col-actions {
+    width: 80px;
+    text-align: center;
+}
+
+.row-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+tr:hover .row-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    color: #6b7280;
+    transition: all 0.15s;
+    text-decoration: none;
+}
+
+.action-btn:hover {
+    background: #f3f4f6;
+    color: var(--color-primary, #714B67);
+}
+
+.action-btn .material-icons {
+    font-size: 18px;
+}
+
+.action-success:hover {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.action-danger:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* Vencimiento */
+.vencimiento-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.vencimiento-cell.vencida {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.vencimiento-cell.proxima {
+    color: #d97706;
+    font-weight: 500;
+}
+
+.venc-icon {
+    font-size: 16px;
+}
+
+.text-muted {
+    color: #9ca3af;
+}
+
+.empty-row {
+    text-align: center;
+    padding: 40px 20px !important;
+    color: #9ca3af;
+}
+
+.empty-row .material-icons {
+    font-size: 40px;
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 8px;
+}
+
+/* =====================================
+   RESPONSIVE
+   ===================================== */
+@media (max-width: 768px) {
+    .page-header-flex {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .header-actions {
+        justify-content: flex-start;
+    }
+    
+    .summary-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .summary-item {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .btn-filter {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .table-card {
+        overflow-x: auto;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggle-filters');
+    const filtersPanel = document.getElementById('filters-panel');
+    
+    if (toggleBtn && filtersPanel) {
+        // Mostrar filtros si hay alguno activo
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasFilters = urlParams.has('q') || urlParams.has('estado') || urlParams.has('proveedor') || 
+                          urlParams.has('fecha_desde') || urlParams.has('fecha_hasta');
+        
+        if (hasFilters) {
+            filtersPanel.classList.add('active');
+        }
+
+        toggleBtn.addEventListener('click', function() {
+            filtersPanel.classList.toggle('active');
+        });
+    }
+
+    // Filas clickeables
+    document.querySelectorAll('.row-clickable').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('.row-actions')) return;
+            const href = this.dataset.href;
+            if (href) window.location.href = href;
+        });
+    });
+});
+</script>
+
+{% endblock %}
