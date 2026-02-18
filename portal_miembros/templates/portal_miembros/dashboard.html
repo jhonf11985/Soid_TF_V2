@@ -1,0 +1,537 @@
+{% extends 'core/base_sidebar.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+/* =============================================
+   PORTAL DE MIEMBROS - ESTILOS
+   ============================================= */
+
+/* Variables */
+:root {
+  --portal-primary: #4f46e5;
+  --portal-primary-light: #6366f1;
+  --portal-primary-dark: #4338ca;
+  --portal-success: #10b981;
+  --portal-success-light: #d1fae5;
+  --portal-info: #3b82f6;
+  --portal-info-light: #dbeafe;
+  --portal-warning: #f59e0b;
+  --portal-gray-50: #f9fafb;
+  --portal-gray-100: #f3f4f6;
+  --portal-gray-200: #e5e7eb;
+  --portal-gray-300: #d1d5db;
+  --portal-gray-400: #9ca3af;
+  --portal-gray-500: #6b7280;
+  --portal-gray-600: #4b5563;
+  --portal-gray-700: #374151;
+  --portal-gray-800: #1f2937;
+  --portal-gray-900: #111827;
+  --portal-radius: 12px;
+  --portal-radius-sm: 8px;
+  --portal-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  --portal-shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+  --portal-shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+}
+
+/* Contenedor principal */
+.portal-wrap {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--portal-gray-100) 0%, var(--portal-gray-50) 100%);
+}
+
+.portal-content {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* =============================================
+   ENCABEZADO / HEADER
+   ============================================= */
+
+.portal-header {
+  margin-bottom: 24px;
+}
+
+/* Saludo */
+.portal-greeting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--portal-gray-600);
+}
+
+.greeting-icon {
+  font-size: 20px;
+}
+
+.greeting-text {
+  font-weight: 500;
+}
+
+/* Card principal */
+.portal-header-card {
+  background: #fff;
+  border-radius: var(--portal-radius);
+  box-shadow: var(--portal-shadow-md);
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decoración sutil */
+.portal-header-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--portal-primary) 0%, var(--portal-primary-light) 100%);
+}
+
+.portal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+}
+
+/* Avatar */
+.portal-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.portal-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid #fff;
+  box-shadow: var(--portal-shadow-md);
+  background: var(--portal-gray-100);
+}
+
+.portal-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portal-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--portal-primary) 0%, var(--portal-primary-light) 100%);
+  color: #fff;
+  font-size: 32px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Indicador de estado online */
+.portal-status-indicator {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  background: var(--portal-success);
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Botón cambiar foto */
+.portal-avatar-edit {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  background: var(--portal-gray-700);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.portal-avatar-wrapper:hover .portal-avatar-edit {
+  opacity: 1;
+}
+
+.portal-avatar-wrapper:hover .portal-status-indicator {
+  opacity: 0;
+}
+
+.portal-avatar-edit:hover {
+  background: var(--portal-primary);
+  transform: scale(1.1);
+}
+
+/* Info del miembro */
+.portal-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.portal-nombre {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--portal-gray-900);
+  margin: 0 0 10px 0;
+  line-height: 1.2;
+}
+
+/* Badges */
+.portal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-estado {
+  background: var(--portal-success-light);
+  color: #065f46;
+}
+
+/* Estados especiales */
+.badge-estado.estado-pasivo {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-estado.estado-observacion {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-estado.estado-disciplina {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-unidad {
+  background: var(--portal-info-light);
+  color: #1e40af;
+}
+
+.badge svg {
+  flex-shrink: 0;
+}
+
+/* Meta info (líder, fecha) */
+.portal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.portal-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--portal-gray-600);
+}
+
+.portal-meta-item svg {
+  color: var(--portal-gray-400);
+  flex-shrink: 0;
+}
+
+.portal-meta-item strong {
+  color: var(--portal-gray-700);
+  font-weight: 600;
+}
+
+/* Acciones */
+.portal-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btn-portal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--portal-radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--portal-primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--portal-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--portal-shadow-md);
+}
+
+.btn-secondary {
+  background: var(--portal-gray-100);
+  color: var(--portal-gray-700);
+  padding: 10px 12px;
+}
+
+.btn-secondary:hover {
+  background: var(--portal-gray-200);
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+
+@media (max-width: 768px) {
+  .portal-content {
+    padding: 16px;
+  }
+
+  .portal-header-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 20px;
+  }
+
+  .portal-header-left {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .portal-avatar {
+    width: 90px;
+    height: 90px;
+  }
+
+  .portal-avatar-fallback {
+    font-size: 28px;
+  }
+
+  .portal-nombre {
+    font-size: 20px;
+  }
+
+  .portal-badges {
+    justify-content: center;
+  }
+
+  .portal-meta {
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .portal-header-actions {
+    justify-content: center;
+    width: 100%;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--portal-gray-200);
+  }
+
+  .btn-primary {
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .portal-greeting {
+    justify-content: center;
+  }
+
+  .portal-avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .portal-avatar-fallback {
+    font-size: 24px;
+  }
+
+  .portal-nombre {
+    font-size: 18px;
+  }
+
+  .badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .portal-meta-item {
+    font-size: 12px;
+  }
+}
+</style>
+
+<div class="portal-wrap">
+  {% include "portal_miembros/partials/_nav_portal.html" %}
+
+  <div class="portal-content">
+
+    <!-- ========= ENCABEZADO DEL MIEMBRO ========= -->
+    <section class="portal-header">
+
+      <!-- Saludo -->
+      <div class="portal-greeting">
+        <span class="greeting-icon">👋</span>
+        <span class="greeting-text">¡Bienvenido de nuevo!</span>
+      </div>
+
+      <div class="portal-header-card">
+
+        <div class="portal-header-left">
+
+          <!-- FOTO -->
+          <div class="portal-avatar-wrapper">
+            <div class="portal-avatar">
+              {% if miembro.foto %}
+                <img src="{{ miembro.foto.url }}" alt="Foto de {{ miembro.nombres }}">
+              {% else %}
+                <div class="portal-avatar-fallback">
+                  {{ miembro.nombres|slice:":1" }}{{ miembro.apellidos|slice:":1" }}
+                </div>
+              {% endif %}
+            </div>
+            <!-- Indicador de estado activo -->
+            <span class="portal-status-indicator"></span>
+            <!-- Botón cambiar foto -->
+            <button class="portal-avatar-edit" title="Cambiar foto">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+            </button>
+          </div>
+
+          <!-- INFORMACIÓN -->
+          <div class="portal-header-info">
+
+            <h2 class="portal-nombre">
+              {{ miembro.nombres }} {{ miembro.apellidos }}
+            </h2>
+
+            <div class="portal-badges">
+              <span class="badge badge-estado {% if miembro.estado_miembro %}estado-{{ miembro.estado_miembro }}{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                {{ miembro.get_estado_miembro_display|default:"Activo" }}
+              </span>
+
+              {% if unidad_nombre %}
+                <span class="badge badge-unidad">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                  {{ unidad_nombre }}
+                </span>
+              {% endif %}
+            </div>
+
+            <div class="portal-meta">
+              {% if lider_nombre %}
+                <div class="portal-meta-item">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <span>Líder: <strong>{{ lider_nombre }}</strong></span>
+                </div>
+              {% endif %}
+
+              {% if miembro.fecha_ingreso_iglesia %}
+                <div class="portal-meta-item">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span>Miembro desde {{ miembro.fecha_ingreso_iglesia|date:"F Y" }}</span>
+                </div>
+              {% endif %}
+
+              {% if miembro.codigo_miembro %}
+                <div class="portal-meta-item">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  <span>{{ miembro.codigo_miembro }}</span>
+                </div>
+              {% endif %}
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="portal-header-actions">
+          <a href="{% url 'portal_miembros:perfil' %}" class="btn-portal btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            Editar Perfil
+          </a>
+          <button class="btn-portal btn-secondary" title="Mi código QR">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+    <!-- ========= FIN ENCABEZADO ========= -->
+
+  </div>
+
+</div>
+
+<script src="{% static 'portal_miembros/js/portal.js' %}"></script>
+{% endblock %}

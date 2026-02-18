@@ -62,6 +62,8 @@ INSTALLED_APPS = [
     "codigo_qr",
     "formacion_app",
     'ejecutivo_app',
+    "portal_miembros",
+
 
 
 
