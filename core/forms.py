@@ -216,6 +216,52 @@ class UsuarioIglesiaForm(UserCreationForm):
         widget=forms.HiddenInput()
     )
 
+    # =========================================
+    # 🆕 CAMPOS PARA USUARIO TEMPORAL
+    # =========================================
+    es_temporal = forms.BooleanField(
+        label="Usuario temporal / de prueba",
+        required=False,
+        initial=False,
+        widget=forms.CheckboxInput(attrs={
+            "class": "form-checkbox",
+            "id": "id_es_temporal"
+        })
+    )
+
+    dias_expiracion = forms.ChoiceField(
+        label="Expira en",
+        required=False,
+        choices=[
+            (7, "7 días"),
+            (15, "15 días"),
+            (30, "30 días"),
+            (60, "60 días"),
+        ],
+        initial=15,
+        widget=forms.Select(attrs={
+            "class": "form-input",
+            "id": "id_dias_expiracion"
+        })
+    )
+
+    motivo_temporal = forms.ChoiceField(
+        label="Motivo",
+        required=False,
+        choices=[
+            ("Prueba del sistema", "Prueba del sistema"),
+            ("Demo para cliente", "Demo para cliente"),
+            ("Evaluación", "Evaluación"),
+            ("Capacitación", "Capacitación"),
+            ("Otro", "Otro"),
+        ],
+        initial="Prueba del sistema",
+        widget=forms.Select(attrs={
+            "class": "form-input",
+            "id": "id_motivo_temporal"
+        })
+    )
+
     def clean_miembro_id(self):
         """
         Limpia el campo miembro_id:
@@ -227,7 +273,7 @@ class UsuarioIglesiaForm(UserCreationForm):
         # Si viene vacío (string vacío o None), retornar None
         if not miembro_id:
             return None
-        
+            
         # Asegurar que sea entero
         try:
             miembro_id = int(miembro_id)
@@ -288,7 +334,7 @@ class UsuarioIglesiaForm(UserCreationForm):
         )
         return (str(nombre).strip(), str(apellidos).strip())
 
-    def save(self, commit=True):
+    def save(self, commit=True, creado_por=None):
         user = super().save(commit=False)
 
         # Datos normales del form
@@ -333,6 +379,25 @@ class UsuarioIglesiaForm(UserCreationForm):
             if grupo:
                 user.groups.set([grupo])
 
+            # =========================================
+            # 🆕 CREAR USUARIO TEMPORAL SI APLICA
+            # =========================================
+            if self.cleaned_data.get("es_temporal"):
+                from .models import UsuarioTemporal
+                from django.utils import timezone
+                from datetime import timedelta
+
+                dias = int(self.cleaned_data.get("dias_expiracion", 15))
+                motivo = self.cleaned_data.get("motivo_temporal", "Prueba del sistema")
+
+                UsuarioTemporal.objects.create(
+                    user=user,
+                    creado_por=creado_por,
+                    fecha_expiracion=timezone.now() + timedelta(days=dias),
+                    motivo=motivo,
+                    password_temporal=""  # No guardamos la contraseña aquí porque el admin la puso manualmente
+                )
+
         return user
 
     class Meta:
@@ -347,6 +412,9 @@ class UsuarioIglesiaForm(UserCreationForm):
             "password2",
             "miembro_id",
             "override_nombre",
+            "es_temporal",
+            "dias_expiracion",
+            "motivo_temporal",
         ]
         widgets = {
             "username": forms.TextInput(attrs={

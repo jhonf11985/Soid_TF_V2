@@ -1,6 +1,208 @@
 from django.db import models
 from cloudinary_storage.storage import RawMediaCloudinaryStorage
+# ============================================
+# AGREGAR AL FINAL DE core/models.py
+# ============================================
 
+import secrets
+import string
+from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
+
+
+class UsuarioTemporal(models.Model):
+    """
+    Usuarios temporales para pruebas del sistema.
+    Se crean con fecha de expiración y se desactivan automáticamente.
+    """
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='perfil_temporal',
+        verbose_name="Usuario"
+    )
+    creado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='usuarios_temp_creados',
+        verbose_name="Creado por"
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_expiracion = models.DateTimeField(
+        verbose_name="Fecha de expiración"
+    )
+    motivo = models.CharField(
+        max_length=200,
+        default="Prueba del sistema",
+        verbose_name="Motivo",
+        help_text="Ej: Prueba sistema, Demo cliente, Evaluación, etc."
+    )
+    notas = models.TextField(
+        blank=True,
+        verbose_name="Notas adicionales",
+        help_text="Información adicional sobre este usuario de prueba."
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name="Activo",
+        help_text="Se desactiva automáticamente al expirar."
+    )
+    password_temporal = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Contraseña generada",
+        help_text="Se muestra solo al crear. Guardar para compartir."
+    )
+    ultimo_acceso = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Último acceso"
+    )
+    accesos_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Cantidad de accesos"
+    )
+
+    class Meta:
+        verbose_name = "Usuario Temporal"
+        verbose_name_plural = "Usuarios Temporales"
+        ordering = ['-fecha_creacion']
+
+    def __str__(self):
+        estado = "✓" if self.esta_activo else "✗"
+        return f"{estado} {self.user.username} (expira: {self.fecha_expiracion.strftime('%d/%m/%Y')})"
+
+    @property
+    def esta_expirado(self):
+        """Verifica si el usuario ha expirado por fecha."""
+        return timezone.now() > self.fecha_expiracion
+
+    @property
+    def esta_activo(self):
+        """Verifica si el usuario está activo y no ha expirado."""
+        return self.activo and not self.esta_expirado
+
+    @property
+    def dias_restantes(self):
+        """Días restantes antes de expirar."""
+        if self.esta_expirado:
+            return 0
+        delta = self.fecha_expiracion - timezone.now()
+        return max(0, delta.days)
+
+    @property
+    def tiempo_restante_display(self):
+        """Texto amigable del tiempo restante."""
+        if self.esta_expirado:
+            return "Expirado"
+        dias = self.dias_restantes
+        if dias == 0:
+            horas = int((self.fecha_expiracion - timezone.now()).seconds / 3600)
+            return f"{horas} horas"
+        elif dias == 1:
+            return "1 día"
+        else:
+            return f"{dias} días"
+
+    def registrar_acceso(self):
+        """Registra un acceso del usuario temporal."""
+        self.ultimo_acceso = timezone.now()
+        self.accesos_count += 1
+        self.save(update_fields=['ultimo_acceso', 'accesos_count'])
+
+    def desactivar(self):
+        """Desactiva el usuario temporal y el usuario Django."""
+        self.activo = False
+        self.save(update_fields=['activo'])
+        self.user.is_active = False
+        self.user.save(update_fields=['is_active'])
+
+    def reactivar(self, dias_adicionales=None):
+        """Reactiva el usuario y opcionalmente extiende la fecha."""
+        if dias_adicionales:
+            self.fecha_expiracion = timezone.now() + timedelta(days=dias_adicionales)
+        self.activo = True
+        self.save(update_fields=['activo', 'fecha_expiracion'])
+        self.user.is_active = True
+        self.user.save(update_fields=['is_active'])
+
+    def extender(self, dias):
+        """Extiende la fecha de expiración."""
+        self.fecha_expiracion += timedelta(days=dias)
+        self.save(update_fields=['fecha_expiracion'])
+
+    @staticmethod
+    def generar_password(length=10):
+        """Genera una contraseña segura pero legible."""
+        chars = string.ascii_letters + string.digits
+        # Evitar caracteres confusos: 0, O, l, 1, I
+        chars = chars.replace('0', '').replace('O', '').replace('l', '').replace('1', '').replace('I', '')
+        return ''.join(secrets.choice(chars) for _ in range(length))
+
+    @staticmethod
+    def generar_username(base="demo"):
+        """Genera un username único."""
+        timestamp = timezone.now().strftime('%m%d%H%M')
+        random_suffix = ''.join(secrets.choice(string.digits) for _ in range(3))
+        return f"{base}_{timestamp}{random_suffix}"
+
+    @classmethod
+    def crear_usuario(cls, dias=15, motivo="Prueba del sistema", creado_por=None, 
+                      nombre="", email="", username_base="demo"):
+        """
+        Crea un usuario temporal completo.
+        Retorna (usuario_temporal, password) para mostrar las credenciales.
+        """
+        # Generar credenciales
+        username = cls.generar_username(username_base)
+        password = cls.generar_password()
+        
+        # Crear usuario Django
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            first_name=nombre or "Usuario",
+            last_name="Demo",
+            email=email,
+            is_active=True
+        )
+        
+        # Crear perfil temporal
+        usuario_temp = cls.objects.create(
+            user=user,
+            creado_por=creado_por,
+            fecha_expiracion=timezone.now() + timedelta(days=dias),
+            motivo=motivo,
+            password_temporal=password  # Guardamos para referencia
+        )
+        
+        return usuario_temp, password
+
+    @classmethod
+    def limpiar_expirados(cls, eliminar=False):
+        """
+        Desactiva o elimina usuarios expirados.
+        Retorna cantidad de usuarios procesados.
+        """
+        expirados = cls.objects.filter(
+            fecha_expiracion__lt=timezone.now(),
+            activo=True
+        )
+        count = expirados.count()
+        
+        if eliminar:
+            # Eliminar usuarios Django asociados
+            for ut in expirados:
+                ut.user.delete()  # Esto elimina también el UsuarioTemporal por CASCADE
+        else:
+            # Solo desactivar
+            for ut in expirados:
+                ut.desactivar()
+        
+        return count
 class Module(models.Model):
     """
     Representa un módulo del sistema (Miembros, Finanzas, etc.),

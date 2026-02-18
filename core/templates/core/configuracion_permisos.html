@@ -5,28 +5,34 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
-  * {
-    box-sizing: border-box;
-  }
-
-  body {
-    overflow-x: hidden;
-  }
+  * { box-sizing: border-box; }
+  body { overflow-x: hidden; }
 
   .perm-wrap {
     max-width: 100%;
     width: 100%;
     margin: 0 auto;
-    padding: 24px;
+    padding: 20px;
     font-family: 'Poppins', sans-serif;
-    padding-bottom: 100px; /* Espacio para botones flotantes en móvil */
+    padding-bottom: 100px;
     box-sizing: border-box;
-    overflow-x: hidden;
+    overflow: hidden;
   }
 
-  /* Header */
+  /* Asegurar que las cards no causen overflow */
+  .card {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .card-body {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* ===== HEADER CON FLUJO ===== */
   .perm-header {
-    margin-bottom: 24px;
+    margin-bottom: 28px;
   }
   .perm-header h1 {
     margin: 0;
@@ -48,31 +54,128 @@
     line-height: 1.5;
   }
 
-  /* Grid principal */
-  .perm-grid {
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    gap: 24px;
-    width: 100%;
-    box-sizing: border-box;
+  /* ===== INDICADOR DE FLUJO (STEPPER) ===== */
+  .flow-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 32px;
+    padding: 20px;
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    border-radius: 16px;
+    border: 1px solid #e0e0e0;
   }
 
-  /* Cards */
+  .flow-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    cursor: default;
+  }
+
+  .flow-step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    color: #757575;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.3s ease;
+  }
+
+  .flow-step-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .flow-step-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #424242;
+  }
+
+  .flow-step-desc {
+    font-size: 11px;
+    color: #9e9e9e;
+  }
+
+  .flow-step.active {
+    background: #e0f7fa;
+  }
+
+  .flow-step.active .flow-step-number {
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0,151,167,0.3);
+  }
+
+  .flow-step.active .flow-step-title {
+    color: #00838f;
+  }
+
+  .flow-step.completed .flow-step-number {
+    background: #4caf50;
+    color: #fff;
+  }
+
+  .flow-step.completed .flow-step-number::after {
+    content: '✓';
+    font-size: 14px;
+  }
+
+  .flow-step.completed .flow-step-number span {
+    display: none;
+  }
+
+  .flow-connector {
+    width: 60px;
+    height: 3px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    margin: 0 8px;
+  }
+
+  .flow-connector.active {
+    background: linear-gradient(90deg, #4caf50 0%, #0097a7 100%);
+  }
+
+  /* ===== GRID PRINCIPAL ===== */
+  .perm-grid {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 20px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  /* ===== CARDS ===== */
   .card {
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
     overflow: hidden;
     min-width: 0;
+    border: 1px solid #e8e8e8;
   }
+
   .card-header {
-    padding: 16px 20px;
+    padding: 18px 22px;
     border-bottom: 1px solid #e0e0e0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     background: linear-gradient(to bottom, #fafafa, #fff);
   }
+
   .card-header h3 {
     margin: 0;
     font-size: 15px;
@@ -82,151 +185,292 @@
     align-items: center;
     gap: 10px;
   }
+
   .card-header h3 .material-icons {
     color: #0097a7;
-    font-size: 20px;
-  }
-  .card-body {
-    padding: 16px 20px;
+    font-size: 22px;
   }
 
-  /* Badge / Pill */
+  .card-body {
+    padding: 18px 22px;
+  }
+
+  /* ===== STEP INDICATOR EN CARD ===== */
+  .step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    margin-right: 10px;
+    box-shadow: 0 2px 8px rgba(0,151,167,0.3);
+  }
+
+  /* ===== BADGES ===== */
   .badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     font-size: 12px;
     font-weight: 600;
-    padding: 4px 12px;
+    padding: 5px 14px;
     border-radius: 20px;
     background: #e0f7fa;
     color: #00838f;
   }
+
+  .badge-success {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  .badge-warning {
+    background: #fff3e0;
+    color: #e65100;
+  }
+
   .badge-neutral {
     background: #f5f5f5;
     color: #616161;
   }
 
-  /* Lista de roles */
+  /* ===== LISTA DE ROLES ===== */
   .role-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
+
   .role-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
+    gap: 14px;
+    padding: 14px 16px;
     border: 2px solid transparent;
-    border-radius: 10px;
+    border-radius: 12px;
     text-decoration: none;
     color: #424242;
     background: #fafafa;
-    transition: all 0.2s ease;
+    transition: all 0.25s ease;
     font-weight: 500;
     font-size: 14px;
+    position: relative;
   }
+
   .role-item .material-icons {
-    color: #9e9e9e;
-    font-size: 20px;
-    transition: color 0.2s ease;
+    color: #bdbdbd;
+    font-size: 22px;
+    transition: all 0.25s ease;
   }
+
   .role-item:hover {
     background: #e0f7fa;
     border-color: #b2ebf2;
+    transform: translateX(4px);
   }
+
   .role-item:hover .material-icons {
     color: #0097a7;
   }
+
   .role-item.active {
-    background: #fff;
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
     border-color: #0097a7;
-    color: #00838f;
-    box-shadow: 0 2px 8px rgba(0,151,167,0.15);
+    color: #00695c;
+    box-shadow: 0 4px 12px rgba(0,151,167,0.15);
   }
+
   .role-item.active .material-icons {
     color: #0097a7;
   }
 
-  .hint-text {
-    margin: 14px 0 0;
-    padding: 10px 12px;
-    background: #f5f5f5;
+  .role-item.active::after {
+    content: '';
+    position: absolute;
+    right: 16px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #0097a7;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+  }
+
+  .role-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .role-item-name {
+    font-weight: 600;
+  }
+
+  .role-item-meta {
+    font-size: 11px;
+    color: #9e9e9e;
+  }
+
+  /* ===== RESUMEN DEL ROL SELECCIONADO ===== */
+  .role-summary {
+    margin-top: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-radius: 12px;
+    border: 1px solid #a5d6a7;
+  }
+
+  .role-summary-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #2e7d32;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .role-summary-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .role-stat {
+    text-align: center;
+    padding: 10px;
+    background: rgba(255,255,255,0.7);
     border-radius: 8px;
+  }
+
+  .role-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2e7d32;
+  }
+
+  .role-stat-label {
+    font-size: 10px;
+    color: #558b2f;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ===== HINT TEXT ===== */
+  .hint-text {
+    margin: 16px 0 0;
+    padding: 12px 14px;
+    background: #f5f5f5;
+    border-radius: 10px;
     font-size: 12px;
     color: #757575;
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-  }
-  .hint-text .material-icons {
-    font-size: 16px;
-    color: #9e9e9e;
+    gap: 10px;
+    line-height: 1.5;
   }
 
-  /* Split layout */
+  .hint-text .material-icons {
+    font-size: 18px;
+    color: #9e9e9e;
+    flex-shrink: 0;
+  }
+
+  /* ===== SPLIT LAYOUT (PERMISOS + USUARIOS) ===== */
   .split-layout {
     display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 24px;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
     width: 100%;
     box-sizing: border-box;
+    overflow: hidden;
   }
 
-  /* Módulos de permisos */
+  /* Panel de usuarios fijo a la derecha */
+  .users-panel {
+    position: sticky;
+    top: 24px;
+    min-width: 0;
+    max-width: 320px;
+  }
+
+  /* ===== MÓDULOS DE PERMISOS ===== */
   .perm-module {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     border: 1px solid #e0e0e0;
-    border-radius: 12px;
+    border-radius: 14px;
     overflow: hidden;
     background: #fff;
+    transition: all 0.3s ease;
   }
+
+  .perm-module:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+
   .perm-module:last-child {
     margin-bottom: 0;
   }
+
   .perm-module-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 14px 18px;
     background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
     color: #fff;
     cursor: pointer;
     user-select: none;
     transition: all 0.2s ease;
   }
+
   .perm-module-header:hover {
     background: linear-gradient(135deg, #00838f 0%, #006064 100%);
   }
+
   .perm-module-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     flex: 1;
     min-width: 0;
   }
+
   .perm-module-icon {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     background: rgba(255,255,255,0.2);
-    border-radius: 8px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
   }
+
   .perm-module-icon .material-icons {
-    font-size: 20px;
+    font-size: 22px;
   }
+
   .perm-module-text {
     min-width: 0;
     flex: 1;
   }
+
   .perm-module-name {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 15px;
   }
+
   .perm-module-code {
     font-size: 12px;
     opacity: 0.85;
@@ -235,29 +479,40 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
   .perm-module-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     flex-shrink: 0;
   }
+
   .perm-module-count {
     background: rgba(255,255,255,0.2);
-    padding: 4px 12px;
+    padding: 5px 14px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
   }
+
   .perm-module-selected {
-    background: rgba(255,255,255,0.3);
-    padding: 4px 10px;
+    background: rgba(76, 175, 80, 0.9);
+    padding: 5px 12px;
     border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
+
+  .perm-module-selected .material-icons {
+    font-size: 14px;
+  }
+
   .perm-module-toggle {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     background: rgba(255,255,255,0.2);
     border-radius: 50%;
     display: flex;
@@ -265,50 +520,66 @@
     justify-content: center;
     transition: transform 0.3s ease;
   }
+
   .perm-module-toggle .material-icons {
-    font-size: 20px;
+    font-size: 22px;
   }
+
   .perm-module.collapsed .perm-module-toggle {
     transform: rotate(-90deg);
   }
+
   .perm-module-content {
     max-height: 2000px;
     overflow: hidden;
     transition: max-height 0.3s ease-out;
   }
+
   .perm-module.collapsed .perm-module-content {
     max-height: 0;
   }
 
-  /* Controles de módulos */
+  /* ===== CONTROLES DE MÓDULOS ===== */
   .module-controls {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 14px;
-    padding: 10px 14px;
-    background: #f5f5f5;
-    border-radius: 10px;
+    margin-bottom: 16px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #f5f5f5 0%, #eeeeee 100%);
+    border-radius: 12px;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
+    border: 1px solid #e0e0e0;
   }
+
   .module-controls-label {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
-    color: #616161;
+    color: #424242;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
+
+  .module-controls-label .material-icons {
+    color: #0097a7;
+    font-size: 20px;
+  }
+
   .module-controls-btns {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
   }
+
   .btn-mini {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 6px 12px;
+    gap: 6px;
+    padding: 8px 14px;
     border: 1px solid #e0e0e0;
-    border-radius: 6px;
+    border-radius: 8px;
     background: #fff;
     font-size: 12px;
     font-weight: 500;
@@ -317,100 +588,142 @@
     transition: all 0.2s ease;
     white-space: nowrap;
   }
+
   .btn-mini .material-icons {
     font-size: 16px;
   }
+
   .btn-mini:hover {
     background: #f5f5f5;
     border-color: #bdbdbd;
   }
+
   .btn-mini.btn-select-all {
-    background: #0097a7;
+    background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
     color: #fff;
-    border-color: #0097a7;
-  }
-  .btn-mini.btn-select-all:hover {
-    background: #00838f;
-    border-color: #00838f;
-  }
-  .btn-mini.btn-deselect-all {
-    background: #f5f5f5;
-    color: #616161;
-    border-color: #e0e0e0;
-  }
-  .btn-mini.btn-deselect-all:hover {
-    background: #eeeeee;
-    border-color: #bdbdbd;
+    border-color: #4caf50;
   }
 
-  /* Controles internos del módulo */
+  .btn-mini.btn-select-all:hover {
+    background: linear-gradient(135deg, #43a047 0%, #388e3c 100%);
+  }
+
+  .btn-mini.btn-deselect-all {
+    background: #fff;
+    color: #757575;
+    border-color: #e0e0e0;
+  }
+
+  .btn-mini.btn-deselect-all:hover {
+    background: #ffebee;
+    border-color: #ef9a9a;
+    color: #c62828;
+  }
+
+  /* ===== CONTROLES INTERNOS DEL MÓDULO ===== */
   .module-inner-controls {
-    padding: 12px 16px;
-    background: #f9f9f9;
+    padding: 12px 18px;
+    background: linear-gradient(to bottom, #fafafa, #fff);
     border-bottom: 1px solid #e0e0e0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
-  }
-  .module-inner-controls .btn-mini {
-    font-size: 11px;
-    padding: 4px 10px;
-  }
-  .module-inner-controls .btn-mini .material-icons {
-    font-size: 14px;
+    gap: 10px;
   }
 
-  /* Tabla de permisos */
+  .module-inner-label {
+    font-size: 12px;
+    color: #757575;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .module-inner-label .material-icons {
+    font-size: 16px;
+    color: #9e9e9e;
+  }
+
+  /* ===== TABLA DE PERMISOS ===== */
   .perm-table {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
   }
+
   .perm-table thead tr {
     background: #fafafa;
     border-bottom: 2px solid #e0e0e0;
   }
+
   .perm-table th {
-    padding: 10px 16px;
+    padding: 12px 18px;
     text-align: left;
-    font-size: 12px;
-    font-weight: 600;
-    color: #616161;
+    font-size: 11px;
+    font-weight: 700;
+    color: #757575;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
   }
-  .perm-table th:nth-child(1) {
-    width: 70px;
-  }
-  .perm-table th:nth-child(3) {
-    width: 180px;
-  }
+
+  .perm-table th:nth-child(1) { width: 70px; }
+  .perm-table th:nth-child(3) { width: 200px; }
+
   .perm-table td {
-    padding: 12px 16px;
+    padding: 14px 18px;
     border-bottom: 1px solid #f5f5f5;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
   .perm-table tr:hover {
     background: #fafafa;
   }
+
+  .perm-table tr:last-child td {
+    border-bottom: none;
+  }
+
   .perm-name {
     font-size: 13px;
     color: #212121;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
+
+  .perm-action-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .perm-action-icon .material-icons {
+    font-size: 14px;
+  }
+
+  .perm-action-icon.view { background: #e3f2fd; color: #1976d2; }
+  .perm-action-icon.add { background: #e8f5e9; color: #388e3c; }
+  .perm-action-icon.change { background: #fff3e0; color: #f57c00; }
+  .perm-action-icon.delete { background: #ffebee; color: #d32f2f; }
+
   .perm-codename {
     font-size: 11px;
     color: #757575;
     background: #f5f5f5;
-    padding: 2px 8px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
     font-family: 'Courier New', monospace;
   }
 
-  /* Checkbox custom */
+  /* ===== CHECKBOX CUSTOM ===== */
   .checkbox-custom {
     display: inline-flex;
     align-items: center;
@@ -418,171 +731,191 @@
     cursor: pointer;
     position: relative;
   }
+
   .checkbox-custom input[type="checkbox"] {
     position: absolute;
     opacity: 0;
     cursor: pointer;
   }
+
   .checkmark {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     background: #fff;
     border: 2px solid #bdbdbd;
-    border-radius: 4px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
   }
+
   .checkmark::after {
     content: '';
     width: 6px;
     height: 10px;
     border: solid #fff;
-    border-width: 0 2px 2px 0;
+    border-width: 0 2.5px 2.5px 0;
     transform: rotate(45deg) scale(0);
     transition: transform 0.2s ease;
   }
+
   .checkbox-custom input:checked ~ .checkmark {
-    background: #0097a7;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
     border-color: #0097a7;
+    box-shadow: 0 2px 8px rgba(0,151,167,0.3);
   }
+
   .checkbox-custom input:checked ~ .checkmark::after {
     transform: rotate(45deg) scale(1);
   }
+
   .checkbox-custom:hover .checkmark {
     border-color: #0097a7;
   }
 
-  /* Cards de permisos para móvil */
+  /* ===== CARDS DE PERMISOS PARA MÓVIL ===== */
   .perm-cards {
-    display: none; /* Oculto por defecto, se muestra en móvil */
+    display: none;
   }
+
   .perm-card-item {
-    padding: 14px 16px;
+    padding: 16px 18px;
     border-bottom: 1px solid #f5f5f5;
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 14px;
     transition: background 0.2s ease;
   }
+
   .perm-card-item:hover {
     background: #fafafa;
   }
+
   .perm-card-item:last-child {
     border-bottom: none;
   }
+
   .perm-card-check {
     padding-top: 2px;
   }
-  .perm-card-check .checkbox-custom .checkmark {
-    width: 24px;
-    height: 24px;
-  }
+
   .perm-card-info {
     flex: 1;
     min-width: 0;
   }
+
   .perm-card-name {
     font-size: 14px;
     color: #212121;
     font-weight: 500;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     line-height: 1.4;
   }
+
   .perm-card-code {
     font-size: 11px;
     color: #757575;
     background: #f5f5f5;
-    padding: 3px 8px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
     display: inline-block;
     font-family: 'Courier New', monospace;
   }
 
-  /* Estado vacío */
+  /* ===== ESTADO VACÍO ===== */
   .empty-perms {
-    padding: 40px 20px;
+    padding: 48px 24px;
     text-align: center;
     color: #9e9e9e;
   }
+
   .empty-perms .material-icons {
-    font-size: 48px;
+    font-size: 56px;
     color: #e0e0e0;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
+
   .empty-perms div {
     font-size: 14px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
+
   .empty-perms small {
     font-size: 12px;
     color: #bdbdbd;
   }
 
-  /* Panel de usuarios */
-  .users-panel {
-    position: sticky;
-    top: 24px;
-    min-width: 0;
-  }
+  /* ===== PANEL DE USUARIOS (estilos adicionales) ===== */
   .users-search {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
+
   .users-search input {
     width: 100%;
-    padding: 10px 14px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    padding: 12px 16px;
+    padding-left: 44px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
     font-size: 13px;
     font-family: 'Poppins', sans-serif;
     transition: all 0.2s ease;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%239e9e9e' viewBox='0 0 24 24'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 14px center;
+    background-size: 20px;
   }
+
   .users-search input:focus {
     outline: none;
     border-color: #0097a7;
-    box-shadow: 0 0 0 3px rgba(0,151,167,0.1);
+    box-shadow: 0 0 0 4px rgba(0,151,167,0.1);
   }
+
   .users-list {
-    max-height: 400px;
+    max-height: 420px;
     overflow-y: auto;
-    margin: 0 -20px;
-    padding: 0 20px;
+    margin: 0 -22px;
+    padding: 0 22px;
   }
-  .users-list::-webkit-scrollbar {
-    width: 6px;
-  }
-  .users-list::-webkit-scrollbar-track {
-    background: #f5f5f5;
-  }
-  .users-list::-webkit-scrollbar-thumb {
-    background: #bdbdbd;
-    border-radius: 3px;
-  }
+
+  .users-list::-webkit-scrollbar { width: 6px; }
+  .users-list::-webkit-scrollbar-track { background: #f5f5f5; border-radius: 3px; }
+  .users-list::-webkit-scrollbar-thumb { background: #bdbdbd; border-radius: 3px; }
+
   .user-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border-radius: 8px;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background 0.2s ease;
-    margin-bottom: 6px;
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
     position: relative;
+    border: 2px solid transparent;
   }
+
   .user-item:hover {
     background: #f5f5f5;
   }
+
+  .user-item:has(input:checked) {
+    background: #e0f7fa;
+    border-color: #b2ebf2;
+  }
+
   .user-item input[type="checkbox"] {
     position: absolute;
     opacity: 0;
     cursor: pointer;
   }
+
   .user-check {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     border: 2px solid #bdbdbd;
-    border-radius: 4px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -590,25 +923,31 @@
     transition: all 0.2s ease;
     flex-shrink: 0;
   }
+
   .user-check .material-icons {
     font-size: 16px;
     color: #fff;
     opacity: 0;
     transition: opacity 0.2s ease;
   }
+
   .user-item input:checked ~ .user-check {
-    background: #0097a7;
+    background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
     border-color: #0097a7;
+    box-shadow: 0 2px 8px rgba(0,151,167,0.3);
   }
+
   .user-item input:checked ~ .user-check .material-icons {
     opacity: 1;
   }
+
   .user-item:hover .user-check {
     border-color: #0097a7;
   }
+
   .user-avatar {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: linear-gradient(135deg, #0097a7, #00bcd4);
     color: #fff;
@@ -616,22 +955,25 @@
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 15px;
     flex-shrink: 0;
   }
+
   .user-info {
     flex: 1;
     min-width: 0;
   }
+
   .user-name {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: #212121;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
   .user-meta {
     font-size: 11px;
     color: #757575;
@@ -640,38 +982,43 @@
     gap: 6px;
     flex-wrap: wrap;
   }
+
   .user-badge {
     display: inline-block;
-    padding: 2px 6px;
-    border-radius: 3px;
+    padding: 2px 8px;
+    border-radius: 4px;
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
   }
+
   .user-badge.superuser {
     background: #ffebee;
     color: #c62828;
   }
+
   .user-badge.staff {
     background: #e3f2fd;
     color: #1565c0;
   }
 
-  /* Botones de acción */
+  /* ===== BOTONES DE ACCIÓN ===== */
   .btn-actions {
-    padding: 16px 20px;
+    padding: 18px 22px;
     border-top: 1px solid #e0e0e0;
     display: flex;
     gap: 12px;
     flex-direction: column;
+    background: #fafafa;
   }
+
   .btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 12px 20px;
-    border-radius: 8px;
+    gap: 10px;
+    padding: 14px 24px;
+    border-radius: 10px;
     font-size: 14px;
     font-weight: 600;
     font-family: 'Poppins', sans-serif;
@@ -680,31 +1027,36 @@
     border: none;
     text-decoration: none;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
+
   .btn .material-icons {
-    font-size: 18px;
+    font-size: 20px;
   }
+
   .btn-primary {
     background: linear-gradient(135deg, #0097a7 0%, #00838f 100%);
     color: #fff;
+    box-shadow: 0 4px 12px rgba(0,151,167,0.25);
   }
+
   .btn-primary:hover {
     background: linear-gradient(135deg, #00838f 0%, #006064 100%);
-    box-shadow: 0 4px 12px rgba(0,151,167,0.3);
+    box-shadow: 0 6px 20px rgba(0,151,167,0.35);
+    transform: translateY(-1px);
   }
+
   .btn-secondary {
     background: #fff;
     color: #616161;
-    border: 1px solid #e0e0e0;
+    border: 2px solid #e0e0e0;
   }
+
   .btn-secondary:hover {
     background: #f5f5f5;
     border-color: #bdbdbd;
   }
 
-  /* Botones flotantes para móvil */
+  /* ===== BOTONES FLOTANTES MÓVIL ===== */
   .mobile-actions {
     display: none;
     position: fixed;
@@ -713,162 +1065,68 @@
     right: 0;
     background: #fff;
     border-top: 2px solid #e0e0e0;
-    padding: 12px 16px;
-    box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+    padding: 14px 18px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
     z-index: 1000;
   }
-  .mobile-actions .btn {
-    width: 100%;
-    padding: 14px 20px;
-  }
+
   .mobile-actions-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 12px;
   }
 
-  /* Responsive */
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 1400px) {
+    .perm-grid { grid-template-columns: 260px minmax(0, 1fr); gap: 16px; }
+    .split-layout { grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; }
+    .users-panel { max-width: 280px; }
+  }
+
   @media (max-width: 1280px) {
-    .perm-wrap {
-      padding: 20px;
-      padding-bottom: 100px;
-    }
-    .perm-grid {
-      grid-template-columns: 260px 1fr;
-      gap: 20px;
-    }
-    .split-layout {
-      grid-template-columns: 1fr 300px;
-      gap: 20px;
-    }
+    .perm-wrap { padding: 16px; }
+    .perm-grid { grid-template-columns: 240px minmax(0, 1fr); gap: 14px; }
+    .split-layout { grid-template-columns: minmax(0, 1fr) 260px; gap: 14px; }
+    .users-panel { max-width: 260px; }
+    .flow-stepper { padding: 14px; }
+    .flow-step { padding: 10px 14px; }
+    .flow-connector { width: 40px; }
+  }
+
+  @media (max-width: 1100px) {
+    .perm-grid { grid-template-columns: 220px minmax(0, 1fr); }
+    .split-layout { grid-template-columns: minmax(0, 1fr) 240px; }
+    .users-panel { max-width: 240px; }
   }
 
   @media (max-width: 1024px) {
-    .perm-grid {
-      grid-template-columns: 1fr;
-    }
-    .split-layout {
-      grid-template-columns: 1fr;
-    }
-    .users-panel {
-      position: static;
-      margin-top: 24px;
-    }
+    .perm-grid { grid-template-columns: 1fr; }
+    .split-layout { grid-template-columns: 1fr; }
+    .users-panel { position: static; margin-top: 24px; max-width: 100%; }
+    .flow-stepper { flex-wrap: wrap; gap: 8px; padding: 16px; }
+    .flow-connector { display: none; }
+    .flow-step { flex: 1; min-width: 140px; justify-content: center; }
   }
 
   @media (max-width: 768px) {
-    .perm-wrap {
-      padding: 16px;
-      padding-bottom: 80px;
-    }
-    
-    .perm-header h1 {
-      font-size: 20px;
-    }
-    .perm-header h1 .material-icons {
-      font-size: 24px;
-    }
-    .perm-header p {
-      font-size: 13px;
-    }
-
-    /* Ocultar tabla, mostrar cards en móvil */
-    .perm-table {
-      display: none;
-    }
-    .perm-cards {
-      display: block;
-    }
-
-    /* Ajustes del header de módulo */
-    .perm-module-header {
-      padding: 14px;
-    }
-    .perm-module-info {
-      gap: 10px;
-    }
-    .perm-module-icon {
-      width: 32px;
-      height: 32px;
-    }
-    .perm-module-icon .material-icons {
-      font-size: 18px;
-    }
-    .perm-module-name {
-      font-size: 13px;
-    }
-    .perm-module-code {
-      font-size: 11px;
-    }
-    .perm-module-count {
-      display: none; /* Ocultar en móvil para ahorrar espacio */
-    }
-
-    /* Controles de módulo en móvil */
-    .module-controls {
-      padding: 10px;
-    }
-    .module-controls-label {
-      width: 100%;
-      margin-bottom: 6px;
-    }
-    .module-controls-btns {
-      width: 100%;
-      justify-content: stretch;
-    }
-    .btn-mini {
-      flex: 1;
-      justify-content: center;
-      padding: 8px 10px;
-      font-size: 11px;
-    }
-
-    /* Controles internos del módulo */
-    .module-inner-controls {
-      padding: 10px 14px;
-    }
-
-    /* Card de usuario más compacto */
-    .user-item {
-      padding: 8px 10px;
-    }
-    .user-avatar {
-      width: 32px;
-      height: 32px;
-      font-size: 13px;
-    }
-
-    /* Mostrar botones flotantes */
-    .mobile-actions {
-      display: block;
-    }
-    .btn-actions {
-      display: none;
-    }
-
-    /* Panel de roles más compacto */
-    .role-item {
-      padding: 10px 12px;
-      font-size: 13px;
-    }
+    .perm-wrap { padding: 12px; padding-bottom: 90px; }
+    .perm-header h1 { font-size: 20px; }
+    .perm-table { display: none; }
+    .perm-cards { display: block; }
+    .mobile-actions { display: block; }
+    .btn-actions { display: none; }
+    .flow-step { padding: 10px 14px; min-width: auto; flex: none; }
+    .flow-step-desc { display: none; }
+    .perm-module-count { display: none; }
   }
 
   @media (max-width: 480px) {
-    .perm-wrap {
-      padding: 12px;
-    }
-
-    .card-body {
-      padding: 12px 14px;
-    }
-
-    .perm-module-code {
-      display: none; /* Ocultar código en pantallas muy pequeñas */
-    }
-
-    .mobile-actions-grid {
-      grid-template-columns: 1fr;
-    }
+    .perm-wrap { padding: 12px; }
+    .card-body { padding: 14px 16px; }
+    .perm-module-code { display: none; }
+    .mobile-actions-grid { grid-template-columns: 1fr; }
+    .flow-stepper { padding: 12px; }
+    .flow-step-number { width: 28px; height: 28px; font-size: 12px; }
   }
 </style>
 
@@ -879,21 +1137,54 @@
   <div class="perm-header">
     <h1>
       <span class="material-icons">admin_panel_settings</span>
-      Permisos del sistema
+      Permisos del Sistema
     </h1>
     <p>
-      Define qué puede hacer cada rol y qué usuarios pertenecen a ese rol.
-      Esta pantalla usa los permisos nativos de Django con la interfaz de Torre Fuerte.
+      Configura qué puede hacer cada rol y asigna usuarios. Los cambios se aplican inmediatamente al guardar.
     </p>
   </div>
 
+  <!-- Indicador de Flujo -->
+  <div class="flow-stepper">
+    <div class="flow-step {% if role %}completed{% else %}active{% endif %}">
+      <div class="flow-step-number">
+        {% if role %}<span></span>{% else %}<span>1</span>{% endif %}
+      </div>
+      <div class="flow-step-text">
+        <div class="flow-step-title">Seleccionar Rol</div>
+        <div class="flow-step-desc">Elige el grupo a configurar</div>
+      </div>
+    </div>
+
+    <div class="flow-connector {% if role %}active{% endif %}"></div>
+
+    <div class="flow-step {% if role %}active{% endif %}">
+      <div class="flow-step-number"><span>2</span></div>
+      <div class="flow-step-text">
+        <div class="flow-step-title">Configurar Permisos</div>
+        <div class="flow-step-desc">Define qué puede hacer</div>
+      </div>
+    </div>
+
+    <div class="flow-connector"></div>
+
+    <div class="flow-step">
+      <div class="flow-step-number"><span>3</span></div>
+      <div class="flow-step-text">
+        <div class="flow-step-title">Asignar Usuarios</div>
+        <div class="flow-step-desc">Quién tendrá este rol</div>
+      </div>
+    </div>
+  </div>
+
   <div class="perm-grid">
-    <!-- Panel de Roles -->
+    <!-- Panel de Roles (Paso 1) -->
     <div class="card">
       <div class="card-header">
         <h3>
+          <span class="step-badge">1</span>
           <span class="material-icons">groups</span>
-          Roles
+          Roles Disponibles
         </h3>
         <span class="badge">{{ roles|length }}</span>
       </div>
@@ -902,32 +1193,61 @@
           {% for r in roles %}
             <a class="role-item {% if role.id == r.id %}active{% endif %}"
                href="{% url 'core:configuracion_permisos' %}?role={{ r.id }}">
-              <span class="material-icons">{% if role.id == r.id %}radio_button_checked{% else %}radio_button_unchecked{% endif %}</span>
-              {{ r.name }}
+              <span class="material-icons">
+                {% if role.id == r.id %}check_circle{% else %}radio_button_unchecked{% endif %}
+              </span>
+              <div class="role-item-info">
+                <div class="role-item-name">{{ r.name }}</div>
+                <div class="role-item-meta">{{ r.user_set.count }} usuario{{ r.user_set.count|pluralize:"s" }}</div>
+              </div>
             </a>
           {% endfor %}
         </div>
+
+        {% if role %}
+        <div class="role-summary">
+          <div class="role-summary-title">
+            <span class="material-icons" style="font-size:16px;">insights</span>
+            Resumen: {{ role.name }}
+          </div>
+          <div class="role-summary-stats">
+            <div class="role-stat">
+              <div class="role-stat-value">{{ role_perm_ids|length }}</div>
+              <div class="role-stat-label">Permisos</div>
+            </div>
+            <div class="role-stat">
+              <div class="role-stat-value">{{ role_user_ids|length }}</div>
+              <div class="role-stat-label">Usuarios</div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
         <div class="hint-text">
           <span class="material-icons">info</span>
-          <span>Los roles corresponden a <strong>Groups</strong> de Django.</span>
+          <span>Los roles corresponden a <strong>Groups</strong> de Django. Selecciona uno para configurarlo.</span>
         </div>
       </div>
     </div>
 
-    <!-- Panel de Configuración del Rol -->
+    <!-- Panel de Configuración del Rol (Pasos 2 y 3) -->
     <div class="card">
       <div class="card-header">
         <h3>
-          <span class="material-icons">edit</span>
-          Editar rol: {{ role.name }}
+          <span class="step-badge">2</span>
+          <span class="material-icons">tune</span>
+          {% if role %}Configurar: {{ role.name }}{% else %}Selecciona un rol{% endif %}
         </h3>
-        <span class="badge badge-neutral">
-          <span class="material-icons" style="font-size:14px;">save</span>
-          Cambios pendientes
+        {% if role %}
+        <span class="badge badge-warning">
+          <span class="material-icons" style="font-size:14px;">edit</span>
+          Editando
         </span>
+        {% endif %}
       </div>
 
       <div class="card-body">
+        {% if role %}
         <form method="post" id="permissionsForm">
           {% csrf_token %}
           <input type="hidden" name="role_id" value="{{ role.id }}"/>
@@ -936,15 +1256,18 @@
             <!-- Permisos por Módulo -->
             <div>
               <div class="module-controls">
-                <span class="module-controls-label">{{ mod_perms|length }} módulos</span>
+                <span class="module-controls-label">
+                  <span class="material-icons">folder_open</span>
+                  {{ mod_perms|length }} módulos disponibles
+                </span>
                 <div class="module-controls-btns">
                   <button type="button" class="btn-mini btn-select-all" onclick="selectAllPermissions()">
                     <span class="material-icons">done_all</span>
-                    Todas
+                    Marcar todo
                   </button>
                   <button type="button" class="btn-mini btn-deselect-all" onclick="deselectAllPermissions()">
                     <span class="material-icons">remove_done</span>
-                    Ninguna
+                    Desmarcar todo
                   </button>
                   <button type="button" class="btn-mini" onclick="expandAll()">
                     <span class="material-icons">unfold_more</span>
@@ -956,12 +1279,13 @@
                   </button>
                 </div>
               </div>
+
               {% for item in mod_perms %}
                 <div class="perm-module" id="module-{{ forloop.counter }}">
                   <div class="perm-module-header" onclick="toggleModule({{ forloop.counter }})">
                     <div class="perm-module-info">
                       <div class="perm-module-icon">
-                        <span class="material-icons">folder</span>
+                        <span class="material-icons">{{ item.module.icon|default:"folder" }}</span>
                       </div>
                       <div class="perm-module-text">
                         <div class="perm-module-name">{{ item.module.name }}</div>
@@ -969,9 +1293,7 @@
                       </div>
                     </div>
                     <div class="perm-module-right">
-                      <div class="perm-module-count">
-                        {{ item.perms|length }} permisos
-                      </div>
+                      <div class="perm-module-count">{{ item.perms|length }} permisos</div>
                       <div class="perm-module-toggle">
                         <span class="material-icons">expand_more</span>
                       </div>
@@ -980,19 +1302,18 @@
 
                   <div class="perm-module-content">
                   {% if item.perms %}
-                    <!-- Controles internos del módulo -->
                     <div class="module-inner-controls">
-                      <span style="font-size: 11px; color: #757575; font-weight: 500;">
-                        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">tune</span>
-                        Acciones rápidas
+                      <span class="module-inner-label">
+                        <span class="material-icons">touch_app</span>
+                        Acciones rápidas del módulo
                       </span>
-                      <div style="display: flex; gap: 6px;">
+                      <div style="display: flex; gap: 8px;">
                         <button type="button" class="btn-mini btn-select-all" onclick="selectModulePerms({{ forloop.counter }})">
-                          <span class="material-icons">done_all</span>
+                          <span class="material-icons">check_box</span>
                           Todas
                         </button>
                         <button type="button" class="btn-mini btn-deselect-all" onclick="deselectModulePerms({{ forloop.counter }})">
-                          <span class="material-icons">remove_done</span>
+                          <span class="material-icons">check_box_outline_blank</span>
                           Ninguna
                         </button>
                       </div>
@@ -1002,9 +1323,9 @@
                     <table class="perm-table">
                       <thead>
                         <tr>
-                          <th style="width:50px;">Permitir</th>
+                          <th>Activo</th>
                           <th>Permiso</th>
-                          <th>Codename</th>
+                          <th>Código</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1020,7 +1341,20 @@
                                 <span class="checkmark"></span>
                               </label>
                             </td>
-                            <td><span class="perm-name">{{ p.name }}</span></td>
+                            <td>
+                              <span class="perm-name">
+                                {% if 'view' in p.codename %}
+                                  <span class="perm-action-icon view"><span class="material-icons">visibility</span></span>
+                                {% elif 'add' in p.codename %}
+                                  <span class="perm-action-icon add"><span class="material-icons">add_circle</span></span>
+                                {% elif 'change' in p.codename %}
+                                  <span class="perm-action-icon change"><span class="material-icons">edit</span></span>
+                                {% elif 'delete' in p.codename %}
+                                  <span class="perm-action-icon delete"><span class="material-icons">delete</span></span>
+                                {% endif %}
+                                {{ p.name }}
+                              </span>
+                            </td>
                             <td><code class="perm-codename">{{ p.codename }}</code></td>
                           </tr>
                         {% endfor %}
@@ -1060,15 +1394,16 @@
               {% endfor %}
             </div>
 
-            <!-- Panel de Usuarios -->
+            <!-- Panel de Usuarios (Paso 3) -->
             <div class="users-panel">
               <div class="card" style="box-shadow: none; border: 1px solid #e0e0e0;">
                 <div class="card-header">
                   <h3>
+                    <span class="step-badge">3</span>
                     <span class="material-icons">people</span>
-                    Usuarios en este rol
+                    Usuarios
                   </h3>
-                  <span class="badge">{{ users|length }}</span>
+                  <span class="badge badge-success">{{ role_user_ids|length }} asignados</span>
                 </div>
                 <div class="card-body">
                   <div class="users-search">
@@ -1109,28 +1444,37 @@
                 <div class="btn-actions">
                   <button type="submit" class="btn btn-primary">
                     <span class="material-icons">save</span>
-                    Guardar cambios
+                    Guardar Cambios
                   </button>
                   <a class="btn btn-secondary" href="{% url 'core:configuracion' %}">
                     <span class="material-icons">arrow_back</span>
-                    Volver a Configuración
+                    Volver
                   </a>
                 </div>
               </div>
-              <div class="hint-text" style="margin-top:12px;">
+              <div class="hint-text" style="margin-top:14px;">
                 <span class="material-icons">sync</span>
-                <span>Los cambios sincronizan usuarios y permisos del rol seleccionado.</span>
+                <span>Al guardar se actualizarán los permisos y usuarios del rol <strong>{{ role.name }}</strong>.</span>
               </div>
             </div>
 
           </div>
         </form>
+        {% else %}
+        <!-- Estado vacío cuando no hay rol seleccionado -->
+        <div class="empty-perms" style="padding: 60px 24px;">
+          <span class="material-icons">touch_app</span>
+          <div style="font-size: 16px; color: #424242;">Selecciona un rol para comenzar</div>
+          <small>Elige un rol de la lista izquierda para configurar sus permisos y usuarios</small>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
 </div>
 
 <!-- Botones flotantes para móvil -->
+{% if role %}
 <div class="mobile-actions">
   <div class="mobile-actions-grid">
     <button type="button" class="btn btn-primary" onclick="document.getElementById('permissionsForm').submit()">
@@ -1143,6 +1487,7 @@
     </a>
   </div>
 </div>
+{% endif %}
 
 <script>
 // Toggle de módulos
@@ -1153,98 +1498,89 @@ function toggleModule(id) {
 
 // Expandir/Colapsar todos
 function expandAll() {
-  document.querySelectorAll('.perm-module').forEach(m => {
-    m.classList.remove('collapsed');
-  });
+  document.querySelectorAll('.perm-module').forEach(m => m.classList.remove('collapsed'));
+  showFeedback('Todos los módulos expandidos');
 }
 
 function collapseAll() {
-  document.querySelectorAll('.perm-module').forEach(m => {
-    m.classList.add('collapsed');
-  });
+  document.querySelectorAll('.perm-module').forEach(m => m.classList.add('collapsed'));
+  showFeedback('Todos los módulos colapsados');
 }
 
-// Seleccionar TODOS los permisos (global)
+// Seleccionar TODOS los permisos
 function selectAllPermissions() {
-  document.querySelectorAll('.perm-checkbox').forEach(checkbox => {
-    checkbox.checked = true;
-  });
-  showFeedback('Todos los permisos seleccionados');
+  document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = true);
+  showFeedback('✓ Todos los permisos seleccionados');
 }
 
-// Deseleccionar TODOS los permisos (global)
+// Deseleccionar TODOS los permisos
 function deselectAllPermissions() {
-  document.querySelectorAll('.perm-checkbox').forEach(checkbox => {
-    checkbox.checked = false;
-  });
-  showFeedback('Todos los permisos deseleccionados');
+  document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
+  showFeedback('✗ Todos los permisos deseleccionados');
 }
 
-// Seleccionar permisos de un módulo específico
+// Seleccionar permisos de un módulo
 function selectModulePerms(moduleId) {
-  document.querySelectorAll('.module-' + moduleId + '-perm').forEach(checkbox => {
-    checkbox.checked = true;
-  });
-  showFeedback('Permisos del módulo seleccionados');
+  document.querySelectorAll('.module-' + moduleId + '-perm').forEach(cb => cb.checked = true);
+  showFeedback('✓ Permisos del módulo seleccionados');
 }
 
-// Deseleccionar permisos de un módulo específico
+// Deseleccionar permisos de un módulo
 function deselectModulePerms(moduleId) {
-  document.querySelectorAll('.module-' + moduleId + '-perm').forEach(checkbox => {
-    checkbox.checked = false;
-  });
-  showFeedback('Permisos del módulo deseleccionados');
+  document.querySelectorAll('.module-' + moduleId + '-perm').forEach(cb => cb.checked = false);
+  showFeedback('✗ Permisos del módulo deseleccionados');
 }
 
 // Filtrar usuarios
 function filterUsers() {
-  const input = document.getElementById('searchUsers');
-  const filter = input.value.toLowerCase();
-  const items = document.querySelectorAll('.user-item');
-  
-  items.forEach(item => {
+  const filter = document.getElementById('searchUsers').value.toLowerCase();
+  document.querySelectorAll('.user-item').forEach(item => {
     const name = item.querySelector('.user-name').textContent.toLowerCase();
     const meta = item.querySelector('.user-meta').textContent.toLowerCase();
-    if (name.includes(filter) || meta.includes(filter)) {
-      item.style.display = 'flex';
-    } else {
-      item.style.display = 'none';
-    }
+    item.style.display = (name.includes(filter) || meta.includes(filter)) ? 'flex' : 'none';
   });
 }
 
-// Feedback visual (opcional)
+// Feedback visual (toast)
 function showFeedback(message) {
-  // Crear un pequeño toast de feedback
+  const existing = document.querySelector('.feedback-toast');
+  if (existing) existing.remove();
+
   const toast = document.createElement('div');
+  toast.className = 'feedback-toast';
   toast.textContent = message;
   toast.style.cssText = `
     position: fixed;
     bottom: 100px;
     left: 50%;
-    transform: translateX(-50%);
-    background: #212121;
+    transform: translateX(-50%) translateY(20px);
+    background: linear-gradient(135deg, #212121 0%, #424242 100%);
     color: #fff;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 13px;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 14px;
     font-weight: 500;
     z-index: 10000;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
   `;
   document.body.appendChild(toast);
   
-  setTimeout(() => toast.style.opacity = '1', 10);
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+  });
+
   setTimeout(() => {
     toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(20px)';
     setTimeout(() => toast.remove(), 300);
   }, 2000);
 }
 
-// Evitar scroll cuando hay muchos módulos expandidos en móvil
+// En móvil, colapsar todos al cargar
 if (window.innerWidth <= 768) {
-  // Colapsar todos al cargar en móvil
   collapseAll();
 }
 </script>

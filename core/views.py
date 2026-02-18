@@ -733,20 +733,19 @@ def probar_envio_correo(request):
 
     return redirect("core:configuracion_contacto")
 
+# ============================================
+# REEMPLAZAR LA FUNCIÓN crear_usuario EN views.py
+# ============================================
 
-# =================================================
-# CREAR USUARIO DESDE EL SISTEMA (SOLO ADMIN)
-# =================================================
-from django.views.decorators.csrf import ensure_csrf_cookie
 @login_required
-@permission_required('auth.add_user', raise_exception=True)
-@ensure_csrf_cookie
+@permission_required("auth.add_user", raise_exception=True)
 def crear_usuario(request):
     if request.method == "POST":
         form = UsuarioIglesiaForm(request.POST)
         if form.is_valid():
             with transaction.atomic():
-                user = form.save()
+                # 🆕 Pasamos creado_por para el usuario temporal
+                user = form.save(creado_por=request.user)
 
                 miembro_id = form.cleaned_data.get("miembro_id")
                 
@@ -777,14 +776,23 @@ def crear_usuario(request):
                         messages.warning(request, f"No se encontró el miembro con ID {miembro_id}.")
 
             nombre_mostrar = user.get_full_name() or user.username
-            messages.success(request, f"Usuario «{nombre_mostrar}» creado correctamente.")
+            
+            # 🆕 Mensaje diferente si es temporal
+            if form.cleaned_data.get("es_temporal"):
+                dias = form.cleaned_data.get("dias_expiracion", 15)
+                messages.success(
+                    request, 
+                    f"Usuario temporal «{nombre_mostrar}» creado correctamente. Expira en {dias} días."
+                )
+            else:
+                messages.success(request, f"Usuario «{nombre_mostrar}» creado correctamente.")
+            
             return redirect("core:listado")
 
     else:
         form = UsuarioIglesiaForm()
 
     return render(request, "core/usuarios/crear_usuario.html", {"form": form})
-
 
 
 

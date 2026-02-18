@@ -183,13 +183,64 @@
     <h3 class="odoo-section-title">Seguridad</h3>
     <div class="odoo-field">
       <div class="odoo-help">
-        La contraseña no se edita aquí. Para cambiarla, usa la opción “Cambiar contraseña” del usuario (o crea un flujo admin específico).
+        La contraseña no se edita aquí. Para cambiarla, usa la opción "Cambiar contraseña" del usuario (o crea un flujo admin específico).
       </div>
     </div>
   </div>
 {% endif %}
 
       </div>
+
+      <!-- =========================================
+           🆕 SECCIÓN USUARIO TEMPORAL
+           ========================================= -->
+      {% if not modo_edicion %}
+      <div class="odoo-form-body" style="margin-top: 0; padding-top: 0;">
+        <div class="odoo-form-column" style="grid-column: 1 / -1;">
+          <h3 class="odoo-section-title">
+            <span class="material-icons" style="font-size: 20px; vertical-align: -4px; margin-right: 6px;">schedule</span>
+            Acceso Temporal
+          </h3>
+
+          <div class="odoo-field">
+            <label class="odoo-checkbox-label">
+              {{ form.es_temporal }}
+              <span class="checkbox-text">
+                <strong>Usuario temporal / de prueba</strong>
+                <small class="odoo-help" style="display: block; margin-top: 2px;">
+                  El acceso se desactivará automáticamente cuando expire.
+                </small>
+              </span>
+            </label>
+          </div>
+
+          <!-- Campos que aparecen solo si es temporal -->
+          <div id="campos-temporal" class="campos-temporal" style="display: none;">
+            <div class="odoo-field-row">
+              <div class="odoo-field" style="flex: 1;">
+                <label class="odoo-label">Expira en</label>
+                {{ form.dias_expiracion }}
+              </div>
+              <div class="odoo-field" style="flex: 1;">
+                <label class="odoo-label">Motivo</label>
+                {{ form.motivo_temporal }}
+              </div>
+            </div>
+            
+            <div class="temporal-info-box">
+              <span class="material-icons">info</span>
+              <div>
+                <strong>Usuario de prueba</strong>
+                <p>Este usuario podrá acceder al sistema con todas las funciones hasta que expire. Después se desactivará automáticamente.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {% endif %}
+      <!-- FIN SECCIÓN TEMPORAL -->
+
     </div>
 
     <div class="odoo-form-aside">
@@ -264,883 +315,588 @@
 
   .odoo-alert-success{
     border-color: #86efac;
-    background: #dcfce7;
-    color: #14532d;
+    background: #f0fdf4;
   }
+  .odoo-alert-success .material-icons{ color: #16a34a; }
 
-  .odoo-alert-error,
-  .odoo-alert-danger{
+  .odoo-alert-error, .odoo-alert-danger{
     border-color: #fca5a5;
-    background: #fee2e2;
-    color: #991b1b;
+    background: #fef2f2;
   }
+  .odoo-alert-error .material-icons,
+  .odoo-alert-danger .material-icons{ color: #dc2626; }
 
   .odoo-alert-info{
     border-color: #93c5fd;
-    background: #dbeafe;
-    color: #1e3a8a;
+    background: #eff6ff;
+  }
+  .odoo-alert-info .material-icons{ color: #2563eb; }
+
+  .odoo-alert-warning{
+    border-color: #fcd34d;
+    background: #fffbeb;
+  }
+  .odoo-alert-warning .material-icons{ color: #d97706; }
+
+  /* ===== 🆕 ESTILOS SECCIÓN TEMPORAL ===== */
+  .odoo-checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    padding: 12px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fafafa;
+    transition: all 0.2s;
   }
 
-  /* ===== Microcopy ===== */
-  .odoo-help{
-    display:block;
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--color-text-muted);
-    line-height: 1.25;
+  .odoo-checkbox-label:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
   }
 
-  /* ===== Errores ===== */
-  .odoo-form-errors{
-    border: 1px solid #fca5a5;
-    background: #fee2e2;
-    color: #991b1b;
-    padding: 10px 12px;
-    border-radius: 12px;
+  .odoo-checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    accent-color: var(--odoo-primary);
+    cursor: pointer;
+  }
+
+  .odoo-checkbox-label .checkbox-text {
+    flex: 1;
+  }
+
+  .odoo-checkbox-label .checkbox-text strong {
+    color: #111827;
+    font-size: 14px;
+  }
+
+  .campos-temporal {
+    margin-top: 16px;
+    padding: 16px;
+    background: #fefce8;
+    border: 1px solid #fde047;
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .odoo-field-row {
+    display: flex;
+    gap: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .odoo-field-row {
+      flex-direction: column;
+      gap: 12px;
+    }
+  }
+
+  .temporal-info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px;
+    background: #fef9c3;
+    border-radius: 6px;
+  }
+
+  .temporal-info-box .material-icons {
+    color: #ca8a04;
+    font-size: 20px;
+    margin-top: 2px;
+  }
+
+  .temporal-info-box strong {
+    color: #854d0e;
     font-size: 13px;
-    margin: 12px 20px 0;
   }
 
-  .odoo-field-error {
-    color: #dc3545;
+  .temporal-info-box p {
+    margin: 4px 0 0;
     font-size: 12px;
-    margin-top: 4px;
+    color: #713f12;
+    line-height: 1.4;
   }
 
-  /* ===== Avatar ===== */
-  .odoo-avatar{
-    width: 90px;
-    height: 90px;
-    background: #f0f0f0;
+  /* Cuando está marcado el checkbox */
+  .odoo-checkbox-label:has(input:checked) {
+    background: #fef9c3;
+    border-color: #facc15;
+  }
+
+  /* ===== Resto de estilos existentes ===== */
+  .odoo-control-bar{
     display: flex;
     align-items: center;
-    justify-content: center;
-    border: 1px solid #ddd;
-    flex: 0 0 auto;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 50;
   }
 
-  .odoo-avatar-icon{
-    font-size: 50px;
-    color: var(--color-text-muted);
+  .odoo-control-left{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
-  .odoo-avatar-img{
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 0;
-    display:block;
-  }
-
-  /* ===== Inputs estilo línea ===== */
-  .odoo-form input:not([type="checkbox"]),
-  .odoo-form select{
-    width: 100%;
-    padding: 8px 0;
-    border: none;
-    border-bottom: 1px solid var(--color-border-subtle);
-    border-radius: 0;
-    background: transparent;
+  .odoo-breadcrumb-link{
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--odoo-primary);
+    text-decoration: none;
+    font-weight: 500;
     font-size: 14px;
-    color: var(--color-text-main);
-    outline: none;
-    transition: border-color .15s ease, box-shadow .15s ease;
-    min-width: 0;              /* clave: evita overflow en flex/grid */
-    max-width: 100%;
-    box-sizing: border-box;
+  }
+  .odoo-breadcrumb-link:hover{ text-decoration: underline; }
+
+  .odoo-breadcrumb-sep{ color: #9ca3af; }
+
+  .odoo-breadcrumb-current{
+    font-weight: 600;
+    color: #111827;
   }
 
-  .odoo-form select{ padding: 10px 0; }
-
-  .odoo-form input:not([type="checkbox"]):focus,
-  .odoo-form select:focus{
-    border-bottom-color: var(--color-primary);
-    box-shadow: 0 1px 0 0 var(--color-primary);
+  .odoo-new-badge{
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 6px;
   }
 
-  /* ===== Contenedores principales ===== */
+  /* Container principal */
   .odoo-form-container{
     display: flex;
-    background: #fff;
-    min-height: calc(100vh - 120px);
-    margin: 0 20px;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    overflow: hidden; /* evita que el header se “salga” */
+    gap: 24px;
+    padding: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
   }
 
   .odoo-form-main{
     flex: 1;
-    padding: 40px;
-    border-right: 1px solid #eee;
-    min-width: 0; /* clave */
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
   }
 
-  .odoo-form-aside{
-    width: 300px;
-    padding: 20px;
-    background: #f8f9fa;
-  }
-
-  /* ===== Header ===== */
+  /* Header con avatar */
   .odoo-form-header{
     display: flex;
     gap: 20px;
-    margin-bottom: 30px;
-    align-items: flex-start;
-    min-width: 0;
+    padding: 24px;
+    border-bottom: 1px solid #f3f4f6;
   }
 
-  .odoo-avatar-section{ flex: 0 0 auto; }
+  .odoo-avatar-section{ flex-shrink: 0; }
 
-  .odoo-header-info{
-    flex: 1;
-    min-width: 0; /* clave */
-    max-width: 100%;
-  }
-
-  .odoo-name-field{
-    display: flex;
-    gap: 10px;
-    margin-bottom: 8px;
-    min-width: 0;
-    flex-wrap: wrap; /* en desktop estrecho, que no rompa */
-  }
-
-  .odoo-name-field input{
-    font-size: 24px;
-    font-weight: 600;
-    border: none !important;
-    border-bottom: 2px solid var(--color-border-subtle) !important;
-    border-radius: 0 !important;
-    padding: 4px 0 !important;
-    color: var(--color-text-main);
-    min-width: 0;
-    flex: 1 1 220px; /* se adapta sin salirse */
-  }
-
-  .odoo-name-field input:focus{
-    border-bottom-color: var(--odoo-primary) !important;
-    box-shadow: none !important;
-  }
-
-  /* ===== Botón inline "Editar manualmente" ===== */
-  .odoo-btn-inline-edit{
-    margin-left: 10px;
-    gap: 6px;
-    align-items: center;
-    border: 1px solid var(--color-border-subtle);
-    background: #fff;
-    color: var(--color-text-main);
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    display: inline-flex;
-    line-height: 1;
-    white-space: nowrap;
-    flex: 0 0 auto;
-  }
-  .odoo-btn-inline-edit:hover{ background: #f9fafb; }
-  .odoo-name-field input.is-locked{ opacity: .85; cursor: not-allowed; }
-
-  /* ===== Email "quick field" (desktop) ===== */
-  .odoo-quick-fields{
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-top: 6px;
-    min-width: 0;
-  }
-
-  .odoo-quick-field{
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 10px;
-    background: #ffffff;
-    min-width: 260px;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  .odoo-quick-field .material-icons{
-    font-size: 18px;
-    color: var(--color-text-muted);
-    flex: 0 0 auto;
-  }
-
-  .odoo-quick-field input{ min-width: 0; }
-
-  /* ===== Vincular miembro (ESTILO LÍNEA, no caja) ===== */
-  .odoo-member-link{
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 10px 0 6px;
-
-    padding: 6px 0;
-    border: none;
-    border-bottom: 1px solid var(--color-border-subtle);
-    background: transparent;
-
-    width: 100%;
-    max-width: 520px;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  .odoo-member-link:focus-within{
-    border-bottom-color: var(--color-primary);
-    box-shadow: 0 1px 0 0 var(--color-primary);
-  }
-
-  .odoo-member-link > .material-icons{
-    font-size: 18px;
-    color: var(--color-text-muted);
-    flex-shrink: 0;
-  }
-
-  .odoo-member-link .autocomplete-wrapper{
-    flex: 1;
-    min-width: 0;
-  }
-
-  /* ===== Body ===== */
-  .odoo-form-body{
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-  }
-
-  .odoo-field{ margin-bottom: 15px; }
-
-  .odoo-label{
-    font-weight: 600;
-    font-size: 13px;
-    color: #666;
-    display: block;
-    margin-bottom: 5px;
-  }
-
-  .odoo-section-title{
-    font-size: 15px;
-    color: var(--color-text-main);
-    border-bottom: 1px solid var(--color-border-subtle);
-    padding-bottom: 8px;
-    margin-bottom: 20px;
-    font-weight: 600;
-  }
-
-  /* ===== Botones ===== */
-  .odoo-btn{
+  .odoo-avatar{
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    width: 100%;
-    padding: 10px;
-    border-radius: 4px;
+  }
+
+  .odoo-avatar-icon{
+    font-size: 36px;
+    color: var(--odoo-primary);
+  }
+
+  .odoo-header-info{ flex: 1; }
+
+  .odoo-name-field{
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .odoo-name-field input{
+    flex: 1;
+    font-size: 18px;
     font-weight: 600;
-    cursor: pointer;
-    margin-bottom: 10px;
-    text-decoration: none;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: #f9fafb;
+  }
+  .odoo-name-field input:focus{
+    outline: none;
+    border-color: var(--odoo-primary);
+    background: #fff;
+  }
+
+  /* Link a miembro */
+  .odoo-member-link{
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .odoo-member-link > .material-icons{
+    color: #9ca3af;
+    margin-top: 8px;
+  }
+
+  .odoo-quick-fields{
+    margin-top: 8px;
+  }
+  .odoo-quick-field{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .odoo-quick-field .material-icons{
+    color: #9ca3af;
+    font-size: 20px;
+  }
+  .odoo-quick-field input{
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid transparent;
+    border-radius: 4px;
     font-size: 14px;
-    transition: background .15s ease, box-shadow .15s ease, transform .05s ease;
+  }
+  .odoo-quick-field input:focus{
+    outline: none;
+    border-color: var(--odoo-primary);
+    background: #fff;
+  }
+
+  /* Body del form */
+  .odoo-form-body{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    padding: 24px;
+  }
+
+  .odoo-form-column{}
+
+  .odoo-section-title{
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--odoo-primary);
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f3e8ff;
+  }
+
+  .odoo-field{
+    margin-bottom: 16px;
+  }
+
+  .odoo-label{
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+
+  .odoo-field input,
+  .odoo-field select{
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .odoo-field input:focus,
+  .odoo-field select:focus{
+    outline: none;
+    border-color: var(--odoo-primary);
+    box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
+  }
+
+  .odoo-help{
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+
+  .odoo-field-error{
+    font-size: 12px;
+    color: #dc2626;
+    margin-top: 4px;
+  }
+
+  /* Aside */
+  .odoo-form-aside{
+    width: 200px;
+    flex-shrink: 0;
+  }
+
+  .odoo-aside-actions{
+    position: sticky;
+    top: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .odoo-btn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
   }
 
   .odoo-btn-primary{
-    background: var(--color-primary);
-    color: #ffffff;
-    border: none;
-    box-shadow: 0 4px 10px rgba(0, 151, 167, 0.35);
+    background: var(--odoo-primary);
+    color: #fff;
   }
-
   .odoo-btn-primary:hover{
-    background: #028996;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 14px rgba(0, 151, 167, 0.4);
+    background: var(--odoo-primary-hover);
   }
 
   .odoo-btn-secondary{
-    background: #f9fafb;
-    color: var(--color-text-main);
-    border: 1px solid var(--color-border-subtle);
+    background: var(--odoo-secondary-bg);
+    color: var(--odoo-secondary-text);
+    border: 1px solid var(--odoo-secondary-border);
+  }
+  .odoo-btn-secondary:hover{
+    background: var(--odoo-secondary-hover);
   }
 
-  .odoo-btn-secondary:hover{ background: #f3f4f6; }
+  /* Mobile actions */
+  .odoo-mobile-actions{
+    display: none;
+  }
 
-  /* =====================================
-     AUTOCOMPLETE - CHIP/TAG
-     ===================================== */
-  .autocomplete-wrapper{ position: relative; }
+  @media (max-width: 768px){
+    .odoo-form-aside{ display: none; }
+
+    .odoo-mobile-actions{
+      display: flex;
+      gap: 12px;
+      padding: 16px 20px;
+      background: #fff;
+      border-top: 1px solid #e5e7eb;
+      position: sticky;
+      bottom: 0;
+      z-index: 50;
+    }
+
+    .odoo-mobile-save{ flex: 2; }
+    .odoo-mobile-cancel{ flex: 1; }
+
+    .odoo-form-header{
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .odoo-name-field{
+      flex-direction: column;
+    }
+
+    .odoo-form-container{
+      padding: 12px;
+    }
+  }
+
+  /* Autocomplete styles */
+  .autocomplete-wrapper{
+    flex: 1;
+    position: relative;
+  }
 
   .autocomplete-field{
-    display: flex;
-    align-items: center;
-    min-height: 32px;
-    flex-wrap: wrap;
-    gap: 6px;
+    position: relative;
   }
 
   .autocomplete-search{
-    flex: 1;
-    min-width: 120px;
-    border: none !important;
-    border-bottom: 1px solid transparent !important;
-    background: transparent;
-    padding: 4px 0 !important;
-    font-size: 13px;
-    color: var(--color-text-main);
-    font-family: inherit;
-    transition: border-color 0.15s;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
   }
-
-  .autocomplete-search:hover{ border-bottom-color: var(--color-border-subtle) !important; }
-
   .autocomplete-search:focus{
     outline: none;
-    border-bottom-color: var(--color-primary) !important;
-    border-bottom-width: 2px !important;
-    padding-bottom: 3px !important;
-    box-shadow: none !important;
+    border-color: var(--odoo-primary);
   }
-
-  .autocomplete-search::placeholder{ color: #adb5bd; }
-
-  .autocomplete-field.has-selection .autocomplete-search{ display: none; }
 
   .autocomplete-chip{
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 2px 6px 2px 2px;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #f3e8ff;
+    border-radius: 20px;
     font-size: 13px;
-    color: var(--color-text-main);
-    animation: chipIn 0.15s ease;
-    max-width: 100%;
-  }
-
-  @keyframes chipIn{
-    from{ opacity: 0; transform: scale(0.95); }
-    to{ opacity: 1; transform: scale(1); }
   }
 
   .chip-avatar{
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
-    background: var(--color-primary);
-    color: white;
-    font-size: 9px;
-    font-weight: 600;
+    background: var(--odoo-primary);
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    text-transform: uppercase;
-  }
-
-  .chip-text{ display: flex; align-items: center; gap: 6px; line-height: 1; min-width:0; }
-
-  .chip-name{
-    font-weight: 500;
-    color: var(--color-text-main);
-    font-size: 13px;
-    max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .chip-code{
     font-size: 11px;
-    color: var(--color-text-muted);
-    font-weight: 400;
-    white-space: nowrap;
+    font-weight: 600;
   }
+
+  .chip-text{
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .chip-name{ font-weight: 500; }
+  .chip-code{ font-size: 11px; color: #6b7280; }
 
   .chip-remove{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
+    background: none;
     border: none;
-    background: transparent;
-    color: #9ca3af;
+    padding: 2px;
     cursor: pointer;
-    transition: all 0.15s;
-    padding: 0;
-    margin-left: 2px;
-    flex: 0 0 auto;
+    color: #9ca3af;
+    display: flex;
   }
-
-  .chip-remove:hover{
-    background: #e5e7eb;
-    color: var(--color-text-main);
-  }
-
-  .chip-remove .material-icons{ font-size: 14px; }
+  .chip-remove:hover{ color: #dc2626; }
+  .chip-remove .material-icons{ font-size: 16px; }
 
   .autocomplete-dropdown{
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
-    margin-top: 4px;
-    background: #ffffff;
-    border: 1px solid #e0e0e0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.15);
-    z-index: 1000;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     max-height: 280px;
     overflow-y: auto;
+    z-index: 100;
     display: none;
   }
 
-  .autocomplete-dropdown.open{ display: block; }
+  .autocomplete-list{
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+  }
 
-  .autocomplete-list{ list-style: none; margin: 0; padding: 4px 0; }
-
-  .autocomplete-item{
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
+  .autocomplete-list li{
+    padding: 10px 12px;
     cursor: pointer;
-    transition: background 0.15s;
-  }
-
-  .autocomplete-item:hover{ background: rgba(0, 151, 167, 0.08); }
-
-  .autocomplete-item-avatar{
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--color-primary) 0%, #017e84 100%);
-    color: white;
+    border-radius: 6px;
     font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-transform: uppercase;
-    flex-shrink: 0;
   }
-
-  .autocomplete-item-info{ flex: 1; min-width: 0; }
-
-  .autocomplete-item-name{
-    font-weight: 500;
-    color: #111827;
-    font-size: 13px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .autocomplete-item-meta{
-    font-size: 11px;
-    color: #6b7280;
-    display: flex;
-    gap: 8px;
-    margin-top: 2px;
-  }
-
-  .autocomplete-item-code{
+  .autocomplete-list li:hover{
     background: #f3f4f6;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    color: #6b7280;
-    font-weight: 500;
   }
 
   .autocomplete-empty,
   .autocomplete-loading{
-    padding: 24px 14px;
+    padding: 20px;
     text-align: center;
-    color: #9ca3af;
-    display: none;
+    color: #6b7280;
   }
-
   .autocomplete-empty .material-icons,
   .autocomplete-loading .material-icons{
     font-size: 32px;
-    opacity: 0.4;
+    margin-bottom: 8px;
     display: block;
-    margin: 0 auto 8px;
   }
 
-  .autocomplete-empty p,
-  .autocomplete-loading p{
-    margin: 0;
-    font-size: 12px;
-  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { animation: spin 1s linear infinite; }
 
-  @keyframes spin{ to { transform: rotate(360deg); } }
-  .spinner{ animation: spin 1s linear infinite; }
-
-  /* ===== Acciones móvil tipo app ===== */
-  .odoo-mobile-actions{ display: none; }
-
-  /* =====================================================
-     MÓVIL: header estable + acciones sticky + sin overflow
-     ===================================================== */
-  @media (max-width: 768px){
-
-    /* contenedor */
-    .odoo-form-container{
-      margin: 0 12px;
-      flex-direction: column;
-      border-radius: 12px;
-    }
-
-    .odoo-form-main{
-      border-right: none;
-      border-bottom: 1px solid var(--color-border-subtle);
-      padding: 18px;
-    }
-
-    .odoo-form-body{
-      grid-template-columns: 1fr;
-      gap: 18px;
-    }
-
-    /* ocultar aside y usar acciones abajo */
-    .odoo-form-aside{ display: none; }
-
-    .odoo-mobile-actions{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-
-      position: sticky;
-      bottom: 0;
-      left: 0;
-      right: 0;
-
-      padding: 10px 12px;
-      margin: 0 12px 12px;
-      background: rgba(255,255,255,0.92);
-      border: 1px solid var(--color-border-subtle);
-      border-radius: 14px;
-      backdrop-filter: blur(8px);
-      z-index: 50;
-    }
-
-    .odoo-mobile-actions .odoo-btn{
-      margin: 0;
-      width: 100%;
-    }
-
-    /* targets táctiles */
-    .odoo-form input:not([type="checkbox"]),
-    .odoo-form select{
-      min-height: 44px;
-    }
-
-    /* header: apilar avatar + info */
-    .odoo-form-header{
-      flex-direction: column;
-      align-items: stretch;
-      gap: 12px;
-    }
-
-    .odoo-avatar{
-      width: 64px;
-      height: 64px;
-    }
-
-    .odoo-avatar-icon{ font-size: 34px; }
-
-    /* nombre en columna (no se sale) */
-    .odoo-name-field{
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .odoo-name-field input{
-      width: 100%;
-      font-size: 18px;
-      flex: initial;
-    }
-
-    /* el botón inline baja debajo para no romper */
-    .odoo-btn-inline-edit{
-      margin-left: 0;
-      margin-top: 6px;
-      width: fit-content;
-    }
-
-    /* email: que no sea caja en móvil */
-    .odoo-quick-fields{ width: 100%; }
-    .odoo-quick-field{
-      width: 100%;
-      min-width: 0;
-      padding: 0;
-      border: none;
-      background: transparent;
-      border-radius: 0;
-    }
-
-    /* Vincular miembro: 100% ancho y sin min-width */
-    .odoo-member-link{
-      max-width: 100%;
-      width: 100%;
-      min-width: 0;
-    }
-
-    /* por si algún texto/placeholder largo */
-    .odoo-header-info *{ max-width: 100%; }
-  }
-</style>
-
-
-
-<script src="{% static 'core/js/autocomplete-miembro.js' %}"></script>
-
-<script>
-(function(){
-  const wrap = document.querySelector(".autocomplete-wrapper[data-autocomplete-id='id_miembro_id']");
-  if(!wrap) return;
-
-  const hiddenMiembro = document.getElementById("id_miembro_id");
-  const first = document.getElementById("id_first_name");
-  const last  = document.getElementById("id_last_name");
-  const emailInput = document.getElementById("id_email");
-  const override = document.getElementById("id_override_nombre");
-  const avatarContainer = document.querySelector(".odoo-avatar");
-
-  if(!hiddenMiembro || !first || !last || !override) return;
-
-  const avatarOriginalHTML = avatarContainer ? avatarContainer.innerHTML : '';
-
-  const nameField = document.querySelector(".odoo-name-field");
-  if(!nameField) return;
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "odoo-btn-inline-edit";
-  btn.textContent = "Editar manualmente";
-  btn.style.display = "none";
-  nameField.appendChild(btn);
-
-  function lockFields(){
-    first.readOnly = true;
-    last.readOnly = true;
-    first.classList.add("is-locked");
-    last.classList.add("is-locked");
-    btn.style.display = "inline-flex";
-  }
-
-  function unlockFields(){
-    first.readOnly = false;
-    last.readOnly = false;
-    first.classList.remove("is-locked");
-    last.classList.remove("is-locked");
-  }
-
-  function setFromChipBestEffort(){
-    const chipName = wrap.querySelector(".chip-name");
-    const full = (chipName ? chipName.textContent : "").trim();
-    if(!full) return;
-    const parts = full.split(/\s+/).filter(Boolean);
-    if(parts.length === 1){
-      first.value = parts[0];
-      last.value = "";
-      return;
-    }
-    first.value = parts[0];
-    last.value = parts.slice(1).join(" ");
-  }
-
-
-  async function cargarDatosMiembro(miembroId) {
-    if (!miembroId) return;
-
-    const wrap = document.querySelector(".autocomplete-wrapper[data-autocomplete-id='id_miembro_id']");
-    const chip = wrap ? wrap.querySelector(".autocomplete-chip") : null;
-    const chipName = wrap ? wrap.querySelector(".chip-name") : null;
-    const chipCode = wrap ? wrap.querySelector(".chip-code") : null;
-    const search = wrap ? wrap.querySelector(".autocomplete-search") : null;
-    const field = wrap ? wrap.querySelector(".autocomplete-field") : null;
-
-    try {
-      const response = await fetch('/api/miembro-detalle/' + miembroId + '/', {
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      });
-      if (!response.ok) return;
-
-      const data = await response.json();
-      if (!data.success) return;
-
-      // Avatar
-      if (data.foto_url && avatarContainer) {
-        avatarContainer.innerHTML = '<img src="' + data.foto_url + '" alt="Foto" class="odoo-avatar-img">';
-      }
-
-      // Autofill (solo si no hay override manual)
-      if (data.email && emailInput && !emailInput.value.trim()) {
-        emailInput.value = data.email;
-      }
-      if (data.nombre) first.value = data.nombre;
-      if (data.apellido) last.value = data.apellido;
-
-      // Chip visible (best effort)
-      if (chip && chipName && chipCode && field) {
-        const fullName =
-          (data.nombre || first.value || "").toString().trim() + " " +
-          (data.apellido || last.value || "").toString().trim();
-        const nombreFinal = fullName.trim() || ("Miembro #" + miembroId);
-
-        const codigo =
-          (data.codigo || data.codigo_miembro || data.miembro_codigo || "").toString().trim() ||
-          ("ID " + miembroId);
-
-        chipName.textContent = nombreFinal;
-        chipCode.textContent = codigo;
-
-        chip.style.display = "inline-flex";
-        field.classList.add("has-selection");
-        if (search) search.style.display = "none";
-      }
-
-    } catch (err) {
-      console.warn('No se pudieron cargar datos del miembro:', err);
-    }
-  }
-
-
-
-  function restaurarAvatar() {
-    if (avatarContainer) {
-      avatarContainer.innerHTML = avatarOriginalHTML;
-    }
-  }
-
-  function onMiembroSelected(){
-    override.value = "";
-    setFromChipBestEffort();
-    lockFields();
-    const miembroId = hiddenMiembro.value;
-    if (miembroId) cargarDatosMiembro(miembroId);
-  }
-
-  function onMiembroCleared(){
-    override.value = "";
-    unlockFields();
-    btn.style.display = "none";
-    restaurarAvatar();
-    first.value = "";
-    last.value = "";
-    if (emailInput) emailInput.value = "";
-  }
-
-  btn.addEventListener("click", function(){
-    override.value = "on";
-    unlockFields();
-    first.focus();
-  });
-
-  let lastValue = hiddenMiembro.value || "";
-  setInterval(function(){
-    const v = hiddenMiembro.value || "";
-    if(v === lastValue) return;
-    lastValue = v;
-    if(v){
-      onMiembroSelected();
-    }else{
-      onMiembroCleared();
-    }
-  }, 200);
-
-  if(hiddenMiembro.value){
-    onMiembroSelected();
-  }
-})();
-</script>
-
-<style>
-  .odoo-btn-inline-edit{
-    margin-left: 10px;
-    gap: 6px;
-    align-items: center;
-    border: 1px solid var(--color-border-subtle);
-    background: #fff;
-    color: var(--color-text-main);
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    display: inline-flex;
-    line-height: 1;
-  }
-  .odoo-btn-inline-edit:hover{ background: #f9fafb; }
-  .odoo-name-field input.is-locked{ opacity: .85; cursor: not-allowed; }
-</style>
-
-
-<style>
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinner { animation: spin 1s linear infinite; }
 </style>
 
 <script>
 (function(){
-  const form = document.querySelector("form.odoo-form");
-  if (!form) return;
+  const form = document.querySelector('.odoo-form');
+  const emailInput = document.getElementById('id_email');
+  const statusEl = document.getElementById('email-status');
+  const btnSubmitDesktop = document.querySelector('.odoo-aside-actions .odoo-btn-primary');
+  const btnSubmitMobile = document.querySelector('.odoo-mobile-save');
+  const btnCancelDesktop = document.getElementById('btn-descartar');
+  const btnCancelMobile = document.getElementById('btn-descartar-mobile');
+
+  // =========================================
+  // 🆕 TOGGLE CAMPOS TEMPORALES
+  // =========================================
+  const checkboxTemporal = document.getElementById('id_es_temporal');
+  const camposTemporal = document.getElementById('campos-temporal');
+
+  function toggleCamposTemporal() {
+    if (!checkboxTemporal || !camposTemporal) return;
+    
+    if (checkboxTemporal.checked) {
+      camposTemporal.style.display = 'block';
+    } else {
+      camposTemporal.style.display = 'none';
+    }
+  }
+
+  if (checkboxTemporal) {
+    checkboxTemporal.addEventListener('change', toggleCamposTemporal);
+    // Ejecutar al cargar por si viene con valor previo
+    toggleCamposTemporal();
+  }
+  // =========================================
 
   // =========================
-  // Elementos UI
-  // =========================
-  const btnSubmitDesktop = form.querySelector(".odoo-form-aside .odoo-btn-primary");
-  const btnSubmitMobile  = document.querySelector(".odoo-mobile-actions .odoo-btn-primary");
-  const btnCancelDesktop = document.getElementById("btn-descartar");
-  const btnCancelMobile  = document.getElementById("btn-descartar-mobile");
-
-  const emailInput = document.getElementById("id_email");
-  const statusEl   = document.getElementById("email-status");
-
-  // Inputs clave (para dirty/autofill)
-  const miembroHidden = document.getElementById("id_miembro_id"); // hidden
-  const override      = document.getElementById("id_override_nombre");
-
-  // =========================
-  // Dirty tracking + salir
+  // Dirty tracking
   // =========================
   let isDirty = false;
-  let suppressDirty = false; // cuando el sistema rellena datos automáticamente
+  let suppressDirty = false;
+  const miembroHidden = document.getElementById('id_miembro_id');
 
-  function setDirty(){
-    if (suppressDirty) return;
-    isDirty = true;
-  }
-
-  // Marcar dirty SOLO cuando el usuario interactúa
-  form.addEventListener("input", setDirty, { capture: true });
-  form.addEventListener("change", setDirty, { capture: true });
+  form.addEventListener('input', () => {
+    if (!suppressDirty) isDirty = true;
+  });
+  form.addEventListener('change', () => {
+    if (!suppressDirty) isDirty = true;
+  });
 
   function runWithoutDirty(fn){
     suppressDirty = true;
-    try { fn(); } finally {
-      setTimeout(() => { suppressDirty = false; }, 0);
-    }
+    fn();
+    setTimeout(() => { suppressDirty = false; }, 0);
   }
 
-  // Si cambia miembro_id por autocomplete, no ensuciar
-  let lastMiembroId = miembroHidden ? (miembroHidden.value || "") : "";
+  // Para el autocomplete de miembros
   if (miembroHidden){
+    let lastMiembroId = miembroHidden.value || "";
     setInterval(() => {
       const v = miembroHidden.value || "";
       if (v === lastMiembroId) return;
@@ -1394,7 +1150,7 @@
     lockCancel(btnCancelDesktop);
     lockCancel(btnCancelMobile);
 
-  }, true); // capture=true => corre antes y evita “cargando infinito”
+  }, true); // capture=true => corre antes y evita "cargando infinito"
 
 })();
 </script>

@@ -33,6 +33,37 @@
     </div>
   </div>
 
+  <!-- Stats rápidos -->
+  <div class="users-stats">
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-total">
+        <span class="material-icons">groups</span>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ page_obj.paginator.count }}</div>
+        <div class="stat-label">Total usuarios</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-temp">
+        <span class="material-icons">schedule</span>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ total_temporales|default:0 }}</div>
+        <div class="stat-label">Temporales activos</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-warning">
+        <span class="material-icons">warning</span>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ por_expirar|default:0 }}</div>
+        <div class="stat-label">Por expirar (3 días)</div>
+      </div>
+    </div>
+  </div>
+
   <form method="get" class="users-filters">
     <div class="f-item">
       <label>Buscar</label>
@@ -55,6 +86,8 @@
         <option value="" {% if not estado %}selected{% endif %}>Todos</option>
         <option value="activos" {% if estado == "activos" %}selected{% endif %}>Activos</option>
         <option value="inactivos" {% if estado == "inactivos" %}selected{% endif %}>Inactivos</option>
+        <option value="temporales" {% if estado == "temporales" %}selected{% endif %}>⏱ Temporales</option>
+        <option value="por_expirar" {% if estado == "por_expirar" %}selected{% endif %}>⚠ Por expirar</option>
       </select>
     </div>
 
@@ -63,10 +96,9 @@
         <span class="material-icons">search</span>
         Filtrar
       </button>
-<a class="btn btn-ghost" href="{% url 'core:listado' %}">
-  Limpiar
-</a>
-
+      <a class="btn btn-ghost" href="{% url 'core:listado' %}">
+        Limpiar
+      </a>
     </div>
   </form>
 
@@ -79,6 +111,7 @@
           <th>Nombre</th>
           <th>Email</th>
           <th>Grupos</th>
+          <th>Tipo</th>
           <th>Estado</th>
           <th>Alta</th>
           <th>Acciones</th>
@@ -86,7 +119,7 @@
       </thead>
       <tbody>
         {% for u in page_obj %}
-          <tr>
+          <tr class="{% if u.perfil_temporal and u.perfil_temporal.dias_restantes <= 3 %}row-warning{% endif %}">
             <td class="mono">{{ u.username }}</td>
             <td>{{ u.get_full_name|default:"—" }}</td>
             <td>{{ u.email|default:"—" }}</td>
@@ -102,6 +135,32 @@
               {% endwith %}
             </td>
             <td>
+              {% if u.perfil_temporal %}
+                <div class="tipo-temporal">
+                  <span class="badge badge-temp">
+                    <span class="material-icons">schedule</span>
+                    Temporal
+                  </span>
+                  {% if u.perfil_temporal.esta_activo %}
+                    <div class="tiempo-restante {% if u.perfil_temporal.dias_restantes <= 3 %}urgente{% elif u.perfil_temporal.dias_restantes <= 7 %}proximo{% endif %}">
+                      <span class="material-icons">hourglass_top</span>
+                      {{ u.perfil_temporal.tiempo_restante_display }}
+                    </div>
+                  {% else %}
+                    <div class="tiempo-restante expirado">
+                      <span class="material-icons">hourglass_disabled</span>
+                      Expirado
+                    </div>
+                  {% endif %}
+                </div>
+              {% else %}
+                <span class="badge badge-permanent">
+                  <span class="material-icons">verified_user</span>
+                  Permanente
+                </span>
+              {% endif %}
+            </td>
+            <td>
               {% if u.is_active %}
                 <span class="badge badge-ok">Activo</span>
               {% else %}
@@ -110,20 +169,34 @@
             </td>
             <td class="muted">{{ u.date_joined|date:"d/m/Y" }}</td>
             <td>
-  {% if perms.auth.change_user %}
-    <a href="{% url 'core:editar_usuario' u.id %}" class="btn btn-ghost btn-sm">
-      <span class="material-icons">edit</span>
-      Editar
-    </a>
-  {% else %}
-    <span class="muted">—</span>
-  {% endif %}
-</td>
-
+              <div class="action-buttons">
+                {% if perms.auth.change_user %}
+                  <a href="{% url 'core:editar_usuario' u.id %}" class="btn btn-ghost btn-sm" title="Editar">
+                    <span class="material-icons">edit</span>
+                  </a>
+                {% endif %}
+                {% if u.perfil_temporal and u.perfil_temporal.esta_activo %}
+                  <button type="button" 
+                          class="btn btn-ghost btn-sm btn-extend" 
+                          title="Extender 7 días"
+                          onclick="extenderUsuario({{ u.perfil_temporal.pk }})">
+                    <span class="material-icons">more_time</span>
+                  </button>
+                {% endif %}
+                {% if u.perfil_temporal and not u.perfil_temporal.esta_activo %}
+                  <button type="button" 
+                          class="btn btn-ghost btn-sm btn-reactivar" 
+                          title="Reactivar"
+                          onclick="reactivarUsuario({{ u.perfil_temporal.pk }})">
+                    <span class="material-icons">replay</span>
+                  </button>
+                {% endif %}
+              </div>
+            </td>
           </tr>
         {% empty %}
           <tr>
-            <td colspan="6" class="empty">No hay usuarios con esos filtros.</td>
+            <td colspan="8" class="empty">No hay usuarios con esos filtros.</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -133,14 +206,28 @@
   <!-- Mobile: cards -->
   <div class="users-cards">
     {% for u in page_obj %}
-      <div class="ucard">
+      <div class="ucard {% if u.perfil_temporal and u.perfil_temporal.dias_restantes <= 3 %}ucard-warning{% endif %}">
+        
+        <!-- Badge temporal en esquina -->
+        {% if u.perfil_temporal %}
+        <div class="ucard-temp-badge {% if not u.perfil_temporal.esta_activo %}expirado{% elif u.perfil_temporal.dias_restantes <= 3 %}urgente{% endif %}">
+          <span class="material-icons">schedule</span>
+          {% if u.perfil_temporal.esta_activo %}
+            {{ u.perfil_temporal.tiempo_restante_display }}
+          {% else %}
+            Expirado
+          {% endif %}
+        </div>
+        {% endif %}
+
         <div class="ucard-top">
-          <div>
+          <div class="ucard-avatar">
+            {{ u.get_full_name|default:u.username|slice:":1"|upper }}
+          </div>
+          <div class="ucard-main">
             <div class="ucard-user">{{ u.get_full_name|default:u.username }}</div>
             <div class="ucard-meta">
               <span class="mono">{{ u.username }}</span>
-              <span class="dot">•</span>
-              <span>{{ u.email|default:"Sin email" }}</span>
             </div>
           </div>
           <div>
@@ -151,6 +238,14 @@
             {% endif %}
           </div>
         </div>
+
+        {% if u.email %}
+        <div class="ucard-email">
+          <span class="material-icons">email</span>
+          {{ u.email }}
+        </div>
+        {% endif %}
+
         <div class="ucard-groups">
           {% with u.groups.all as gs %}
             {% if gs %}
@@ -162,18 +257,43 @@
             {% endif %}
           {% endwith %}
         </div>
-        <div class="ucard-foot muted">
-          Alta: {{ u.date_joined|date:"d/m/Y" }}
-        </div>
-        {% if perms.auth.change_user %}
-  <div class="ucard-actions" style="margin-top:10px;">
-    <a href="{% url 'core:editar_usuario' u.id %}" class="btn btn-ghost btn-sm">
-      <span class="material-icons">edit</span>
-      Editar
-    </a>
-  </div>
-{% endif %}
 
+        {% if u.perfil_temporal %}
+        <div class="ucard-temporal-info">
+          <div class="temporal-detail">
+            <span class="material-icons">event</span>
+            <span>Expira: {{ u.perfil_temporal.fecha_expiracion|date:"d/m/Y H:i" }}</span>
+          </div>
+          <div class="temporal-detail">
+            <span class="material-icons">login</span>
+            <span>{{ u.perfil_temporal.accesos_count }} acceso{{ u.perfil_temporal.accesos_count|pluralize:"s" }}</span>
+          </div>
+          {% if u.perfil_temporal.motivo %}
+          <div class="temporal-detail">
+            <span class="material-icons">info</span>
+            <span>{{ u.perfil_temporal.motivo }}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="ucard-foot">
+          <span class="muted">Alta: {{ u.date_joined|date:"d/m/Y" }}</span>
+          
+          <div class="ucard-actions">
+            {% if perms.auth.change_user %}
+              <a href="{% url 'core:editar_usuario' u.id %}" class="btn btn-ghost btn-sm">
+                <span class="material-icons">edit</span>
+              </a>
+            {% endif %}
+            {% if u.perfil_temporal and u.perfil_temporal.esta_activo %}
+              <button type="button" class="btn btn-ghost btn-sm btn-extend" 
+                      onclick="extenderUsuario({{ u.perfil_temporal.pk }})">
+                <span class="material-icons">more_time</span>
+              </button>
+            {% endif %}
+          </div>
+        </div>
       </div>
     {% empty %}
       <div class="empty-card">No hay usuarios con esos filtros.</div>
@@ -199,111 +319,617 @@
   {% endif %}
 </div>
 
+<!-- Modal para extender/reactivar -->
+<div id="modalAccion" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitulo">Extender acceso</h3>
+      <button type="button" class="modal-close" onclick="cerrarModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <form id="formAccion" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="accion" id="inputAccion" value="extender">
+      <div class="modal-body">
+        <label class="modal-label">¿Cuántos días adicionales?</label>
+        <div class="dias-options">
+          <label class="dia-option">
+            <input type="radio" name="dias" value="7" checked>
+            <span>7 días</span>
+          </label>
+          <label class="dia-option">
+            <input type="radio" name="dias" value="15">
+            <span>15 días</span>
+          </label>
+          <label class="dia-option">
+            <input type="radio" name="dias" value="30">
+            <span>30 días</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">
+          <span class="material-icons">check</span>
+          Confirmar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <style>
+  /* ===== STATS CARDS ===== */
+  .users-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
 
-  .btn-sm{
-  padding: 6px 10px;
-  font-size: 12px;
-  border-radius: 8px;
-}
+  .stat-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+  }
 
-  .users-wrap{ margin: 0 20px; }
-  .users-topbar{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin: 14px 0; }
-  .users-title{ margin:0; font-size: 22px; font-weight: 700; }
-  .users-sub{ margin:4px 0 0; color:#6b7280; font-size: 13px; }
-  .users-actions{ display:flex; gap:10px; }
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-  .users-filters{
-    display:grid;
+  .stat-icon .material-icons {
+    font-size: 24px;
+    color: #fff;
+  }
+
+  .stat-icon-total { background: linear-gradient(135deg, #0097A7 0%, #00838f 100%); }
+  .stat-icon-temp { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+  .stat-icon-warning { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  /* ===== BADGES DE TIPO ===== */
+  .badge-temp {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 1px solid #fcd34d;
+  }
+
+  .badge-temp .material-icons {
+    font-size: 14px;
+  }
+
+  .badge-permanent {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #86efac;
+  }
+
+  .badge-permanent .material-icons {
+    font-size: 14px;
+  }
+
+  /* ===== TIEMPO RESTANTE ===== */
+  .tipo-temporal {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tiempo-restante {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #059669;
+    padding: 3px 8px;
+    background: #ecfdf5;
+    border-radius: 6px;
+  }
+
+  .tiempo-restante .material-icons {
+    font-size: 14px;
+  }
+
+  .tiempo-restante.proximo {
+    color: #d97706;
+    background: #fffbeb;
+  }
+
+  .tiempo-restante.urgente {
+    color: #dc2626;
+    background: #fef2f2;
+    animation: pulse-warning 2s infinite;
+  }
+
+  .tiempo-restante.expirado {
+    color: #991b1b;
+    background: #fee2e2;
+  }
+
+  @keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* ===== ROW WARNING ===== */
+  .row-warning {
+    background: #fffbeb !important;
+  }
+
+  .row-warning:hover {
+    background: #fef3c7 !important;
+  }
+
+  /* ===== ACTION BUTTONS ===== */
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+  }
+
+  .btn-extend {
+    color: #0097A7 !important;
+  }
+
+  .btn-extend:hover {
+    background: #e0f7fa !important;
+  }
+
+  .btn-reactivar {
+    color: #059669 !important;
+  }
+
+  .btn-reactivar:hover {
+    background: #ecfdf5 !important;
+  }
+
+  /* ===== MOBILE CARD TEMPORAL ===== */
+  .ucard {
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #fff;
+    padding: 14px;
+  }
+
+  .ucard-warning {
+    border-color: #fcd34d;
+    background: linear-gradient(to bottom, #fffbeb 0%, #fff 100%);
+  }
+
+  .ucard-temp-badge {
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  }
+
+  .ucard-temp-badge .material-icons {
+    font-size: 14px;
+  }
+
+  .ucard-temp-badge.urgente {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    animation: pulse-warning 2s infinite;
+  }
+
+  .ucard-temp-badge.expirado {
+    background: #6b7280;
+  }
+
+  .ucard-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ucard-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0097A7 0%, #00bcd4 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .ucard-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ucard-user {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ucard-meta {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  .ucard-email {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  .ucard-email .material-icons {
+    font-size: 16px;
+    color: #9ca3af;
+  }
+
+  .ucard-groups {
+    margin-top: 10px;
+  }
+
+  .ucard-temporal-info {
+    margin-top: 12px;
+    padding: 10px;
+    background: #fefce8;
+    border-radius: 8px;
+    border: 1px solid #fef08a;
+  }
+
+  .temporal-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #713f12;
+    margin-bottom: 6px;
+  }
+
+  .temporal-detail:last-child {
+    margin-bottom: 0;
+  }
+
+  .temporal-detail .material-icons {
+    font-size: 16px;
+    color: #a16207;
+  }
+
+  .ucard-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #f3f4f6;
+  }
+
+  .ucard-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+  }
+
+  .modal-content {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    color: #6b7280;
+  }
+
+  .modal-close:hover {
+    background: #f3f4f6;
+    color: #111827;
+  }
+
+  .modal-body {
+    padding: 20px;
+  }
+
+  .modal-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+  }
+
+  .dias-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .dia-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dia-option input {
+    display: none;
+  }
+
+  .dia-option span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .dia-option:hover {
+    border-color: #0097A7;
+    background: #f0fdfa;
+  }
+
+  .dia-option:has(input:checked) {
+    border-color: #0097A7;
+    background: #e0f7fa;
+  }
+
+  .dia-option:has(input:checked) span {
+    color: #0097A7;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid #e5e7eb;
+    background: #fafafa;
+  }
+
+  /* ===== ESTILOS BASE (existentes) ===== */
+  .btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  .users-wrap { margin: 0 20px; }
+  .users-topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin: 14px 0; }
+  .users-title { margin: 0; font-size: 22px; font-weight: 700; }
+  .users-sub { margin: 4px 0 0; color: #6b7280; font-size: 13px; }
+  .users-actions { display: flex; gap: 10px; }
+
+  .users-filters {
+    display: grid;
     grid-template-columns: 1.4fr 1fr 1fr auto;
     gap: 12px;
-    padding: 12px;
+    padding: 14px;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     background: #fff;
     margin-bottom: 12px;
   }
-  .f-item label{ display:block; font-size: 12px; color:#6b7280; margin-bottom: 6px; }
-  .f-item input, .f-item select{
-    width:100%;
+
+  .f-item label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+  .f-item input, .f-item select {
+    width: 100%;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
     padding: 10px 12px;
     font-size: 14px;
-    outline:none;
-    background:#fff;
+    outline: none;
+    background: #fff;
   }
-  .f-actions{ display:flex; align-items:flex-end; gap:10px; }
 
-  .users-table{ background:#fff; border:1px solid #e5e7eb; border-radius: 12px; overflow:hidden; }
-  table{ width:100%; border-collapse: collapse; }
-  th, td{ padding: 12px 12px; border-bottom: 1px solid #f3f4f6; font-size: 14px; text-align:left; }
-  th{ font-size: 12px; color:#6b7280; font-weight: 700; background:#fafafa; }
-  tr:last-child td{ border-bottom:none; }
-  .empty{ text-align:center; color:#6b7280; padding: 18px; }
-  .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; }
-  .muted{ color:#6b7280; }
+  .f-item input:focus, .f-item select:focus {
+    border-color: #0097A7;
+    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.1);
+  }
 
-  .pill{
-    display:inline-block;
+  .f-actions { display: flex; align-items: flex-end; gap: 10px; }
+
+  .users-table { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; font-size: 14px; text-align: left; }
+  th { font-size: 12px; color: #6b7280; font-weight: 700; background: #fafafa; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: #fafafa; }
+  .empty { text-align: center; color: #6b7280; padding: 18px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; font-size: 13px; }
+  .muted { color: #6b7280; }
+
+  .pill {
+    display: inline-block;
     padding: 4px 8px;
     border: 1px solid #e5e7eb;
     border-radius: 999px;
     font-size: 12px;
-    background:#fff;
+    background: #fff;
     margin: 2px 4px 2px 0;
     white-space: nowrap;
   }
-  .badge{
-    display:inline-block;
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 4px 10px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
   }
-  .badge-ok{ background:#dcfce7; color:#14532d; border:1px solid #86efac; }
-  .badge-bad{ background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
 
-  .btn{
-    display:inline-flex; align-items:center; gap:8px;
-    padding: 10px 12px;
+  .badge-ok { background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+  .badge-bad { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
     border-radius: 10px;
-    text-decoration:none;
-    font-weight: 700;
+    text-decoration: none;
+    font-weight: 600;
     font-size: 14px;
-    border:1px solid transparent;
-    cursor:pointer;
-    background:#fff;
+    border: 1px solid transparent;
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.2s;
   }
-  .btn .material-icons{ font-size: 18px; }
-  .btn-primary{ background: var(--color-primary, #0097A7); color:#fff; }
-  .btn-secondary{ background:#111827; color:#fff; }
-  .btn-ghost{ background:#fff; border:1px solid #e5e7eb; color:#111827; }
 
-  .pager{ display:flex; justify-content:space-between; align-items:center; margin: 14px 0 30px; gap: 10px; }
+  .btn .material-icons { font-size: 18px; }
+  .btn-primary { background: var(--color-primary, #0097A7); color: #fff; }
+  .btn-primary:hover { background: #00838f; }
+  .btn-secondary { background: #111827; color: #fff; }
+  .btn-ghost { background: #fff; border: 1px solid #e5e7eb; color: #111827; }
+  .btn-ghost:hover { background: #f3f4f6; }
 
-  /* Mobile */
-  .users-cards{ display:none; }
-  @media (max-width: 768px){
-    .users-wrap{ margin: 0 12px; }
-    .users-topbar{ flex-direction: column; }
-    .users-filters{ grid-template-columns: 1fr; }
-    .users-table{ display:none; }
-    .users-cards{ display:grid; gap: 12px; }
-    .ucard{
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      background:#fff;
-      padding: 12px;
+  .pager { display: flex; justify-content: space-between; align-items: center; margin: 14px 0 30px; gap: 10px; }
+
+  /* ===== RESPONSIVE ===== */
+  .users-cards { display: none; }
+
+  @media (max-width: 1024px) {
+    .users-stats {
+      grid-template-columns: repeat(3, 1fr);
     }
-    .ucard-top{ display:flex; justify-content:space-between; gap: 12px; align-items:flex-start; }
-    .ucard-user{ font-size: 15px; font-weight: 800; }
-    .ucard-meta{ font-size: 12px; color:#6b7280; margin-top: 3px; display:flex; gap:8px; flex-wrap:wrap; }
-    .dot{ opacity:.6; }
-    .ucard-groups{ margin-top: 10px; }
-    .ucard-foot{ margin-top: 10px; font-size: 12px; }
-    .empty-card{ text-align:center; color:#6b7280; padding: 18px; border:1px dashed #e5e7eb; border-radius: 14px; background:#fff; }
+  }
+
+  @media (max-width: 768px) {
+    .users-wrap { margin: 0 12px; }
+    .users-topbar { flex-direction: column; }
+    .users-filters { grid-template-columns: 1fr; }
+    .users-table { display: none; }
+    .users-cards { display: grid; gap: 14px; }
+    .users-stats { grid-template-columns: 1fr; gap: 10px; }
+    .stat-card { padding: 12px; }
+    .stat-icon { width: 40px; height: 40px; }
+    .stat-icon .material-icons { font-size: 20px; }
+    .stat-value { font-size: 20px; }
+    .empty-card { text-align: center; color: #6b7280; padding: 18px; border: 1px dashed #e5e7eb; border-radius: 14px; background: #fff; }
+  }
+
+  @media (max-width: 480px) {
+    .dias-options {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
+
+<script>
+function extenderUsuario(pk) {
+  document.getElementById('modalTitulo').textContent = 'Extender acceso';
+  document.getElementById('inputAccion').value = 'extender';
+  document.getElementById('formAccion').action = '/usuarios-temporales/' + pk + '/accion/';
+  document.getElementById('modalAccion').style.display = 'flex';
+}
+
+function reactivarUsuario(pk) {
+  document.getElementById('modalTitulo').textContent = 'Reactivar usuario';
+  document.getElementById('inputAccion').value = 'reactivar';
+  document.getElementById('formAccion').action = '/usuarios-temporales/' + pk + '/accion/';
+  document.getElementById('modalAccion').style.display = 'flex';
+}
+
+function cerrarModal() {
+  document.getElementById('modalAccion').style.display = 'none';
+}
+
+// Cerrar modal al hacer click fuera
+document.getElementById('modalAccion')?.addEventListener('click', function(e) {
+  if (e.target === this) cerrarModal();
+});
+
+// Cerrar con ESC
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') cerrarModal();
+});
+</script>
 
 {% endblock %}
