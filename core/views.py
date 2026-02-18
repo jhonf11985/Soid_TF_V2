@@ -490,7 +490,7 @@ def home(request):
     
     
 
-    if Miembro.objects.filter(usuario=user).exists():
+    if not user.is_staff and Miembro.objects.filter(usuario=user).exists():
         return redirect("portal_miembros:dashboard")
     # ═══════════════════════════════════════════════════════════════
     # 🧠 MENSAJE DE BIENVENIDA (solo primer acceso del día)
