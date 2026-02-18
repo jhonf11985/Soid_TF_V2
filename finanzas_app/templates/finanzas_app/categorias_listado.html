@@ -1,136 +1,120 @@
 {% extends 'finanzas_app/base_finanzas.html' %}
 {% load static %}
 
-{% block title %}Categorías de movimiento · Soid_Tf_2{% endblock %}
+{% block title %}Categorías · Soid_Tf_2{% endblock %}
 
 {% block finanzas_content %}
 
-<div class="odoo-list-view">
+<div class="cat-page">
 
-    <!-- BARRA SUPERIOR - CONTROL PANEL -->
-    <div class="odoo-control-panel">
-        <div class="odoo-cp-left">
-            <div class="odoo-breadcrumb">
-                <h1 class="odoo-breadcrumb-title">Categorías de movimiento</h1>
-            </div>
+    <!-- TOPBAR -->
+    <div class="cat-topbar">
+        <div class="cat-topbar-left">
+            <h1 class="cat-title">Categorías</h1>
+            <span class="cat-count">{{ categorias|length }} registro{{ categorias|length|pluralize:"s" }}</span>
         </div>
-        <div class="odoo-cp-right">
-            <a href="{% url 'finanzas_app:categoria_crear' %}" class="odoo-btn odoo-btn-primary">
+        <div class="cat-topbar-right">
+            <a href="{% url 'finanzas_app:categoria_crear' %}" class="cat-btn cat-btn-primary">
                 <span class="material-icons">add</span>
-                Nuevo
+                Nueva
             </a>
         </div>
     </div>
 
-    <!-- BARRA DE BÚSQUEDA Y FILTROS -->
-    <div class="odoo-search-panel">
-        <div class="odoo-search-left">
-            <!-- Filtros por tipo -->
-            <div class="odoo-filter-buttons">
-                <a href="{% url 'finanzas_app:categorias_listado' %}" 
-                   class="odoo-filter-btn {% if not filtro_tipo %}active{% endif %}">
-                    Todas
-                    <span class="odoo-filter-count">{{ total_todas }}</span>
-                </a>
-                <a href="{% url 'finanzas_app:categorias_listado' %}?tipo=ingreso" 
-                   class="odoo-filter-btn odoo-filter-income {% if filtro_tipo == 'ingreso' %}active{% endif %}">
-                    <span class="material-icons">south_west</span>
-                    Ingresos
-                    <span class="odoo-filter-count">{{ total_ingresos }}</span>
-                </a>
-                <a href="{% url 'finanzas_app:categorias_listado' %}?tipo=egreso" 
-                   class="odoo-filter-btn odoo-filter-expense {% if filtro_tipo == 'egreso' %}active{% endif %}">
-                    <span class="material-icons">north_east</span>
-                    Egresos
-                    <span class="odoo-filter-count">{{ total_egresos }}</span>
-                </a>
-            </div>
-        </div>
-        <div class="odoo-search-right">
-            <span class="odoo-pager">
-                {{ categorias|length }} registro{{ categorias|length|pluralize:"s" }}
-            </span>
+    <!-- FILTROS POR TIPO -->
+    <div class="cat-filters">
+        <div class="cat-filter-tabs">
+            <a href="{% url 'finanzas_app:categorias_listado' %}" 
+               class="cat-filter-tab {% if not filtro_tipo %}active{% endif %}">
+                <span class="cat-tab-label">Todas</span>
+                <span class="cat-tab-count">{{ total_todas }}</span>
+            </a>
+            <a href="{% url 'finanzas_app:categorias_listado' %}?tipo=ingreso" 
+               class="cat-filter-tab cat-tab-income {% if filtro_tipo == 'ingreso' %}active{% endif %}">
+                <span class="material-icons">south_west</span>
+                <span class="cat-tab-label">Ingresos</span>
+                <span class="cat-tab-count">{{ total_ingresos }}</span>
+            </a>
+            <a href="{% url 'finanzas_app:categorias_listado' %}?tipo=egreso" 
+               class="cat-filter-tab cat-tab-expense {% if filtro_tipo == 'egreso' %}active{% endif %}">
+                <span class="material-icons">north_east</span>
+                <span class="cat-tab-label">Egresos</span>
+                <span class="cat-tab-count">{{ total_egresos }}</span>
+            </a>
         </div>
     </div>
 
-    <!-- TABLA DE DATOS -->
-    <div class="odoo-list-container">
-        <table class="odoo-list-table">
+    <!-- TABLA DESKTOP -->
+    <div class="cat-table-container">
+        <table class="cat-table">
             <thead>
                 <tr>
-                    <th class="odoo-cell-checkbox">
-                        <input type="checkbox" class="odoo-checkbox-all">
-                    </th>
-                    <th class="odoo-cell-name">Nombre</th>
-                    <th class="odoo-cell-type">Tipo</th>
-                    <th class="odoo-cell-status">Estado</th>
-                    <th class="odoo-cell-count">Movimientos</th>
-                    <th class="odoo-cell-actions"></th>
+                    <th class="col-name">Nombre</th>
+                    <th class="col-type">Tipo</th>
+                    <th class="col-status">Estado</th>
+                    <th class="col-count">Movimientos</th>
+                    <th class="col-actions"></th>
                 </tr>
             </thead>
             <tbody>
                 {% if categorias %}
                     {% for cat in categorias %}
-                    <tr class="odoo-list-row {% if not cat.activo %}odoo-row-muted{% endif %}"
+                    <tr class="cat-row {% if not cat.activo %}cat-row-inactive{% endif %}"
                         data-href="{% url 'finanzas_app:categoria_editar' cat.pk %}">
-                        <td class="odoo-cell-checkbox">
-                            <input type="checkbox" class="odoo-checkbox-row">
-                        </td>
-                        <td class="odoo-cell-name">
-                            <div class="odoo-cell-name-content">
-                                <span class="odoo-name-text">
-    {% if cat.codigo %}
-        <span style="font-weight:700; color:#5b3df5;">{{ cat.codigo }}</span>
-        <span style="color:#999;">—</span>
-    {% endif %}
-    {{ cat.nombre }}
-</span>
-
+                        <td class="col-name">
+                            <div class="cat-name-cell">
+                                {% if cat.codigo %}
+                                    <span class="cat-code">{{ cat.codigo }}</span>
+                                {% endif %}
+                                <span class="cat-name">{{ cat.nombre }}</span>
                                 {% if cat.descripcion %}
-                                    <span class="odoo-name-sub">{{ cat.descripcion|truncatechars:50 }}</span>
+                                    <span class="cat-desc">{{ cat.descripcion|truncatechars:40 }}</span>
                                 {% endif %}
                             </div>
                         </td>
-                        <td class="odoo-cell-type">
+                        <td class="col-type">
                             {% if cat.tipo == 'ingreso' %}
-                                <span class="odoo-tag odoo-tag-success">
-                                    <span class="odoo-tag-dot"></span>
+                                <span class="cat-tag cat-tag-income">
+                                    <span class="cat-tag-dot"></span>
                                     Ingreso
                                 </span>
                             {% else %}
-                                <span class="odoo-tag odoo-tag-danger">
-                                    <span class="odoo-tag-dot"></span>
+                                <span class="cat-tag cat-tag-expense">
+                                    <span class="cat-tag-dot"></span>
                                     Egreso
                                 </span>
                             {% endif %}
                         </td>
-                        <td class="odoo-cell-status">
+                        <td class="col-status">
                             {% if cat.activo %}
-                                <span class="odoo-status odoo-status-success">Activa</span>
+                                <span class="cat-status cat-status-active">Activa</span>
                             {% else %}
-                                <span class="odoo-status odoo-status-muted">Inactiva</span>
+                                <span class="cat-status cat-status-inactive">Inactiva</span>
                             {% endif %}
                         </td>
-                        <td class="odoo-cell-count">
-                            <span class="odoo-count-badge">{{ cat.movimientos.count }}</span>
+                        <td class="col-count">
+                            <span class="cat-count-badge">{{ cat.movimientos.count }}</span>
                         </td>
-                        <td class="odoo-cell-actions">
-                            <div class="odoo-row-actions">
+                        <td class="col-actions">
+                            <div class="cat-actions">
                                 <a href="{% url 'finanzas_app:categoria_editar' cat.pk %}" 
-                                   class="odoo-action-btn" title="Editar">
+                                   class="cat-action-btn" 
+                                   title="Editar"
+                                   onclick="event.stopPropagation();">
                                     <span class="material-icons">edit</span>
                                 </a>
                                 {% if cat.activo %}
                                     <a href="{% url 'finanzas_app:categoria_toggle' cat.pk %}" 
-                                       class="odoo-action-btn odoo-action-warning"
+                                       class="cat-action-btn cat-action-warning"
                                        title="Desactivar"
-                                       onclick="return confirm('¿Desactivar esta categoría?');">
+                                       onclick="event.stopPropagation(); return confirm('¿Desactivar esta categoría?');">
                                         <span class="material-icons">visibility_off</span>
                                     </a>
                                 {% else %}
                                     <a href="{% url 'finanzas_app:categoria_toggle' cat.pk %}" 
-                                       class="odoo-action-btn odoo-action-success"
-                                       title="Activar">
+                                       class="cat-action-btn cat-action-success"
+                                       title="Activar"
+                                       onclick="event.stopPropagation();">
                                         <span class="material-icons">visibility</span>
                                     </a>
                                 {% endif %}
@@ -140,18 +124,12 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="6" class="odoo-empty-state">
-                            <div class="odoo-empty-content">
+                        <td colspan="5" class="cat-empty-state">
+                            <div class="cat-empty-content">
                                 <span class="material-icons">category</span>
-                                <p class="odoo-empty-title">No hay categorías</p>
-                                <p class="odoo-empty-text">
-                                    {% if filtro_tipo %}
-                                        No hay categorías de {{ filtro_tipo }} registradas.
-                                    {% else %}
-                                        Comienza creando una nueva categoría.
-                                    {% endif %}
-                                </p>
-                                <a href="{% url 'finanzas_app:categoria_crear' %}" class="odoo-btn odoo-btn-primary">
+                                <h3>No hay categorías</h3>
+                                <p>{% if filtro_tipo %}No hay categorías de {{ filtro_tipo }}.{% else %}Crea tu primera categoría.{% endif %}</p>
+                                <a href="{% url 'finanzas_app:categoria_crear' %}" class="cat-btn cat-btn-primary">
                                     <span class="material-icons">add</span>
                                     Nueva categoría
                                 </a>
@@ -163,532 +141,692 @@
         </table>
     </div>
 
+    <!-- VISTA MÓVIL - CARDS -->
+    <div class="cat-mobile-list">
+        {% if categorias %}
+            {% for cat in categorias %}
+                <div class="cat-mobile-card {% if not cat.activo %}cat-card-inactive{% endif %}"
+                     data-href="{% url 'finanzas_app:categoria_editar' cat.pk %}">
+                    <div class="cat-mobile-header">
+                        <div class="cat-mobile-name">
+                            {% if cat.codigo %}
+                                <span class="cat-code">{{ cat.codigo }}</span>
+                            {% endif %}
+                            <span>{{ cat.nombre }}</span>
+                        </div>
+                        {% if cat.tipo == 'ingreso' %}
+                            <span class="cat-tag cat-tag-income">
+                                <span class="cat-tag-dot"></span>
+                                Ingreso
+                            </span>
+                        {% else %}
+                            <span class="cat-tag cat-tag-expense">
+                                <span class="cat-tag-dot"></span>
+                                Egreso
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="cat-mobile-body">
+                        <div class="cat-mobile-info">
+                            <div class="cat-mobile-stat">
+                                <span class="material-icons">receipt_long</span>
+                                <span>{{ cat.movimientos.count }} movimiento{{ cat.movimientos.count|pluralize:"s" }}</span>
+                            </div>
+                            <div class="cat-mobile-stat">
+                                {% if cat.activo %}
+                                    <span class="cat-status cat-status-active">Activa</span>
+                                {% else %}
+                                    <span class="cat-status cat-status-inactive">Inactiva</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if cat.descripcion %}
+                            <div class="cat-mobile-desc">{{ cat.descripcion|truncatechars:60 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="cat-mobile-actions">
+                        <a href="{% url 'finanzas_app:categoria_editar' cat.pk %}" class="cat-mobile-action">
+                            <span class="material-icons">edit</span>
+                            Editar
+                        </a>
+                        {% if cat.activo %}
+                            <a href="{% url 'finanzas_app:categoria_toggle' cat.pk %}" 
+                               class="cat-mobile-action cat-mobile-action-warning"
+                               onclick="return confirm('¿Desactivar esta categoría?');">
+                                <span class="material-icons">visibility_off</span>
+                                Desactivar
+                            </a>
+                        {% else %}
+                            <a href="{% url 'finanzas_app:categoria_toggle' cat.pk %}" 
+                               class="cat-mobile-action cat-mobile-action-success">
+                                <span class="material-icons">visibility</span>
+                                Activar
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="cat-empty-state" style="padding: 40px 20px; text-align: center; background: var(--cat-bg); border-radius: 10px; border: 1px solid var(--cat-border);">
+                <div class="cat-empty-content">
+                    <span class="material-icons">category</span>
+                    <h3>No hay categorías</h3>
+                    <p>{% if filtro_tipo %}No hay categorías de {{ filtro_tipo }}.{% else %}Crea tu primera categoría.{% endif %}</p>
+                    <a href="{% url 'finanzas_app:categoria_crear' %}" class="cat-btn cat-btn-primary">
+                        <span class="material-icons">add</span>
+                        Nueva
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
 </div>
 
 <style>
 /* =====================================
-   ODOO LIST VIEW - ESTILOS BASE
+   VARIABLES
    ===================================== */
 :root {
-    --odoo-purple: var(--color-primary);
-    --odoo-purple-dark: var(--color-primary);
-    --odoo-purple-light: #f3eef2;
-    --odoo-text: #212529;
-    --odoo-text-muted: #6c757d;
-    --odoo-border: #dee2e6;
-    --odoo-bg: #ffffff;
-    --odoo-bg-gray: #f8f9fa;
-    --odoo-success: #28a745;
-    --odoo-success-light: #d4edda;
-    --odoo-danger: #dc3545;
-    --odoo-danger-light: #f8d7da;
-    --odoo-warning: #ffc107;
-    --odoo-hover: #f5f0f4;
-}
-
-.odoo-list-view {
-    background: var(--odoo-bg);
-    min-height: 100%;
-    display: flex;
-    flex-direction: column;
+    --cat-primary: #714B67;
+    --cat-primary-light: #f3eef2;
+    --cat-income: #059669;
+    --cat-income-bg: #ecfdf5;
+    --cat-expense: #dc2626;
+    --cat-expense-bg: #fef2f2;
+    --cat-text: #111827;
+    --cat-text-muted: #6b7280;
+    --cat-border: #e5e7eb;
+    --cat-bg: #ffffff;
+    --cat-bg-gray: #f9fafb;
 }
 
 /* =====================================
-   CONTROL PANEL (BARRA SUPERIOR)
+   PAGE LAYOUT
    ===================================== */
-.odoo-control-panel {
+.cat-page {
+    background: var(--cat-bg-gray);
+    min-height: 100vh;
+}
+
+/* =====================================
+   TOPBAR
+   ===================================== */
+.cat-topbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--odoo-border);
-    background: var(--odoo-bg);
-    flex-shrink: 0;
+    padding: 14px 20px;
+    background: var(--cat-bg);
+    border-bottom: 1px solid var(--cat-border);
 }
 
-.odoo-cp-left {
+.cat-topbar-left {
     display: flex;
-    align-items: center;
-    gap: 16px;
+    align-items: baseline;
+    gap: 10px;
 }
 
-.odoo-breadcrumb-title {
+.cat-title {
     font-size: 18px;
     font-weight: 600;
-    color: var(--odoo-text);
+    color: var(--cat-text);
     margin: 0;
 }
 
-.odoo-cp-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.cat-count {
+    font-size: 12px;
+    color: var(--cat-text-muted);
+    background: var(--cat-bg-gray);
+    padding: 2px 8px;
+    border-radius: 10px;
 }
 
-/* Botones estilo Odoo */
-.odoo-btn {
+/* =====================================
+   BUTTONS
+   ===================================== */
+.cat-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     padding: 7px 14px;
     font-size: 13px;
     font-weight: 500;
-    border: 1px solid var(--odoo-border);
-    border-radius: 4px;
+    border: 1px solid var(--cat-border);
+    border-radius: 5px;
     cursor: pointer;
     transition: all 0.15s;
     text-decoration: none;
     font-family: inherit;
-    background: var(--odoo-bg);
-    color: var(--odoo-text);
+    background: var(--cat-bg);
+    color: var(--cat-text);
 }
 
-.odoo-btn .material-icons {
-    font-size: 18px;
+.cat-btn .material-icons {
+    font-size: 17px;
 }
 
-.odoo-btn-primary {
-    background: var(--odoo-purple);
+.cat-btn-primary {
+    background: var(--cat-primary);
     color: white;
-    border-color: var(--odoo-purple);
+    border-color: var(--cat-primary);
 }
 
-.odoo-btn-primary:hover {
-    background: var(--odoo-purple-dark);
-    border-color: var(--odoo-purple-dark);
+.cat-btn-primary:hover {
+    opacity: 0.9;
 }
 
 /* =====================================
-   SEARCH PANEL (FILTROS)
+   FILTER TABS
    ===================================== */
-.odoo-search-panel {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 16px;
-    background: var(--odoo-bg-gray);
-    border-bottom: 1px solid var(--odoo-border);
-    flex-shrink: 0;
+.cat-filters {
+    padding: 0 20px;
+    background: var(--cat-bg);
+    border-bottom: 1px solid var(--cat-border);
 }
 
-.odoo-search-left {
+.cat-filter-tabs {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    gap: 0;
 }
 
-.odoo-filter-buttons {
+.cat-filter-tab {
     display: flex;
-    gap: 4px;
-}
-
-.odoo-filter-btn {
-    display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
+    padding: 12px 16px;
     font-size: 13px;
     font-weight: 500;
-    color: var(--odoo-text-muted);
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 4px;
+    color: var(--cat-text-muted);
     text-decoration: none;
+    border-bottom: 2px solid transparent;
     transition: all 0.15s;
 }
 
-.odoo-filter-btn:hover {
-    background: var(--odoo-bg);
-    border-color: var(--odoo-border);
-    color: var(--odoo-text);
-}
-
-.odoo-filter-btn.active {
-    background: var(--odoo-bg);
-    border-color: var(--odoo-purple);
-    color: var(--odoo-purple);
-    font-weight: 600;
-}
-
-.odoo-filter-btn .material-icons {
+.cat-filter-tab .material-icons {
     font-size: 16px;
 }
 
-.odoo-filter-income.active {
-    border-color: var(--odoo-success);
-    color: var(--odoo-success);
+.cat-filter-tab:hover {
+    color: var(--cat-text);
+    background: var(--cat-bg-gray);
 }
 
-.odoo-filter-expense.active {
-    border-color: var(--odoo-danger);
-    color: var(--odoo-danger);
+.cat-filter-tab.active {
+    color: var(--cat-primary);
+    border-bottom-color: var(--cat-primary);
 }
 
-.odoo-filter-count {
+.cat-tab-income.active {
+    color: var(--cat-income);
+    border-bottom-color: var(--cat-income);
+}
+
+.cat-tab-expense.active {
+    color: var(--cat-expense);
+    border-bottom-color: var(--cat-expense);
+}
+
+.cat-tab-count {
     font-size: 11px;
-    padding: 2px 6px;
-    background: var(--odoo-bg-gray);
-    border-radius: 10px;
-    color: var(--odoo-text-muted);
+    padding: 1px 6px;
+    background: var(--cat-bg-gray);
+    border-radius: 8px;
+    color: var(--cat-text-muted);
 }
 
-.odoo-filter-btn.active .odoo-filter-count {
-    background: var(--odoo-purple-light);
-    color: var(--odoo-purple);
+.cat-filter-tab.active .cat-tab-count {
+    background: var(--cat-primary-light);
+    color: var(--cat-primary);
 }
 
-.odoo-filter-income.active .odoo-filter-count {
-    background: var(--odoo-success-light);
-    color: var(--odoo-success);
+.cat-tab-income.active .cat-tab-count {
+    background: var(--cat-income-bg);
+    color: var(--cat-income);
 }
 
-.odoo-filter-expense.active .odoo-filter-count {
-    background: var(--odoo-danger-light);
-    color: var(--odoo-danger);
-}
-
-.odoo-pager {
-    font-size: 13px;
-    color: var(--odoo-text-muted);
+.cat-tab-expense.active .cat-tab-count {
+    background: var(--cat-expense-bg);
+    color: var(--cat-expense);
 }
 
 /* =====================================
-   TABLA LISTA - CORREGIDO
+   TABLE
    ===================================== */
-.odoo-list-container {
-    flex: 1;
-    overflow: auto;
-    min-height: 0; /* Importante para que flex funcione con overflow */
+.cat-table-container {
+    margin: 16px 20px;
+    background: var(--cat-bg);
+    border: 1px solid var(--cat-border);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.odoo-list-table {
+.cat-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
 }
 
-.odoo-list-table thead {
-    background: var(--odoo-bg-gray);
-    position: sticky;
-    top: 0; /* Cambiado de 54px a 0 */
-    z-index: 5;
+.cat-table thead {
+    background: var(--cat-bg-gray);
 }
 
-.odoo-list-table th {
-    padding: 10px 12px;
+.cat-table th {
+    padding: 10px 14px;
     text-align: left;
     font-weight: 600;
-    color: var(--odoo-text);
-    border-bottom: 2px solid var(--odoo-border);
-    white-space: nowrap;
-    user-select: none;
+    font-size: 11px;
+    color: var(--cat-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid var(--cat-border);
 }
 
-.odoo-list-table th:hover {
-    background: #eee;
-}
-
-.odoo-list-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #f0f0f0;
-    color: var(--odoo-text);
+.cat-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f3f4f6;
     vertical-align: middle;
 }
 
-.odoo-list-row {
+.cat-row {
     cursor: pointer;
-    transition: background 0.1s;
+    transition: background 0.15s;
 }
 
-.odoo-list-row:hover {
-    background: var(--odoo-hover);
+.cat-row:hover {
+    background: #faf8f9;
 }
 
-.odoo-list-row:hover .odoo-row-actions {
-    opacity: 1;
+.cat-row:last-child td {
+    border-bottom: none;
 }
 
-.odoo-row-muted {
-    background: #fafafa;
+.cat-row-inactive {
+    opacity: 0.6;
 }
 
-.odoo-row-muted .odoo-name-text {
-    color: var(--odoo-text-muted);
+.cat-row-inactive:hover {
+    opacity: 0.8;
 }
 
-/* Celdas específicas */
-.odoo-cell-checkbox {
-    width: 40px;
-    text-align: center;
-}
+/* Column widths */
+.col-name { min-width: 200px; }
+.col-type { width: 100px; }
+.col-status { width: 80px; }
+.col-count { width: 100px; text-align: center; }
+.col-actions { width: 70px; }
 
-.odoo-checkbox-all,
-.odoo-checkbox-row {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    accent-color: var(--odoo-purple);
-}
-
-.odoo-cell-name {
-    min-width: 200px;
-}
-
-.odoo-cell-name-content {
+/* =====================================
+   NAME CELL
+   ===================================== */
+.cat-name-cell {
     display: flex;
     flex-direction: column;
     gap: 2px;
 }
 
-.odoo-name-text {
-    font-weight: 600;
-    color: var(--odoo-text);
+.cat-code {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cat-primary);
+    background: var(--cat-primary-light);
+    padding: 1px 5px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 2px;
 }
 
-.odoo-name-sub {
-    font-size: 12px;
-    color: var(--odoo-text-muted);
-    font-weight: 400;
+.cat-name {
+    font-weight: 500;
+    color: var(--cat-text);
 }
 
-.odoo-cell-type {
-    width: 120px;
+.cat-desc {
+    font-size: 11px;
+    color: var(--cat-text-muted);
+    max-width: 250px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.odoo-cell-status {
-    width: 100px;
-}
-
-.odoo-cell-count {
-    width: 100px;
-    text-align: center;
-}
-
-.odoo-cell-actions {
-    width: 80px;
-    text-align: right;
-}
-
-/* Tags de tipo */
-.odoo-tag {
+/* =====================================
+   TAGS
+   ===================================== */
+.cat-tag {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
+    gap: 5px;
+    padding: 3px 8px;
     border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 500;
 }
 
-.odoo-tag-dot {
-    width: 8px;
-    height: 8px;
+.cat-tag-dot {
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
 }
 
-.odoo-tag-success {
-    background: var(--odoo-success-light);
-    color: #155724;
+.cat-tag-income {
+    background: var(--cat-income-bg);
+    color: var(--cat-income);
 }
 
-.odoo-tag-success .odoo-tag-dot {
-    background: var(--odoo-success);
+.cat-tag-income .cat-tag-dot {
+    background: var(--cat-income);
 }
 
-.odoo-tag-danger {
-    background: var(--odoo-danger-light);
-    color: #721c24;
+.cat-tag-expense {
+    background: var(--cat-expense-bg);
+    color: var(--cat-expense);
 }
 
-.odoo-tag-danger .odoo-tag-dot {
-    background: var(--odoo-danger);
+.cat-tag-expense .cat-tag-dot {
+    background: var(--cat-expense);
 }
 
-/* Status */
-.odoo-status {
+/* =====================================
+   STATUS
+   ===================================== */
+.cat-status {
     display: inline-block;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
 
-.odoo-status-success {
-    background: var(--odoo-success-light);
-    color: #155724;
+.cat-status-active {
+    background: var(--cat-income-bg);
+    color: var(--cat-income);
 }
 
-.odoo-status-muted {
-    background: #e9ecef;
-    color: var(--odoo-text-muted);
+.cat-status-inactive {
+    background: #f3f4f6;
+    color: var(--cat-text-muted);
 }
 
-/* Count badge */
-.odoo-count-badge {
+/* =====================================
+   COUNT BADGE
+   ===================================== */
+.cat-count-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 32px;
-    height: 24px;
-    padding: 0 8px;
-    background: #e9ecef;
-    border-radius: 12px;
-    font-size: 12px;
+    min-width: 28px;
+    height: 22px;
+    padding: 0 6px;
+    background: #f3f4f6;
+    border-radius: 11px;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--odoo-text-muted);
+    color: var(--cat-text-muted);
 }
 
-/* Acciones de fila */
-.odoo-row-actions {
+/* =====================================
+   ACTIONS
+   ===================================== */
+.cat-actions {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     justify-content: flex-end;
     opacity: 0;
     transition: opacity 0.15s;
 }
 
-.odoo-action-btn {
+.cat-row:hover .cat-actions {
+    opacity: 1;
+}
+
+.cat-action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border-radius: 4px;
-    color: var(--odoo-text-muted);
+    color: var(--cat-text-muted);
     text-decoration: none;
     transition: all 0.15s;
 }
 
-.odoo-action-btn:hover {
-    background: var(--odoo-purple-light);
-    color: var(--odoo-purple);
+.cat-action-btn:hover {
+    background: var(--cat-primary-light);
+    color: var(--cat-primary);
 }
 
-.odoo-action-btn .material-icons {
-    font-size: 18px;
+.cat-action-btn .material-icons {
+    font-size: 16px;
 }
 
-.odoo-action-warning:hover {
-    background: #fff3cd;
-    color: #856404;
+.cat-action-warning:hover {
+    background: #fef3c7;
+    color: #d97706;
 }
 
-.odoo-action-success:hover {
-    background: var(--odoo-success-light);
-    color: var(--odoo-success);
+.cat-action-success:hover {
+    background: var(--cat-income-bg);
+    color: var(--cat-income);
 }
 
 /* =====================================
-   ESTADO VACÍO
+   EMPTY STATE
    ===================================== */
-.odoo-empty-state {
-    padding: 60px 20px !important;
+.cat-empty-state {
+    padding: 50px 20px !important;
     text-align: center;
 }
 
-.odoo-empty-content {
-    max-width: 300px;
-    margin: 0 auto;
+.cat-empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--cat-text-muted);
 }
 
-.odoo-empty-content .material-icons {
+.cat-empty-content .material-icons {
     font-size: 48px;
-    color: #dee2e6;
-    margin-bottom: 16px;
+    color: #e5e7eb;
+    margin-bottom: 12px;
 }
 
-.odoo-empty-title {
-    font-size: 16px;
+.cat-empty-content h3 {
+    margin: 0 0 4px 0;
+    font-size: 15px;
     font-weight: 600;
-    color: var(--odoo-text);
-    margin: 0 0 8px 0;
+    color: var(--cat-text);
 }
 
-.odoo-empty-text {
+.cat-empty-content p {
+    margin: 0 0 16px 0;
     font-size: 13px;
-    color: var(--odoo-text-muted);
-    margin: 0 0 20px 0;
 }
 
 /* =====================================
-   RESPONSIVE
+   MOBILE LIST
    ===================================== */
-@media (max-width: 768px) {
-    .odoo-control-panel {
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
-    }
-    
-    .odoo-cp-right {
-        justify-content: flex-end;
-    }
-    
-    .odoo-search-panel {
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
-    }
-    
-    .odoo-filter-buttons {
-        overflow-x: auto;
-        padding-bottom: 4px;
-    }
-    
-    .odoo-search-right {
-        text-align: right;
-    }
-    
-    .odoo-cell-checkbox {
+.cat-mobile-list {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .cat-table-container {
         display: none;
     }
     
-    .odoo-row-actions {
-        opacity: 1;
+    .cat-mobile-list {
+        display: block;
+        padding: 12px;
+    }
+    
+    .cat-mobile-card {
+        background: var(--cat-bg);
+        border: 1px solid var(--cat-border);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        overflow: hidden;
+    }
+    
+    .cat-mobile-card.cat-card-inactive {
+        opacity: 0.7;
+    }
+    
+    .cat-mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .cat-mobile-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        color: var(--cat-text);
+    }
+    
+    .cat-mobile-name .cat-code {
+        margin-bottom: 0;
+    }
+    
+    .cat-mobile-body {
+        padding: 12px 14px;
+    }
+    
+    .cat-mobile-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .cat-mobile-stat {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--cat-text-muted);
+    }
+    
+    .cat-mobile-stat .material-icons {
+        font-size: 15px;
+    }
+    
+    .cat-mobile-desc {
+        font-size: 12px;
+        color: var(--cat-text-muted);
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--cat-border);
+    }
+    
+    .cat-mobile-actions {
+        display: flex;
+        border-top: 1px solid #f3f4f6;
+    }
+    
+    .cat-mobile-action {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 10px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--cat-text-muted);
+        text-decoration: none;
+        transition: all 0.15s;
+    }
+    
+    .cat-mobile-action:first-child {
+        border-right: 1px solid #f3f4f6;
+    }
+    
+    .cat-mobile-action:hover {
+        background: var(--cat-bg-gray);
+        color: var(--cat-primary);
+    }
+    
+    .cat-mobile-action .material-icons {
+        font-size: 16px;
+    }
+    
+    .cat-mobile-action-warning:hover {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .cat-mobile-action-success:hover {
+        background: var(--cat-income-bg);
+        color: var(--cat-income);
+    }
+    
+    /* Filtros en móvil */
+    .cat-filter-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .cat-filter-tab {
+        white-space: nowrap;
+        padding: 10px 12px;
+    }
+    
+    .cat-tab-label {
+        display: none;
+    }
+    
+    .cat-filter-tab .material-icons + .cat-tab-label {
+        display: inline;
     }
 }
 
-@media (max-width: 576px) {
-    .odoo-list-table th,
-    .odoo-list-table td {
-        padding: 8px 10px;
+@media (max-width: 400px) {
+    .cat-topbar {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
     }
     
-    .odoo-cell-name {
-        min-width: 150px;
-    }
-    
-    .odoo-cell-status {
-        display: none;
+    .cat-topbar-right {
+        display: flex;
+        justify-content: flex-end;
     }
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Click en filas para navegar
-    document.querySelectorAll('.odoo-list-row[data-href]').forEach(function(row) {
+    // Filas clickeables (tabla desktop)
+    document.querySelectorAll('.cat-row').forEach(row => {
         row.addEventListener('click', function(e) {
-            // No navegar si se hizo click en checkbox o acciones
-            if (e.target.closest('.odoo-cell-checkbox') || 
-                e.target.closest('.odoo-cell-actions')) {
-                return;
-            }
-            window.location.href = this.dataset.href;
+            if (e.target.closest('.cat-actions')) return;
+            const href = this.dataset.href;
+            if (href) window.location.href = href;
         });
     });
 
-    // Checkbox de seleccionar todos
-    const checkAll = document.querySelector('.odoo-checkbox-all');
-    const checkboxes = document.querySelectorAll('.odoo-checkbox-row');
-    
-    if (checkAll) {
-        checkAll.addEventListener('change', function() {
-            checkboxes.forEach(cb => cb.checked = this.checked);
+    // Cards clickeables (móvil) - solo el header y body, no las acciones
+    document.querySelectorAll('.cat-mobile-card').forEach(card => {
+        const header = card.querySelector('.cat-mobile-header');
+        const body = card.querySelector('.cat-mobile-body');
+        
+        [header, body].forEach(el => {
+            if (el) {
+                el.style.cursor = 'pointer';
+                el.addEventListener('click', function() {
+                    const href = card.dataset.href;
+                    if (href) window.location.href = href;
+                });
+            }
         });
-    }
+    });
 });
 </script>
 

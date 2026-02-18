@@ -40,7 +40,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from django.core.exceptions import PermissionDenied
 
-
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 
@@ -542,19 +542,22 @@ def categoria_toggle(request, pk):
 # ============================================
 # MOVIMIENTOS FINANCIEROS
 # ============================================
+# ============================================
+# VISTA MOVIMIENTOS_LISTADO CON PAGINACIÓN
+# ============================================
+# Reemplaza la función movimientos_listado en views.py
+# Agrega este import arriba del archivo:
+# from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 @login_required
 @require_GET
 @permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)
 def movimientos_listado(request):
-
-
-
     """
-    Listado de movimientos financieros con filtros básicos y totales.
+    Listado de movimientos financieros con filtros, totales y paginación.
     """
     movimientos = MovimientoFinanciero.objects.select_related(
-        "cuenta", "categoria", "creado_por"
+        "cuenta", "categoria", "creado_por", "persona_asociada", "unidad"
     ).exclude(estado="anulado").order_by("-fecha", "-creado_en")
 
     # --------- FILTROS ----------
@@ -569,7 +572,6 @@ def movimientos_listado(request):
         movimientos = movimientos.filter(es_transferencia=True)
     elif tipo in ["ingreso", "egreso"]:
         movimientos = movimientos.filter(tipo=tipo).exclude(es_transferencia=True)
-
 
     if cuenta_id:
         movimientos = movimientos.filter(cuenta_id=cuenta_id)
@@ -586,14 +588,13 @@ def movimientos_listado(request):
             Q(persona_asociada__codigo_miembro__icontains=q)
         )
 
-
     if fecha_desde:
         movimientos = movimientos.filter(fecha__gte=fecha_desde)
 
     if fecha_hasta:
         movimientos = movimientos.filter(fecha__lte=fecha_hasta)
 
-    # --------- TOTALES ----------
+    # --------- TOTALES (sobre todos los filtrados, no paginados) ----------
     totales = movimientos.aggregate(
         total_ingresos=Sum("monto", filter=Q(tipo="ingreso")),
         total_egresos=Sum("monto", filter=Q(tipo="egreso")),
@@ -602,12 +603,29 @@ def movimientos_listado(request):
     total_ingresos = totales.get("total_ingresos") or 0
     total_egresos = totales.get("total_egresos") or 0
     balance = total_ingresos - total_egresos
+    
+    # --------- CONTEO TOTAL ----------
+    total_registros = movimientos.count()
+
+    # --------- PAGINACIÓN ----------
+    paginator = Paginator(movimientos, 25)  # 25 por página
+    page = request.GET.get("page", 1)
+    
+    try:
+        movimientos_page = paginator.page(page)
+    except PageNotAnInteger:
+        movimientos_page = paginator.page(1)
+    except EmptyPage:
+        movimientos_page = paginator.page(paginator.num_pages)
 
     cuentas = CuentaFinanciera.objects.filter(esta_activa=True).order_by("nombre")
     categorias = CategoriaMovimiento.objects.filter(activo=True).order_by("tipo", "nombre")
 
     context = {
-        "movimientos": movimientos,
+        "movimientos": movimientos_page,  # Ahora es el objeto paginado
+        "page_obj": movimientos_page,     # Alias para compatibilidad
+        "paginator": paginator,
+        "total_registros": total_registros,
         "cuentas": cuentas,
         "categorias": categorias,
         "total_ingresos": total_ingresos,
@@ -683,6 +701,11 @@ def ingreso_crear(request):
     }
     return render(request, "finanzas_app/ingreso_form.html", context)
 
+# ============================================
+# VISTA EGRESO_CREAR MODIFICADA
+# ============================================
+# Reemplaza la función egreso_crear existente en views.py
+# Incluye: cálculo de saldos por cuenta y validación de fondos suficientes
 
 @login_required
 @require_http_methods(["GET", "POST"])
@@ -690,22 +713,73 @@ def ingreso_crear(request):
 def egreso_crear(request):
     """
     Formulario específico para registrar EGRESOS.
+    Incluye validación de fondos suficientes y muestra saldo por cuenta.
     """
+    # =============================================
+    # CALCULAR SALDOS DE TODAS LAS CUENTAS ACTIVAS
+    # =============================================
+    cuentas_con_saldo = {}
+    umbral_saldo_bajo = Decimal("5000")  # Umbral para advertencia de saldo bajo
+    
+    for cuenta in CuentaFinanciera.objects.filter(esta_activa=True):
+        movs = MovimientoFinanciero.objects.filter(
+            cuenta=cuenta
+        ).exclude(estado="anulado").aggregate(
+            ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+            egresos=Sum("monto", filter=Q(tipo="egreso")),
+        )
+        ing = movs.get("ingresos") or Decimal("0")
+        egr = movs.get("egresos") or Decimal("0")
+        saldo = cuenta.saldo_inicial + ing - egr
+        cuentas_con_saldo[cuenta.id] = {
+            "saldo": float(saldo),
+            "nombre": cuenta.nombre,
+            "moneda": cuenta.moneda,
+        }
+
     if request.method == "POST":
         form = MovimientoEgresoForm(request.POST)
+        
         if form.is_valid():
-            mov = form.save(commit=False)
-            mov.tipo = "egreso"
-            mov.creado_por = request.user
-            mov.save()
+            cuenta = form.cleaned_data.get("cuenta")
+            monto = form.cleaned_data.get("monto")
+            
+            # =============================================
+            # VALIDACIÓN DE FONDOS SUFICIENTES
+            # =============================================
+            if cuenta and monto:
+                saldo_actual = Decimal(str(cuentas_con_saldo.get(cuenta.id, {}).get("saldo", 0)))
+                
+                if monto > saldo_actual:
+                    # Fondos insuficientes - agregar error al formulario
+                    form.add_error(
+                        "monto",
+                        f"Fondos insuficientes. Saldo disponible: RD$ {saldo_actual:,.2f}"
+                    )
+                else:
+                    # Fondos suficientes - proceder con el guardado
+                    mov = form.save(commit=False)
+                    mov.tipo = "egreso"
+                    mov.creado_por = request.user
+                    mov.save()
 
-            messages.success(request, "Egreso registrado correctamente.")
+                    # Calcular saldo resultante para el mensaje
+                    saldo_resultante = saldo_actual - monto
+                    
+                    if saldo_resultante < umbral_saldo_bajo:
+                        messages.warning(
+                            request, 
+                            f"Egreso registrado. ⚠️ Saldo restante en {cuenta.nombre}: "
+                            f"RD$ {saldo_resultante:,.2f} (por debajo de RD$ {umbral_saldo_bajo:,.2f})"
+                        )
+                    else:
+                        messages.success(request, "Egreso registrado correctamente.")
 
-            accion = request.POST.get("accion")
-            if accion == "guardar_nuevo":
-                return redirect("finanzas_app:egreso_crear")
+                    accion = request.POST.get("accion")
+                    if accion == "guardar_nuevo":
+                        return redirect("finanzas_app:egreso_crear")
 
-            return redirect("/finanzas/movimientos/?tipo=egreso")
+                    return redirect("/finanzas/movimientos/?tipo=egreso")
     else:
         form = MovimientoEgresoForm(
             initial={
@@ -716,27 +790,36 @@ def egreso_crear(request):
     context = {
         "form": form,
         "modo": "crear",
+        # Nuevos datos para mostrar saldos en el template
+        "cuentas_saldos_json": json.dumps(cuentas_con_saldo),
+        "umbral_saldo_bajo": float(umbral_saldo_bajo),
     }
     return render(request, "finanzas_app/egreso.html", context)
 
+
+# ============================================
+# VISTA MOVIMIENTO_EDITAR MODIFICADA (para egresos)
+# ============================================
+# También debes actualizar movimiento_editar para que pase los saldos
+# cuando se edita un egreso existente
 
 @login_required
 @require_http_methods(["GET", "POST"])
 @permission_required("finanzas_app.change_movimientofinanciero", raise_exception=True)
 def movimiento_editar(request, pk):
-    ...
-
     """
     Editar un movimiento financiero existente.
     - Si es ingreso: usa MovimientoIngresoForm + ingreso_form.html
-    - Si es egreso: usa MovimientoEgresoForm + egreso.html
+    - Si es egreso: usa MovimientoEgresoForm + egreso.html (con saldos)
     """
     movimiento = get_object_or_404(MovimientoFinanciero, pk=pk)
+    
     if movimiento.estado == "anulado":
         messages.error(request, "Este movimiento está anulado y no se puede editar.")
         if movimiento.tipo == "ingreso":
             return redirect("finanzas_app:ingreso_detalle", pk=movimiento.pk)
-        return redirect("finanzas_app:movimientos_listado")   
+        return redirect("finanzas_app:movimientos_listado")
+    
     # Elegimos formulario y plantilla según el tipo
     if movimiento.tipo == "ingreso":
         FormClass = MovimientoIngresoForm
@@ -747,12 +830,60 @@ def movimiento_editar(request, pk):
         template_name = "finanzas_app/egreso.html"
         redirect_url = "/finanzas/movimientos/?tipo=egreso"
 
+    # =============================================
+    # CALCULAR SALDOS (solo para egresos)
+    # =============================================
+    cuentas_con_saldo = {}
+    umbral_saldo_bajo = Decimal("5000")
+    
+    if movimiento.tipo == "egreso":
+        for cuenta in CuentaFinanciera.objects.filter(esta_activa=True):
+            movs = MovimientoFinanciero.objects.filter(
+                cuenta=cuenta
+            ).exclude(estado="anulado").aggregate(
+                ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+                egresos=Sum("monto", filter=Q(tipo="egreso")),
+            )
+            ing = movs.get("ingresos") or Decimal("0")
+            egr = movs.get("egresos") or Decimal("0")
+            saldo = cuenta.saldo_inicial + ing - egr
+            
+            # En edición, sumar el monto actual del movimiento al saldo
+            # (porque ese monto ya está restado y queremos mostrar el saldo "antes" de este egreso)
+            if cuenta.id == movimiento.cuenta_id:
+                saldo += movimiento.monto
+            
+            cuentas_con_saldo[cuenta.id] = {
+                "saldo": float(saldo),
+                "nombre": cuenta.nombre,
+                "moneda": cuenta.moneda,
+            }
+
     if request.method == "POST":
         form = FormClass(request.POST, instance=movimiento)
+        
         if form.is_valid():
-            form.save()
-            messages.success(request, "Movimiento actualizado correctamente.")
-            return redirect(redirect_url)
+            # Validación de fondos solo para egresos
+            if movimiento.tipo == "egreso":
+                cuenta = form.cleaned_data.get("cuenta")
+                monto = form.cleaned_data.get("monto")
+                
+                if cuenta and monto:
+                    saldo_disponible = Decimal(str(cuentas_con_saldo.get(cuenta.id, {}).get("saldo", 0)))
+                    
+                    if monto > saldo_disponible:
+                        form.add_error(
+                            "monto",
+                            f"Fondos insuficientes. Saldo disponible: RD$ {saldo_disponible:,.2f}"
+                        )
+                    else:
+                        form.save()
+                        messages.success(request, "Movimiento actualizado correctamente.")
+                        return redirect(redirect_url)
+            else:
+                form.save()
+                messages.success(request, "Movimiento actualizado correctamente.")
+                return redirect(redirect_url)
     else:
         form = FormClass(instance=movimiento)
 
@@ -761,8 +892,13 @@ def movimiento_editar(request, pk):
         "movimiento": movimiento,
         "modo": "editar",
     }
+    
+    # Agregar saldos solo para egresos
+    if movimiento.tipo == "egreso":
+        context["cuentas_saldos_json"] = json.dumps(cuentas_con_saldo)
+        context["umbral_saldo_bajo"] = float(umbral_saldo_bajo)
+    
     return render(request, template_name, context)
-
 @login_required
 @require_POST
 @permission_required("finanzas_app.change_movimientofinanciero", raise_exception=True)
@@ -899,14 +1035,41 @@ def buscar_miembros_finanzas(request):
 from .services import TransferenciaService
 from .forms import TransferenciaForm
 
+# ============================================
+# VISTA TRANSFERENCIA_CREAR MODIFICADA
+# ============================================
+# Reemplaza la función transferencia_crear existente en views.py
+# Incluye: cálculo de saldos por cuenta para mostrar en el template
 
 @login_required
 @permission_required("finanzas_app.add_transferencia", raise_exception=True)
 def transferencia_crear(request):
- 
     """
     Vista para crear una transferencia entre cuentas.
+    Incluye saldos de cuentas para validación visual.
     """
+    
+    # =============================================
+    # CALCULAR SALDOS DE TODAS LAS CUENTAS ACTIVAS
+    # =============================================
+    cuentas_con_saldo = {}
+    
+    for cuenta in CuentaFinanciera.objects.filter(esta_activa=True):
+        movs = MovimientoFinanciero.objects.filter(
+            cuenta=cuenta
+        ).exclude(estado="anulado").aggregate(
+            ingresos=Sum("monto", filter=Q(tipo="ingreso")),
+            egresos=Sum("monto", filter=Q(tipo="egreso")),
+        )
+        ing = movs.get("ingresos") or Decimal("0")
+        egr = movs.get("egresos") or Decimal("0")
+        saldo = cuenta.saldo_inicial + ing - egr
+        cuentas_con_saldo[cuenta.id] = {
+            "saldo": float(saldo),
+            "nombre": cuenta.nombre,
+            "moneda": cuenta.moneda,
+        }
+    
     if request.method == "POST":
         form = TransferenciaForm(request.POST)
         if form.is_valid():
@@ -933,7 +1096,7 @@ def transferencia_crear(request):
                 
                 messages.success(
                     request,
-                    f"Transferencia de {cuenta_origen.moneda} {monto} realizada exitosamente. "
+                    f"Transferencia de {cuenta_origen.moneda} {monto:,.2f} realizada exitosamente. "
                     f"De '{cuenta_origen.nombre}' a '{cuenta_destino.nombre}'."
                 )
                 return redirect("finanzas_app:transferencia_detalle", pk=mov_envio.pk)
@@ -946,10 +1109,10 @@ def transferencia_crear(request):
     
     context = {
         "form": form,
+        # Nuevos datos para mostrar saldos en el template
+        "cuentas_saldos_json": json.dumps(cuentas_con_saldo),
     }
     return render(request, "finanzas_app/transferencia_form.html", context)
-
-
 @login_required
 @require_GET
 @permission_required("finanzas_app.view_movimientofinanciero", raise_exception=True)

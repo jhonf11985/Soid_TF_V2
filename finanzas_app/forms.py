@@ -440,17 +440,26 @@ class MovimientoIngresoForm(forms.ModelForm):
 # ============================================
 # FORMULARIO DE EGRESO
 # ============================================
+# ============================================
+# FORMULARIO DE EGRESO MODIFICADO
+# ============================================
+# Reemplaza la clase MovimientoEgresoForm existente en forms.py
+# Incluye: validación de referencia obligatoria para montos altos
 
 class MovimientoEgresoForm(forms.ModelForm):
     """
     Formulario especializado solo para EGRESOS.
     Igual al de ingresos, pero filtrando categorías tipo egreso.
+    Incluye validaciones adicionales de seguridad.
     """
     # Campo de moneda con formato
     monto = MonedaField(
         label="Monto",
         help_text="Monto del egreso."
     )
+    
+    # Umbral para requerir referencia (configurable)
+    UMBRAL_REFERENCIA_OBLIGATORIA = Decimal("10000")  # RD$ 10,000
 
     class Meta:
         model = MovimientoFinanciero
@@ -463,7 +472,7 @@ class MovimientoEgresoForm(forms.ModelForm):
             "persona_asociada",
             "descripcion",
             "referencia",
-              "unidad",
+            "unidad",
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}),
@@ -490,9 +499,39 @@ class MovimientoEgresoForm(forms.ModelForm):
             raise ValidationError("No puedes registrar movimientos con fecha futura.")
         return fecha
 
+    def clean(self):
+        """Validaciones cruzadas."""
+        cleaned_data = super().clean()
+        monto = cleaned_data.get("monto")
+        referencia = cleaned_data.get("referencia")
+        forma_pago = cleaned_data.get("forma_pago")
+        
+        # =============================================
+        # VALIDACIÓN: Referencia obligatoria para montos altos
+        # =============================================
+        if monto and monto >= self.UMBRAL_REFERENCIA_OBLIGATORIA:
+            if not referencia or not referencia.strip():
+                self.add_error(
+                    "referencia",
+                    f"La referencia es obligatoria para egresos de RD$ {self.UMBRAL_REFERENCIA_OBLIGATORIA:,.0f} o más."
+                )
+        
+        # =============================================
+        # VALIDACIÓN: Referencia obligatoria para transferencias/cheques
+        # =============================================
+        if forma_pago in ["transferencia", "cheque", "deposito"]:
+            if not referencia or not referencia.strip():
+                self.add_error(
+                    "referencia",
+                    f"La referencia es obligatoria para pagos por {dict(MovimientoFinanciero.FORMA_PAGO_CHOICES).get(forma_pago, forma_pago)}."
+                )
+        
+        return cleaned_data
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filtrar categorías a solo tipo ingreso y activas
+        
+        # Filtrar categorías a solo tipo egreso y activas
         self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
             tipo="egreso",
             activo=True
@@ -502,6 +541,7 @@ class MovimientoEgresoForm(forms.ModelForm):
         self.fields["cuenta"].queryset = CuentaFinanciera.objects.filter(
             esta_activa=True
         ).order_by("nombre")
+        
         # --------------------------------------------
         # UNIDAD (solo si Estructura está activa)
         # --------------------------------------------
@@ -528,7 +568,6 @@ class MovimientoEgresoForm(forms.ModelForm):
         if "persona_asociada" in self.fields:
             self.fields["persona_asociada"].widget = forms.HiddenInput()
             self.fields["persona_asociada"].required = False
-
 # ============================================
 # FORMULARIO DE TRANSFERENCIA
 # ============================================

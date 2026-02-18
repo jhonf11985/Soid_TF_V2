@@ -5,92 +5,115 @@
 
 {% block finanzas_content %}
 
-<div class="movimientos-content">
+<div class="fin-page">
 
-    <!-- ENCABEZADO -->
-    <div class="page-header-flex">
-        <div>
-            <h1 class="page-title">Movimientos financieros</h1>
-            <p class="page-subtitle">{{ movimientos|length }} registro{{ movimientos|length|pluralize:"s" }}</p>
+    <!-- TOPBAR ESTILO ODOO -->
+    <div class="fin-topbar">
+        <div class="fin-topbar-left">
+            <h1 class="fin-title">Movimientos</h1>
+            <span class="fin-count">{% if paginator %}{{ paginator.count }}{% else %}{{ movimientos|length }}{% endif %} registro{% if paginator %}{{ paginator.count|pluralize:"s" }}{% else %}{{ movimientos|length|pluralize:"s" }}{% endif %}</span>
         </div>
-        <div class="header-actions">
+        <div class="fin-topbar-right">
             {% if f_tipo == 'ingreso' %}
-                <a href="{% url 'finanzas_app:ingreso_crear' %}" class="odoo-btn odoo-btn-primary">
+                <a href="{% url 'finanzas_app:ingreso_crear' %}" class="fin-btn fin-btn-primary">
                     <span class="material-icons">add</span>
                     Nuevo ingreso
                 </a>
             {% elif f_tipo == 'egreso' %}
-                <a href="{% url 'finanzas_app:egreso_crear' %}" class="odoo-btn odoo-btn-primary">
+                <a href="{% url 'finanzas_app:egreso_crear' %}" class="fin-btn fin-btn-primary">
                     <span class="material-icons">add</span>
                     Nuevo egreso
                 </a>
             {% else %}
-                <a href="{% url 'finanzas_app:ingreso_crear' %}" class="odoo-btn odoo-btn-primary">
+                <a href="{% url 'finanzas_app:ingreso_crear' %}" class="fin-btn fin-btn-primary">
                     <span class="material-icons">add</span>
-                    Nuevo ingreso
+                    Ingreso
                 </a>
-                <a href="{% url 'finanzas_app:egreso_crear' %}" class="odoo-btn odoo-btn-secondary">
+                <a href="{% url 'finanzas_app:egreso_crear' %}" class="fin-btn fin-btn-secondary">
                     <span class="material-icons">remove</span>
-                    Nuevo egreso
+                    Egreso
+                </a>
+                <a href="{% url 'finanzas_app:transferencia_crear' %}" class="fin-btn fin-btn-secondary">
+                    <span class="material-icons">swap_horiz</span>
+                    Transferir
                 </a>
             {% endif %}
-
-            <a
-                href="{% url 'finanzas_app:movimientos_listado_print' %}?{{ request.GET.urlencode }}"
-                target="_blank"
-                class="odoo-btn odoo-btn-secondary"
-                title="Imprimir listado"
-                style="gap:6px;"
-            >
+            <a href="{% url 'finanzas_app:movimientos_listado_print' %}?{{ request.GET.urlencode }}"
+               target="_blank"
+               class="fin-btn fin-btn-icon"
+               title="Imprimir">
                 <span class="material-icons">print</span>
-                Imprimir
             </a>
         </div>
     </div>
 
-    <!-- RESUMEN -->
-    <div class="summary-row">
-        <div class="summary-item summary-income">
-            <span class="summary-label">Ingresos</span>
-            <span class="summary-value">RD$ {{ total_ingresos|floatformat:2 }}</span>
+    <!-- RESUMEN FINANCIERO -->
+    <div class="fin-summary">
+        <div class="fin-summary-card fin-summary-income">
+            <div class="fin-summary-icon">
+                <span class="material-icons">south_west</span>
+            </div>
+            <div class="fin-summary-data">
+                <span class="fin-summary-label">Ingresos</span>
+                <span class="fin-summary-value">{{ total_ingresos|floatformat:2 }}</span>
+            </div>
         </div>
-        <div class="summary-item summary-expense">
-            <span class="summary-label">Egresos</span>
-            <span class="summary-value">RD$ {{ total_egresos|floatformat:2 }}</span>
+        
+        <div class="fin-summary-card fin-summary-expense">
+            <div class="fin-summary-icon">
+                <span class="material-icons">north_east</span>
+            </div>
+            <div class="fin-summary-data">
+                <span class="fin-summary-label">Egresos</span>
+                <span class="fin-summary-value">{{ total_egresos|floatformat:2 }}</span>
+            </div>
         </div>
-        <div class="summary-item {% if balance >= 0 %}summary-positive{% else %}summary-negative{% endif %}">
-            <span class="summary-label">Balance</span>
-            <span class="summary-value">RD$ {{ balance|floatformat:2 }}</span>
+        
+        <div class="fin-summary-card {% if balance >= 0 %}fin-summary-positive{% else %}fin-summary-negative{% endif %}">
+            <div class="fin-summary-icon">
+                <span class="material-icons">{% if balance >= 0 %}trending_up{% else %}trending_down{% endif %}</span>
+            </div>
+            <div class="fin-summary-data">
+                <span class="fin-summary-label">Balance</span>
+                <span class="fin-summary-value">{{ balance|floatformat:2 }}</span>
+            </div>
         </div>
-        <button type="button" class="btn-filter" id="toggle-filters">
-            <span class="material-icons">filter_list</span>
-            Filtros
+        
+        <button type="button" class="fin-btn-filter" id="toggle-filters">
+            <span class="material-icons">tune</span>
+            <span class="filter-text">Filtros</span>
+            {% if f_tipo or f_cuenta or f_categoria or f_fecha_desde or f_fecha_hasta or f_q %}
+                <span class="filter-badge"></span>
+            {% endif %}
         </button>
     </div>
 
-    <!-- FILTROS -->
-    <div class="filters-panel" id="filters-panel">
-        <form method="get" class="filters-form">
-            <div class="filters-grid">
-                <div class="filter-field">
-                    <label for="id_q">Buscar</label>
-                    <input type="text" id="id_q" name="q" value="{{ f_q }}" placeholder="Descripción o referencia...">
+    <!-- PANEL DE FILTROS -->
+    <div class="fin-filters" id="filters-panel">
+        <form method="get" class="fin-filters-form">
+            <div class="fin-filters-grid">
+                <div class="fin-filter-field">
+                    <label>Buscar</label>
+                    <div class="fin-input-icon">
+                        <span class="material-icons">search</span>
+                        <input type="text" name="q" value="{{ f_q }}" placeholder="Descripción, referencia...">
+                    </div>
                 </div>
 
-                <div class="filter-field">
-                    <label for="id_tipo">Tipo</label>
-                    <select id="id_tipo" name="tipo">
-                        <option value="">Todos</option>
+                <div class="fin-filter-field">
+                    <label>Tipo</label>
+                    <select name="tipo">
+                        <option value="">Todos los tipos</option>
                         <option value="ingreso" {% if f_tipo == 'ingreso' %}selected{% endif %}>Ingresos</option>
                         <option value="egreso" {% if f_tipo == 'egreso' %}selected{% endif %}>Egresos</option>
                         <option value="transferencia" {% if f_tipo == 'transferencia' %}selected{% endif %}>Transferencias</option>
                     </select>
                 </div>
 
-                <div class="filter-field">
-                    <label for="id_cuenta">Cuenta</label>
-                    <select id="id_cuenta" name="cuenta">
-                        <option value="">Todas</option>
+                <div class="fin-filter-field">
+                    <label>Cuenta</label>
+                    <select name="cuenta">
+                        <option value="">Todas las cuentas</option>
                         {% for c in cuentas %}
                             <option value="{{ c.id }}" {% if f_cuenta == c.id|stringformat:"s" %}selected{% endif %}>
                                 {{ c.nombre }}
@@ -99,10 +122,10 @@
                     </select>
                 </div>
 
-                <div class="filter-field">
-                    <label for="id_categoria">Categoría</label>
-                    <select id="id_categoria" name="categoria">
-                        <option value="">Todas</option>
+                <div class="fin-filter-field">
+                    <label>Categoría</label>
+                    <select name="categoria">
+                        <option value="">Todas las categorías</option>
                         {% for cat in categorias %}
                             <option value="{{ cat.id }}" {% if f_categoria == cat.id|stringformat:"s" %}selected{% endif %}>
                                 {{ cat.nombre }}
@@ -111,46 +134,52 @@
                     </select>
                 </div>
 
-                <div class="filter-field">
-                    <label for="id_fecha_desde">Desde</label>
-                    <input type="date" id="id_fecha_desde" name="fecha_desde" value="{{ f_fecha_desde }}">
+                <div class="fin-filter-field">
+                    <label>Desde</label>
+                    <input type="date" name="fecha_desde" value="{{ f_fecha_desde }}">
                 </div>
 
-                <div class="filter-field">
-                    <label for="id_fecha_hasta">Hasta</label>
-                    <input type="date" id="id_fecha_hasta" name="fecha_hasta" value="{{ f_fecha_hasta }}">
+                <div class="fin-filter-field">
+                    <label>Hasta</label>
+                    <input type="date" name="fecha_hasta" value="{{ f_fecha_hasta }}">
                 </div>
             </div>
 
-            <div class="filters-actions">
-                <button type="submit" class="btn-primary btn-sm">Aplicar</button>
-                <a href="{% url 'finanzas_app:movimientos_listado' %}" class="btn-secondary btn-sm">Limpiar</a>
+            <div class="fin-filters-actions">
+                <button type="submit" class="fin-btn fin-btn-primary fin-btn-sm">
+                    <span class="material-icons">check</span>
+                    Aplicar
+                </button>
+                <a href="{% url 'finanzas_app:movimientos_listado' %}" class="fin-btn fin-btn-secondary fin-btn-sm">
+                    <span class="material-icons">clear</span>
+                    Limpiar
+                </a>
             </div>
         </form>
     </div>
 
-    <!-- TABLA -->
-    <div class="table-card">
-        <table class="data-table">
+    <!-- TABLA DE MOVIMIENTOS (Desktop) -->
+    <div class="fin-table-container">
+        <table class="fin-table">
             <thead>
                 <tr>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th>Cuenta</th>
-                    <th>Categoría</th>
-                    <th>Miembro</th>
+                    <th class="col-date">Fecha</th>
+                    <th class="col-type">Tipo</th>
+                    <th class="col-account">Cuenta</th>
+                    <th class="col-category">Categoría</th>
+                    <th class="col-person">Miembro</th>
                     {% if MODULOS_ACTIVOS.Estructura %}
-                    <th>Unidad</th>
+                    <th class="col-unit">Unidad</th>
                     {% endif %}
-                    <th>Descripción</th>
-                    <th class="text-right">Monto</th>
+                    <th class="col-desc">Descripción</th>
+                    <th class="col-amount">Monto</th>
                     <th class="col-actions"></th>
                 </tr>
             </thead>
             <tbody>
                 {% if movimientos %}
                     {% for mov in movimientos %}
-                        <tr class="row-clickable"
+                        <tr class="fin-row"
                             {% if mov.es_transferencia %}
                                 data-href="{% url 'finanzas_app:transferencia_detalle' mov.pk %}"
                             {% elif mov.tipo == 'ingreso' %}
@@ -159,46 +188,108 @@
                                 data-href="{% url 'finanzas_app:egreso_detalle' mov.pk %}"
                             {% endif %}
                         >
-                            <td>{{ mov.fecha|date:"d M Y" }}</td>
-                            <td>
+                            <!-- FECHA -->
+                            <td class="col-date">
+                                <div class="fin-date">
+                                    <span class="fin-date-day">{{ mov.fecha|date:"d" }}</span>
+                                    <span class="fin-date-month">{{ mov.fecha|date:"M 'y" }}</span>
+                                </div>
+                            </td>
+                            
+                            <!-- TIPO -->
+                            <td class="col-type">
                                 {% if mov.es_transferencia %}
-                                    <span class="badge badge-transfer">
-                                        <span class="material-icons" style="font-size: 14px;">compare_arrows</span>
+                                    <span class="fin-tag fin-tag-transfer">
+                                        <span class="fin-tag-dot"></span>
                                         Transferencia
                                     </span>
                                 {% elif mov.tipo == 'ingreso' %}
-                                    <span class="badge badge-success">Ingreso</span>
+                                    <span class="fin-tag fin-tag-income">
+                                        <span class="fin-tag-dot"></span>
+                                        Ingreso
+                                    </span>
                                 {% else %}
-                                    <span class="badge badge-danger">Egreso</span>
+                                    <span class="fin-tag fin-tag-expense">
+                                        <span class="fin-tag-dot"></span>
+                                        Egreso
+                                    </span>
                                 {% endif %}
                             </td>
-                            <td>{{ mov.cuenta.nombre }}</td>
-                            <td>{{ mov.categoria.nombre|default:"—" }}</td>
-                            <td>
+                            
+                            <!-- CUENTA -->
+                            <td class="col-account">
+                                <span class="fin-account">
+                                    <span class="material-icons">account_balance</span>
+                                    {{ mov.cuenta.nombre }}
+                                </span>
+                            </td>
+                            
+                            <!-- CATEGORÍA -->
+                            <td class="col-category">
+                                {% if mov.categoria %}
+                                    <span class="fin-category">{{ mov.categoria.nombre }}</span>
+                                {% else %}
+                                    <span class="fin-empty">—</span>
+                                {% endif %}
+                            </td>
+                            
+                            <!-- MIEMBRO -->
+                            <td class="col-person">
                                 {% if mov.persona_asociada %}
                                     <a href="{% url 'miembros_app:detalle' mov.persona_asociada.pk %}"
-                                       class="link-miembro"
+                                       class="fin-person-link"
                                        onclick="event.stopPropagation();">
-                                        {{ mov.persona_asociada.nombres }} {{ mov.persona_asociada.apellidos }}
+                                        <span class="fin-person-avatar">
+                                            {{ mov.persona_asociada.nombres|slice:":1" }}{{ mov.persona_asociada.apellidos|slice:":1" }}
+                                        </span>
+                                        <span class="fin-person-name">{{ mov.persona_asociada.nombres }} {{ mov.persona_asociada.apellidos }}</span>
                                     </a>
                                 {% else %}
-                                    —
+                                    <span class="fin-empty">—</span>
                                 {% endif %}
                             </td>
+                            
+                            <!-- UNIDAD (si módulo activo) -->
                             {% if MODULOS_ACTIVOS.Estructura %}
-                            <td>{{ mov.unidad.nombre|default:"—" }}</td>
-                            {% endif %}
-                            <td>{{ mov.descripcion|default:"—"|truncatewords:6 }}</td>
-                            <td class="text-right {% if mov.tipo == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
-                                <strong>{% if mov.tipo == 'ingreso' %}+{% else %}-{% endif %}{{ mov.monto|floatformat:2 }}</strong>
+                            <td class="col-unit">
+                                {% if mov.unidad %}
+                                    <span class="fin-unit">{{ mov.unidad.nombre }}</span>
+                                {% else %}
+                                    <span class="fin-empty">—</span>
+                                {% endif %}
                             </td>
+                            {% endif %}
+                            
+                            <!-- DESCRIPCIÓN -->
+                            <td class="col-desc">
+                                {% if mov.descripcion %}
+                                    <span class="fin-desc" title="{{ mov.descripcion }}">{{ mov.descripcion|truncatechars:40 }}</span>
+                                {% else %}
+                                    <span class="fin-empty">Sin descripción</span>
+                                {% endif %}
+                            </td>
+                            
+                            <!-- MONTO -->
+                            <td class="col-amount">
+                                <span class="fin-amount {% if mov.tipo == 'ingreso' %}fin-amount-income{% else %}fin-amount-expense{% endif %}">
+                                    {% if mov.tipo == 'ingreso' %}+{% else %}-{% endif %}{{ mov.monto|floatformat:2 }}
+                                </span>
+                            </td>
+                            
+                            <!-- ACCIONES -->
                             <td class="col-actions">
-                                <div class="row-actions">
-                                    <a href="{% url 'finanzas_app:movimiento_editar' mov.id %}" class="action-btn" title="Editar">
+                                <div class="fin-actions">
+                                    <a href="{% url 'finanzas_app:movimiento_editar' mov.id %}" 
+                                       class="fin-action-btn" 
+                                       title="Editar"
+                                       onclick="event.stopPropagation();">
                                         <span class="material-icons">edit</span>
                                     </a>
-                                    <a href="{% url 'finanzas_app:movimiento_anular' mov.id %}" class="action-btn action-danger" title="Anular">
-                                        <span class="material-icons">delete</span>
+                                    <a href="{% url 'finanzas_app:movimiento_anular' mov.id %}" 
+                                       class="fin-action-btn fin-action-danger" 
+                                       title="Anular"
+                                       onclick="event.stopPropagation();">
+                                        <span class="material-icons">block</span>
                                     </a>
                                 </div>
                             </td>
@@ -206,9 +297,12 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="{% if MODULOS_ACTIVOS.Estructura %}9{% else %}8{% endif %}" class="empty-row">
-                            <span class="material-icons">inbox</span>
-                            <p>No hay movimientos con los filtros actuales</p>
+                        <td colspan="{% if MODULOS_ACTIVOS.Estructura %}9{% else %}8{% endif %}" class="fin-empty-state">
+                            <div class="fin-empty-content">
+                                <span class="material-icons">receipt_long</span>
+                                <h3>No hay movimientos</h3>
+                                <p>No se encontraron movimientos con los filtros actuales</p>
+                            </div>
                         </td>
                     </tr>
                 {% endif %}
@@ -216,299 +310,722 @@
         </table>
     </div>
 
+    <!-- VISTA MÓVIL - CARDS -->
+    <div class="fin-mobile-list">
+        {% if movimientos %}
+            {% for mov in movimientos %}
+                <div class="fin-mobile-card"
+                     {% if mov.es_transferencia %}
+                         data-href="{% url 'finanzas_app:transferencia_detalle' mov.pk %}"
+                     {% elif mov.tipo == 'ingreso' %}
+                         data-href="{% url 'finanzas_app:ingreso_detalle' mov.pk %}"
+                     {% else %}
+                         data-href="{% url 'finanzas_app:egreso_detalle' mov.pk %}"
+                     {% endif %}>
+                    <div class="fin-mobile-header">
+                        <div>
+                            <span class="fin-mobile-date">{{ mov.fecha|date:"d M Y" }}</span>
+                            {% if mov.es_transferencia %}
+                                <span class="fin-tag fin-tag-transfer" style="margin-left: 8px;">
+                                    <span class="fin-tag-dot"></span>
+                                    Transferencia
+                                </span>
+                            {% elif mov.tipo == 'ingreso' %}
+                                <span class="fin-tag fin-tag-income" style="margin-left: 8px;">
+                                    <span class="fin-tag-dot"></span>
+                                    Ingreso
+                                </span>
+                            {% else %}
+                                <span class="fin-tag fin-tag-expense" style="margin-left: 8px;">
+                                    <span class="fin-tag-dot"></span>
+                                    Egreso
+                                </span>
+                            {% endif %}
+                        </div>
+                        <span class="fin-mobile-amount {% if mov.tipo == 'ingreso' %}income{% else %}expense{% endif %}">
+                            {% if mov.tipo == 'ingreso' %}+{% else %}-{% endif %}{{ mov.monto|floatformat:2 }}
+                        </span>
+                    </div>
+                    <div class="fin-mobile-body">
+                        <div class="fin-mobile-row">
+                            <span class="material-icons">account_balance</span>
+                            <span>{{ mov.cuenta.nombre }}</span>
+                        </div>
+                        {% if mov.categoria %}
+                        <div class="fin-mobile-row">
+                            <span class="material-icons">label</span>
+                            <span>{{ mov.categoria.nombre }}</span>
+                        </div>
+                        {% endif %}
+                        {% if mov.persona_asociada %}
+                        <div class="fin-mobile-row">
+                            <span class="material-icons">person</span>
+                            <span>{{ mov.persona_asociada.nombres }} {{ mov.persona_asociada.apellidos }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if mov.descripcion %}
+                    <div class="fin-mobile-desc">
+                        {{ mov.descripcion|truncatechars:60 }}
+                    </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="fin-empty-state" style="padding: 40px 20px; text-align: center; background: var(--fin-bg); border-radius: 10px; border: 1px solid var(--fin-border);">
+                <div class="fin-empty-content">
+                    <span class="material-icons">receipt_long</span>
+                    <h3>No hay movimientos</h3>
+                    <p>No se encontraron movimientos con los filtros actuales</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- PAGINACIÓN -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="fin-pagination">
+        <div class="fin-pagination-info">
+            Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }}
+        </div>
+        <div class="fin-pagination-controls">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if f_tipo %}&tipo={{ f_tipo }}{% endif %}{% if f_cuenta %}&cuenta={{ f_cuenta }}{% endif %}{% if f_categoria %}&categoria={{ f_categoria }}{% endif %}{% if f_q %}&q={{ f_q }}{% endif %}{% if f_fecha_desde %}&fecha_desde={{ f_fecha_desde }}{% endif %}{% if f_fecha_hasta %}&fecha_hasta={{ f_fecha_hasta }}{% endif %}" 
+                   class="fin-page-btn" title="Primera">
+                    <span class="material-icons">first_page</span>
+                </a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if f_tipo %}&tipo={{ f_tipo }}{% endif %}{% if f_cuenta %}&cuenta={{ f_cuenta }}{% endif %}{% if f_categoria %}&categoria={{ f_categoria }}{% endif %}{% if f_q %}&q={{ f_q }}{% endif %}{% if f_fecha_desde %}&fecha_desde={{ f_fecha_desde }}{% endif %}{% if f_fecha_hasta %}&fecha_hasta={{ f_fecha_hasta }}{% endif %}" 
+                   class="fin-page-btn" title="Anterior">
+                    <span class="material-icons">chevron_left</span>
+                </a>
+            {% else %}
+                <span class="fin-page-btn disabled"><span class="material-icons">first_page</span></span>
+                <span class="fin-page-btn disabled"><span class="material-icons">chevron_left</span></span>
+            {% endif %}
+
+            <div class="fin-page-numbers">
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <span class="fin-page-num active">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?page={{ num }}{% if f_tipo %}&tipo={{ f_tipo }}{% endif %}{% if f_cuenta %}&cuenta={{ f_cuenta }}{% endif %}{% if f_categoria %}&categoria={{ f_categoria }}{% endif %}{% if f_q %}&q={{ f_q }}{% endif %}{% if f_fecha_desde %}&fecha_desde={{ f_fecha_desde }}{% endif %}{% if f_fecha_hasta %}&fecha_hasta={{ f_fecha_hasta }}{% endif %}" 
+                           class="fin-page-num">{{ num }}</a>
+                    {% elif num == 1 or num == page_obj.paginator.num_pages %}
+                        <a href="?page={{ num }}{% if f_tipo %}&tipo={{ f_tipo }}{% endif %}{% if f_cuenta %}&cuenta={{ f_cuenta }}{% endif %}{% if f_categoria %}&categoria={{ f_categoria }}{% endif %}{% if f_q %}&q={{ f_q }}{% endif %}{% if f_fecha_desde %}&fecha_desde={{ f_fecha_desde }}{% endif %}{% if f_fecha_hasta %}&fecha_hasta={{ f_fecha_hasta }}{% endif %}" 
+                           class="fin-page-num">{{ num }}</a>
+                    {% elif num == page_obj.number|add:'-3' or num == page_obj.number|add:'3' %}
+                        <span class="fin-page-ellipsis">…</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if f_tipo %}&tipo={{ f_tipo }}{% endif %}{% if f_cuenta %}&cuenta={{ f_cuenta }}{% endif %}{% if f_categoria %}&categoria={{ f_categoria }}{% endif %}{% if f_q %}&q={{ f_q }}{% endif %}{% if f_fecha_desde %}&fecha_desde={{ f_fecha_desde }}{% endif %}{% if f_fecha_hasta %}&fecha_hasta={{ f_fecha_hasta }}{% endif %}" 
+                   class="fin-page-btn" title="Siguiente">
+                    <span class="material-icons">chevron_right</span>
+                </a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if f_tipo %}&tipo={{ f_tipo }}{% endif %}{% if f_cuenta %}&cuenta={{ f_cuenta }}{% endif %}{% if f_categoria %}&categoria={{ f_categoria }}{% endif %}{% if f_q %}&q={{ f_q }}{% endif %}{% if f_fecha_desde %}&fecha_desde={{ f_fecha_desde }}{% endif %}{% if f_fecha_hasta %}&fecha_hasta={{ f_fecha_hasta }}{% endif %}" 
+                   class="fin-page-btn" title="Última">
+                    <span class="material-icons">last_page</span>
+                </a>
+            {% else %}
+                <span class="fin-page-btn disabled"><span class="material-icons">chevron_right</span></span>
+                <span class="fin-page-btn disabled"><span class="material-icons">last_page</span></span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 
 <style>
 /* =====================================
-   BOTONES ESTILO ODOO
+   VARIABLES
    ===================================== */
-.odoo-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 16px;
-    font-size: 13px;
-    font-weight: 500;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all .15s;
-    text-decoration: none;
-    font-family: inherit;
-    white-space: nowrap;
-}
-
-.odoo-btn-primary {
-    background: #714B67;
-    color: #fff;
-    border-color: #714B67;
-}
-.odoo-btn-primary:hover {
-    background: #5d3d54;
-    border-color: #5d3d54;
-}
-
-.odoo-btn-secondary {
-    background: #fff;
-    color: #495057;
-    border-color: #dee2e6;
-}
-.odoo-btn-secondary:hover {
-    background: #f8f9fa;
-    border-color: #adb5bd;
-}
-
-.odoo-btn .material-icons {
-    font-size: 18px;
+:root {
+    --fin-primary: #714B67;
+    --fin-primary-light: #8e6b82;
+    --fin-income: #059669;
+    --fin-income-bg: #ecfdf5;
+    --fin-income-border: #a7f3d0;
+    --fin-expense: #dc2626;
+    --fin-expense-bg: #fef2f2;
+    --fin-expense-border: #fecaca;
+    --fin-transfer: #0369a1;
+    --fin-transfer-bg: #f0f9ff;
+    --fin-transfer-border: #bae6fd;
+    --fin-text: #111827;
+    --fin-text-muted: #6b7280;
+    --fin-border: #e5e7eb;
+    --fin-bg: #ffffff;
+    --fin-bg-gray: #f9fafb;
 }
 
 /* =====================================
-   LAYOUT
+   PAGE LAYOUT
    ===================================== */
-.movimientos-content {
-    padding: 20px;
+.fin-page {
+    background: var(--fin-bg-gray);
+    min-height: 100vh;
+    padding-bottom: 24px;
 }
 
-.page-header-flex {
+/* =====================================
+   TOPBAR
+   ===================================== */
+.fin-topbar {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 20px;
+    align-items: center;
+    padding: 16px 24px;
+    background: var(--fin-bg);
+    border-bottom: 1px solid var(--fin-border);
 }
 
-.page-title {
-    font-size: 24px;
+.fin-topbar-left {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.fin-title {
+    font-size: 20px;
     font-weight: 600;
-    color: #111827;
+    color: var(--fin-text);
     margin: 0;
 }
 
-.page-subtitle {
+.fin-count {
     font-size: 13px;
-    color: #6b7280;
-    margin: 4px 0 0;
+    color: var(--fin-text-muted);
+    background: var(--fin-bg-gray);
+    padding: 2px 10px;
+    border-radius: 10px;
 }
 
-.header-actions {
+.fin-topbar-right {
     display: flex;
+    align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
 }
 
 /* =====================================
-   RESUMEN
+   BUTTONS
    ===================================== */
-.summary-row {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.summary-item {
-    display: flex;
-    flex-direction: column;
-    padding: 12px 16px;
-    border-radius: 10px;
-    min-width: 140px;
-}
-
-.summary-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    opacity: 0.8;
-}
-
-.summary-value {
-    font-size: 16px;
-    font-weight: 700;
-}
-
-.summary-income {
-    background: #ecfdf5;
-    color: #065f46;
-}
-
-.summary-expense {
-    background: #fef2f2;
-    color: #991b1b;
-}
-
-.summary-positive {
-    background: #eff6ff;
-    color: #1e40af;
-}
-
-.summary-negative {
-    background: #fef2f2;
-    color: #991b1b;
-}
-
-.btn-filter {
-    display: flex;
+.fin-btn {
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 14px;
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    padding: 8px 16px;
     font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--fin-border);
+    border-radius: 6px;
     cursor: pointer;
-    margin-left: auto;
+    transition: all 0.15s;
+    text-decoration: none;
+    font-family: inherit;
+    white-space: nowrap;
+    background: var(--fin-bg);
+    color: var(--fin-text);
 }
 
-.btn-filter:hover {
-    background: #f9fafb;
+.fin-btn .material-icons {
+    font-size: 18px;
+}
+
+.fin-btn-primary {
+    background: var(--fin-primary);
+    color: white;
+    border-color: var(--fin-primary);
+}
+
+.fin-btn-primary:hover {
+    background: var(--fin-primary-light);
+    border-color: var(--fin-primary-light);
+}
+
+.fin-btn-secondary:hover {
+    background: var(--fin-bg-gray);
+}
+
+.fin-btn-icon {
+    padding: 8px;
+}
+
+.fin-btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.fin-btn-sm .material-icons {
+    font-size: 16px;
 }
 
 /* =====================================
-   FILTROS
+   SUMMARY CARDS
    ===================================== */
-.filters-panel {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 16px;
-    display: none;
+.fin-summary {
+    display: flex;
+    gap: 16px;
+    padding: 16px 24px;
+    background: var(--fin-bg);
+    border-bottom: 1px solid var(--fin-border);
+    flex-wrap: wrap;
+    align-items: center;
 }
 
-.filters-panel.active {
-    display: block;
-}
-
-.filters-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+.fin-summary-card {
+    display: flex;
+    align-items: center;
     gap: 12px;
-    margin-bottom: 12px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    min-width: 180px;
 }
 
-.filter-field {
+.fin-summary-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fin-summary-icon .material-icons {
+    font-size: 22px;
+}
+
+.fin-summary-income {
+    background: var(--fin-income-bg);
+    border: 1px solid var(--fin-income-border);
+}
+
+.fin-summary-income .fin-summary-icon {
+    background: var(--fin-income);
+    color: white;
+}
+
+.fin-summary-income .fin-summary-value {
+    color: var(--fin-income);
+}
+
+.fin-summary-expense {
+    background: var(--fin-expense-bg);
+    border: 1px solid var(--fin-expense-border);
+}
+
+.fin-summary-expense .fin-summary-icon {
+    background: var(--fin-expense);
+    color: white;
+}
+
+.fin-summary-expense .fin-summary-value {
+    color: var(--fin-expense);
+}
+
+.fin-summary-positive {
+    background: var(--fin-income-bg);
+    border: 1px solid var(--fin-income-border);
+}
+
+.fin-summary-positive .fin-summary-icon {
+    background: var(--fin-income);
+    color: white;
+}
+
+.fin-summary-positive .fin-summary-value {
+    color: var(--fin-income);
+}
+
+.fin-summary-negative {
+    background: var(--fin-expense-bg);
+    border: 1px solid var(--fin-expense-border);
+}
+
+.fin-summary-negative .fin-summary-icon {
+    background: var(--fin-expense);
+    color: white;
+}
+
+.fin-summary-negative .fin-summary-value {
+    color: var(--fin-expense);
+}
+
+.fin-summary-data {
     display: flex;
     flex-direction: column;
-    gap: 4px;
 }
 
-.filter-field label {
+.fin-summary-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fin-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.fin-summary-value {
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.fin-btn-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--fin-border);
+    border-radius: 8px;
+    cursor: pointer;
+    background: var(--fin-bg);
+    color: var(--fin-text);
+    margin-left: auto;
+    position: relative;
+    transition: all 0.15s;
+}
+
+.fin-btn-filter:hover {
+    background: var(--fin-bg-gray);
+    border-color: var(--fin-primary);
+}
+
+.fin-btn-filter .material-icons {
+    font-size: 18px;
+    color: var(--fin-text-muted);
+}
+
+.filter-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 10px;
+    height: 10px;
+    background: var(--fin-primary);
+    border-radius: 50%;
+    border: 2px solid var(--fin-bg);
+}
+
+/* =====================================
+   FILTERS PANEL
+   ===================================== */
+.fin-filters {
+    display: none;
+    padding: 20px 24px;
+    background: var(--fin-bg);
+    border-bottom: 1px solid var(--fin-border);
+}
+
+.fin-filters.active {
+    display: block;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fin-filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.fin-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fin-filter-field label {
     font-size: 12px;
     font-weight: 600;
-    color: #374151;
+    color: var(--fin-text);
 }
 
-.filter-field input,
-.filter-field select {
-    padding: 8px 10px;
-    border: 1px solid #e5e7eb;
+.fin-filter-field input,
+.fin-filter-field select {
+    padding: 10px 12px;
+    border: 1px solid var(--fin-border);
     border-radius: 6px;
     font-size: 13px;
+    font-family: inherit;
+    transition: border-color 0.15s;
 }
 
-.filters-actions {
+.fin-filter-field input:focus,
+.fin-filter-field select:focus {
+    outline: none;
+    border-color: var(--fin-primary);
+}
+
+.fin-input-icon {
+    position: relative;
+}
+
+.fin-input-icon .material-icons {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: var(--fin-text-muted);
+}
+
+.fin-input-icon input {
+    padding-left: 36px;
+    width: 100%;
+}
+
+.fin-filters-actions {
     display: flex;
     gap: 8px;
 }
 
-.btn-sm {
-    padding: 6px 12px !important;
-    font-size: 12px !important;
-}
-
 /* =====================================
-   TABLA
+   TABLE
    ===================================== */
-.table-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
+.fin-table-container {
+    margin: 20px 24px;
+    background: var(--fin-bg);
+    border: 1px solid var(--fin-border);
+    border-radius: 10px;
     overflow: hidden;
 }
 
-.data-table {
+.fin-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
 }
 
-.data-table thead {
-    background: #f9fafb;
+.fin-table thead {
+    background: var(--fin-bg-gray);
 }
 
-.data-table th {
-    padding: 12px 14px;
+.fin-table th {
+    padding: 10px 14px;
     text-align: left;
     font-weight: 600;
-    color: #374151;
-    border-bottom: 1px solid #e5e7eb;
+    font-size: 11px;
+    color: var(--fin-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--fin-border);
 }
 
-.data-table td {
-    padding: 12px 14px;
+.fin-table td {
+    padding: 10px 14px;
     border-bottom: 1px solid #f3f4f6;
-    color: #111827;
+    vertical-align: middle;
 }
 
-.data-table tbody tr:hover {
-    background: #f8f4f7;
-}
-
-.row-clickable {
+.fin-row {
     cursor: pointer;
+    transition: background 0.15s;
+}
+
+.fin-row:hover {
+    background: #faf8f9;
+}
+
+.fin-row:last-child td {
+    border-bottom: none;
+}
+
+/* Column widths */
+.col-date { width: 100px; }
+.col-type { width: 120px; }
+.col-account { width: 140px; }
+.col-amount { width: 130px; text-align: right; }
+.col-actions { width: 80px; }
+
+/* =====================================
+   DATE CELL
+   ===================================== */
+.fin-date {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.fin-date-day {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fin-text);
+}
+
+.fin-date-month {
+    font-size: 12px;
+    color: var(--fin-text-muted);
 }
 
 /* =====================================
-   BADGES
+   TAGS (ODOO STYLE)
    ===================================== */
-.badge {
+.fin-tag {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border-radius: 999px;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 500;
 }
 
-.badge-success {
-    background: #d1fae5;
-    color: #065f46;
+.fin-tag-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
 }
 
-.badge-danger {
-    background: #fee2e2;
-    color: #991b1b;
+.fin-tag-income {
+    background: var(--fin-income-bg);
+    color: var(--fin-income);
 }
 
-.badge-transfer {
-    background: #e0f2fe;
-    color: #0369a1;
+.fin-tag-income .fin-tag-dot {
+    background: var(--fin-income);
+}
+
+.fin-tag-expense {
+    background: var(--fin-expense-bg);
+    color: var(--fin-expense);
+}
+
+.fin-tag-expense .fin-tag-dot {
+    background: var(--fin-expense);
+}
+
+.fin-tag-transfer {
+    background: var(--fin-transfer-bg);
+    color: var(--fin-transfer);
+}
+
+.fin-tag-transfer .fin-tag-dot {
+    background: var(--fin-transfer);
 }
 
 /* =====================================
-   UTILIDADES
+   ACCOUNT CELL
    ===================================== */
-.text-right { text-align: right; }
-.text-success { color: #059669 !important; }
-.text-danger { color: #dc2626 !important; }
-
-.link-miembro {
-    color: #714B67;
-    text-decoration: none;
+.fin-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--fin-text);
+    font-size: 12px;
 }
-.link-miembro:hover {
+
+.fin-account .material-icons {
+    font-size: 14px;
+    color: var(--fin-text-muted);
+}
+
+/* =====================================
+   CATEGORY
+   ===================================== */
+.fin-category {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #f3f4f6;
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--fin-text);
+}
+
+/* =====================================
+   PERSON LINK
+   ===================================== */
+.fin-person-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--fin-text);
+}
+
+.fin-person-link:hover .fin-person-name {
+    color: var(--fin-primary);
     text-decoration: underline;
 }
 
-.col-actions {
-    width: 80px;
-    text-align: center;
+.fin-person-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--fin-primary) 0%, var(--fin-primary-light) 100%);
+    color: white;
+    font-size: 9px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
-.row-actions {
+.fin-person-name {
+    font-size: 12px;
+    transition: color 0.15s;
+}
+
+/* =====================================
+   UNIT
+   ===================================== */
+.fin-unit {
+    font-size: 11px;
+    color: var(--fin-text-muted);
+}
+
+/* =====================================
+   DESCRIPTION
+   ===================================== */
+.fin-desc {
+    color: var(--fin-text);
+    font-size: 12px;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.fin-empty {
+    color: #d1d5db;
+    font-style: italic;
+    font-size: 11px;
+}
+
+/* =====================================
+   AMOUNT
+   ===================================== */
+.fin-amount {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.fin-amount-income {
+    color: var(--fin-income);
+}
+
+.fin-amount-expense {
+    color: var(--fin-expense);
+}
+
+/* =====================================
+   ACTIONS
+   ===================================== */
+.fin-actions {
     display: flex;
     gap: 4px;
     justify-content: center;
@@ -516,71 +1033,327 @@
     transition: opacity 0.15s;
 }
 
-tr:hover .row-actions {
+.fin-row:hover .fin-actions {
     opacity: 1;
 }
 
-.action-btn {
+.fin-action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 6px;
-    color: #6b7280;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    color: var(--fin-text-muted);
     transition: all 0.15s;
     text-decoration: none;
 }
 
-.action-btn:hover {
-    background: #f3f4f6;
-    color: var(--color-primary, #714B67);
+.fin-action-btn:hover {
+    background: var(--fin-bg-gray);
+    color: var(--fin-primary);
 }
 
-.action-btn .material-icons {
-    font-size: 18px;
+.fin-action-btn .material-icons {
+    font-size: 16px;
 }
 
-.action-danger:hover {
-    background: #fee2e2;
-    color: #dc2626;
+.fin-action-danger:hover {
+    background: var(--fin-expense-bg);
+    color: var(--fin-expense);
 }
 
-.empty-row {
+/* =====================================
+   EMPTY STATE
+   ===================================== */
+.fin-empty-state {
+    padding: 60px 20px !important;
     text-align: center;
-    padding: 40px 20px !important;
-    color: #9ca3af;
 }
 
-.empty-row .material-icons {
-    font-size: 40px;
-    opacity: 0.3;
-    display: block;
-    margin-bottom: 8px;
+.fin-empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--fin-text-muted);
+}
+
+.fin-empty-content .material-icons {
+    font-size: 56px;
+    color: #e5e7eb;
+    margin-bottom: 16px;
+}
+
+.fin-empty-content h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--fin-text);
+}
+
+.fin-empty-content p {
+    margin: 0;
+    font-size: 13px;
 }
 
 /* =====================================
    RESPONSIVE
    ===================================== */
+@media (max-width: 1024px) {
+    .fin-summary {
+        padding: 12px 16px;
+        gap: 12px;
+    }
+    
+    .fin-summary-card {
+        min-width: 150px;
+        padding: 10px 14px;
+    }
+    
+    .filter-text {
+        display: none;
+    }
+    
+    .fin-table-container {
+        margin: 16px;
+        overflow-x: auto;
+    }
+    
+    .fin-table {
+        min-width: 900px;
+    }
+}
+
 @media (max-width: 768px) {
-    .summary-row {
+    .fin-topbar {
         flex-direction: column;
-        align-items: stretch;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 12px 16px;
     }
     
-    .summary-item {
-        flex-direction: row;
-        justify-content: space-between;
+    .fin-topbar-right {
+        width: 100%;
+        flex-wrap: wrap;
     }
     
-    .btn-filter {
-        margin-left: 0;
+    .fin-summary {
+        flex-direction: column;
+    }
+    
+    .fin-summary-card {
+        width: 100%;
+    }
+    
+    .fin-btn-filter {
         width: 100%;
         justify-content: center;
+        margin-left: 0;
     }
+    
+    .fin-filters {
+        padding: 16px;
+    }
+    
+    .fin-filters-grid {
+        grid-template-columns: 1fr;
+    }
+}
 
-    .table-card {
-        overflow-x: auto;
+/* =====================================
+   PAGINACIÓN
+   ===================================== */
+.fin-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: var(--fin-bg);
+    border-top: 1px solid var(--fin-border);
+    margin: 0 24px 20px;
+    border-radius: 0 0 10px 10px;
+    margin-top: -1px;
+}
+
+.fin-pagination-info {
+    font-size: 12px;
+    color: var(--fin-text-muted);
+}
+
+.fin-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.fin-page-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    color: var(--fin-text);
+    text-decoration: none;
+    transition: all 0.15s;
+    background: var(--fin-bg);
+    border: 1px solid var(--fin-border);
+}
+
+.fin-page-btn:hover:not(.disabled) {
+    background: var(--fin-bg-gray);
+    border-color: var(--fin-primary);
+    color: var(--fin-primary);
+}
+
+.fin-page-btn.disabled {
+    color: #d1d5db;
+    cursor: not-allowed;
+    border-color: #f3f4f6;
+}
+
+.fin-page-btn .material-icons {
+    font-size: 20px;
+}
+
+.fin-page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin: 0 8px;
+}
+
+.fin-page-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fin-text);
+    text-decoration: none;
+    transition: all 0.15s;
+}
+
+.fin-page-num:hover:not(.active) {
+    background: var(--fin-bg-gray);
+}
+
+.fin-page-num.active {
+    background: var(--fin-primary);
+    color: white;
+}
+
+.fin-page-ellipsis {
+    padding: 0 4px;
+    color: var(--fin-text-muted);
+}
+
+@media (max-width: 768px) {
+    .fin-pagination {
+        flex-direction: column;
+        gap: 12px;
+        margin: 0 16px 16px;
+        padding: 12px 16px;
+    }
+    
+    .fin-page-numbers {
+        display: none;
+    }
+}
+
+/* =====================================
+   VISTA MÓVIL - CARDS
+   ===================================== */
+@media (max-width: 640px) {
+    .fin-table-container {
+        display: none;
+    }
+    
+    .fin-mobile-list {
+        display: block;
+        margin: 16px;
+    }
+    
+    .fin-mobile-card {
+        background: var(--fin-bg);
+        border: 1px solid var(--fin-border);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    
+    .fin-mobile-card:hover {
+        border-color: var(--fin-primary);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .fin-mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+    }
+    
+    .fin-mobile-date {
+        font-size: 12px;
+        color: var(--fin-text-muted);
+    }
+    
+    .fin-mobile-amount {
+        font-size: 16px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+    
+    .fin-mobile-amount.income {
+        color: var(--fin-income);
+    }
+    
+    .fin-mobile-amount.expense {
+        color: var(--fin-expense);
+    }
+    
+    .fin-mobile-body {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .fin-mobile-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+    }
+    
+    .fin-mobile-row .material-icons {
+        font-size: 16px;
+        color: var(--fin-text-muted);
+        width: 20px;
+    }
+    
+    .fin-mobile-desc {
+        font-size: 12px;
+        color: var(--fin-text-muted);
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px dashed var(--fin-border);
+    }
+    
+    .fin-pagination {
+        margin: 0 16px 16px;
+    }
+}
+
+@media (min-width: 641px) {
+    .fin-mobile-list {
+        display: none;
     }
 }
 </style>
@@ -605,10 +1378,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Filas clickeables
-    document.querySelectorAll('.row-clickable').forEach(row => {
+    // Filas clickeables (tabla desktop)
+    document.querySelectorAll('.fin-row').forEach(row => {
         row.addEventListener('click', function(e) {
-            if (e.target.closest('.row-actions')) return;
+            if (e.target.closest('.fin-actions')) return;
+            if (e.target.closest('.fin-person-link')) return;
+            const href = this.dataset.href;
+            if (href) window.location.href = href;
+        });
+    });
+
+    // Cards clickeables (móvil)
+    document.querySelectorAll('.fin-mobile-card').forEach(card => {
+        card.addEventListener('click', function(e) {
             const href = this.dataset.href;
             if (href) window.location.href = href;
         });
