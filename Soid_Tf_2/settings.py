@@ -113,8 +113,12 @@ DATABASES = {
 }
 
 # En Render, forzar SSL para PostgreSQL
-if os.environ.get("RENDER"):
+# Forzar SSL solo si la base de datos es PostgreSQL
+engine = DATABASES["default"]["ENGINE"]
+
+if "postgresql" in engine:
     DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+
 
 # =============================================================================
 # VALIDACIÓN DE CONTRASEÑAS
