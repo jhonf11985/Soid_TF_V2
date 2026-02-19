@@ -227,11 +227,49 @@ def dashboard(request):
 
 
 
+from .forms import MiembroPortalUpdateForm
+
+
 @login_required
 def perfil(request):
-    return render(request, "portal_miembros/perfil.html")
+    # Validación: usuario vinculado a miembro
+    if not hasattr(request.user, "miembro") or request.user.miembro is None:
+        messages.error(request, "Tu usuario no está vinculado a un miembro. Contacta al administrador.")
+        return redirect("login")
+
+    miembro = request.user.miembro
+
+    context = {
+        "miembro": miembro,
+    }
+    return render(request, "portal_miembros/perfil.html", context)
 
 
+@login_required
+def perfil_editar(request):
+    # Validación: usuario vinculado a miembro
+    if not hasattr(request.user, "miembro") or request.user.miembro is None:
+        messages.error(request, "Tu usuario no está vinculado a un miembro. Contacta al administrador.")
+        return redirect("login")
+
+    miembro = request.user.miembro
+
+    if request.method == "POST":
+        form = MiembroPortalUpdateForm(request.POST, request.FILES, instance=miembro)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "✅ Tus datos se actualizaron correctamente.")
+            return redirect("portal_miembros:perfil")
+        else:
+            messages.error(request, "⚠️ Revisa los campos marcados. Hay errores en el formulario.")
+    else:
+        form = MiembroPortalUpdateForm(instance=miembro)
+
+    context = {
+        "miembro": miembro,
+        "form": form,
+    }
+    return render(request, "portal_miembros/perfil_editar.html", context)
 @login_required
 def notificaciones(request):
     return render(request, "portal_miembros/notificaciones.html")
