@@ -95,6 +95,8 @@ ESTADO_MIEMBRO_CHOICES = [
     ("descarriado", "Descarriado"),
     ("catecumeno", "Catecúmeno"),
     ("trasladado", "Trasladado"),
+    ("fallecido", "Fallecido"),
+
 ]
 
 CATEGORIA_EDAD_CHOICES = [
@@ -147,6 +149,8 @@ class RazonSalidaMiembro(models.Model):
     ("", "—"),
     ("descarriado", "Descarriado"),
     ("trasladado", "Trasladado"),
+    ("fallecido", "Fallecido"),
+
     ]
 
     estado_resultante = models.CharField(

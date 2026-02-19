@@ -1,34 +1,19 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.utils import timezone
-
-# Create your views here.
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-
-
-from miembros_app.models import Miembro
-from estructura_app.models import UnidadMembresia
-from agenda_app.models import Actividad
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
 
+from miembros_app.models import Miembro
+from estructura_app.models import UnidadMembresia, UnidadCargo
+from agenda_app.models import Actividad
 from formacion_app.models import InscripcionGrupo, GrupoFormativo
 
-from estructura_app.models import UnidadMembresia, UnidadCargo
-
+from portal_miembros.acceso import acceso_portal_requerido
 
 
 @login_required
+@acceso_portal_requerido
 def dashboard(request):
-    # ==========================================================
-    # 0) Validación: el usuario debe estar vinculado a un Miembro
-    # ==========================================================
-    if not hasattr(request.user, "miembro") or request.user.miembro is None:
-        messages.error(request, "Tu usuario no está vinculado a un miembro. Contacta al administrador.")
-        return redirect("login")
-
     miembro = request.user.miembro
 
     # ==========================================================
@@ -61,15 +46,15 @@ def dashboard(request):
             unidades_map[uid] = {
                 "unidad_id": uid,
                 "unidad_nombre": unidad.nombre,
-                "roles": [],            # roles del miembro en esa unidad
+                "roles": [],
                 "tiene_liderazgo": False,
-                "lideres": [],          # TODOS los líderes (con contacto)
+                "lideres": [],
             }
 
         if rol:
             unidades_map[uid]["roles"].append({
                 "rol_nombre": getattr(rol, "nombre", "") or "",
-                "rol_tipo": getattr(rol, "tipo", "") or "",  # LIDERAZGO / PARTICIPACION / TRABAJO
+                "rol_tipo": getattr(rol, "tipo", "") or "",
             })
 
         if es_liderazgo:
@@ -79,14 +64,14 @@ def dashboard(request):
     for c in cargos:
         add_unidad(c.unidad, c.rol, es_liderazgo=True)
 
-    # Membresías = participación / trabajo (o lo que aplique)
+    # Membresías = participación / trabajo
     for m in membresias:
         es_lid = (getattr(m.rol, "tipo", "") == "LIDERAZGO")
         add_unidad(m.unidad, m.rol, es_liderazgo=es_lid)
 
     unidad_ids = list(unidades_map.keys())
 
-    # ✅ Buscar TODOS los líderes por unidad (en bloque)
+    # Buscar TODOS los líderes por unidad
     lideres_qs = (
         UnidadCargo.objects
         .select_related("miembo_fk", "unidad", "rol")
@@ -100,7 +85,6 @@ def dashboard(request):
 
         lider_m = l.miembo_fk
 
-        # Campos de contacto (robusto: intenta varios nombres)
         telefono = getattr(lider_m, "telefono", None) or getattr(lider_m, "celular", None) or getattr(lider_m, "movil", None)
         whatsapp = getattr(lider_m, "whatsapp", None) or telefono
         email = getattr(lider_m, "email", None) or getattr(lider_m, "correo", None)
@@ -115,7 +99,7 @@ def dashboard(request):
             "rol_nombre": getattr(l.rol, "nombre", "") or "Líder",
         })
 
-    # Limpiar roles duplicados por unidad (si los hubiera)
+    # Limpiar roles duplicados
     for uid, u in unidades_map.items():
         seen = set()
         roles_limpios = []
@@ -130,15 +114,10 @@ def dashboard(request):
     unidades = list(unidades_map.values())
     unidades.sort(key=lambda x: (not x["tiene_liderazgo"], (x["unidad_nombre"] or "").lower()))
 
-  
-    
-
     # ==========================================================
     # 2) PROGRAMAS / GRUPOS donde está asignado + su rol
-    #    + datos completos: horario, lugar, maestros y ayudantes
     # ==========================================================
 
-    # Alumno (inscrito)
     inscripciones = (
         InscripcionGrupo.objects
         .select_related("grupo", "grupo__programa", "grupo__ciclo")
@@ -146,7 +125,6 @@ def dashboard(request):
         .filter(miembro=miembro, estado="ACTIVO", grupo__activo=True)
     )
 
-    # Maestro / Ayudante (asignación directa al grupo)
     grupos_maestro = (
         GrupoFormativo.objects
         .select_related("programa", "ciclo")
@@ -161,10 +139,9 @@ def dashboard(request):
         .filter(ayudantes=miembro, activo=True)
     )
 
-    programas_map = {}  # key = grupo_id
+    programas_map = {}
 
     def _nombres_miembros(qs):
-        # qs es un queryset de Miembro
         return [f"{m.nombres} {m.apellidos}".strip() for m in qs if m]
 
     def add_programa(grupo, rol):
@@ -231,24 +208,19 @@ def dashboard(request):
     # ==========================================================
     context = {
         "miembro": miembro,
-        "unidades": unidades,                # para badges + bloque "Mis líderes"
-        "context_programas": programas,      # para bloque "Mis programas"
-        "actividades": actividades,          # próximas actividades públicas
+        "unidades": unidades,
+        "context_programas": programas,
+        "actividades": actividades,
     }
     return render(request, "portal_miembros/dashboard.html", context)
-
 
 
 from .forms import MiembroPortalUpdateForm
 
 
 @login_required
+@acceso_portal_requerido
 def perfil(request):
-    # Validación: usuario vinculado a miembro
-    if not hasattr(request.user, "miembro") or request.user.miembro is None:
-        messages.error(request, "Tu usuario no está vinculado a un miembro. Contacta al administrador.")
-        return redirect("login")
-
     miembro = request.user.miembro
 
     context = {
@@ -258,12 +230,8 @@ def perfil(request):
 
 
 @login_required
+@acceso_portal_requerido
 def perfil_editar(request):
-    # Validación: usuario vinculado a miembro
-    if not hasattr(request.user, "miembro") or request.user.miembro is None:
-        messages.error(request, "Tu usuario no está vinculado a un miembro. Contacta al administrador.")
-        return redirect("login")
-
     miembro = request.user.miembro
 
     if request.method == "POST":
@@ -282,6 +250,9 @@ def perfil_editar(request):
         "form": form,
     }
     return render(request, "portal_miembros/perfil_editar.html", context)
+
+
 @login_required
+@acceso_portal_requerido
 def notificaciones(request):
     return render(request, "portal_miembros/notificaciones.html")
