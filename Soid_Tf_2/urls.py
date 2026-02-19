@@ -64,6 +64,7 @@ urlpatterns = [
 
     path("formacion/", include("formacion_app.urls")),
       path("ejecutivo/", include("ejecutivo_app.urls")),
+        path("portal/", include("portal_miembros.urls")),
 ]
 
 

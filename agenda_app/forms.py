@@ -20,6 +20,7 @@ class ActividadForm(forms.ModelForm):
             "lugar",
             "responsable_texto",
             "descripcion",
+             "visibilidad",  
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date", "class": "odoo-input"}),

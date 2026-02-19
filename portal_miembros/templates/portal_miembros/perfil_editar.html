@@ -1,0 +1,652 @@
+{% extends "core/base_sidebar.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  :root {
+    --primary: #5c9ead;
+    --primary-dark: #4a8a99;
+    --primary-light: #e8f4f6;
+    --primary-rgb: 92, 158, 173;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     BASE & CONTENEDOR
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-wrap{max-width:800px;margin:0 auto;padding:12px}
+  .pm-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.06)}
+  
+  /* Header */
+  .pm-header{padding:16px;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff}
+  .pm-header h1{font-size:18px;font-weight:800;margin:0}
+  .pm-header p{margin:4px 0 0;font-size:13px;opacity:.9}
+  .pm-nav{display:flex;gap:8px;margin-top:12px}
+  .pm-nav a{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(255,255,255,.2);color:#fff;text-decoration:none;border-radius:8px;font-size:13px;font-weight:600;transition:background .2s}
+  .pm-nav a:hover{background:rgba(255,255,255,.35)}
+
+  /* Errores */
+  .pm-errors{background:#fef2f2;border-bottom:1px solid #fecaca;color:#991b1b;padding:12px 16px;font-size:13px}
+  .pm-errors strong{display:block;margin-bottom:6px}
+  .pm-errors ul{margin:0;padding-left:18px}
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SECCIONES COLAPSABLES
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-section{border-bottom:1px solid #e5e7eb}
+  .pm-section:last-child{border-bottom:none}
+
+  .pm-section-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 16px;
+    background:#f9fafb;
+    cursor:pointer;
+    user-select:none;
+    transition:background .2s
+  }
+  .pm-section-header:hover{background:#f3f4f6}
+  .pm-section-header:active{background:#e5e7eb}
+
+  .pm-section.open .pm-section-header{background:var(--primary-light)}
+
+  .pm-section-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:15px;
+    font-weight:700;
+    color:#111827;
+    margin:0
+  }
+  .pm-section-title .icon{font-size:20px}
+
+  .pm-section-toggle{
+    width:28px;
+    height:28px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#e5e7eb;
+    border-radius:50%;
+    transition:transform .3s,background .2s
+  }
+  .pm-section.open .pm-section-toggle{background:var(--primary)}
+  .pm-section-toggle svg{
+    width:16px;
+    height:16px;
+    color:#6b7280;
+    transition:color .2s,transform .3s
+  }
+  .pm-section.open .pm-section-toggle svg{color:#fff;transform:rotate(180deg)}
+
+  .pm-section-body{
+    display:none;
+    padding:16px;
+    background:#fff
+  }
+  .pm-section.open .pm-section-body{display:block}
+
+  /* Sección siempre abierta (Datos básicos) */
+  .pm-section.always-open .pm-section-body{display:block}
+  .pm-section.always-open .pm-section-toggle{display:none}
+  .pm-section.always-open .pm-section-header{cursor:default;background:var(--primary-light)}
+  .pm-section.always-open .pm-section-header:hover{background:var(--primary-light)}
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     GRID & CAMPOS
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-grid{display:grid;grid-template-columns:1fr;gap:12px}
+  @media (min-width:540px){.pm-grid{grid-template-columns:repeat(2,1fr)}}
+  .pm-grid .full{grid-column:1/-1}
+
+  .pm-field{display:flex;flex-direction:column;gap:4px}
+  .pm-field label{font-size:12px;font-weight:600;color:#374151}
+
+  .pm-input{
+    width:100%;
+    padding:12px;
+    border:1px solid #d1d5db;
+    border-radius:10px;
+    background:#fff;
+    font-size:15px;
+    outline:none;
+    transition:border-color .2s,box-shadow .2s;
+    -webkit-appearance:none
+  }
+  .pm-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(var(--primary-rgb),.15)}
+  .pm-input[readonly]{background:#f3f4f6;color:#6b7280;cursor:not-allowed}
+
+  .pm-select{
+    appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235c9ead' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    padding-right:36px
+  }
+
+  .pm-textarea{min-height:80px;resize:vertical;line-height:1.4}
+
+  .pm-hint{font-size:11px;color:#9ca3af;margin-top:2px}
+
+  /* Checkbox */
+  .pm-checkbox{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px;
+    background:#f9fafb;
+    border-radius:10px;
+    cursor:pointer;
+    transition:background .2s
+  }
+  .pm-checkbox:hover{background:var(--primary-light)}
+  .pm-checkbox input{width:20px;height:20px;accent-color:var(--primary)}
+  .pm-checkbox span{font-size:14px;font-weight:500;color:#374151}
+
+  /* Sub-sección condicional */
+  .pm-subsection{
+    margin-top:12px;
+    padding:14px;
+    background:var(--primary-light);
+    border:1px solid #c5dfe5;
+    border-radius:10px;
+    transition:opacity .2s
+  }
+  .pm-subsection h4{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--primary-dark)}
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     FOOTER & BOTONES
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-footer{
+    position:sticky;
+    bottom:0;
+    padding:16px;
+    background:#fff;
+    border-top:1px solid #e5e7eb;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap
+  }
+
+  .pm-btn{
+    flex:1;
+    min-width:140px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:14px 16px;
+    border-radius:12px;
+    border:none;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    transition:transform .1s,box-shadow .2s;
+    text-decoration:none
+  }
+  .pm-btn:active{transform:scale(.98)}
+
+  .pm-btn-primary{background:var(--primary);color:#fff}
+  .pm-btn-primary:hover{background:var(--primary-dark);box-shadow:0 4px 12px rgba(var(--primary-rgb),.4)}
+
+  .pm-btn-secondary{background:#f3f4f6;color:#374151;border:1px solid #d1d5db}
+  .pm-btn-secondary:hover{background:#e5e7eb}
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     FOTO UPLOAD
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-foto-wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .pm-foto-preview{
+    width:80px;
+    height:80px;
+    border-radius:50%;
+    background:var(--primary-light);
+    border:3px solid var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    flex-shrink:0
+  }
+  .pm-foto-preview img{width:100%;height:100%;object-fit:cover}
+  .pm-foto-preview svg{width:40px;height:40px;color:var(--primary)}
+  .pm-foto-input{flex:1;min-width:200px}
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     RESPONSIVE AJUSTES
+     ═══════════════════════════════════════════════════════════════════════════ */
+  @media (max-width:480px){
+    .pm-wrap{padding:8px}
+    .pm-header{padding:14px}
+    .pm-header h1{font-size:16px}
+    .pm-section-header{padding:12px 14px}
+    .pm-section-title{font-size:14px}
+    .pm-section-body{padding:14px}
+    .pm-input{padding:11px;font-size:16px}
+    .pm-footer{padding:12px}
+    .pm-btn{padding:12px 14px;font-size:14px}
+  }
+</style>
+
+<div class="pm-wrap">
+  <form method="post" enctype="multipart/form-data" class="pm-card">
+    {% csrf_token %}
+
+    <div class="pm-header">
+      <h1>Editar mis datos</h1>
+      <p>Actualiza tu información personal</p>
+      <div class="pm-nav">
+        <a href="{% url 'portal_miembros:perfil' %}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+          Volver al perfil
+        </a>
+      </div>
+    </div>
+
+    {% if form.errors %}
+    <div class="pm-errors">
+      <strong>⚠️ Revisa el formulario:</strong>
+      <ul>
+        {% for field in form %}
+          {% for error in field.errors %}
+            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+          {% endfor %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- DATOS BÁSICOS (siempre abierta) -->
+    <div class="pm-section always-open open">
+      <div class="pm-section-header">
+        <h3 class="pm-section-title"><span class="icon">👤</span> Datos básicos</h3>
+        <div class="pm-section-toggle"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></div>
+      </div>
+      <div class="pm-section-body">
+        <div class="pm-foto-wrap" style="margin-bottom:16px">
+          <div class="pm-foto-preview" id="foto-preview">
+            {% if miembro.foto %}<img src="{{ miembro.foto.url }}" alt="Foto">{% else %}<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 1115 0"/></svg>{% endif %}
+          </div>
+          <div class="pm-foto-input">
+            <input type="file" name="foto" id="id_foto" accept="image/*" class="pm-input">
+            <p class="pm-hint">JPG, PNG. Máximo 5MB</p>
+          </div>
+        </div>
+        <div class="pm-grid">
+          <div class="pm-field"><label>Nombres *</label><input type="text" name="nombres" id="id_nombres" value="{{ form.nombres.value|default:'' }}" placeholder="Tus nombres" class="pm-input" required></div>
+          <div class="pm-field"><label>Apellidos *</label><input type="text" name="apellidos" id="id_apellidos" value="{{ form.apellidos.value|default:'' }}" placeholder="Tus apellidos" class="pm-input" required></div>
+          <div class="pm-field"><label>Género</label><input class="pm-input" value="{{ miembro.get_genero_display|default:miembro.genero }}" readonly></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTACTO -->
+    <div class="pm-section" data-section="contacto">
+      <div class="pm-section-header" onclick="toggleSection(this)">
+        <h3 class="pm-section-title"><span class="icon">📞</span> Contacto</h3>
+        <div class="pm-section-toggle"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></div>
+      </div>
+      <div class="pm-section-body">
+        <div class="pm-grid">
+          <div class="pm-field"><label>Teléfono</label><input type="tel" name="telefono" id="id_telefono" value="{{ form.telefono.value|default:'' }}" placeholder="8091234567" class="pm-input" inputmode="numeric"><p class="pm-hint">Solo números, sin guiones</p></div>
+          <div class="pm-field"><label>WhatsApp</label><input type="tel" name="whatsapp" id="id_whatsapp" value="{{ form.whatsapp.value|default:'' }}" placeholder="8091234567" class="pm-input" inputmode="numeric"></div>
+          <div class="pm-field"><label>Teléfono secundario</label><input type="tel" name="telefono_secundario" id="id_telefono_secundario" value="{{ form.telefono_secundario.value|default:'' }}" placeholder="Opcional" class="pm-input" inputmode="numeric"></div>
+          <div class="pm-field"><label>Email</label><input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}" placeholder="correo@ejemplo.com" class="pm-input" inputmode="email"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIRECCIÓN -->
+    <div class="pm-section" data-section="direccion">
+      <div class="pm-section-header" onclick="toggleSection(this)">
+        <h3 class="pm-section-title"><span class="icon">📍</span> Dirección</h3>
+        <div class="pm-section-toggle"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></div>
+      </div>
+      <div class="pm-section-body">
+        <div class="pm-grid">
+          <div class="pm-field full"><label>Dirección</label><textarea name="direccion" id="id_direccion" rows="2" placeholder="Calle, número, edificio..." class="pm-input pm-textarea">{{ form.direccion.value|default:'' }}</textarea></div>
+          <div class="pm-field">
+            <label>Sector</label>
+            {% with current=form.sector.value|default_if_none:'' %}
+            <select name="sector" id="id_sector" class="pm-input pm-select">
+              <option value="">— Selecciona —</option>
+              <option value="21 de Enero" {% if current == "21 de Enero" %}selected{% endif %}>21 de Enero</option>
+              <option value="30 de Mayo" {% if current == "30 de Mayo" %}selected{% endif %}>30 de Mayo</option>
+              <option value="Ana Melia" {% if current == "Ana Melia" %}selected{% endif %}>Ana Melia</option>
+              <option value="Anamuya" {% if current == "Anamuya" %}selected{% endif %}>Anamuya</option>
+              <option value="Antonio Guzmán" {% if current == "Antonio Guzmán" %}selected{% endif %}>Antonio Guzmán</option>
+              <option value="Brisas del Duey" {% if current == "Brisas del Duey" %}selected{% endif %}>Brisas del Duey</option>
+              <option value="Cristo Rey" {% if current == "Cristo Rey" %}selected{% endif %}>Cristo Rey</option>
+              <option value="Don Celso" {% if current == "Don Celso" %}selected{% endif %}>Don Celso</option>
+              <option value="Duarte" {% if current == "Duarte" %}selected{% endif %}>Duarte</option>
+              <option value="El Bonao" {% if current == "El Bonao" %}selected{% endif %}>El Bonao</option>
+              <option value="El Centro" {% if current == "El Centro" %}selected{% endif %}>El Centro</option>
+              <option value="El Chorro" {% if current == "El Chorro" %}selected{% endif %}>El Chorro</option>
+              <option value="El Macao" {% if current == "El Macao" %}selected{% endif %}>El Macao</option>
+              <option value="El Obispado" {% if current == "El Obispado" %}selected{% endif %}>El Obispado</option>
+              <option value="El Tamarindo" {% if current == "El Tamarindo" %}selected{% endif %}>El Tamarindo</option>
+              <option value="Juan Pablo Duarte" {% if current == "Juan Pablo Duarte" %}selected{% endif %}>Juan Pablo Duarte</option>
+              <option value="La Altagracia" {% if current == "La Altagracia" %}selected{% endif %}>La Altagracia</option>
+              <option value="La Aviación" {% if current == "La Aviación" %}selected{% endif %}>La Aviación</option>
+              <option value="La Cabrera" {% if current == "La Cabrera" %}selected{% endif %}>La Cabrera</option>
+              <option value="La Candelaria" {% if current == "La Candelaria" %}selected{% endif %}>La Candelaria</option>
+              <option value="La Ceiba del Salado" {% if current == "La Ceiba del Salado" %}selected{% endif %}>La Ceiba del Salado</option>
+              <option value="La Colonia" {% if current == "La Colonia" %}selected{% endif %}>La Colonia</option>
+              <option value="La Cruz" {% if current == "La Cruz" %}selected{% endif %}>La Cruz</option>
+              <option value="La Fe" {% if current == "La Fe" %}selected{% endif %}>La Fe</option>
+              <option value="La Laguna" {% if current == "La Laguna" %}selected{% endif %}>La Laguna</option>
+              <option value="La Malena" {% if current == "La Malena" %}selected{% endif %}>La Malena</option>
+              <option value="La Mina" {% if current == "La Mina" %}selected{% endif %}>La Mina</option>
+              <option value="La Otra Banda" {% if current == "La Otra Banda" %}selected{% endif %}>La Otra Banda</option>
+              <option value="Las Caobas" {% if current == "Las Caobas" %}selected{% endif %}>Las Caobas</option>
+              <option value="Las Flores" {% if current == "Las Flores" %}selected{% endif %}>Las Flores</option>
+              <option value="Las Mercedes" {% if current == "Las Mercedes" %}selected{% endif %}>Las Mercedes</option>
+              <option value="Los Platanitos" {% if current == "Los Platanitos" %}selected{% endif %}>Los Platanitos</option>
+              <option value="Los Ríos" {% if current == "Los Ríos" %}selected{% endif %}>Los Ríos</option>
+              <option value="Los Sotos" {% if current == "Los Sotos" %}selected{% endif %}>Los Sotos</option>
+              <option value="Luisa Perla" {% if current == "Luisa Perla" %}selected{% endif %}>Luisa Perla</option>
+              <option value="Mamá Tingó" {% if current == "Mamá Tingó" %}selected{% endif %}>Mamá Tingó</option>
+              <option value="Nazaret" {% if current == "Nazaret" %}selected{% endif %}>Nazaret</option>
+              <option value="San Francisco" {% if current == "San Francisco" %}selected{% endif %}>San Francisco</option>
+              <option value="San José" {% if current == "San José" %}selected{% endif %}>San José</option>
+              <option value="San Martín" {% if current == "San Martín" %}selected{% endif %}>San Martín</option>
+              <option value="San Pedro" {% if current == "San Pedro" %}selected{% endif %}>San Pedro</option>
+              <option value="Santa Cruz" {% if current == "Santa Cruz" %}selected{% endif %}>Santa Cruz</option>
+              <option value="Santana" {% if current == "Santana" %}selected{% endif %}>Santana</option>
+              <option value="Savica" {% if current == "Savica" %}selected{% endif %}>Savica</option>
+              <option value="Villa Cerro" {% if current == "Villa Cerro" %}selected{% endif %}>Villa Cerro</option>
+              <option value="Villa Hortensia" {% if current == "Villa Hortensia" %}selected{% endif %}>Villa Hortensia</option>
+              <option value="Villa María" {% if current == "Villa María" %}selected{% endif %}>Villa María</option>
+              <option value="Villa Palmera" {% if current == "Villa Palmera" %}selected{% endif %}>Villa Palmera</option>
+              <option value="Villa Progreso" {% if current == "Villa Progreso" %}selected{% endif %}>Villa Progreso</option>
+              <option value="Yuma" {% if current == "Yuma" %}selected{% endif %}>Yuma</option>
+              <option value="Otro" {% if current == "Otro" %}selected{% endif %}>Otro</option>
+            </select>
+            {% endwith %}
+          </div>
+          <div class="pm-field">
+            <label>Ciudad</label>
+            {% with current=form.ciudad.value|default_if_none:'' %}
+            <select name="ciudad" id="id_ciudad" class="pm-input pm-select">
+              <option value="">— Selecciona —</option>
+              <option value="Higuey" {% if current == "Higuey" %}selected{% endif %}>Higüey</option>
+              <option value="Punta Cana" {% if current == "Punta Cana" %}selected{% endif %}>Punta Cana</option>
+              <option value="San Rafael del Yuma" {% if current == "San Rafael del Yuma" %}selected{% endif %}>San Rafael del Yuma</option>
+            </select>
+            {% endwith %}
+          </div>
+          <div class="pm-field">
+            <label>Provincia</label>
+            {% with current=form.provincia.value|default_if_none:'' %}
+            <select name="provincia" id="id_provincia" class="pm-input pm-select">
+              <option value="">— Selecciona —</option>
+              <option value="La Altagracia" {% if current == "La Altagracia" %}selected{% endif %}>La Altagracia</option>
+            </select>
+            {% endwith %}
+          </div>
+          <div class="pm-field"><label>Código postal</label><input type="text" name="codigo_postal" id="id_codigo_postal" value="{{ form.codigo_postal.value|default:'' }}" placeholder="C.P." class="pm-input"></div>
+          <div class="pm-field">
+            <label>País / Nacionalidad</label>
+            <input type="text" name="nacionalidad" id="id_nacionalidad" value="{% if form.nacionalidad.value %}{{ form.nacionalidad.value }}{% else %}República Dominicana{% endif %}" placeholder="Tu país" class="pm-input" list="lista_paises" autocomplete="off">
+            <datalist id="lista_paises"><option value="República Dominicana"><option value="Estados Unidos"><option value="España"><option value="México"><option value="Colombia"><option value="Venezuela"><option value="Puerto Rico"><option value="Haiti"></datalist>
+          </div>
+          <div class="pm-field"><label>Lugar de nacimiento</label><input type="text" name="lugar_nacimiento" id="id_lugar_nacimiento" value="{{ form.lugar_nacimiento.value|default:'' }}" placeholder="Ciudad o país" class="pm-input"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INFORMACIÓN PERSONAL -->
+    <div class="pm-section" data-section="personal">
+      <div class="pm-section-header" onclick="toggleSection(this)">
+        <h3 class="pm-section-title"><span class="icon">📋</span> Información personal</h3>
+        <div class="pm-section-toggle"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></div>
+      </div>
+      <div class="pm-section-body">
+        <div class="pm-grid">
+          <div class="pm-field">
+            <label>Estado civil</label>
+            {% with current=form.estado_civil.value|default_if_none:'' %}
+            <select name="estado_civil" id="id_estado_civil" class="pm-input pm-select">
+              <option value="">— Selecciona —</option>
+              <option value="soltero" {% if current == "soltero" %}selected{% endif %}>Soltero(a)</option>
+              <option value="casado" {% if current == "casado" %}selected{% endif %}>Casado(a)</option>
+              <option value="divorciado" {% if current == "divorciado" %}selected{% endif %}>Divorciado(a)</option>
+              <option value="viudo" {% if current == "viudo" %}selected{% endif %}>Viudo(a)</option>
+              <option value="union_libre" {% if current == "union_libre" %}selected{% endif %}>Unión libre</option>
+            </select>
+            {% endwith %}
+          </div>
+          <div class="pm-field">
+            <label>Nivel educativo</label>
+            {% with current=form.nivel_educativo.value|default_if_none:'' %}
+            <select name="nivel_educativo" id="id_nivel_educativo" class="pm-input pm-select">
+              <option value="">— Selecciona —</option>
+              <option value="primaria" {% if current == "primaria" %}selected{% endif %}>Primaria</option>
+              <option value="secundaria" {% if current == "secundaria" %}selected{% endif %}>Secundaria</option>
+              <option value="bachillerato" {% if current == "bachillerato" %}selected{% endif %}>Bachillerato</option>
+              <option value="tecnico" {% if current == "tecnico" %}selected{% endif %}>Técnico</option>
+              <option value="universitario" {% if current == "universitario" %}selected{% endif %}>Universitario</option>
+              <option value="postgrado" {% if current == "postgrado" %}selected{% endif %}>Postgrado</option>
+            </select>
+            {% endwith %}
+          </div>
+          <div class="pm-field">
+            <label>Profesión</label>
+            <input type="text" name="profesion" id="id_profesion" value="{{ form.profesion.value|default:'' }}" placeholder="Tu ocupación" class="pm-input" list="profesion_list">
+            <datalist id="profesion_list"><option value="Empleado(a)"><option value="Estudiante"><option value="Independiente"><option value="Ama de casa"><option value="Maestro(a)"><option value="Técnico(a)"><option value="Ingeniero(a)"><option value="Doctor(a)"><option value="Enfermero(a)"><option value="Abogado(a)"><option value="Contable"><option value="Comerciante"></datalist>
+          </div>
+          <div class="pm-field"><label>Pasaporte</label><input type="text" name="pasaporte" id="id_pasaporte" value="{{ form.pasaporte.value|default:'' }}" placeholder="Número" class="pm-input" style="text-transform:uppercase"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMBRESÍA -->
+    <div class="pm-section" data-section="membresia">
+      <div class="pm-section-header" onclick="toggleSection(this)">
+        <h3 class="pm-section-title"><span class="icon">⛪</span> Membresía</h3>
+        <div class="pm-section-toggle"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></div>
+      </div>
+      <div class="pm-section-body">
+        <div class="pm-grid">
+          <label class="pm-checkbox full"><input type="checkbox" name="es_trasladado" id="id_es_trasladado" {% if form.es_trasladado.value %}checked{% endif %}><span>Viene de otra iglesia</span></label>
+          <div class="pm-field full"><label>Iglesia anterior</label><input type="text" name="iglesia_anterior" id="id_iglesia_anterior" value="{{ form.iglesia_anterior.value|default:'' }}" placeholder="Nombre de la iglesia" class="pm-input"></div>
+          <div class="pm-field"><label>Fecha de conversión</label><input type="date" name="fecha_conversion" id="id_fecha_conversion" value="{{ form.fecha_conversion.value|date:'Y-m-d' }}" class="pm-input"></div>
+          <div class="pm-field"><label>Fecha de bautismo</label><input type="date" name="fecha_bautismo" id="id_fecha_bautismo" value="{{ form.fecha_bautismo.value|date:'Y-m-d' }}" class="pm-input"></div>
+          <label class="pm-checkbox"><input type="checkbox" name="bautizado_confirmado" id="id_bautizado_confirmado" {% if form.bautizado_confirmado.value %}checked{% endif %}><span>Bautismo confirmado</span></label>
+          <div class="pm-field"><label>Categoría</label><input type="text" name="categoria_miembro" id="id_categoria_miembro" value="{{ form.categoria_miembro.value|default:'' }}" placeholder="Ej: Miembro, Líder" class="pm-input"></div>
+          <div class="pm-field"><label>Mentor</label><input type="text" name="mentor" id="id_mentor" value="{{ form.mentor.value|default:'' }}" placeholder="Nombre" class="pm-input"></div>
+          <div class="pm-field"><label>Líder de célula</label><input type="text" name="lider_celula" id="id_lider_celula" value="{{ form.lider_celula.value|default:'' }}" placeholder="Nombre" class="pm-input"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMERGENCIA Y SALUD -->
+    <div class="pm-section" data-section="emergencia">
+      <div class="pm-section-header" onclick="toggleSection(this)">
+        <h3 class="pm-section-title"><span class="icon">🏥</span> Emergencia y salud</h3>
+        <div class="pm-section-toggle"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></div>
+      </div>
+      <div class="pm-section-body">
+        <div class="pm-grid">
+          <div class="pm-field"><label>Contacto de emergencia</label><input type="text" name="contacto_emergencia_nombre" id="id_contacto_emergencia_nombre" value="{{ form.contacto_emergencia_nombre.value|default:'' }}" placeholder="Nombre completo" class="pm-input"></div>
+          <div class="pm-field"><label>Teléfono emergencia</label><input type="tel" name="contacto_emergencia_telefono" id="id_contacto_emergencia_telefono" value="{{ form.contacto_emergencia_telefono.value|default:'' }}" placeholder="Teléfono" class="pm-input" inputmode="numeric"></div>
+          <div class="pm-field"><label>Relación</label><input type="text" name="contacto_emergencia_relacion" id="id_contacto_emergencia_relacion" value="{{ form.contacto_emergencia_relacion.value|default:'' }}" placeholder="Ej: Esposa, Padre" class="pm-input"></div>
+          <div class="pm-field">
+            <label>Tipo de sangre</label>
+            {% with current=form.tipo_sangre.value|default_if_none:'' %}
+            <select name="tipo_sangre" id="id_tipo_sangre" class="pm-input pm-select">
+              <option value="">— Selecciona —</option>
+              <option value="A+" {% if current == "A+" %}selected{% endif %}>A+</option>
+              <option value="A-" {% if current == "A-" %}selected{% endif %}>A-</option>
+              <option value="B+" {% if current == "B+" %}selected{% endif %}>B+</option>
+              <option value="B-" {% if current == "B-" %}selected{% endif %}>B-</option>
+              <option value="AB+" {% if current == "AB+" %}selected{% endif %}>AB+</option>
+              <option value="AB-" {% if current == "AB-" %}selected{% endif %}>AB-</option>
+              <option value="O+" {% if current == "O+" %}selected{% endif %}>O+</option>
+              <option value="O-" {% if current == "O-" %}selected{% endif %}>O-</option>
+            </select>
+            {% endwith %}
+          </div>
+          <div class="pm-field full"><label>Alergias</label><textarea name="alergias" id="id_alergias" rows="2" placeholder="Lista de alergias..." class="pm-input pm-textarea">{{ form.alergias.value|default:'' }}</textarea></div>
+          <div class="pm-field full"><label>Condiciones médicas</label><textarea name="condiciones_medicas" id="id_condiciones_medicas" rows="2" placeholder="Condiciones relevantes..." class="pm-input pm-textarea">{{ form.condiciones_medicas.value|default:'' }}</textarea></div>
+          <div class="pm-field full"><label>Medicamentos</label><textarea name="medicamentos" id="id_medicamentos" rows="2" placeholder="Medicamentos actuales..." class="pm-input pm-textarea">{{ form.medicamentos.value|default:'' }}</textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRABAJO -->
+    <div class="pm-section" data-section="trabajo">
+      <div class="pm-section-header" onclick="toggleSection(this)">
+        <h3 class="pm-section-title"><span class="icon">💼</span> Trabajo</h3>
+        <div class="pm-section-toggle"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></div>
+      </div>
+      <div class="pm-section-body">
+        <div class="pm-grid">
+          <div class="pm-field"><label>Empleador</label><input type="text" name="empleador" id="id_empleador" value="{{ form.empleador.value|default:'' }}" placeholder="Empresa" class="pm-input"></div>
+          <div class="pm-field"><label>Puesto</label><input type="text" name="puesto" id="id_puesto" value="{{ form.puesto.value|default:'' }}" placeholder="Cargo" class="pm-input"></div>
+          <div class="pm-field"><label>Teléfono trabajo</label><input type="tel" name="telefono_trabajo" id="id_telefono_trabajo" value="{{ form.telefono_trabajo.value|default:'' }}" placeholder="Teléfono" class="pm-input" inputmode="numeric"></div>
+          <div class="pm-field full"><label>Dirección trabajo</label><textarea name="direccion_trabajo" id="id_direccion_trabajo" rows="2" placeholder="Dirección completa..." class="pm-input pm-textarea">{{ form.direccion_trabajo.value|default:'' }}</textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOCIOECONÓMICO -->
+    <div class="pm-section" data-section="socioeconomico">
+      <div class="pm-section-header" onclick="toggleSection(this)">
+        <h3 class="pm-section-title"><span class="icon">🏠</span> Socioeconómico</h3>
+        <div class="pm-section-toggle"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></div>
+      </div>
+      <div class="pm-section-body">
+        <div class="pm-grid">
+          <div class="pm-field">
+            <label>Tipo de vivienda</label>
+            {% with current=form.tipo_vivienda.value|default_if_none:'' %}
+            <select name="tipo_vivienda" id="id_tipo_vivienda" class="pm-input pm-select">
+              <option value="">— Selecciona —</option>
+              <option value="propia" {% if current == "propia" %}selected{% endif %}>Casa propia</option>
+              <option value="alquilada" {% if current == "alquilada" %}selected{% endif %}>Alquilada</option>
+              <option value="familiar" {% if current == "familiar" %}selected{% endif %}>Casa de familiares</option>
+              <option value="prestada" {% if current == "prestada" %}selected{% endif %}>Prestada / Cedida</option>
+            </select>
+            {% endwith %}
+          </div>
+          <div class="pm-field">
+            <label>Situación económica</label>
+            {% with current=form.situacion_economica.value|default_if_none:'' %}
+            <select name="situacion_economica" id="id_situacion_economica" class="pm-input pm-select">
+              <option value="">— Selecciona —</option>
+              <option value="estable" {% if current == "estable" %}selected{% endif %}>Estable</option>
+              <option value="vulnerable" {% if current == "vulnerable" %}selected{% endif %}>Vulnerable</option>
+              <option value="critica" {% if current == "critica" %}selected{% endif %}>Crítica</option>
+            </select>
+            {% endwith %}
+          </div>
+          <label class="pm-checkbox full"><input type="checkbox" name="tiene_vehiculo" id="id_tiene_vehiculo" {% if form.tiene_vehiculo.value %}checked{% endif %}><span>Tiene vehículo</span></label>
+        </div>
+        <div class="pm-subsection" id="bloque-vehiculo" style="{% if not form.tiene_vehiculo.value %}display:none{% endif %}">
+          <h4>🚗 Datos del vehículo</h4>
+          <div class="pm-grid">
+            <div class="pm-field">
+              <label>Tipo</label>
+              {% with current=form.vehiculo_tipo.value|default_if_none:'' %}
+              <select name="vehiculo_tipo" id="id_vehiculo_tipo" class="pm-input pm-select">
+                <option value="">— Selecciona —</option>
+                <option value="carro" {% if current == "carro" %}selected{% endif %}>Carro</option>
+                <option value="jeepeta" {% if current == "jeepeta" %}selected{% endif %}>Jeepeta</option>
+                <option value="camioneta" {% if current == "camioneta" %}selected{% endif %}>Camioneta</option>
+                <option value="motor" {% if current == "motor" %}selected{% endif %}>Motor</option>
+                <option value="camion" {% if current == "camion" %}selected{% endif %}>Camión</option>
+                <option value="otro" {% if current == "otro" %}selected{% endif %}>Otro</option>
+              </select>
+              {% endwith %}
+            </div>
+            <div class="pm-field"><label>Marca</label><input type="text" name="vehiculo_marca" id="id_vehiculo_marca" value="{{ form.vehiculo_marca.value|default:'' }}" placeholder="Ej: Toyota" class="pm-input"></div>
+            <div class="pm-field"><label>Placa</label><input type="text" name="vehiculo_placa" id="id_vehiculo_placa" value="{{ form.vehiculo_placa.value|default:'' }}" placeholder="Ej: A123456" class="pm-input" style="text-transform:uppercase"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INTERESES Y HABILIDADES -->
+    <div class="pm-section" data-section="intereses">
+      <div class="pm-section-header" onclick="toggleSection(this)">
+        <h3 class="pm-section-title"><span class="icon">🎯</span> Intereses y habilidades</h3>
+        <div class="pm-section-toggle"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></div>
+      </div>
+      <div class="pm-section-body">
+        <div class="pm-grid">
+          <div class="pm-field full"><label>Intereses</label>{{ form.intereses }}</div>
+          <div class="pm-field full"><label>Otros intereses</label><textarea name="otros_intereses" id="id_otros_intereses" rows="2" placeholder="Otros intereses..." class="pm-input pm-textarea">{{ form.otros_intereses.value|default:'' }}</textarea></div>
+          <div class="pm-field full"><label>Habilidades</label>{{ form.habilidades }}</div>
+          <div class="pm-field full"><label>Otras habilidades</label><textarea name="otras_habilidades" id="id_otras_habilidades" rows="2" placeholder="Otras habilidades..." class="pm-input pm-textarea">{{ form.otras_habilidades.value|default:'' }}</textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="pm-footer">
+      <button type="submit" class="pm-btn pm-btn-primary">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+        Guardar cambios
+      </button>
+      <a href="{% url 'portal_miembros:perfil' %}" class="pm-btn pm-btn-secondary">Cancelar</a>
+    </div>
+
+  </form>
+</div>
+
+<script>
+function toggleSection(header) {
+  const section = header.closest('.pm-section');
+  if (section.classList.contains('always-open')) return;
+  section.classList.toggle('open');
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  const chkVehiculo = document.getElementById('id_tiene_vehiculo');
+  const bloqueVehiculo = document.getElementById('bloque-vehiculo');
+
+  function toggleVehiculo() {
+    if (!chkVehiculo || !bloqueVehiculo) return;
+    bloqueVehiculo.style.display = chkVehiculo.checked ? 'block' : 'none';
+    if (!chkVehiculo.checked) {
+      bloqueVehiculo.querySelectorAll('input').forEach(i => i.value = '');
+      bloqueVehiculo.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    }
+  }
+
+  if (chkVehiculo) {
+    chkVehiculo.addEventListener('change', toggleVehiculo);
+    toggleVehiculo();
+  }
+
+  const inputFoto = document.getElementById('id_foto');
+  const fotoPreview = document.getElementById('foto-preview');
+  if (inputFoto && fotoPreview) {
+    inputFoto.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        let img = fotoPreview.querySelector('img');
+        if (!img) {
+          fotoPreview.innerHTML = '';
+          img = document.createElement('img');
+          img.alt = 'Preview';
+          fotoPreview.appendChild(img);
+        }
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  ['id_pasaporte', 'id_vehiculo_placa'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+  });
+});
+</script>
+
+{% endblock %}

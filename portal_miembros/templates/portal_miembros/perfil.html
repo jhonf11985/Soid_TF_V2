@@ -1,0 +1,469 @@
+{% extends "core/base_sidebar.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  :root {
+    --primary: #5c9ead;
+    --primary-dark: #4a8a99;
+    --primary-light: #e8f4f6;
+    --primary-rgb: 92, 158, 173;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     BASE
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-wrap{max-width:800px;margin:0 auto;padding:12px}
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     HEADER CARD
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-header-card{
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    border-radius:20px;
+    padding:24px;
+    color:#fff;
+    position:relative;
+    overflow:hidden
+  }
+  .pm-header-card::before{
+    content:'';
+    position:absolute;
+    top:-50%;
+    right:-20%;
+    width:300px;
+    height:300px;
+    background:rgba(255,255,255,.08);
+    border-radius:50%
+  }
+  .pm-header-card::after{
+    content:'';
+    position:absolute;
+    bottom:-30%;
+    left:-10%;
+    width:200px;
+    height:200px;
+    background:rgba(255,255,255,.05);
+    border-radius:50%
+  }
+
+  .pm-header-content{
+    position:relative;
+    z-index:1;
+    display:flex;
+    gap:20px;
+    align-items:center;
+    flex-wrap:wrap
+  }
+
+  .pm-avatar-wrap{
+    position:relative;
+    flex-shrink:0
+  }
+  .pm-avatar{
+    width:100px;
+    height:100px;
+    border-radius:50%;
+    object-fit:cover;
+    border:4px solid rgba(255,255,255,.3);
+    background:rgba(255,255,255,.1)
+  }
+  .pm-avatar-placeholder{
+    width:100px;
+    height:100px;
+    border-radius:50%;
+    border:4px solid rgba(255,255,255,.3);
+    background:rgba(255,255,255,.1);
+    display:flex;
+    align-items:center;
+    justify-content:center
+  }
+  .pm-avatar-placeholder svg{width:50px;height:50px;color:rgba(255,255,255,.6)}
+
+  .pm-status-badge{
+    position:absolute;
+    bottom:4px;
+    right:4px;
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    background:#22c55e;
+    border:3px solid var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center
+  }
+  .pm-status-badge.inactive{background:#ef4444}
+  .pm-status-badge svg{width:12px;height:12px;color:#fff}
+
+  .pm-info{flex:1;min-width:200px}
+  .pm-name{font-size:24px;font-weight:800;margin:0;line-height:1.2}
+  .pm-contact{margin:8px 0 0;font-size:14px;opacity:.9;display:flex;flex-wrap:wrap;gap:12px}
+  .pm-contact-item{display:flex;align-items:center;gap:6px}
+  .pm-contact-item svg{width:16px;height:16px;opacity:.8}
+
+  .pm-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:16px
+  }
+  .pm-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:12px 16px;
+    border-radius:12px;
+    font-size:14px;
+    font-weight:700;
+    text-decoration:none;
+    transition:transform .1s,box-shadow .2s;
+    cursor:pointer;
+    border:none
+  }
+  .pm-btn:active{transform:scale(.98)}
+  .pm-btn svg{width:18px;height:18px}
+
+  .pm-btn-primary{
+    background:#fff;
+    color:var(--primary-dark)
+  }
+  .pm-btn-primary:hover{box-shadow:0 4px 12px rgba(0,0,0,.15)}
+
+  .pm-btn-ghost{
+    background:rgba(255,255,255,.15);
+    color:#fff
+  }
+  .pm-btn-ghost:hover{background:rgba(255,255,255,.25)}
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     STATS ROW
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin-top:16px
+  }
+  .pm-stat{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    padding:16px;
+    text-align:center;
+    transition:transform .2s,box-shadow .2s
+  }
+  .pm-stat:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.06)}
+  .pm-stat-icon{
+    width:40px;
+    height:40px;
+    border-radius:10px;
+    background:var(--primary-light);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 8px
+  }
+  .pm-stat-icon svg{width:20px;height:20px;color:var(--primary)}
+  .pm-stat-value{font-size:18px;font-weight:800;color:#111827;margin:0}
+  .pm-stat-label{font-size:11px;color:#6b7280;margin:4px 0 0;text-transform:uppercase;letter-spacing:.5px}
+
+  @media (max-width:600px){
+    .pm-stats{grid-template-columns:repeat(2,1fr)}
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     INFO SECTIONS
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-section{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    margin-top:16px;
+    overflow:hidden
+  }
+  .pm-section-header{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:14px 16px;
+    background:var(--primary-light);
+    border-bottom:1px solid #d5e8ec
+  }
+  .pm-section-icon{
+    width:32px;
+    height:32px;
+    border-radius:8px;
+    background:var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center
+  }
+  .pm-section-icon svg{width:16px;height:16px;color:#fff}
+  .pm-section-title{font-size:15px;font-weight:700;color:#111827;margin:0}
+  .pm-section-badge{
+    margin-left:auto;
+    background:var(--primary);
+    color:#fff;
+    font-size:11px;
+    font-weight:600;
+    padding:4px 10px;
+    border-radius:20px
+  }
+
+  .pm-section-body{padding:16px}
+
+  .pm-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px
+  }
+  @media (max-width:540px){.pm-grid{grid-template-columns:1fr}}
+
+  .pm-field{
+    background:#f9fafb;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    padding:12px
+  }
+  .pm-field-label{
+    font-size:11px;
+    font-weight:600;
+    color:#6b7280;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    margin:0 0 4px
+  }
+  .pm-field-value{
+    font-size:15px;
+    font-weight:700;
+    color:#111827;
+    margin:0
+  }
+  .pm-field-value.empty{color:#9ca3af;font-weight:400}
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     LOCK NOTICE
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-lock-notice{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:14px;
+    background:#fefce8;
+    border:1px solid #fef08a;
+    border-radius:12px;
+    margin-top:12px
+  }
+  .pm-lock-notice svg{width:20px;height:20px;color:#ca8a04;flex-shrink:0;margin-top:1px}
+  .pm-lock-notice p{margin:0;font-size:13px;color:#854d0e;line-height:1.5}
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     QR CODE
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .pm-qr-section{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:16px;
+    background:#f9fafb;
+    border-radius:12px;
+    margin-top:12px
+  }
+  .pm-qr-code{
+    width:80px;
+    height:80px;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center
+  }
+  .pm-qr-code img{width:100%;height:100%;object-fit:contain;padding:4px}
+  .pm-qr-info h4{margin:0 0 4px;font-size:14px;font-weight:700;color:#111827}
+  .pm-qr-info p{margin:0;font-size:13px;color:#6b7280}
+  .pm-qr-info code{
+    display:inline-block;
+    margin-top:6px;
+    padding:4px 10px;
+    background:var(--primary-light);
+    color:var(--primary-dark);
+    font-size:13px;
+    font-weight:700;
+    border-radius:6px;
+    font-family:monospace
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     RESPONSIVE
+     ═══════════════════════════════════════════════════════════════════════════ */
+  @media (max-width:480px){
+    .pm-wrap{padding:8px}
+    .pm-header-card{padding:20px 16px}
+    .pm-header-content{flex-direction:column;text-align:center}
+    .pm-contact{justify-content:center}
+    .pm-actions{justify-content:center}
+    .pm-name{font-size:20px}
+    .pm-avatar,.pm-avatar-placeholder{width:90px;height:90px}
+  }
+</style>
+
+<div class="pm-wrap">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       HEADER CARD
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="pm-header-card">
+    <div class="pm-header-content">
+      
+      <div class="pm-avatar-wrap">
+        {% if miembro.foto %}
+          <img class="pm-avatar" src="{{ miembro.foto.url }}" alt="Foto de {{ miembro.nombres }}">
+        {% else %}
+          <div class="pm-avatar-placeholder">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 1115 0"/></svg>
+          </div>
+        {% endif %}
+        <div class="pm-status-badge {% if not miembro.activo %}inactive{% endif %}">
+          {% if miembro.activo %}
+            <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          {% else %}
+            <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="pm-info">
+        <h1 class="pm-name">{{ miembro.nombres }} {{ miembro.apellidos }}</h1>
+        
+        <div class="pm-contact">
+          {% if miembro.email %}
+          <span class="pm-contact-item">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            {{ miembro.email }}
+          </span>
+          {% endif %}
+          {% if miembro.telefono %}
+          <span class="pm-contact-item">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            {{ miembro.telefono }}
+          </span>
+          {% endif %}
+          {% if miembro.whatsapp %}
+          <span class="pm-contact-item">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            {{ miembro.whatsapp }}
+          </span>
+          {% endif %}
+        </div>
+
+        <div class="pm-actions">
+          <a class="pm-btn pm-btn-primary" href="{% url 'portal_miembros:perfil_editar' %}">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            Editar mis datos
+          </a>
+          <a class="pm-btn pm-btn-ghost" href="{% url 'portal_miembros:dashboard' %}">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+            Volver al portal
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       STATS
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="pm-stats">
+    <div class="pm-stat">
+      <div class="pm-stat-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      </div>
+      <p class="pm-stat-value">{% if miembro.fecha_ingreso_iglesia %}{{ miembro.fecha_ingreso_iglesia|date:"Y" }}{% else %}—{% endif %}</p>
+      <p class="pm-stat-label">Desde</p>
+    </div>
+    <div class="pm-stat">
+      <div class="pm-stat-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <p class="pm-stat-value">{{ miembro.get_estado_miembro_display|default:"—" }}</p>
+      <p class="pm-stat-label">Estado</p>
+    </div>
+    <div class="pm-stat">
+      <div class="pm-stat-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z"/></svg>
+      </div>
+      <p class="pm-stat-value">{% if miembro.fecha_nacimiento %}{{ miembro.fecha_nacimiento|date:"d/m" }}{% else %}—{% endif %}</p>
+      <p class="pm-stat-label">Cumpleaños</p>
+    </div>
+    <div class="pm-stat">
+      <div class="pm-stat-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/><path d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/></svg>
+      </div>
+      <p class="pm-stat-value">{% if miembro.bautizado_confirmado %}Sí{% else %}No{% endif %}</p>
+      <p class="pm-stat-label">Bautizado</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       DATOS PROTEGIDOS
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="pm-section">
+    <div class="pm-section-header">
+      <div class="pm-section-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      </div>
+      <h3 class="pm-section-title">Datos protegidos</h3>
+      <span class="pm-section-badge">Solo lectura</span>
+    </div>
+    <div class="pm-section-body">
+      <div class="pm-grid">
+        <div class="pm-field">
+          <p class="pm-field-label">Fecha de nacimiento</p>
+          <p class="pm-field-value {% if not miembro.fecha_nacimiento %}empty{% endif %}">
+            {% if miembro.fecha_nacimiento %}{{ miembro.fecha_nacimiento|date:"d/m/Y" }}{% else %}Sin registrar{% endif %}
+          </p>
+        </div>
+        <div class="pm-field">
+          <p class="pm-field-label">Estado del miembro</p>
+          <p class="pm-field-value {% if not miembro.estado_miembro %}empty{% endif %}">
+            {% if miembro.estado_miembro %}{{ miembro.get_estado_miembro_display|default:miembro.estado_miembro }}{% else %}Sin registrar{% endif %}
+          </p>
+        </div>
+        <div class="pm-field">
+          <p class="pm-field-label">Miembro activo</p>
+          <p class="pm-field-value">{% if miembro.activo %}Sí{% else %}No{% endif %}</p>
+        </div>
+        <div class="pm-field">
+          <p class="pm-field-label">Fecha de ingreso</p>
+          <p class="pm-field-value {% if not miembro.fecha_ingreso_iglesia %}empty{% endif %}">
+            {% if miembro.fecha_ingreso_iglesia %}{{ miembro.fecha_ingreso_iglesia|date:"d/m/Y" }}{% else %}Sin registrar{% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="pm-lock-notice">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <p>Estos datos están protegidos para mantener la integridad del expediente. Los roles y unidades se administran por la iglesia. Si necesitas algún cambio, contacta a administración.</p>
+      </div>
+
+      {% if miembro.codigo_miembro %}
+      <div class="pm-qr-section">
+        <div class="pm-qr-code">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ miembro.codigo_miembro }}" alt="QR Code">
+        </div>
+        <div class="pm-qr-info">
+          <h4>Tu código de miembro</h4>
+          <p>Usa este código para identificarte en la iglesia</p>
+          <code>{{ miembro.codigo_miembro }}</code>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

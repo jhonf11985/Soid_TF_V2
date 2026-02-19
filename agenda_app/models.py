@@ -17,6 +17,18 @@ class Actividad(models.Model):
         PROGRAMADA = "PROGRAMADA", "Programada"
         REALIZADA = "REALIZADA", "Realizada"
         CANCELADA = "CANCELADA", "Cancelada"
+        
+    class Visibilidad(models.TextChoices):
+        PUBLICO = "PUBLICO", "Público"
+        PRIVADO = "PRIVADO", "Privado"
+
+    visibilidad = models.CharField(
+        max_length=10,
+        choices=Visibilidad.choices,
+        default=Visibilidad.PRIVADO,   # por seguridad
+        db_index=True
+    )
+
 
     titulo = models.CharField(max_length=120)
     fecha = models.DateField()
@@ -29,6 +41,7 @@ class Actividad(models.Model):
         choices=Tipo.choices,
         default=Tipo.OTRO
     )
+
 
     unidad = models.ForeignKey(
         Unidad,

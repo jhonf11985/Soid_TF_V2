@@ -11,7 +11,7 @@ from . import ajax_views
 from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
-
+from miembros_app.models import Miembro
 from .models import Module, ConfiguracionSistema
 from .forms import (
     ConfiguracionGeneralForm,
@@ -33,6 +33,9 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
+from django.contrib.auth import logout, update_session_auth_hash, login
+from django.views.decorators.http import require_POST, require_http_methods
+from datetime import date
 
 User = get_user_model()
 
@@ -485,6 +488,10 @@ def configuracion_permisos(request):
 def home(request):
     user = request.user
     
+    
+
+    if not user.is_staff and Miembro.objects.filter(usuario=user).exists():
+        return redirect("portal_miembros:dashboard")
     # ═══════════════════════════════════════════════════════════════
     # 🧠 MENSAJE DE BIENVENIDA (solo primer acceso del día)
     # ═══════════════════════════════════════════════════════════════
@@ -983,3 +990,75 @@ def listado_miembros_compartir(request):
 
     except Exception as e:
         return JsonResponse({"ok": False, "error": str(e)})
+
+
+@require_http_methods(["GET", "POST"])
+def activar_acceso(request):
+    """
+    Activa acceso de un miembro usando:
+    - numero_miembro
+    - fecha_nacimiento
+    Crea usuario Django si no existe y vincula miembro.usuario.
+    Usuario: miembro.codigo_miembro (ej: TF-0001)
+    Password inicial: los 4 dígitos del numero_miembro (0001)
+    """
+    cfg = ConfiguracionSistema.load()
+
+    if request.method == "POST":
+        numero = (request.POST.get("numero_miembro") or "").strip()
+        fecha = (request.POST.get("fecha_nacimiento") or "").strip()
+
+        if not numero.isdigit():
+            messages.error(request, "El número de miembro debe ser numérico.")
+            return redirect("core:activar_acceso")
+
+        try:
+            fecha_nac = date.fromisoformat(fecha)  # YYYY-MM-DD
+        except Exception:
+            messages.error(request, "Fecha de nacimiento inválida.")
+            return redirect("core:activar_acceso")
+
+        miembro = Miembro.objects.filter(
+            numero_miembro=int(numero),
+            fecha_nacimiento=fecha_nac
+        ).first()
+
+        if not miembro:
+            messages.error(request, "No encontramos un miembro con esos datos.")
+            return redirect("core:activar_acceso")
+
+        # ✅ username ideal: codigo_miembro (ya viene tipo TF-0001)
+        username = (getattr(miembro, "codigo_miembro", "") or "").strip()
+        if not username:
+            prefijo = (getattr(cfg, "codigo_miembro_prefijo", "") or "TF-").strip()
+            username = f"{prefijo}{miembro.numero_miembro:04d}"
+
+        User = get_user_model()
+
+        # Si ya está vinculado, entra
+        if getattr(miembro, "usuario_id", None):
+            login(request, miembro.usuario)
+            messages.success(request, "Bienvenido. Acceso confirmado.")
+            return redirect("core:home")
+
+        # Crear o buscar user
+        user, created = User.objects.get_or_create(username=username)
+
+        # Password inicial = 4 dígitos del número (0001, 0123, etc.)
+        if created:
+            password_inicial = f"{miembro.numero_miembro:04d}"
+            user.set_password(password_inicial)
+            user.save()
+
+        # Vincular
+        miembro.usuario = user
+        miembro.save(update_fields=["usuario"])
+
+        login(request, user)
+        messages.success(
+            request,
+            f"Acceso activado. Tu usuario es {username}. Te recomendamos cambiar la contraseña."
+        )
+        return redirect("portal_miembros:dashboard")
+
+    return render(request, "core/activar_acceso.html", {"CFG": cfg})

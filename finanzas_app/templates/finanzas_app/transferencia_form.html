@@ -75,7 +75,7 @@
                         <div class="odoo-field-value">
                             {{ form.referencia }}
                             {% if form.referencia.errors %}<span class="odoo-error">{{ form.referencia.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Nº de operación, comprobante, etc.</span>
+                            <span class="odoo-field-hint"></span>
                         </div>
                     </div>
                 </div>
@@ -87,7 +87,35 @@
                         <div class="odoo-field-value">
                             {{ form.cuenta_origen }}
                             {% if form.cuenta_origen.errors %}<span class="odoo-error">{{ form.cuenta_origen.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Cuenta desde donde sale el dinero</span>
+                            <span class="odoo-field-hint"></span>
+                        </div>
+                    </div>
+
+                    <!-- SALDO CUENTA ORIGEN -->
+                    <div class="saldo-cuenta-row" id="saldo-origen-container">
+                        <label></label>
+                        <div class="saldo-cuenta-card" id="saldo-origen-card">
+                            <div class="saldo-info">
+                                <span class="saldo-label">
+                                    <span class="material-icons">account_balance_wallet</span>
+                                    Saldo disponible
+                                </span>
+                                <span class="saldo-valor">
+                                    <span class="saldo-moneda">RD$</span>
+                                    <span class="saldo-monto" id="saldo-origen-monto">0.00</span>
+                                </span>
+                            </div>
+                            <div class="saldo-proyectado" id="saldo-origen-proyectado" style="display: none;">
+                                <span class="saldo-proyectado-label">Después de transferir:</span>
+                                <span class="saldo-proyectado-valor" id="saldo-origen-proyectado-valor">
+                                    <span class="saldo-moneda">RD$</span>
+                                    <span class="saldo-monto" id="saldo-origen-proyectado-monto">0.00</span>
+                                </span>
+                            </div>
+                            <div class="saldo-alerta saldo-alerta-danger" id="alerta-fondos-insuficientes" style="display: none;">
+                                <span class="material-icons">error</span>
+                                <span>Fondos insuficientes</span>
+                            </div>
                         </div>
                     </div>
 
@@ -103,7 +131,31 @@
                         <div class="odoo-field-value">
                             {{ form.cuenta_destino }}
                             {% if form.cuenta_destino.errors %}<span class="odoo-error">{{ form.cuenta_destino.errors.0 }}</span>{% endif %}
-                            <span class="odoo-field-hint">Cuenta donde entra el dinero</span>
+                            <span class="odoo-field-hint"></span>
+                        </div>
+                    </div>
+
+                    <!-- SALDO CUENTA DESTINO -->
+                    <div class="saldo-cuenta-row" id="saldo-destino-container">
+                        <label></label>
+                        <div class="saldo-cuenta-card saldo-destino" id="saldo-destino-card">
+                            <div class="saldo-info">
+                                <span class="saldo-label">
+                                    <span class="material-icons">account_balance_wallet</span>
+                                    Saldo actual
+                                </span>
+                                <span class="saldo-valor">
+                                    <span class="saldo-moneda">RD$</span>
+                                    <span class="saldo-monto" id="saldo-destino-monto">0.00</span>
+                                </span>
+                            </div>
+                            <div class="saldo-proyectado" id="saldo-destino-proyectado" style="display: none;">
+                                <span class="saldo-proyectado-label">Después de recibir:</span>
+                                <span class="saldo-proyectado-valor saldo-destino-proyectado" id="saldo-destino-proyectado-valor">
+                                    <span class="saldo-moneda">RD$</span>
+                                    <span class="saldo-monto" id="saldo-destino-proyectado-monto">0.00</span>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -517,6 +569,301 @@
         -webkit-appearance: none;
         margin: 0;
     }
+
+    /* =====================================
+       INDICADORES DE SALDO - TRANSFERENCIAS
+       ===================================== */
+    
+    .saldo-cuenta-row {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 12px;
+        align-items: start;
+        margin-top: -8px;
+    }
+    
+    .saldo-cuenta-card {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        padding: 10px 14px;
+        display: none;
+    }
+    
+    .saldo-cuenta-card.visible {
+        display: block;
+        animation: saldoSlideIn 0.2s ease;
+    }
+    
+    .saldo-cuenta-card.saldo-destino {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border-color: #93c5fd;
+    }
+    
+    @keyframes saldoSlideIn {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .saldo-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .saldo-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #166534;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    
+    .saldo-destino .saldo-label {
+        color: #1e40af;
+    }
+    
+    .saldo-label .material-icons {
+        font-size: 16px;
+    }
+    
+    .saldo-valor {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+    }
+    
+    .saldo-valor .saldo-moneda {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6b7280;
+    }
+    
+    .saldo-valor .saldo-monto {
+        font-size: 18px;
+        font-weight: 700;
+        color: #166534;
+        font-variant-numeric: tabular-nums;
+    }
+    
+    .saldo-destino .saldo-valor .saldo-monto {
+        color: #1e40af;
+    }
+    
+    .saldo-proyectado {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px dashed rgba(0,0,0,0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .saldo-proyectado-label {
+        font-size: 10px;
+        font-weight: 500;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+    
+    .saldo-proyectado-valor {
+        display: flex;
+        align-items: baseline;
+        gap: 3px;
+    }
+    
+    .saldo-proyectado-valor .saldo-moneda {
+        font-size: 11px;
+        color: #9ca3af;
+    }
+    
+    .saldo-proyectado-valor .saldo-monto {
+        font-size: 14px;
+        font-weight: 600;
+        color: #374151;
+        font-variant-numeric: tabular-nums;
+    }
+    
+    .saldo-proyectado-valor.negativo .saldo-monto {
+        color: #dc2626;
+    }
+    
+    .saldo-proyectado-valor.ok .saldo-monto {
+        color: #16a34a;
+    }
+    
+    .saldo-destino-proyectado .saldo-monto {
+        color: #2563eb;
+    }
+    
+    .saldo-alerta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    .saldo-alerta .material-icons {
+        font-size: 16px;
+    }
+    
+    .saldo-alerta-danger {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+
+    @media (max-width: 600px) {
+        .saldo-cuenta-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .saldo-cuenta-row label {
+            display: none;
+        }
+    }
 </style>
 
 {% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================
+// CONTROL DE SALDOS EN TRANSFERENCIAS
+// ============================================
+(function() {
+    'use strict';
+    
+    // Datos de saldos pasados desde Django
+    const CUENTAS_SALDOS = {{ cuentas_saldos_json|safe|default:"{}" }};
+    
+    // Elementos DOM
+    const selectOrigen = document.getElementById('id_cuenta_origen');
+    const selectDestino = document.getElementById('id_cuenta_destino');
+    const inputMonto = document.querySelector('input[name="monto"]');
+    
+    // Cards de saldo
+    const saldoOrigenCard = document.getElementById('saldo-origen-card');
+    const saldoDestinoCard = document.getElementById('saldo-destino-card');
+    
+    // Montos
+    const saldoOrigenMonto = document.getElementById('saldo-origen-monto');
+    const saldoDestinoMonto = document.getElementById('saldo-destino-monto');
+    
+    // Proyectados
+    const saldoOrigenProyectado = document.getElementById('saldo-origen-proyectado');
+    const saldoOrigenProyectadoMonto = document.getElementById('saldo-origen-proyectado-monto');
+    const saldoOrigenProyectadoValor = document.getElementById('saldo-origen-proyectado-valor');
+    
+    const saldoDestinoProyectado = document.getElementById('saldo-destino-proyectado');
+    const saldoDestinoProyectadoMonto = document.getElementById('saldo-destino-proyectado-monto');
+    
+    // Alerta
+    const alertaInsuficientes = document.getElementById('alerta-fondos-insuficientes');
+    
+    if (!selectOrigen || !selectDestino) return;
+    
+    // ====================================
+    // FUNCIONES AUXILIARES
+    // ====================================
+    
+    function formatearNumero(num) {
+        return num.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+    
+    function parsearMonto(valor) {
+        if (!valor) return 0;
+        const limpio = String(valor).replace(/,/g, '').replace(/[^0-9.-]/g, '');
+        return parseFloat(limpio) || 0;
+    }
+    
+    function obtenerSaldo(cuentaId) {
+        const cuenta = CUENTAS_SALDOS[cuentaId];
+        return cuenta ? cuenta.saldo : null;
+    }
+    
+    // ====================================
+    // ACTUALIZAR SALDOS
+    // ====================================
+    
+    function actualizarSaldos() {
+        const origenId = selectOrigen.value;
+        const destinoId = selectDestino.value;
+        const monto = parsearMonto(inputMonto ? inputMonto.value : 0);
+        
+        // === CUENTA ORIGEN ===
+        if (origenId && CUENTAS_SALDOS[origenId]) {
+            const saldoOrigen = obtenerSaldo(origenId);
+            
+            saldoOrigenCard.classList.add('visible');
+            saldoOrigenMonto.textContent = formatearNumero(saldoOrigen);
+            
+            if (monto > 0) {
+                const saldoResultante = saldoOrigen - monto;
+                saldoOrigenProyectado.style.display = 'flex';
+                saldoOrigenProyectadoMonto.textContent = formatearNumero(saldoResultante);
+                
+                saldoOrigenProyectadoValor.classList.remove('negativo', 'ok');
+                alertaInsuficientes.style.display = 'none';
+                
+                if (saldoResultante < 0) {
+                    saldoOrigenProyectadoValor.classList.add('negativo');
+                    alertaInsuficientes.style.display = 'flex';
+                } else {
+                    saldoOrigenProyectadoValor.classList.add('ok');
+                }
+            } else {
+                saldoOrigenProyectado.style.display = 'none';
+                alertaInsuficientes.style.display = 'none';
+            }
+        } else {
+            saldoOrigenCard.classList.remove('visible');
+        }
+        
+        // === CUENTA DESTINO ===
+        if (destinoId && CUENTAS_SALDOS[destinoId]) {
+            const saldoDestino = obtenerSaldo(destinoId);
+            
+            saldoDestinoCard.classList.add('visible');
+            saldoDestinoMonto.textContent = formatearNumero(saldoDestino);
+            
+            if (monto > 0) {
+                const saldoResultante = saldoDestino + monto;
+                saldoDestinoProyectado.style.display = 'flex';
+                saldoDestinoProyectadoMonto.textContent = formatearNumero(saldoResultante);
+            } else {
+                saldoDestinoProyectado.style.display = 'none';
+            }
+        } else {
+            saldoDestinoCard.classList.remove('visible');
+        }
+    }
+    
+    // ====================================
+    // EVENT LISTENERS
+    // ====================================
+    
+    selectOrigen.addEventListener('change', actualizarSaldos);
+    selectDestino.addEventListener('change', actualizarSaldos);
+    
+    if (inputMonto) {
+        inputMonto.addEventListener('input', actualizarSaldos);
+        inputMonto.addEventListener('blur', actualizarSaldos);
+    }
+    
+    // Inicializar
+    actualizarSaldos();
+    
+})();
+</script>
+{% endblock extra_js %}
