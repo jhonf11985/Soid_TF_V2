@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.utils import timezone
 
 # Create your views here.
 from django.contrib.auth.decorators import login_required
@@ -7,6 +8,7 @@ from django.shortcuts import render
 
 from miembros_app.models import Miembro
 from estructura_app.models import UnidadMembresia
+from agenda_app.models import Actividad
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -216,12 +218,22 @@ def dashboard(request):
     ))
 
     # ==========================================================
-    # 3) Render
+    # 3) ACTIVIDADES PÚBLICAS (próximas)
+    # ==========================================================
+    actividades = Actividad.objects.filter(
+        visibilidad=Actividad.Visibilidad.PUBLICO,
+        estado=Actividad.Estado.PROGRAMADA,
+        fecha__gte=timezone.now().date()
+    ).order_by('fecha', 'hora_inicio')[:5]
+
+    # ==========================================================
+    # 4) Render
     # ==========================================================
     context = {
         "miembro": miembro,
         "unidades": unidades,                # para badges + bloque "Mis líderes"
         "context_programas": programas,      # para bloque "Mis programas"
+        "actividades": actividades,          # próximas actividades públicas
     }
     return render(request, "portal_miembros/dashboard.html", context)
 
