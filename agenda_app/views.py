@@ -101,20 +101,26 @@ def actividad_create(request):
             actividad = form.save()
 
             # ===============================
-            # 🔔 NOTIFICACIÓN PWA
+            # 🔔 Notificación PWA
+            # - Público: a todos los usuarios activos (staff y no staff)
+            # - Privado: solo staff activos
             # ===============================
-            usuarios = User.objects.filter(is_active=True)
+            titulo = "📅 Nueva actividad agendada"
+            mensaje = f"Se ha programado: {actividad.titulo} ({actividad.fecha})"
+            url = "/agenda/"
 
-            titulo = "🗓️ Nueva actividad agendada"
-            mensaje = f"{actividad.titulo} • {actividad.fecha.strftime('%d/%m/%Y')}"
-            url = f"/agenda/actividad/{actividad.id}/"
+            vis = (actividad.visibilidad or "").upper()
+            if vis == "PUBLICO":
+                usuarios = User.objects.filter(is_active=True)
+            else:
+                usuarios = User.objects.filter(is_active=True, is_staff=True)
 
             for u in usuarios:
                 Notification.objects.create(
                     usuario=u,
                     titulo=titulo,
                     mensaje=mensaje,
-                    url_destino=url,
+                    url_destino=url
                 )
 
             messages.success(request, "✅ Actividad agendada y notificada.")
