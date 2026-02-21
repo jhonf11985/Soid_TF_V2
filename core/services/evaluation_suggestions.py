@@ -24,7 +24,7 @@ class EvaluationSuggestionService:
         # 1) Unidades donde el miembro es liderazgo
         unidades_ids = (
             UnidadCargo.objects.filter(
-                miembo=miembro,
+                miembo=miembo,
                 rol__tipo="LIDERAZGO",  # si tu campo/valor difiere, lo ajustamos en el siguiente paso
             )
             .values_list("unidad_id", flat=True)
