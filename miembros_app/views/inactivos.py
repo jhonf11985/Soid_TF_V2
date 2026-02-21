@@ -125,7 +125,15 @@ def salida_form(request, pk):
             if miembro_editado.razon_salida and miembro_editado.razon_salida.estado_resultante:
                 miembro_editado.estado_miembro = miembro_editado.razon_salida.estado_resultante
 
-            miembro_editado.save()
+            miembro_editado.save()  
+
+                        # ─────────────────────────────────────────
+            # Desactivar usuario asociado (SIN reactivar automático)
+            # ─────────────────────────────────────────
+            user_asociado = getattr(miembro_editado, "usuario", None)
+            if user_asociado and user_asociado.is_active:
+                user_asociado.is_active = False
+                user_asociado.save(update_fields=["is_active"])
 
             # Bitácora
             miembro.log_event(
