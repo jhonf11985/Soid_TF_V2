@@ -3,7 +3,7 @@
 miembros_app/views/miembros.py
 Vistas CRUD de miembros: lista, crear, editar, detalle.
 """
-
+from django.core.paginator import Paginator
 from datetime import date, timedelta
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -32,14 +32,18 @@ from .utils import (
 from .familiares import calcular_parentescos_inferidos, obtener_relaciones_organizadas
 
 
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # FUNCIÓN DE FILTRADO (compartida por lista y reportes)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def filtrar_miembros(request, miembros_base):
+def filtrar_miembros(request, miembros_base, para_paginacion=False):
     """
     Aplica todos los filtros del listado general de miembros.
     Devuelve: (miembros, filtros_context)
+    
+    Si para_paginacion=True, el filtro de rango de edad se hace en BD
+    en lugar de en memoria (más eficiente para paginación).
     """
     hoy = date.today()
     
@@ -122,29 +126,44 @@ def filtrar_miembros(request, miembros_base):
             Q(email__isnull=False, email__gt="")
         )
 
-    # Orden base
-    miembros = miembros.order_by("nombres", "apellidos")
-
-    # Filtro por rango de edad (convierte a lista)
+    # ═══════════════════════════════════════════════════════════════════════════
+    # FILTRO POR RANGO DE EDAD - Optimizado para BD
+    # ═══════════════════════════════════════════════════════════════════════════
     if usar_rango_edad and (edad_min is not None or edad_max is not None):
-        miembros_filtrados = []
-        
-        for m in miembros:
-            if not m.fecha_nacimiento:
-                continue
-            
-            edad = calcular_edad(m.fecha_nacimiento, hoy)
-            if edad is None:
-                continue
-            
-            if edad_min is not None and edad < edad_min:
-                continue
-            if edad_max is not None and edad > edad_max:
-                continue
-            
-            miembros_filtrados.append(m)
-        
-        miembros = miembros_filtrados
+        if para_paginacion:
+            # Filtrar en BD usando fecha_nacimiento (más eficiente)
+            if edad_min is not None:
+                # Para tener al menos edad_min años, debe haber nacido antes de esta fecha
+                fecha_max_nacimiento = hoy - timedelta(days=edad_min * 365)
+                miembros = miembros.filter(
+                    fecha_nacimiento__isnull=False,
+                    fecha_nacimiento__lte=fecha_max_nacimiento
+                )
+            if edad_max is not None:
+                # Para tener como máximo edad_max años, debe haber nacido después de esta fecha
+                fecha_min_nacimiento = hoy - timedelta(days=(edad_max + 1) * 365)
+                miembros = miembros.filter(
+                    fecha_nacimiento__gte=fecha_min_nacimiento
+                )
+        else:
+            # Método original (para reportes PDF que necesitan todos los registros)
+            miembros_filtrados = []
+            for m in miembros:
+                if not m.fecha_nacimiento:
+                    continue
+                edad = calcular_edad(m.fecha_nacimiento, hoy)
+                if edad is None:
+                    continue
+                if edad_min is not None and edad < edad_min:
+                    continue
+                if edad_max is not None and edad > edad_max:
+                    continue
+                miembros_filtrados.append(m)
+            miembros = miembros_filtrados
+
+    # Orden base (solo si sigue siendo queryset)
+    if hasattr(miembros, 'order_by'):
+        miembros = miembros.order_by("nombres", "apellidos")
 
     # Choices para los selects
     filtros_context = {
@@ -177,19 +196,34 @@ def filtrar_miembros(request, miembros_base):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# LISTA DE MIEMBROS
+# LISTA DE MIEMBROS (CON PAGINACIÓN)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @login_required
 @require_GET
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembro_lista(request):
-    """Listado general de miembros (excluye nuevos creyentes)."""
+    """Listado general de miembros con paginación (excluye nuevos creyentes)."""
     miembros_base = Miembro.objects.filter(nuevo_creyente=False)
-    miembros, filtros_context = filtrar_miembros(request, miembros_base)
+    miembros_qs, filtros_context = filtrar_miembros(request, miembros_base, para_paginacion=True)
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PAGINACIÓN
+    # ═══════════════════════════════════════════════════════════════════════════
+    items_por_pagina = 50  # Ajusta según necesites
+    paginator = Paginator(miembros_qs, items_por_pagina)
+    page_number = request.GET.get('page', 1)
+    
+    try:
+        page_obj = paginator.get_page(page_number)
+    except:
+        page_obj = paginator.get_page(1)
     
     context = {
-        "miembros": miembros,
+        "miembros": page_obj,  # Ahora es un Page object (iterable)
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "total_miembros": paginator.count,
         "EDAD_MINIMA_MIEMBRO_OFICIAL": get_edad_minima_miembro_oficial(),
         "modo_pdf": False,
     }
@@ -202,9 +236,10 @@ def miembro_lista(request):
 @require_GET
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembro_lista_pdf(request):
-    """Vista PDF del listado de miembros."""
+    """Vista PDF del listado de miembros (sin paginación - trae todos)."""
     miembros_base = Miembro.objects.filter(nuevo_creyente=False)
-    miembros, filtros_context = filtrar_miembros(request, miembros_base)
+    # para_paginacion=False para que traiga todos los registros
+    miembros, filtros_context = filtrar_miembros(request, miembros_base, para_paginacion=False)
     
     context = {
         "miembros": miembros,
@@ -213,8 +248,7 @@ def miembro_lista_pdf(request):
     }
     context.update(filtros_context)
     
-    return render(request, "miembros_app/reportes/listado_miembros.html", context)
-
+    return render(request, "miembros_app/reportes/listado_miembros_pdf.html", context)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CREAR MIEMBRO

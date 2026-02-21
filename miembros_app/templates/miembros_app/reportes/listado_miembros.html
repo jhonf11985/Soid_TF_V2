@@ -2,651 +2,27 @@
 {% load static %}
 {% load cloudinary_utils %}
 
-
 {% block title %}Listado de miembros{% endblock %}
 
 {% block miembros_content %}
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
-     ══════════════════════════════════════════════════════════════════════════ -->
-<div class="odoo-control-bar no-print">
-    <div class="odoo-control-left">
-        <a href="{% url 'miembros_app:crear' %}" class="odoo-btn odoo-btn-primary">
-            <span class="material-icons">add</span>
-            Nuevo
-        </a>
-        
-        <div class="odoo-breadcrumb">
-            <span class="odoo-breadcrumb-title">Miembros</span>
-            <span class="material-icons odoo-breadcrumb-icon">settings</span>
-        </div>
-    </div>
-
-    <div class="odoo-control-center">
-        <!-- Barra de búsqueda con filtros activos -->
-        <form method="get" class="odoo-search-form" id="main-search-form">
-            <span class="material-icons odoo-search-icon">search</span>
-            
-            <!-- Chips de filtros activos dentro de la barra -->
-            <div class="odoo-search-filters">
-                {% if estado %}
-                <span class="odoo-filter-tag">
-                    {{ estado }}
-                    <button type="button" onclick="removeFilter('estado')" class="odoo-filter-remove">×</button>
-                </span>
-                {% endif %}
-                {% if categoria_edad_filtro %}
-                <span class="odoo-filter-tag">
-                    {{ categoria_edad_filtro }}
-                    <button type="button" onclick="removeFilter('categoria_edad')" class="odoo-filter-remove">×</button>
-                </span>
-                {% endif %}
-                {% if genero_filtro %}
-                <span class="odoo-filter-tag">
-                    {{ genero_filtro }}
-                    <button type="button" onclick="removeFilter('genero')" class="odoo-filter-remove">×</button>
-                </span>
-                {% endif %}
-                {% if bautizado == "1" %}
-                <span class="odoo-filter-tag">
-                    Bautizados
-                    <button type="button" onclick="removeFilter('bautizado')" class="odoo-filter-remove">×</button>
-                </span>
-                {% elif bautizado == "0" %}
-                <span class="odoo-filter-tag">
-                    No bautizados
-                    <button type="button" onclick="removeFilter('bautizado')" class="odoo-filter-remove">×</button>
-                </span>
-                {% endif %}
-                
-                {# ═══ FILTROS MINISTERIALES ═══ #}
-                {% if rol_ministerial %}
-                <span class="odoo-filter-tag">
-                    {{ rol_ministerial|title }}
-                    <button type="button" onclick="removeFilter('rol_ministerial')" class="odoo-filter-remove">×</button>
-                </span>
-                {% endif %}
-                {% if estado_ministerial %}
-                <span class="odoo-filter-tag">
-                    Min: {{ estado_ministerial|title }}
-                    <button type="button" onclick="removeFilter('estado_ministerial')" class="odoo-filter-remove">×</button>
-                </span>
-                {% endif %}
-                {% if tiene_credenciales_filtro == "1" %}
-                <span class="odoo-filter-tag">
-                    Con credenciales
-                    <button type="button" onclick="removeFilter('tiene_credenciales')" class="odoo-filter-remove">×</button>
-                </span>
-                {% elif tiene_credenciales_filtro == "0" %}
-                <span class="odoo-filter-tag">
-                    Sin credenciales
-                    <button type="button" onclick="removeFilter('tiene_credenciales')" class="odoo-filter-remove">×</button>
-                </span>
-                {% endif %}
-            </div>
-            
-            <input type="text" 
-                   name="q" 
-                   class="odoo-search-input" 
-                   placeholder="Buscar..."
-                   value="{{ query }}">
-            
-            <!-- Campos ocultos para mantener filtros -->
-            <input type="hidden" name="estado" value="{{ estado }}">
-            <input type="hidden" name="categoria_edad" value="{{ categoria_edad_filtro }}">
-            <input type="hidden" name="genero" value="{{ genero_filtro }}">
-            <input type="hidden" name="bautizado" value="{{ bautizado }}">
-            <input type="hidden" name="edad_min" value="{{ edad_min }}">
-            <input type="hidden" name="edad_max" value="{{ edad_max }}">
-            <input type="hidden" name="usar_rango_edad" value="{% if usar_rango_edad %}1{% endif %}">
-            <input type="hidden" name="tiene_contacto" value="{% if tiene_contacto %}1{% endif %}">
-            <input type="hidden" name="mostrar_todos" value="{% if mostrar_todos %}1{% endif %}">
-            <input type="hidden" name="incluir_ninos" value="{% if incluir_ninos %}1{% endif %}">
-            
-            {# ═══ CAMPOS OCULTOS FILTROS MINISTERIALES ═══ #}
-            <input type="hidden" name="rol_ministerial" value="{{ rol_ministerial }}">
-            <input type="hidden" name="estado_ministerial" value="{{ estado_ministerial }}">
-            <input type="hidden" name="tiene_credenciales" value="{{ tiene_credenciales_filtro }}">
-            
-            <!-- Dropdown de filtros -->
-            <div class="odoo-filter-dropdown">
-                <button type="button" class="odoo-filter-btn" onclick="toggleFilterPanel()">
-                    <span class="material-icons">filter_list</span>
-                    Filtros
-                    <span class="material-icons">arrow_drop_down</span>
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <div class="odoo-control-right">
-        <!-- Paginación -->
-        <span class="odoo-pagination-info">
-            {% if miembros %}
-                1-{{ miembros|length }} / {{ miembros|length }}
-            {% else %}
-                0 / 0
-            {% endif %}
-        </span>
-        
-        <div class="odoo-pagination-btns">
-            <button class="odoo-page-btn" disabled>
-                <span class="material-icons">chevron_left</span>
-            </button>
-            <button class="odoo-page-btn" disabled>
-                <span class="material-icons">chevron_right</span>
-            </button>
-        </div>
-
-        <!-- Toggle de vista -->
-        <div class="odoo-view-toggle">
-            <button type="button" class="odoo-view-btn active" data-view="lista" title="Vista lista">
-                <span class="material-icons">view_list</span>
-            </button>
-            <button type="button" class="odoo-view-btn" data-view="grid" title="Vista tarjetas">
-                <span class="material-icons">grid_view</span>
-            </button>
-        </div>
-
-        <!-- Menú de acciones -->
-        <div class="odoo-actions-menu">
-            <button type="button" class="odoo-action-btn" onclick="toggleActionsMenu()">
-                <span class="material-icons">more_vert</span>
-            </button>
-            <div class="odoo-actions-dropdown" id="actions-dropdown">
-<a href="{% url 'miembros_app:reporte_listado_miembros' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-   target="_blank">
-    <span class="material-icons">print</span>
-    Imprimir
-</a>
-
-<a href="#" onclick="compartirWhatsApp(); return false;">
-    <span class="material-icons">share</span>
-    Compartir por WhatsApp
-</a>
-
-
-
-                <a href="{% url 'miembros_app:listado_miembros_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
-                    <span class="material-icons">mail</span>
-                    Enviar por correo
-                </a>
-                <label class="odoo-action-upload">
-                    <span class="material-icons">upload</span>
-                    Importar Excel
-                    <form id="importar-excel-form" 
-                          action="{% url 'miembros_app:importar_miembros_excel' %}" 
-                          method="post" 
-                          enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <input type="file" name="archivo_excel" accept=".xlsx,.xls" 
-                               onchange="this.form.submit();">
-                    </form>
-                </label>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════════
-     PANEL DE FILTROS (Desplegable estilo Odoo / Modal en móvil)
-     ══════════════════════════════════════════════════════════════════════════ -->
-<!-- Overlay para móvil -->
-<div class="odoo-filter-overlay no-print" id="filter-overlay"></div>
-
-<div class="odoo-filter-panel no-print" id="filter-panel">
-    <div class="odoo-filter-panel-header">
-        <span>Filtros</span>
-        <button type="button" class="odoo-filter-close-btn" id="filter-close-btn">
-            <span class="material-icons">close</span>
-        </button>
-    </div>
-    <form method="get" class="odoo-filter-form">
-        <!-- Mantener búsqueda actual -->
-        <input type="hidden" name="q" value="{{ query }}">
-        <input type="hidden" name="filtros_abiertos" value="1">
-        <div class="odoo-filter-grid">
-            <!-- Estado -->
-            <div class="odoo-filter-group">
-                <label>Estado del miembro</label>
-                <select name="estado">
-                    <option value="">Todos</option>
-                    {% for value, label in estados_choices %}
-                        <option value="{{ value }}" {% if value == estado %}selected{% endif %}>
-                            {{ label }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Categoría de edad -->
-            <div class="odoo-filter-group">
-                <label>Categoría de edad</label>
-                <select name="categoria_edad">
-                    <option value="">Todas</option>
-                    {% for value, label in categorias_choices %}
-                        <option value="{{ value }}" {% if value == categoria_edad_filtro %}selected{% endif %}>
-                            {{ label }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Género -->
-            <div class="odoo-filter-group">
-                <label>Género</label>
-                <select name="genero">
-                    <option value="">Todos</option>
-                    {% for value, label in generos_choices %}
-                        <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
-                            {{ label }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Bautismo -->
-            <div class="odoo-filter-group">
-                <label>Bautismo</label>
-                <select name="bautizado">
-                    <option value="">Todos</option>
-                    <option value="1" {% if bautizado == "1" %}selected{% endif %}>Bautizados</option>
-                    <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
-                </select>
-            </div>
-
-            {# ═══════════════════════════════════════════════════════════════════ #}
-            {# FILTROS MINISTERIALES #}
-            {# ═══════════════════════════════════════════════════════════════════ #}
-            
-            <!-- Rol ministerial -->
-            <div class="odoo-filter-group">
-                <label>Rol ministerial</label>
-                <select name="rol_ministerial">
-                    <option value="">Todos</option>
-                    {% for value, label in roles_ministeriales_choices %}
-                        <option value="{{ value }}" {% if value == rol_ministerial %}selected{% endif %}>
-                            {{ label }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Estado ministerial -->
-            <div class="odoo-filter-group">
-                <label>Estado ministerial</label>
-                <select name="estado_ministerial">
-                    <option value="">Todos</option>
-                    {% for value, label in estados_ministeriales_choices %}
-                        <option value="{{ value }}" {% if value == estado_ministerial %}selected{% endif %}>
-                            {{ label }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Credenciales -->
-            <div class="odoo-filter-group">
-                <label>Credenciales</label>
-                <select name="tiene_credenciales">
-                    <option value="">Todos</option>
-                    <option value="1" {% if tiene_credenciales_filtro == "1" %}selected{% endif %}>Con credenciales</option>
-                    <option value="0" {% if tiene_credenciales_filtro == "0" %}selected{% endif %}>Sin credenciales</option>
-                </select>
-            </div>
-
-            <!-- Rango de edad -->
-            <div class="odoo-filter-group odoo-filter-group-wide">
-                <label>Rango de edad</label>
-                <div class="odoo-filter-range">
-                    <input type="number" name="edad_min" placeholder="Desde" 
-                           value="{{ edad_min }}" min="0">
-                    <span>a</span>
-                    <input type="number" name="edad_max" placeholder="Hasta" 
-                           value="{{ edad_max }}" min="0">
-                    <label class="odoo-filter-checkbox">
-                        <input type="checkbox" name="usar_rango_edad" value="1"
-                               {% if usar_rango_edad %}checked{% endif %}>
-                        Aplicar
-                    </label>
-                </div>
-            </div>
-
-            <!-- Checkboxes adicionales -->
-            <div class="odoo-filter-group odoo-filter-group-wide">
-                <label>Opciones adicionales</label>
-                <div class="odoo-filter-checks">
-                    <label class="odoo-filter-checkbox">
-                        <input type="checkbox" name="tiene_contacto" value="1"
-                               {% if tiene_contacto %}checked{% endif %}>
-                        Solo con contacto
-                    </label>
-                    <label class="odoo-filter-checkbox">
-                        <input type="checkbox" name="mostrar_todos" value="1"
-                               {% if mostrar_todos %}checked{% endif %}>
-                        Incluir inactivos
-                    </label>
-                    <label class="odoo-filter-checkbox">
-                        <input type="checkbox" name="incluir_ninos" value="1"
-                               {% if incluir_ninos %}checked{% endif %}>
-                        Incluir niños (&lt;12 años)
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="odoo-filter-actions">
-            <button type="button" class="odoo-btn odoo-btn-secondary" onclick="clearFilters()">
-                Limpiar
-            </button>
-            <button type="submit" class="odoo-btn odoo-btn-primary">
-                Aplicar filtros
-            </button>
-        </div>
-    </form>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════════
-     ENCABEZADO PARA IMPRESIÓN
-     ══════════════════════════════════════════════════════════════════════════ -->
-<div class="only-print" style="text-align:center; margin-bottom:12px;">
-    {% if CFG.logo %}
-        <img src="{{ CFG.logo.url }}" alt="{{ CFG.nombre_iglesia|default:'Logo' }}"
-             style="max-height:70px; margin-bottom:6px;">
-    {% endif %}
-    <h2 style="margin:0; font-size:18px; font-weight:700;">
-        {% if CFG.nombre_iglesia %}{{ CFG.nombre_iglesia|upper }}{% else %}IGLESIA{% endif %}
-    </h2>
-    {% if CFG.denominacion %}
-        <div style="font-size:12px; color:#4b5563;">{{ CFG.denominacion }}</div>
-    {% endif %}
-    {% if CFG.lema %}
-        <div style="font-size:12px; color:#6b7280; font-style:italic;">"{{ CFG.lema }}"</div>
-    {% endif %}
-    <div style="font-size:11px; color:#6b7280; margin-top:6px;">
-        Listado de miembros · {{ hoy|date:"d/m/Y" }}
-    </div>
-    <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════════
-     TABLA DE MIEMBROS (Vista Lista - Estilo Odoo)
-     ══════════════════════════════════════════════════════════════════════════ -->
-<div class="odoo-list-container" id="vista-lista">
-    <table class="odoo-table">
-        <thead>
-            <tr>
-                <th class="odoo-th-checkbox no-print">
-                    <input type="checkbox" id="select-all">
-                </th>
-                <th class="odoo-th-sortable">
-                    Código
-                    <span class="material-icons odoo-sort-icon">unfold_more</span>
-                </th>
-                <th class="odoo-th-sortable odoo-th-main">
-                    Miembro
-                    <span class="material-icons odoo-sort-icon">unfold_more</span>
-                </th>
-                <th>Edad</th>
-                <th>Categoría</th>
-                <th>Contacto</th>
-                <th>Estado</th>
-                <th>Bautismo</th>
-                <th class="no-print"></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% if miembros %}
-                {% for m in miembros %}
-                <tr class="odoo-row {% if not m.activo %}odoo-row-inactive{% endif %}"
-                    onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'"
-                    style="cursor: pointer;">
-                    
-                    <!-- Checkbox -->
-                    <td class="odoo-td-checkbox no-print" onclick="event.stopPropagation();">
-                        <input type="checkbox" class="row-checkbox" value="{{ m.pk }}">
-                    </td>
-
-                    <!-- Código -->
-                    <td class="odoo-td-code">
-                        {{ m.codigo_miembro }}
-                    </td>
-
-                    <!-- Miembro (nombre + profesión) -->
-                    <td class="odoo-td-main">
-                        <div class="odoo-member-name">
-                            <a href="{% url 'miembros_app:detalle' m.pk %}" 
-                               onclick="event.stopPropagation();"
-                               class="no-print">
-                                {{ m.nombres }} {{ m.apellidos }}
-                            </a>
-                            <span class="only-print">{{ m.nombres }} {{ m.apellidos }}</span>
-                        </div>
-                        <div class="odoo-member-sub">
-                            {{ m.profesion|default:"—" }}
-                        </div>
-                    </td>
-
-                    <!-- Edad -->
-                    <td>
-                        {% if m.calcular_edad %}
-                            {{ m.calcular_edad }}
-                        {% else %}
-                            <span class="odoo-empty">—</span>
-                        {% endif %}
-                    </td>
-
-                    <!-- Categoría -->
-                    <td>
-                        {% if m.categoria_edad %}
-                            <span class="odoo-badge odoo-badge-info">
-                                {{ m.get_categoria_edad_display }}
-                            </span>
-                        {% else %}
-                            <span class="odoo-empty">—</span>
-                        {% endif %}
-                    </td>
-
-                    <!-- Contacto -->
-                    <td class="odoo-td-contact">
-                        {% if m.telefono or m.whatsapp or m.email %}
-                            {% if m.telefono %}
-                                <div class="odoo-contact-line">
-                                    {{ m.telefono }}
-                                    <a href="https://wa.me/{{ m.telefono|cut:' '|cut:'-' }}"
-                                       target="_blank"
-                                       onclick="event.stopPropagation();"
-                                       class="odoo-wa-link no-print"
-                                       title="WhatsApp">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm4.427 14.556c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
-                                        </svg>
-                                    </a>
-                                </div>
-                            {% elif m.whatsapp %}
-                                <div class="odoo-contact-line">
-                                    {{ m.whatsapp }}
-                                    <a href="https://wa.me/{{ m.whatsapp|cut:' '|cut:'-' }}"
-                                       target="_blank"
-                                       onclick="event.stopPropagation();"
-                                       class="odoo-wa-link no-print">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2z"/>
-                                        </svg>
-                                    </a>
-                                </div>
-                            {% endif %}
-                            {% if m.email %}
-                                <div class="odoo-contact-email">{{ m.email }}</div>
-                            {% endif %}
-                        {% else %}
-                            <span class="odoo-empty">Sin datos</span>
-                        {% endif %}
-                    </td>
-
-                    <!-- Estado -->
-                    <td>
-                        {% if not m.activo %}
-                            <span class="odoo-badge odoo-badge-danger">Inactivo</span>
-                            {% if m.razon_salida %}
-                                <div class="odoo-sub-info">{{ m.razon_salida }}</div>
-                            {% endif %}
-                            {% if m.fecha_salida %}
-                                <div class="odoo-sub-info">{{ m.fecha_salida|date:"d/m/Y" }}</div>
-                            {% endif %}
-                        {% else %}
-                            {% if m.estado_miembro %}
-                                <span class="odoo-estado">{{ m.get_estado_miembro_display }}</span>
-                            {% else %}
-                                <span class="odoo-empty">—</span>
-                            {% endif %}
-                        {% endif %}
-                    </td>
-
-                    <!-- Bautismo -->
-                    <td>
-                        {% if m.bautizado_confirmado %}
-                            <span class="odoo-badge odoo-badge-success">Sí</span>
-                            {% if m.fecha_bautismo %}
-                                <div class="odoo-sub-info">{{ m.fecha_bautismo|date:"d/m/Y" }}</div>
-                            {% endif %}
-                        {% else %}
-                            <span class="odoo-badge odoo-badge-muted">No</span>
-                        {% endif %}
-                    </td>
-
-                    <!-- Acciones -->
-                    <td class="odoo-td-actions no-print" onclick="event.stopPropagation();">
-                        <div class="odoo-row-actions">
-                            <a href="{% url 'miembros_app:detalle' m.pk %}" 
-                               class="odoo-action-icon" title="Ver">
-                                <span class="material-icons">visibility</span>
-                            </a>
-                            <a href="{% url 'miembros_app:editar' m.pk %}" 
-                               class="odoo-action-icon" title="Editar">
-                                <span class="material-icons">edit</span>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr>
-                    <td colspan="9" class="odoo-empty-row">
-                        <span class="material-icons">search_off</span>
-                        No se encontraron miembros con los filtros actuales.
-                    </td>
-                </tr>
-            {% endif %}
-        </tbody>
-    </table>
-
-    <!-- Total al final (estilo Odoo) -->
-    {% if miembros %}
-    <div class="odoo-table-footer">
-        <span class="odoo-total-label">Total:</span>
-        <span class="odoo-total-value">{{ miembros|length }} miembros</span>
-    </div>
-    {% endif %}
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════════
-     VISTA KANBAN (Tarjetas estilo Odoo)
-     ══════════════════════════════════════════════════════════════════════════ -->
-<div class="odoo-kanban-container no-print" id="vista-cuadricula" style="display: none;">
-    {% if miembros %}
-        <div class="odoo-kanban-grid">
-            {% for m in miembros %}
-            <article class="odoo-kanban-card {% if not m.activo %}odoo-kanban-card-inactive{% endif %}"
-                     onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'">
-                
-                <!-- Avatar con inicial o foto -->
-                <div class="odoo-kanban-avatar" style="background: {% cycle '#3b82f6' '#10b981' '#f59e0b' '#ef4444' '#8b5cf6' '#ec4899' %};">
-{% if m.foto %}
-  <img
-    src="{{ m.foto.url|cloudinary_thumb:'w_105,h_105,c_fill,g_face,f_auto,q_auto' }}"
-    alt="{{ m.nombres }}"
-    loading="lazy"
-    decoding="async"
-    width="105"
-    height="105"
-  >
-{% else %}
-  <span class="odoo-kanban-initial">{{ m.nombres|slice:":1"|upper }}</span>
-{% endif %}
-
-                </div>
-
-                <!-- Contenido de la tarjeta -->
-                <div class="odoo-kanban-content">
-                    <!-- Nombre -->
-                    <div class="odoo-kanban-name">
-                        {{ m.nombres }} {{ m.apellidos }}
-                    </div>
-
-                    <!-- Info de contacto con iconos -->
-                    <div class="odoo-kanban-info">
-                        {% if m.email %}
-                        <div class="odoo-kanban-info-row">
-                            <span class="material-icons">mail</span>
-                            <span>{{ m.email }}</span>
-                        </div>
-                        {% endif %}
-
-                        {% if m.telefono %}
-                        <div class="odoo-kanban-info-row">
-                            <span class="material-icons">phone</span>
-                            <span>{{ m.telefono }}</span>
-                        </div>
-                        {% elif m.whatsapp %}
-                        <div class="odoo-kanban-info-row">
-                            <span class="material-icons">phone</span>
-                            <span>{{ m.whatsapp }}</span>
-                        </div>
-                        {% endif %}
-
-                        {% if m.sector or m.ciudad %}
-                        <div class="odoo-kanban-info-row">
-                            <span class="material-icons">location_on</span>
-                            <span>{% if m.sector %}{{ m.sector }}{% endif %}{% if m.sector and m.ciudad %}, {% endif %}{% if m.ciudad %}{{ m.ciudad }}{% endif %}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Footer con badges y acciones -->
-                    <div class="odoo-kanban-footer">
-                        <div class="odoo-kanban-badges">
-                            {% if m.estado_miembro %}
-                            <span class="odoo-kanban-badge">
-                                <span class="material-icons">edit_note</span>
-                                {{ m.get_estado_miembro_display|slice:":3" }}
-                            </span>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="odoo-kanban-actions" onclick="event.stopPropagation();">
-                            <button type="button" class="odoo-kanban-action-btn" title="Actividad">
-                                <span class="material-icons">schedule</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </article>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="odoo-empty-kanban">
-            <span class="material-icons">search_off</span>
-            <p>No se encontraron miembros.</p>
-        </div>
-    {% endif %}
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════════
      ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
+
+    /* ═══ ANTI-FOUC: Fade in suave ═══ */
+.odoo-control-bar,
+.odoo-list-container,
+.odoo-kanban-container {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    BARRA DE CONTROL SUPERIOR
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1798,6 +1174,642 @@
 }
 
 </style>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE CONTROL SUPERIOR (Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-control-bar no-print">
+    <div class="odoo-control-left">
+        <a href="{% url 'miembros_app:crear' %}" class="odoo-btn odoo-btn-primary">
+            <span class="material-icons">add</span>
+            Nuevo
+        </a>
+        
+        <div class="odoo-breadcrumb">
+            <span class="odoo-breadcrumb-title">Miembros</span>
+            <span class="material-icons odoo-breadcrumb-icon">settings</span>
+        </div>
+    </div>
+
+    <div class="odoo-control-center">
+        <!-- Barra de búsqueda con filtros activos -->
+        <form method="get" class="odoo-search-form" id="main-search-form">
+            <span class="material-icons odoo-search-icon">search</span>
+            
+            <!-- Chips de filtros activos dentro de la barra -->
+            <div class="odoo-search-filters">
+                {% if estado %}
+                <span class="odoo-filter-tag">
+                    {{ estado }}
+                    <button type="button" onclick="removeFilter('estado')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                {% if categoria_edad_filtro %}
+                <span class="odoo-filter-tag">
+                    {{ categoria_edad_filtro }}
+                    <button type="button" onclick="removeFilter('categoria_edad')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                {% if genero_filtro %}
+                <span class="odoo-filter-tag">
+                    {{ genero_filtro }}
+                    <button type="button" onclick="removeFilter('genero')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                {% if bautizado == "1" %}
+                <span class="odoo-filter-tag">
+                    Bautizados
+                    <button type="button" onclick="removeFilter('bautizado')" class="odoo-filter-remove">×</button>
+                </span>
+                {% elif bautizado == "0" %}
+                <span class="odoo-filter-tag">
+                    No bautizados
+                    <button type="button" onclick="removeFilter('bautizado')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                
+                {# ═══ FILTROS MINISTERIALES ═══ #}
+                {% if rol_ministerial %}
+                <span class="odoo-filter-tag">
+                    {{ rol_ministerial|title }}
+                    <button type="button" onclick="removeFilter('rol_ministerial')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                {% if estado_ministerial %}
+                <span class="odoo-filter-tag">
+                    Min: {{ estado_ministerial|title }}
+                    <button type="button" onclick="removeFilter('estado_ministerial')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+                {% if tiene_credenciales_filtro == "1" %}
+                <span class="odoo-filter-tag">
+                    Con credenciales
+                    <button type="button" onclick="removeFilter('tiene_credenciales')" class="odoo-filter-remove">×</button>
+                </span>
+                {% elif tiene_credenciales_filtro == "0" %}
+                <span class="odoo-filter-tag">
+                    Sin credenciales
+                    <button type="button" onclick="removeFilter('tiene_credenciales')" class="odoo-filter-remove">×</button>
+                </span>
+                {% endif %}
+            </div>
+            
+            <input type="text" 
+                   name="q" 
+                   class="odoo-search-input" 
+                   placeholder="Buscar..."
+                   value="{{ query }}">
+            
+            <!-- Campos ocultos para mantener filtros -->
+            <input type="hidden" name="estado" value="{{ estado }}">
+            <input type="hidden" name="categoria_edad" value="{{ categoria_edad_filtro }}">
+            <input type="hidden" name="genero" value="{{ genero_filtro }}">
+            <input type="hidden" name="bautizado" value="{{ bautizado }}">
+            <input type="hidden" name="edad_min" value="{{ edad_min }}">
+            <input type="hidden" name="edad_max" value="{{ edad_max }}">
+            <input type="hidden" name="usar_rango_edad" value="{% if usar_rango_edad %}1{% endif %}">
+            <input type="hidden" name="tiene_contacto" value="{% if tiene_contacto %}1{% endif %}">
+            <input type="hidden" name="mostrar_todos" value="{% if mostrar_todos %}1{% endif %}">
+            <input type="hidden" name="incluir_ninos" value="{% if incluir_ninos %}1{% endif %}">
+            
+            {# ═══ CAMPOS OCULTOS FILTROS MINISTERIALES ═══ #}
+            <input type="hidden" name="rol_ministerial" value="{{ rol_ministerial }}">
+            <input type="hidden" name="estado_ministerial" value="{{ estado_ministerial }}">
+            <input type="hidden" name="tiene_credenciales" value="{{ tiene_credenciales_filtro }}">
+            
+            <!-- Dropdown de filtros -->
+            <div class="odoo-filter-dropdown">
+                <button type="button" class="odoo-filter-btn" onclick="toggleFilterPanel()">
+                    <span class="material-icons">filter_list</span>
+                    Filtros
+                    <span class="material-icons">arrow_drop_down</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="odoo-control-right">
+        <!-- Paginación -->
+        <span class="odoo-pagination-info">
+            {% if miembros %}
+                1-{{ miembros|length }} / {{ miembros|length }}
+            {% else %}
+                0 / 0
+            {% endif %}
+        </span>
+        
+        <div class="odoo-pagination-btns">
+            <button class="odoo-page-btn" disabled>
+                <span class="material-icons">chevron_left</span>
+            </button>
+            <button class="odoo-page-btn" disabled>
+                <span class="material-icons">chevron_right</span>
+            </button>
+        </div>
+
+        <!-- Toggle de vista -->
+        <div class="odoo-view-toggle">
+            <button type="button" class="odoo-view-btn active" data-view="lista" title="Vista lista">
+                <span class="material-icons">view_list</span>
+            </button>
+            <button type="button" class="odoo-view-btn" data-view="grid" title="Vista tarjetas">
+                <span class="material-icons">grid_view</span>
+            </button>
+        </div>
+
+        <!-- Menú de acciones -->
+        <div class="odoo-actions-menu">
+            <button type="button" class="odoo-action-btn" onclick="toggleActionsMenu()">
+                <span class="material-icons">more_vert</span>
+            </button>
+            <div class="odoo-actions-dropdown" id="actions-dropdown">
+<a href="{% url 'miembros_app:reporte_listado_miembros' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+   target="_blank">
+    <span class="material-icons">print</span>
+    Imprimir
+</a>
+
+<a href="#" onclick="compartirWhatsApp(); return false;">
+    <span class="material-icons">share</span>
+    Compartir por WhatsApp
+</a>
+
+
+
+                <a href="{% url 'miembros_app:listado_miembros_enviar_email' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
+                    <span class="material-icons">mail</span>
+                    Enviar por correo
+                </a>
+                <label class="odoo-action-upload">
+                    <span class="material-icons">upload</span>
+                    Importar Excel
+                    <form id="importar-excel-form" 
+                          action="{% url 'miembros_app:importar_miembros_excel' %}" 
+                          method="post" 
+                          enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="file" name="archivo_excel" accept=".xlsx,.xls" 
+                               onchange="this.form.submit();">
+                    </form>
+                </label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PANEL DE FILTROS (Desplegable estilo Odoo / Modal en móvil)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<!-- Overlay para móvil -->
+<div class="odoo-filter-overlay no-print" id="filter-overlay"></div>
+
+<div class="odoo-filter-panel no-print" id="filter-panel">
+    <div class="odoo-filter-panel-header">
+        <span>Filtros</span>
+        <button type="button" class="odoo-filter-close-btn" id="filter-close-btn">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
+    <form method="get" class="odoo-filter-form">
+        <!-- Mantener búsqueda actual -->
+        <input type="hidden" name="q" value="{{ query }}">
+        <input type="hidden" name="filtros_abiertos" value="1">
+        <div class="odoo-filter-grid">
+            <!-- Estado -->
+            <div class="odoo-filter-group">
+                <label>Estado del miembro</label>
+                <select name="estado">
+                    <option value="">Todos</option>
+                    {% for value, label in estados_choices %}
+                        <option value="{{ value }}" {% if value == estado %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Categoría de edad -->
+            <div class="odoo-filter-group">
+                <label>Categoría de edad</label>
+                <select name="categoria_edad">
+                    <option value="">Todas</option>
+                    {% for value, label in categorias_choices %}
+                        <option value="{{ value }}" {% if value == categoria_edad_filtro %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Género -->
+            <div class="odoo-filter-group">
+                <label>Género</label>
+                <select name="genero">
+                    <option value="">Todos</option>
+                    {% for value, label in generos_choices %}
+                        <option value="{{ value }}" {% if value == genero_filtro %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Bautismo -->
+            <div class="odoo-filter-group">
+                <label>Bautismo</label>
+                <select name="bautizado">
+                    <option value="">Todos</option>
+                    <option value="1" {% if bautizado == "1" %}selected{% endif %}>Bautizados</option>
+                    <option value="0" {% if bautizado == "0" %}selected{% endif %}>No bautizados</option>
+                </select>
+            </div>
+
+            {# ═══════════════════════════════════════════════════════════════════ #}
+            {# FILTROS MINISTERIALES #}
+            {# ═══════════════════════════════════════════════════════════════════ #}
+            
+            <!-- Rol ministerial -->
+            <div class="odoo-filter-group">
+                <label>Rol ministerial</label>
+                <select name="rol_ministerial">
+                    <option value="">Todos</option>
+                    {% for value, label in roles_ministeriales_choices %}
+                        <option value="{{ value }}" {% if value == rol_ministerial %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Estado ministerial -->
+            <div class="odoo-filter-group">
+                <label>Estado ministerial</label>
+                <select name="estado_ministerial">
+                    <option value="">Todos</option>
+                    {% for value, label in estados_ministeriales_choices %}
+                        <option value="{{ value }}" {% if value == estado_ministerial %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Credenciales -->
+            <div class="odoo-filter-group">
+                <label>Credenciales</label>
+                <select name="tiene_credenciales">
+                    <option value="">Todos</option>
+                    <option value="1" {% if tiene_credenciales_filtro == "1" %}selected{% endif %}>Con credenciales</option>
+                    <option value="0" {% if tiene_credenciales_filtro == "0" %}selected{% endif %}>Sin credenciales</option>
+                </select>
+            </div>
+
+            <!-- Rango de edad -->
+            <div class="odoo-filter-group odoo-filter-group-wide">
+                <label>Rango de edad</label>
+                <div class="odoo-filter-range">
+                    <input type="number" name="edad_min" placeholder="Desde" 
+                           value="{{ edad_min }}" min="0">
+                    <span>a</span>
+                    <input type="number" name="edad_max" placeholder="Hasta" 
+                           value="{{ edad_max }}" min="0">
+                    <label class="odoo-filter-checkbox">
+                        <input type="checkbox" name="usar_rango_edad" value="1"
+                               {% if usar_rango_edad %}checked{% endif %}>
+                        Aplicar
+                    </label>
+                </div>
+            </div>
+
+            <!-- Checkboxes adicionales -->
+            <div class="odoo-filter-group odoo-filter-group-wide">
+                <label>Opciones adicionales</label>
+                <div class="odoo-filter-checks">
+                    <label class="odoo-filter-checkbox">
+                        <input type="checkbox" name="tiene_contacto" value="1"
+                               {% if tiene_contacto %}checked{% endif %}>
+                        Solo con contacto
+                    </label>
+                    <label class="odoo-filter-checkbox">
+                        <input type="checkbox" name="mostrar_todos" value="1"
+                               {% if mostrar_todos %}checked{% endif %}>
+                        Incluir inactivos
+                    </label>
+                    <label class="odoo-filter-checkbox">
+                        <input type="checkbox" name="incluir_ninos" value="1"
+                               {% if incluir_ninos %}checked{% endif %}>
+                        Incluir niños (&lt;12 años)
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="odoo-filter-actions">
+            <button type="button" class="odoo-btn odoo-btn-secondary" onclick="clearFilters()">
+                Limpiar
+            </button>
+            <button type="submit" class="odoo-btn odoo-btn-primary">
+                Aplicar filtros
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ENCABEZADO PARA IMPRESIÓN
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="only-print" style="text-align:center; margin-bottom:12px;">
+    {% if CFG.logo %}
+        <img src="{{ CFG.logo.url }}" alt="{{ CFG.nombre_iglesia|default:'Logo' }}"
+             style="max-height:70px; margin-bottom:6px;">
+    {% endif %}
+    <h2 style="margin:0; font-size:18px; font-weight:700;">
+        {% if CFG.nombre_iglesia %}{{ CFG.nombre_iglesia|upper }}{% else %}IGLESIA{% endif %}
+    </h2>
+    {% if CFG.denominacion %}
+        <div style="font-size:12px; color:#4b5563;">{{ CFG.denominacion }}</div>
+    {% endif %}
+    {% if CFG.lema %}
+        <div style="font-size:12px; color:#6b7280; font-style:italic;">"{{ CFG.lema }}"</div>
+    {% endif %}
+    <div style="font-size:11px; color:#6b7280; margin-top:6px;">
+        Listado de miembros · {{ hoy|date:"d/m/Y" }}
+    </div>
+    <hr style="margin-top:10px; border:none; border-top:1px solid #e5e7eb;">
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TABLA DE MIEMBROS (Vista Lista - Estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-list-container" id="vista-lista">
+    <table class="odoo-table">
+        <thead>
+            <tr>
+                <th class="odoo-th-checkbox no-print">
+                    <input type="checkbox" id="select-all">
+                </th>
+                <th class="odoo-th-sortable">
+                    Código
+                    <span class="material-icons odoo-sort-icon">unfold_more</span>
+                </th>
+                <th class="odoo-th-sortable odoo-th-main">
+                    Miembro
+                    <span class="material-icons odoo-sort-icon">unfold_more</span>
+                </th>
+                <th>Edad</th>
+                <th>Categoría</th>
+                <th>Contacto</th>
+                <th>Estado</th>
+                <th>Bautismo</th>
+                <th class="no-print"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if miembros %}
+                {% for m in miembros %}
+                <tr class="odoo-row {% if not m.activo %}odoo-row-inactive{% endif %}"
+                    onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'"
+                    style="cursor: pointer;">
+                    
+                    <!-- Checkbox -->
+                    <td class="odoo-td-checkbox no-print" onclick="event.stopPropagation();">
+                        <input type="checkbox" class="row-checkbox" value="{{ m.pk }}">
+                    </td>
+
+                    <!-- Código -->
+                    <td class="odoo-td-code">
+                        {{ m.codigo_miembro }}
+                    </td>
+
+                    <!-- Miembro (nombre + profesión) -->
+                    <td class="odoo-td-main">
+                        <div class="odoo-member-name">
+                            <a href="{% url 'miembros_app:detalle' m.pk %}" 
+                               onclick="event.stopPropagation();"
+                               class="no-print">
+                                {{ m.nombres }} {{ m.apellidos }}
+                            </a>
+                            <span class="only-print">{{ m.nombres }} {{ m.apellidos }}</span>
+                        </div>
+                        <div class="odoo-member-sub">
+                            {{ m.profesion|default:"—" }}
+                        </div>
+                    </td>
+
+                    <!-- Edad -->
+                    <td>
+                        {% if m.calcular_edad %}
+                            {{ m.calcular_edad }}
+                        {% else %}
+                            <span class="odoo-empty">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Categoría -->
+                    <td>
+                        {% if m.categoria_edad %}
+                            <span class="odoo-badge odoo-badge-info">
+                                {{ m.get_categoria_edad_display }}
+                            </span>
+                        {% else %}
+                            <span class="odoo-empty">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Contacto -->
+                    <td class="odoo-td-contact">
+                        {% if m.telefono or m.whatsapp or m.email %}
+                            {% if m.telefono %}
+                                <div class="odoo-contact-line">
+                                    {{ m.telefono }}
+                                    <a href="https://wa.me/{{ m.telefono|cut:' '|cut:'-' }}"
+                                       target="_blank"
+                                       onclick="event.stopPropagation();"
+                                       class="odoo-wa-link no-print"
+                                       title="WhatsApp">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2zm4.427 14.556c-.239-.119-1.415-.699-1.635-.777-.22-.08-.38-.119-.54.119-.159.239-.62.777-.76.936-.14.159-.28.18-.519.06-.239-.119-1.01-.372-1.926-1.185-.711-.633-1.192-1.414-1.332-1.653-.14-.239-.015-.368.105-.487.108-.108.239-.28.359-.419.119-.14.159-.239.239-.398.08-.159.04-.298-.02-.418-.06-.119-.539-1.298-.739-1.777-.195-.468-.394-.405-.539-.414l-.459-.008c-.159 0-.418.06-.638.298-.22.239-.839.82-.839 1.997 0 1.177.859 2.315.979 2.475.119.159 1.689 2.577 4.139 3.614.579.25 1.03.399 1.382.511.581.185 1.109.159 1.528.096.467-.069 1.415-.579 1.614-1.137.199-.557.199-1.037.139-1.137-.06-.099-.219-.159-.458-.278z"/>
+                                        </svg>
+                                    </a>
+                                </div>
+                            {% elif m.whatsapp %}
+                                <div class="odoo-contact-line">
+                                    {{ m.whatsapp }}
+                                    <a href="https://wa.me/{{ m.whatsapp|cut:' '|cut:'-' }}"
+                                       target="_blank"
+                                       onclick="event.stopPropagation();"
+                                       class="odoo-wa-link no-print">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 2C6.486 2 2 6.486 2 12c0 1.86.507 3.599 1.387 5.106L2 22l5.043-1.356A9.93 9.93 0 0 0 12 22c5.514 0 10-4.486 10-10S17.514 2 12 2z"/>
+                                        </svg>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% if m.email %}
+                                <div class="odoo-contact-email">{{ m.email }}</div>
+                            {% endif %}
+                        {% else %}
+                            <span class="odoo-empty">Sin datos</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Estado -->
+                    <td>
+                        {% if not m.activo %}
+                            <span class="odoo-badge odoo-badge-danger">Inactivo</span>
+                            {% if m.razon_salida %}
+                                <div class="odoo-sub-info">{{ m.razon_salida }}</div>
+                            {% endif %}
+                            {% if m.fecha_salida %}
+                                <div class="odoo-sub-info">{{ m.fecha_salida|date:"d/m/Y" }}</div>
+                            {% endif %}
+                        {% else %}
+                            {% if m.estado_miembro %}
+                                <span class="odoo-estado">{{ m.get_estado_miembro_display }}</span>
+                            {% else %}
+                                <span class="odoo-empty">—</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+
+                    <!-- Bautismo -->
+                    <td>
+                        {% if m.bautizado_confirmado %}
+                            <span class="odoo-badge odoo-badge-success">Sí</span>
+                            {% if m.fecha_bautismo %}
+                                <div class="odoo-sub-info">{{ m.fecha_bautismo|date:"d/m/Y" }}</div>
+                            {% endif %}
+                        {% else %}
+                            <span class="odoo-badge odoo-badge-muted">No</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Acciones -->
+                    <td class="odoo-td-actions no-print" onclick="event.stopPropagation();">
+                        <div class="odoo-row-actions">
+                            <a href="{% url 'miembros_app:detalle' m.pk %}" 
+                               class="odoo-action-icon" title="Ver">
+                                <span class="material-icons">visibility</span>
+                            </a>
+                            <a href="{% url 'miembros_app:editar' m.pk %}" 
+                               class="odoo-action-icon" title="Editar">
+                                <span class="material-icons">edit</span>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="9" class="odoo-empty-row">
+                        <span class="material-icons">search_off</span>
+                        No se encontraron miembros con los filtros actuales.
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <!-- Total al final (estilo Odoo) -->
+    {% if miembros %}
+    <div class="odoo-table-footer">
+        <span class="odoo-total-label">Total:</span>
+        <span class="odoo-total-value">{{ miembros|length }} miembros</span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     VISTA KANBAN (Tarjetas estilo Odoo)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="odoo-kanban-container no-print" id="vista-cuadricula" style="display: none;">
+    {% if miembros %}
+        <div class="odoo-kanban-grid">
+            {% for m in miembros %}
+            <article class="odoo-kanban-card {% if not m.activo %}odoo-kanban-card-inactive{% endif %}"
+                     onclick="window.location='{% url 'miembros_app:detalle' m.pk %}'">
+                
+                <!-- Avatar con inicial o foto -->
+                <div class="odoo-kanban-avatar" style="background: {% cycle '#3b82f6' '#10b981' '#f59e0b' '#ef4444' '#8b5cf6' '#ec4899' %};">
+{% if m.foto %}
+  <img
+    src="{{ m.foto.url|cloudinary_thumb:'w_105,h_105,c_fill,g_face,f_auto,q_auto' }}"
+    alt="{{ m.nombres }}"
+    loading="lazy"
+    decoding="async"
+    width="105"
+    height="105"
+  >
+{% else %}
+  <span class="odoo-kanban-initial">{{ m.nombres|slice:":1"|upper }}</span>
+{% endif %}
+
+                </div>
+
+                <!-- Contenido de la tarjeta -->
+                <div class="odoo-kanban-content">
+                    <!-- Nombre -->
+                    <div class="odoo-kanban-name">
+                        {{ m.nombres }} {{ m.apellidos }}
+                    </div>
+
+                    <!-- Info de contacto con iconos -->
+                    <div class="odoo-kanban-info">
+                        {% if m.email %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">mail</span>
+                            <span>{{ m.email }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if m.telefono %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">phone</span>
+                            <span>{{ m.telefono }}</span>
+                        </div>
+                        {% elif m.whatsapp %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">phone</span>
+                            <span>{{ m.whatsapp }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if m.sector or m.ciudad %}
+                        <div class="odoo-kanban-info-row">
+                            <span class="material-icons">location_on</span>
+                            <span>{% if m.sector %}{{ m.sector }}{% endif %}{% if m.sector and m.ciudad %}, {% endif %}{% if m.ciudad %}{{ m.ciudad }}{% endif %}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Footer con badges y acciones -->
+                    <div class="odoo-kanban-footer">
+                        <div class="odoo-kanban-badges">
+                            {% if m.estado_miembro %}
+                            <span class="odoo-kanban-badge">
+                                <span class="material-icons">edit_note</span>
+                                {{ m.get_estado_miembro_display|slice:":3" }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="odoo-kanban-actions" onclick="event.stopPropagation();">
+                            <button type="button" class="odoo-kanban-action-btn" title="Actividad">
+                                <span class="material-icons">schedule</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="odoo-empty-kanban">
+            <span class="material-icons">search_off</span>
+            <p>No se encontraron miembros.</p>
+        </div>
+    {% endif %}
+</div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      SCRIPTS
