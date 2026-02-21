@@ -128,6 +128,14 @@ class MiembroPortalUpdateForm(forms.ModelForm):
                 self.fields["zona_geo"].initial = ZonaGeo.objects.get(sector=s, ciudad=c, provincia=p)
             except ZonaGeo.DoesNotExist:
                 pass
+
+               # 🔒 Si NO está confirmado el bautismo, bloquear fecha_bautismo
+        if self.instance and getattr(self.instance, "pk", None):
+            if not getattr(self.instance, "bautizado_confirmado", False):
+                if "fecha_bautismo" in self.fields:
+                    self.fields["fecha_bautismo"].disabled = True
+                    self.fields["fecha_bautismo"].required = False
+         
     def save(self, commit=True):
         obj = super().save(commit=False)
 

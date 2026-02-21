@@ -354,6 +354,69 @@
 .db-program-meta-item strong{color:var(--gray-700)}
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   ACTIVITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.db-activities{display:flex;flex-direction:column;gap:10px}
+.db-activity-card{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  background:#fff;
+  border:1px solid var(--gray-200);
+  border-radius:12px;
+  padding:14px;
+  transition:transform .2s,box-shadow .2s
+}
+.db-activity-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.db-activity-date{
+  width:50px;
+  height:50px;
+  border-radius:10px;
+  background:var(--primary-light);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0
+}
+.db-activity-day{font-size:18px;font-weight:800;color:var(--primary);line-height:1}
+.db-activity-month{font-size:10px;font-weight:600;color:var(--primary);text-transform:uppercase;margin-top:2px}
+.db-activity-info{flex:1;min-width:0}
+.db-activity-title{font-size:14px;font-weight:700;color:var(--gray-900)}
+.db-activity-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;font-size:12px;color:var(--gray-500)}
+.db-activity-meta-item{display:flex;align-items:center;gap:4px}
+.db-activity-badge{
+  display:inline-block;
+  margin-top:6px;
+  padding:3px 8px;
+  border-radius:6px;
+  font-size:10px;
+  font-weight:600;
+  background:var(--gray-100);
+  color:var(--gray-600)
+}
+.db-activity-type{
+  padding:5px 10px;
+  border-radius:8px;
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  flex-shrink:0
+}
+.db-type-culto{background:#dcfce7;color:#166534}
+.db-type-reunion{background:#e0f2fe;color:#0369a1}
+.db-type-evento{background:#fef3c7;color:#92400e}
+.db-type-ensayo{background:#f3e8ff;color:#7c3aed}
+.db-type-campana{background:#fee2e2;color:#dc2626}
+.db-type-social{background:#fce7f3;color:#be185d}
+.db-type-otro{background:var(--gray-100);color:var(--gray-600)}
+
+@media(max-width:500px){
+  .db-activity-card{flex-wrap:wrap}
+  .db-activity-type{width:100%;text-align:center;margin-top:8px}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════════════════ */
 @media(max-width:540px){
@@ -588,6 +651,53 @@
     </div>
     {% else %}
     <div class="db-empty">No estás asignado a ningún programa todavía.</div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PRÓXIMAS ACTIVIDADES
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="db-section">
+    <div class="db-section-header">
+      <div class="db-section-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      </div>
+      <div class="db-section-info">
+        <h3 class="db-section-title">Próximas actividades</h3>
+        <p class="db-section-subtitle">Eventos y actividades de la iglesia</p>
+      </div>
+    </div>
+
+    {% if actividades %}
+    <div class="db-activities">
+      {% for act in actividades %}
+      <div class="db-activity-card">
+        <div class="db-activity-date">
+          <span class="db-activity-day">{{ act.fecha|date:"d" }}</span>
+          <span class="db-activity-month">{{ act.fecha|date:"M" }}</span>
+        </div>
+        <div class="db-activity-info">
+          <div class="db-activity-title">{{ act.titulo }}</div>
+          <div class="db-activity-meta">
+            {% if act.hora_inicio %}
+            <span class="db-activity-meta-item">🕒 {{ act.hora_inicio|time:"H:i" }}{% if act.hora_fin %} - {{ act.hora_fin|time:"H:i" }}{% endif %}</span>
+            {% endif %}
+            {% if act.lugar %}
+            <span class="db-activity-meta-item">📍 {{ act.lugar }}</span>
+            {% endif %}
+          </div>
+          {% if act.unidad %}
+          <span class="db-activity-badge">{{ act.unidad.nombre }}</span>
+          {% endif %}
+        </div>
+        <div class="db-activity-type db-type-{{ act.tipo|lower }}">
+          {{ act.get_tipo_display }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="db-empty">No hay actividades programadas próximamente.</div>
     {% endif %}
   </div>
 
