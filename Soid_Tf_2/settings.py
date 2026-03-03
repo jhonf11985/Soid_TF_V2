@@ -20,14 +20,15 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-cambiar-en-produccion"
 # DEBUG automático: False en Render, True en local
 DEBUG = os.environ.get("DEBUG", "1") == "1"
 
-# Hosts permitidos
 ALLOWED_HOSTS = [
+    "soidtf.com",
+    "www.soidtf.com",
+    ".soidtf.com",   # permite subdominios futuros
     "soid-tf-v2.onrender.com",
-    ".onrender.com",  # Permite subdominios de render
+    ".onrender.com",
     "127.0.0.1",
     "localhost",
 ]
-
 # En producción, añadir CSRF trusted origins
 CSRF_TRUSTED_ORIGINS = [
     "https://soid-tf-v2.onrender.com",
