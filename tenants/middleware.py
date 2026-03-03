@@ -12,6 +12,11 @@ class TenantMiddleware:
             set_current_tenant(None)
             request.tenant = None
             return self.get_response(request)
+        
+        # Permitir entrar al admin sin tenant
+        if request.path.startswith("/admin"):
+            request.tenant = None
+            return self.get_response(request)
 
         host = request.get_host().split(":")[0].lower()
 
