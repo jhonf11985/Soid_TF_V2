@@ -1,4 +1,3 @@
-
 from tenants.mixins import TenantAwareModel
 from datetime import date
 from django.db import models
@@ -79,7 +78,6 @@ ESTADO_PASTORAL_REINGRESO_CHOICES = [
     ("reconciliado", "Reconciliado"),
     ("integrado", "Integrado (viene de otra iglesia)"),
     ("observacion", "En observación"),
-    
 ]
 
 
@@ -98,7 +96,6 @@ ESTADO_MIEMBRO_CHOICES = [
     ("catecumeno", "Catecúmeno"),
     ("trasladado", "Trasladado"),
     ("fallecido", "Fallecido"),
-
 ]
 
 CATEGORIA_EDAD_CHOICES = [
@@ -109,6 +106,7 @@ CATEGORIA_EDAD_CHOICES = [
     ("adulto", "Adulto"),
     ("adulto_mayor", "Adulto mayor"),
 ]
+
 VIVIENDA_CHOICES = [
     ("propia", "Casa propia"),
     ("alquilada", "Alquilada"),
@@ -132,9 +130,15 @@ SITUACION_ECONOMICA_CHOICES = [
 ]
 
 
-class RazonSalidaMiembro(models.Model):
-
-
+# ==============================================================================
+# ✅ RazonSalidaMiembro - OPCIONAL: TenantAwareModel si cada iglesia tiene sus propias razones
+# ==============================================================================
+class RazonSalidaMiembro(TenantAwareModel):
+    """
+    Razones de salida de miembros.
+    Ahora es TenantAware para que cada iglesia pueda definir sus propias razones.
+    Si prefieres razones globales compartidas, cambia a models.Model
+    """
 
     APLICA_A_CHOICES = [
         ("miembro", "Miembro"),
@@ -142,17 +146,16 @@ class RazonSalidaMiembro(models.Model):
         ("ambos", "Ambos"),
     ]
 
-    nombre = models.CharField(max_length=100, unique=True)
+    nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
     activo = models.BooleanField(default=True)
     orden = models.PositiveIntegerField(default=0)
-    
-    ESTADO_RESULTANTE_CHOICES = [
-    ("", "—"),
-    ("descarriado", "Descarriado"),
-    ("trasladado", "Trasladado"),
-    ("fallecido", "Fallecido"),
 
+    ESTADO_RESULTANTE_CHOICES = [
+        ("", "—"),
+        ("descarriado", "Descarriado"),
+        ("trasladado", "Trasladado"),
+        ("fallecido", "Fallecido"),
     ]
 
     estado_resultante = models.CharField(
@@ -179,11 +182,21 @@ class RazonSalidaMiembro(models.Model):
         verbose_name = "Razón de salida"
         verbose_name_plural = "Razones de salida"
         ordering = ["orden", "nombre"]
+        constraints = [
+            # ✅ Nombre único por tenant
+            models.UniqueConstraint(
+                fields=["tenant", "nombre"],
+                name="unique_razon_salida_por_tenant",
+            )
+        ]
 
     def __str__(self):
         return self.nombre
 
 
+# ==============================================================================
+# ✅ MIEMBRO - Ya hereda de TenantAwareModel (corregido save() y constraints)
+# ==============================================================================
 class Miembro(TenantAwareModel):
     # --- Información personal básica ---
     nombres = models.CharField(max_length=100)
@@ -202,7 +215,6 @@ class Miembro(TenantAwareModel):
         related_name="hijos_espirituales",
         verbose_name="Padres espirituales",
     )
-
 
     telefono_norm = models.CharField(
         max_length=10,
@@ -230,6 +242,7 @@ class Miembro(TenantAwareModel):
         message="La cédula debe tener el formato 000-0000000-0",
     )
 
+    # ✅ QUITADO unique=True - ahora el constraint es por tenant
     cedula = models.CharField(
         max_length=20,
         blank=True,
@@ -243,7 +256,8 @@ class Miembro(TenantAwareModel):
         blank=True,
         null=True,
         help_text="Número de pasaporte del miembro.",
-        )
+    )
+
     # -------------------------
     # REINGRESO / REINCORPORACIÓN
     # -------------------------
@@ -279,6 +293,7 @@ class Miembro(TenantAwareModel):
 
     carta_traslado_recibida = models.BooleanField(default=False)
     nota_pastoral_reingreso = models.TextField(blank=True)
+
     # --- Información de contacto ---
     telefono = models.CharField(max_length=20, blank=True)
     telefono_secundario = models.CharField(max_length=20, blank=True)
@@ -300,10 +315,10 @@ class Miembro(TenantAwareModel):
     )
 
     codigo_postal = models.CharField(max_length=20, blank=True)
+
     # ------------------------------------------------------------------
     # FORMACIÓN MINISTERIAL (Pastores / Evangelistas / Misioneros, etc.)
     # ------------------------------------------------------------------
-
     ROL_MINISTERIAL_CHOICES = [
         ("", "—"),
         ("pastor", "Pastor"),
@@ -370,6 +385,7 @@ class Miembro(TenantAwareModel):
         default="",
         help_text="Ciudad donde sirve como misionero (si aplica).",
     )
+
     # -------------------------
     # Credenciales (detalle)
     # -------------------------
@@ -446,7 +462,6 @@ class Miembro(TenantAwareModel):
         help_text="Fecha de fin de la misión (si aplica).",
     )
 
-
     # --- Contacto de emergencia y salud ---
     contacto_emergencia_nombre = models.CharField(max_length=150, blank=True)
     contacto_emergencia_telefono = models.CharField(max_length=20, blank=True)
@@ -462,6 +477,7 @@ class Miembro(TenantAwareModel):
         default=False,
         help_text="Marcar si es un nuevo creyente en proceso de seguimiento (aún no miembro oficial).",
     )
+
     # --- Usuario del sistema ---
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -477,6 +493,7 @@ class Miembro(TenantAwareModel):
     puesto = models.CharField(max_length=100, blank=True)
     telefono_trabajo = models.CharField(max_length=20, blank=True)
     direccion_trabajo = models.TextField(blank=True)
+
     # --- Información socioeconómica (privada) ---
     tipo_vivienda = models.CharField(
         max_length=20,
@@ -523,13 +540,14 @@ class Miembro(TenantAwareModel):
         blank=True,
         help_text="Estado pastoral del miembro (activo, pasivo, etc.)",
     )
+
     activo = models.BooleanField(
         default=True,
-        help_text="Si está desmarcado, el miembro ya no pertenece a la iglesia Torre Fuerte.",
+        help_text="Si está desmarcado, el miembro ya no pertenece a la iglesia.",
     )
 
     fecha_ingreso_iglesia = models.DateField(
-        default=timezone.localdate,   # ✅ evita el prompt y rellena los NULL existentes
+        default=timezone.localdate,
         help_text="Fecha en que empezó a congregarse en la iglesia.",
     )
 
@@ -566,7 +584,7 @@ class Miembro(TenantAwareModel):
     fecha_salida = models.DateField(
         null=True,
         blank=True,
-        help_text="Fecha en que dejó de pertenecer a la iglesia Torre Fuerte.",
+        help_text="Fecha en que dejó de pertenecer a la iglesia.",
     )
     comentario_salida = models.TextField(
         blank=True,
@@ -579,35 +597,33 @@ class Miembro(TenantAwareModel):
         help_text="Categoría pastoral del miembro (Miembro, Líder, Servidor, etc.)",
     )
 
-    # Código interno de seguimiento para nuevos creyentes
+    # ✅ QUITADO unique=True - ahora el constraint es por tenant
     numero_seguimiento = models.PositiveIntegerField(
         null=True,
         blank=True,
-        unique=True,
     )
 
+    # ✅ QUITADO unique=True - ahora el constraint es por tenant
     codigo_seguimiento = models.CharField(
         max_length=20,
         null=True,
         blank=True,
-        unique=True,
-)
+    )
 
     mentor = models.CharField(max_length=150, blank=True)
     lider_celula = models.CharField(max_length=150, blank=True)
 
-    # --- Código único del miembro ---
+    # ✅ QUITADO unique=True - ahora el constraint es por tenant
     numero_miembro = models.PositiveIntegerField(
-        unique=True,
         null=True,
         blank=True,
         help_text="Número interno autogenerado para el miembro."
     )
 
+    # ✅ QUITADO unique=True - ahora el constraint es por tenant
     codigo_miembro = models.CharField(
         max_length=50,
-        unique=True,
-        null=True,      # 👈 importante: permite null para no chocar en la migración
+        null=True,
         blank=True,
         help_text="Código final del miembro con prefijo, ej: TF-0001."
     )
@@ -656,18 +672,45 @@ class Miembro(TenantAwareModel):
     def __str__(self):
         return f"{self.nombres} {self.apellidos}"
 
+    # ✅ CONSTRAINTS POR TENANT (no globales)
+    class Meta:
+        constraints = [
+            # Cédula única POR TENANT
+            models.UniqueConstraint(
+                fields=["tenant", "cedula"],
+                name="unique_cedula_por_tenant",
+                condition=models.Q(cedula__isnull=False) & ~models.Q(cedula=""),
+            ),
+            # Código miembro único POR TENANT
+            models.UniqueConstraint(
+                fields=["tenant", "codigo_miembro"],
+                name="unique_codigo_miembro_por_tenant",
+                condition=models.Q(codigo_miembro__isnull=False),
+            ),
+            # Código seguimiento único POR TENANT
+            models.UniqueConstraint(
+                fields=["tenant", "codigo_seguimiento"],
+                name="unique_codigo_seguimiento_por_tenant",
+                condition=models.Q(codigo_seguimiento__isnull=False),
+            ),
+            # Número miembro único POR TENANT
+            models.UniqueConstraint(
+                fields=["tenant", "numero_miembro"],
+                name="unique_numero_miembro_por_tenant",
+                condition=models.Q(numero_miembro__isnull=False),
+            ),
+            # Número seguimiento único POR TENANT
+            models.UniqueConstraint(
+                fields=["tenant", "numero_seguimiento"],
+                name="unique_numero_seguimiento_por_tenant",
+                condition=models.Q(numero_seguimiento__isnull=False),
+            ),
+        ]
+
     # ==========================
     # LÓGICA DE EDAD Y CATEGORÍA
     # ==========================
 
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["cedula"],
-                name="unique_cedula_miembro",
-                condition=models.Q(cedula__isnull=False),
-            )
-        ]
     def calcular_edad(self):
         """
         Calcula la edad en años a partir de la fecha de nacimiento.
@@ -704,12 +747,11 @@ class Miembro(TenantAwareModel):
         else:
             self.categoria_edad = "adulto_mayor"
 
-
-
+    # ✅ SAVE CORREGIDO - FILTRA POR TENANT
     def save(self, *args, **kwargs):
- # ======================================
-    # NORMALIZAR TELÉFONO
-    # ======================================
+        # ======================================
+        # NORMALIZAR TELÉFONO
+        # ======================================
         if self.telefono:
             digits = re.sub(r"\D+", "", self.telefono)
             if len(digits) == 11 and digits.startswith("1"):
@@ -725,9 +767,11 @@ class Miembro(TenantAwareModel):
         # 1) NUEVOS CREYENTES → NC-XXXX
         # ======================================
         if self.nuevo_creyente:
-
             if self.numero_seguimiento is None:
-                ultimo = Miembro.objects.aggregate(
+                # ✅ FILTRAR POR TENANT
+                ultimo = Miembro.objects.filter(
+                    tenant=self.tenant
+                ).aggregate(
                     Max("numero_seguimiento")
                 )["numero_seguimiento__max"] or 0
 
@@ -742,13 +786,14 @@ class Miembro(TenantAwareModel):
         # 2) MIEMBRO OFICIAL → TF-XXXX
         # ======================================
         else:
-
             cfg = ConfiguracionSistema.load()
             prefijo = cfg.codigo_miembro_prefijo or "TF-"
 
-
             if self.numero_miembro is None:
-                ultimo = Miembro.objects.aggregate(
+                # ✅ FILTRAR POR TENANT
+                ultimo = Miembro.objects.filter(
+                    tenant=self.tenant
+                ).aggregate(
                     Max("numero_miembro")
                 )["numero_miembro__max"] or 0
 
@@ -759,11 +804,7 @@ class Miembro(TenantAwareModel):
             self.numero_seguimiento = None
             self.codigo_seguimiento = None
 
-
-
         super().save(*args, **kwargs)
-
-
 
     @property
     def es_miembro_oficial(self):
@@ -800,33 +841,33 @@ class Miembro(TenantAwareModel):
 
         fecha_fin = self.fecha_salida or date.today()
         return (fecha_fin - self.fecha_ingreso_iglesia).days
+
+    # ✅ CORREGIDO - PASAR TENANT
     def log_event(
-            self,
-            *,
-            tipo,
-            titulo,
-            detalle="",
-            user=None,
-            estado_from="",
-            estado_to="",
-            etapa_from="",
-            etapa_to="",
-        ):
-            from .models import MiembroBitacora  # evita imports circulares
-
-            MiembroBitacora.objects.create(
-                miembro=self,
-                tipo=tipo,
-                titulo=titulo,
-                detalle=detalle or "",
-                estado_from=estado_from or "",
-                estado_to=estado_to or "",
-                etapa_from=etapa_from or "",
-                etapa_to=etapa_to or "",
-                creado_por=user if user and getattr(user, "is_authenticated", False) else None,
-                fecha=timezone.now(),
-            )
-
+        self,
+        *,
+        tipo,
+        titulo,
+        detalle="",
+        user=None,
+        estado_from="",
+        estado_to="",
+        etapa_from="",
+        etapa_to="",
+    ):
+        MiembroBitacora.objects.create(
+            tenant=self.tenant,  # ✅ AGREGAR TENANT
+            miembro=self,
+            tipo=tipo,
+            titulo=titulo,
+            detalle=detalle or "",
+            estado_from=estado_from or "",
+            estado_to=estado_to or "",
+            etapa_from=etapa_from or "",
+            etapa_to=etapa_to or "",
+            creado_por=user if user and getattr(user, "is_authenticated", False) else None,
+            fecha=timezone.now(),
+        )
 
     def registrar_evento(
         self,
@@ -841,16 +882,7 @@ class Miembro(TenantAwareModel):
     ):
         '''
         Atajo para registrar eventos en el timeline del miembro.
-        
-        Uso:
-            miembro.registrar_evento(
-                tipo="bautismo",
-                descripcion="Registrado como bautizado",
-                usuario=request.user,
-            )
         '''
-        from .models import TimelineEvent
-        
         return TimelineEvent.registrar(
             miembro=self,
             tipo=tipo,
@@ -862,6 +894,7 @@ class Miembro(TenantAwareModel):
             referencia_tipo=referencia_tipo,
             referencia_id=referencia_id,
         )
+
     @property
     def hogar_principal(self):
         hm = self.hogares.select_related("hogar__clan").filter(es_principal=True).first()
@@ -886,7 +919,11 @@ class Miembro(TenantAwareModel):
             return []
         return clan.hogares.prefetch_related("miembros__miembro").all()
 
-class MiembroRelacion(models.Model):
+
+# ==============================================================================
+# ✅ MiembroRelacion - AHORA HEREDA DE TenantAwareModel
+# ==============================================================================
+class MiembroRelacion(TenantAwareModel):
     # ✅ Tipos (guardamos CLAVES neutras y mostramos bonito según género)
     TIPO_RELACION_CHOICES = [
         # Núcleo
@@ -917,7 +954,7 @@ class MiembroRelacion(models.Model):
     RELACION_INVERSA_BASE = {
         "padre": "hijo",
         "madre": "hijo",
-        "hijo": "padre",       # ⚠️ se ajusta por género en inverse_tipo()
+        "hijo": "padre",
         "conyuge": "conyuge",
         "hermano": "hermano",
 
@@ -927,11 +964,11 @@ class MiembroRelacion(models.Model):
         "sobrino": "tio",
         "primo": "primo",
 
-        "suegro": "yerno",     # ⚠️ se ajusta por género en inverse_tipo()
+        "suegro": "yerno",
         "yerno": "suegro",
         "cunado": "cunado",
 
-        "tutor": "tutelado",   # opcional si quieres; si no, lo dejamos como "otro"
+        "tutor": "tutelado",
         "otro": "otro",
     }
 
@@ -996,11 +1033,10 @@ class MiembroRelacion(models.Model):
 
             # Ascendientes
             "abuelo": ("Abuelo", "Abuela"),
-            "bisabuelo": ("Bisabuelo", "Bisabuela"),  # ← NUEVO
+            "bisabuelo": ("Bisabuelo", "Bisabuela"),
 
             # Descendientes
             "nieto": ("Nieto", "Nieta"),
-            "bisabuelo": ("Bisabuelo", "Bisabuela"),
             "bisnieto": ("Bisnieto", "Bisnieta"),
             "consuegro": ("Consuegro", "Consuegra"),
 
@@ -1013,7 +1049,6 @@ class MiembroRelacion(models.Model):
             "suegro": ("Suegro", "Suegra"),
             "yerno": ("Yerno", "Nuera"),
             "cunado": ("Cuñado", "Cuñada"),
-            "consuegro": ("Consuegro", "Consuegra"),  # ← NUEVO
 
             # Otros
             "tutor": ("Tutor", "Tutora"),
@@ -1029,29 +1064,24 @@ class MiembroRelacion(models.Model):
     def inverse_tipo(cls, tipo, genero_persona_invertida=None):
         """
         Devuelve el tipo inverso.
-        Ej:
-          - si A es hijo de B -> B es padre/madre de A (depende del género de B)
-          - si A es suegro de B -> B es yerno/nuera de A (depende del género de B)
         """
         base = cls.RELACION_INVERSA_BASE.get(tipo, "otro")
 
-        # Ajustes por género
         gen = cls._norm_genero(genero_persona_invertida)
 
         if tipo == "hijo":
-            # Si A dice: "B es mi hijo"
-            # inversa: "yo soy padre/madre de B" => depende del género de "yo" (persona invertida)
             return "madre" if gen == "f" else "padre"
 
         if tipo == "suegro":
-            # Si A dice: "B es mi suegro/suegra"
-            # inversa: "yo soy yerno/nuera de B" => depende del género de "yo"
-            return "yerno"  # la etiqueta bonita se resuelve por género al mostrar
+            return "yerno"
 
         return base
 
 
-class MiembroBitacora(models.Model):
+# ==============================================================================
+# ✅ MiembroBitacora - AHORA HEREDA DE TenantAwareModel
+# ==============================================================================
+class MiembroBitacora(TenantAwareModel):
     """
     Bitácora (historial) del miembro.
     Guarda eventos automáticos (salida, reincorporación, cambios) y notas manuales.
@@ -1077,7 +1107,7 @@ class MiembroBitacora(models.Model):
     titulo = models.CharField(max_length=140)
     detalle = models.TextField(blank=True, default="")
 
-    # Campos opcionales tipo “antes / después” (muy útil)
+    # Campos opcionales tipo "antes / después" (muy útil)
     estado_from = models.CharField(max_length=40, blank=True, default="")
     estado_to = models.CharField(max_length=40, blank=True, default="")
 
@@ -1101,15 +1131,16 @@ class MiembroBitacora(models.Model):
 
     @property
     def autor(self):
-        # Para que el template pueda usar item.autor como en tu chatter actual :contentReference[oaicite:2]{index=2}
         return self.creado_por
 
     def __str__(self):
         return f"{self.miembro_id} - {self.tipo} - {self.titulo}"
 
 
-
-class TimelineEvent(models.Model):
+# ==============================================================================
+# ✅ TimelineEvent - AHORA HEREDA DE TenantAwareModel
+# ==============================================================================
+class TimelineEvent(TenantAwareModel):
     """
     Registro automático de eventos del sistema para cada miembro.
     Separado de la bitácora manual para mantener un historial limpio y automático.
@@ -1149,19 +1180,19 @@ class TimelineEvent(models.Model):
 
     # Colores para cada tipo de evento
     COLORES = {
-        "creacion": "#10b981",      # verde
-        "edicion": "#6b7280",       # gris
-        "estado": "#f59e0b",        # amarillo
-        "etapa": "#8b5cf6",         # púrpura
-        "bautismo": "#0ea5e9",      # azul cielo
-        "unidad_asignada": "#0097a7", # teal
-        "unidad_removida": "#ef4444", # rojo
-        "email": "#3b82f6",         # azul
-        "baja": "#dc2626",          # rojo oscuro
-        "reingreso": "#22c55e",     # verde claro
-        "foto": "#ec4899",          # rosa
-        "relacion": "#a855f7",      # púrpura claro
-        "otro": "#9ca3af",          # gris claro
+        "creacion": "#10b981",
+        "edicion": "#6b7280",
+        "estado": "#f59e0b",
+        "etapa": "#8b5cf6",
+        "bautismo": "#0ea5e9",
+        "unidad_asignada": "#0097a7",
+        "unidad_removida": "#ef4444",
+        "email": "#3b82f6",
+        "baja": "#dc2626",
+        "reingreso": "#22c55e",
+        "foto": "#ec4899",
+        "relacion": "#a855f7",
+        "otro": "#9ca3af",
     }
 
     miembro = models.ForeignKey(
@@ -1227,10 +1258,7 @@ class TimelineEvent(models.Model):
     def color(self):
         return self.COLORES.get(self.tipo, "#9ca3af")
 
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # HELPER PARA REGISTRAR EVENTOS FÁCILMENTE
-    # ═══════════════════════════════════════════════════════════════════════════
+    # ✅ CORREGIDO - PASAR TENANT
     @classmethod
     def registrar(
         cls,
@@ -1246,18 +1274,9 @@ class TimelineEvent(models.Model):
     ):
         """
         Helper para registrar eventos de forma sencilla.
-        
-        Ejemplo de uso:
-            TimelineEvent.registrar(
-                miembro=miembro,
-                tipo="estado",
-                descripcion="Cambio de estado",
-                valor_anterior="Activo",
-                valor_nuevo="Pasivo",
-                usuario=request.user,
-            )
         """
         return cls.objects.create(
+            tenant=miembro.tenant,  # ✅ AGREGAR TENANT
             miembro=miembro,
             tipo=tipo,
             descripcion=descripcion,
@@ -1269,10 +1288,15 @@ class TimelineEvent(models.Model):
             referencia_id=referencia_id,
         )
 
+
+# ==============================================================================
+# ZonaGeo - ESTE SE QUEDA COMO models.Model (compartido entre tenants)
+# ==============================================================================
 class ZonaGeo(models.Model):
     """
     Guarda coordenadas (lat/lng) por zona para no geocodificar cada vez.
     Zona = combinación sector + ciudad + provincia.
+    NOTA: Este modelo es compartido entre todos los tenants (datos geográficos comunes).
     """
     sector = models.CharField(max_length=100, blank=True, default="")
 
@@ -1305,11 +1329,12 @@ class ZonaGeo(models.Model):
         parts = [p for p in [self.sector, self.ciudad, self.provincia] if p]
         return " / ".join(parts) if parts else "—"
 
+
 # ==========================================================
-# ✅ FAMILIAS INTELIGENTES (HOGAR + CLAN)
+# ✅ FAMILIAS INTELIGENTES (HOGAR + CLAN) - AHORA CON TENANT
 # ==========================================================
 
-class ClanFamiliar(models.Model):
+class ClanFamiliar(TenantAwareModel):
     """
     Familia extendida (padres + hijos + nietos...). Aquí caen varios hogares.
     Ej: "Familia Pérez" (incluye el hogar de Jonathan y el hogar del hermano).
@@ -1321,7 +1346,7 @@ class ClanFamiliar(models.Model):
         return self.nombre
 
 
-class HogarFamiliar(models.Model):
+class HogarFamiliar(TenantAwareModel):
     """
     Familia nuclear (hogar): pareja + hijos.
     Cada pareja normalmente crea un hogar.
@@ -1343,6 +1368,8 @@ class HogarFamiliar(models.Model):
 class HogarMiembro(models.Model):
     """
     Miembros dentro de un hogar (roles: padre, madre, hijo).
+    NOTA: No necesita tenant porque es tabla intermedia y 
+    ya filtra por hogar/miembro que sí tienen tenant.
     """
     ROL_CHOICES = [
         ("padre", "Padre"),
@@ -1364,7 +1391,7 @@ class HogarMiembro(models.Model):
 
 
 # ==========================================================
-# ✅ HELPERS (LÓGICA “INTELIGENTE”)
+# ✅ HELPERS (LÓGICA "INTELIGENTE") - CORREGIDOS CON TENANT
 # ==========================================================
 
 def _norm_genero(g):
@@ -1407,20 +1434,32 @@ def _buscar_clan_desde_padres(miembro):
     return None
 
 
+# ✅ CORREGIDO - PASAR TENANT AL CREAR CLAN Y HOGAR
 @transaction.atomic
 def asegurar_hogar_para_miembro(miembro, clan_sugerido=None):
     """
     Si el miembro no tiene hogar principal, crea uno (hogar unipersonal por ahora).
     """
-    existente = HogarMiembro.objects.filter(miembro=miembro, es_principal=True).select_related("hogar").first()
+    existente = HogarMiembro.objects.filter(
+        miembro=miembro,
+        es_principal=True
+    ).select_related("hogar").first()
+
     if existente:
         return existente.hogar
 
     clan = clan_sugerido or _buscar_clan_desde_padres(miembro)
-    if clan is None:
-        clan = ClanFamiliar.objects.create(nombre=f"Clan de {miembro.apellidos}".strip() if getattr(miembro, "apellidos", "") else f"Clan #{miembro.pk}")
 
+    if clan is None:
+        # ✅ AGREGAR TENANT AL CREAR CLAN
+        clan = ClanFamiliar.objects.create(
+            tenant=miembro.tenant,
+            nombre=f"Clan de {miembro.apellidos}".strip() if getattr(miembro, "apellidos", "") else f"Clan #{miembro.pk}"
+        )
+
+    # ✅ AGREGAR TENANT AL CREAR HOGAR
     hogar = HogarFamiliar.objects.create(
+        tenant=miembro.tenant,
         clan=clan,
         nombre=f"Hogar de {miembro.nombres} {miembro.apellidos}".strip()
     )
