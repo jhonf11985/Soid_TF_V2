@@ -4,6 +4,11 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def create_default_tenant(apps, schema_editor):
+    Tenant = apps.get_model('tenants', 'Tenant')
+    Tenant.objects.get_or_create(id=1, defaults={'nombre': 'Torre Fuerte'})
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -12,6 +17,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Primero crear el tenant
+        migrations.RunPython(create_default_tenant, migrations.RunPython.noop),
+        # Luego agregar el campo
         migrations.AddField(
             model_name='miembro',
             name='tenant',
