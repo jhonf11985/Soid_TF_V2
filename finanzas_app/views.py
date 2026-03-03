@@ -79,6 +79,7 @@ def egreso_recibo(request, pk):
 def dashboard(request):
     u = request.user
 
+
     # Si NO tiene permiso de ver dashboard, lo mandamos a una pantalla permitida
     if not (u.is_superuser or u.has_perm("finanzas_app.ver_dashboard_finanzas")):
         # Orden de entradas "naturales" del módulo

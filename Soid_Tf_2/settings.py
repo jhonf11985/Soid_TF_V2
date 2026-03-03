@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "formacion_app",
     'ejecutivo_app',
     "portal_miembros",
+    "tenants",
 
 
 
@@ -80,6 +81,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'miembros_app.signals.CurrentUserMiddleware',
+      "tenants.middleware.TenantMiddleware",
 ]
 
 ROOT_URLCONF = 'Soid_Tf_2.urls'
@@ -114,14 +116,19 @@ DATABASES = {
     )
 }
 
-# En Render, forzar SSL para PostgreSQL
-# Forzar SSL solo si la base de datos es PostgreSQL
+# =============================================================================
+# SSL para PostgreSQL
+# - En Render: requiere SSL
+# - En local: NO requiere SSL
+# =============================================================================
 engine = DATABASES["default"]["ENGINE"]
 
 if "postgresql" in engine:
-    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
-
-
+    is_render = bool(os.getenv("RENDER")) or bool(os.getenv("RENDER_SERVICE_ID"))
+    if is_render:
+        DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+    else:
+        DATABASES["default"]["OPTIONS"] = {"sslmode": "disable"}
 # =============================================================================
 # VALIDACIÓN DE CONTRASEÑAS
 # =============================================================================

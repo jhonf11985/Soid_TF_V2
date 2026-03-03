@@ -84,10 +84,14 @@ def usuarios_listado(request):
 
 
 def root_redirect(request):
-    # Si ya está autenticado, lo mandamos al home (dashboard)
+    # Si ya está autenticado
     if request.user.is_authenticated:
-        return redirect("core:home")
-    # Si no, al login
+        # Staff/superuser → home (admin dashboard)
+        if request.user.is_staff or request.user.is_superuser:
+            return redirect("core:home")
+        # Usuario normal → portal de miembros
+        return redirect("portal_miembros:dashboard")
+    # Si no está autenticado → login
     return redirect("/accounts/login/")
 
 
