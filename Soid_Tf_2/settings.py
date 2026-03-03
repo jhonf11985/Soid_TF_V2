@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "formacion_app",
     'ejecutivo_app',
     "portal_miembros",
+    "tenants",
 
 
 
@@ -80,6 +81,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'miembros_app.signals.CurrentUserMiddleware',
+      "tenants.middleware.TenantMiddleware",
 ]
 
 ROOT_URLCONF = 'Soid_Tf_2.urls'

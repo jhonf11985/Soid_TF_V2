@@ -204,6 +204,8 @@ def filtrar_miembros(request, miembros_base, para_paginacion=False):
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembro_lista(request):
     """Listado general de miembros con paginación (excluye nuevos creyentes)."""
+
+    
     miembros_base = Miembro.objects.filter(nuevo_creyente=False)
     miembros_qs, filtros_context = filtrar_miembros(request, miembros_base, para_paginacion=True)
     
@@ -261,10 +263,12 @@ def miembro_crear(request):
     edad_minima = get_edad_minima_miembro_oficial()
 
     if request.method == "POST":
-        form = MiembroForm(request.POST, request.FILES)
+        miembro_tmp = Miembro(tenant=request.tenant)
+        form = MiembroForm(request.POST, request.FILES, instance=miembro_tmp)
         
         if form.is_valid():
             miembro = form.save(commit=False)
+            
             
             if not miembro.fecha_ingreso_iglesia:
                 miembro.fecha_ingreso_iglesia = date.today()

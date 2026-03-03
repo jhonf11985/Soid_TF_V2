@@ -97,6 +97,10 @@ class MiembroAdmin(admin.ModelAdmin):
     list_per_page = 25
 
     def save_model(self, request, obj, form, change):
+
+        if not change and not obj.tenant_id:
+            obj.tenant = request.tenant
+
         if obj.razon_salida_id:
             if not obj.fecha_salida:
                 from django.core.exceptions import ValidationError

@@ -152,6 +152,7 @@ class MiembroForm(forms.ModelForm):
     class Meta:
         model = Miembro
         exclude = (
+            "tenant",
             "fecha_creacion",
             "fecha_actualizacion",
             "categoria_edad",

@@ -1,3 +1,5 @@
+
+from tenants.mixins import TenantAwareModel
 from datetime import date
 from django.db import models
 from core.utils_config import get_edad_minima_miembro_oficial
@@ -182,8 +184,7 @@ class RazonSalidaMiembro(models.Model):
         return self.nombre
 
 
-
-class Miembro(models.Model):
+class Miembro(TenantAwareModel):
     # --- Información personal básica ---
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
