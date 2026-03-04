@@ -1,12 +1,7 @@
+import re
 from django import forms
 from .models import SolicitudActualizacionMiembro, SolicitudAltaMiembro
-from miembros_app.models import GENERO_CHOICES, ESTADO_MIEMBRO_CHOICES
-
-
-
-
-from django import forms
-from .models import SolicitudActualizacionMiembro, SolicitudAltaMiembro
+from miembros_app.models import GENERO_CHOICES, ESTADO_MIEMBRO_CHOICES, CIUDAD_CHOICES
 
 
 class SolicitudActualizacionForm(forms.ModelForm):
@@ -16,48 +11,34 @@ class SolicitudActualizacionForm(forms.ModelForm):
     """
 
     def __init__(self, *args, **kwargs):
-        # Lista de campos permitidos decidida por admin/config.
-        # Si viene None o vacía, se muestran todos los del Meta.fields.
         allowed_fields = kwargs.pop("allowed_fields", None)
         super().__init__(*args, **kwargs)
 
-        # Si el admin decide campos, eliminamos los demás del formulario
         if allowed_fields:
             allowed = set(allowed_fields)
             for name in list(self.fields.keys()):
                 if name not in allowed:
                     self.fields.pop(name)
 
-        # Guardamos para la plantilla si lo quieres mostrar/debug
         self.allowed_fields = list(self.fields.keys())
-  # ===============================
-    # Normalización de pasaporte
-    # ===============================
+
     def clean_pasaporte(self):
         pasaporte = (self.cleaned_data.get("pasaporte") or "").strip()
-
         if not pasaporte:
             return ""
 
-        # Quitar espacios y guiones
         pasaporte = re.sub(r"[\s-]+", "", pasaporte)
-
-        # Solo letras y números
         pasaporte = re.sub(r"[^A-Za-z0-9]", "", pasaporte)
-
-        # Mayúsculas
         pasaporte = pasaporte.upper()
 
-        # Validación suave (no agresiva)
         if not (6 <= len(pasaporte) <= 15):
             raise forms.ValidationError(
                 "Pasaporte inválido. Usa solo letras y números (6 a 15 caracteres)."
             )
-
         return pasaporte
+
     def clean_telefono_secundario(self):
         raw = (self.cleaned_data.get("telefono_secundario") or "").strip()
-
         if not raw:
             return ""
 
@@ -83,12 +64,12 @@ class SolicitudActualizacionForm(forms.ModelForm):
             "contacto_emergencia_nombre", "contacto_emergencia_telefono", "contacto_emergencia_relacion",
             "tipo_sangre", "alergias", "condiciones_medicas", "medicamentos",
             "telefono_secundario",
-                "lugar_nacimiento",
-                "nacionalidad",
-                "estado_civil",
-                "nivel_educativo",
-                "profesion",
-                "pasaporte",
+            "lugar_nacimiento",
+            "nacionalidad",
+            "estado_civil",
+            "nivel_educativo",
+            "profesion",
+            "pasaporte",
         ]
         widgets = {
             "direccion": forms.Textarea(attrs={"rows": 2}),
@@ -100,26 +81,77 @@ class SolicitudActualizacionForm(forms.ModelForm):
 
 
 class SolicitudAltaPublicaForm(forms.ModelForm):
+    """Formulario público para alta masiva."""
+
+    # Choices de sectores (igual que en el template original)
+    SECTOR_CHOICES = [
+        ("", "Selecciona tu sector"),
+        ("21 de Enero", "21 de Enero"),
+        ("30 de Mayo", "30 de Mayo"),
+        ("Ana Melia", "Ana Melia"),
+        ("Anamuya", "Anamuya"),
+        ("Antonio Guzmán", "Antonio Guzmán"),
+        ("Brisas del Duey", "Brisas del Duey"),
+        ("Cristo Rey", "Cristo Rey"),
+        ("Don Celso", "Don Celso"),
+        ("Duarte", "Duarte"),
+        ("Juan Pablo Duarte", "Juan Pablo Duarte"),
+        ("El Bonao", "El Bonao"),
+        ("El Centro", "El Centro"),
+        ("El Chorro", "El Chorro"),
+        ("El Macao", "El Macao"),
+        ("El Obispado", "El Obispado"),
+        ("El Tamarindo", "El Tamarindo"),
+        ("La Altagracia", "La Altagracia"),
+        ("La Aviación", "La Aviación"),
+        ("La Cabrera", "La Cabrera"),
+        ("La Candelaria", "La Candelaria"),
+        ("La Ceiba del Salado", "La Ceiba del Salado"),
+        ("La Colonia", "La Colonia"),
+        ("La Cruz", "La Cruz"),
+        ("La Fe", "La Fe"),
+        ("La Laguna", "La Laguna"),
+        ("La Malena", "La Malena"),
+        ("La Mina", "La Mina"),
+        ("La Otra Banda", "La Otra Banda"),
+        ("Las Caobas", "Las Caobas"),
+        ("Las Flores", "Las Flores"),
+        ("Las Mercedes", "Las Mercedes"),
+        ("Los Platanitos", "Los Platanitos"),
+        ("Los Ríos", "Los Ríos"),
+        ("Los Sotos", "Los Sotos"),
+        ("Luisa Perla", "Luisa Perla"),
+        ("Mamá Tingó", "Mamá Tingó"),
+        ("Nazaret", "Nazaret"),
+        ("San Francisco", "San Francisco"),
+        ("San José", "San José"),
+        ("San Martín", "San Martín"),
+        ("San Pedro", "San Pedro"),
+        ("Santa Cruz", "Santa Cruz"),
+        ("Santana", "Santana"),
+        ("Savica", "Savica"),
+        ("Villa Cerro", "Villa Cerro"),
+        ("Villa Hortensia", "Villa Hortensia"),
+        ("Villa María", "Villa María"),
+        ("Villa Palmera", "Villa Palmera"),
+        ("Villa Progreso", "Villa Progreso"),
+        ("Yuma", "Yuma"),
+        ("Otro", "Otro / No aparece en la lista"),
+    ]
+
+    sector = forms.ChoiceField(
+        choices=SECTOR_CHOICES,
+        widget=forms.Select(attrs={"class": "odoo-input odoo-select"}),
+        error_messages={"required": "Debes seleccionar un sector."}
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Hacer ciudad requerido con mensaje personalizado
+        self.fields["ciudad"].error_messages = {"required": "Debes seleccionar una ciudad."}
 
-        # ⛔ TEMPORALMENTE DESACTIVADO
-        # Antes se permitía seleccionar el estado del miembro desde el formulario.
-        # Ahora el estado se asigna automáticamente como "activo" al guardar.
-        #
-        # self.fields["estado_miembro"].choices = [
-        #     (value, label)
-        #     for value, label in ESTADO_MIEMBRO_CHOICES
-        #     if value != "descarriado"
-        # ]
-
-    # ===============================
-    # Normalización de teléfonos RD
-    # ===============================
     def _normalizar_rd_a_e164(self, raw: str, requerido: bool, campo: str) -> str:
         raw = (raw or "").strip()
-
         if not raw:
             if requerido:
                 raise forms.ValidationError(f"El campo {campo} es obligatorio.")
@@ -151,7 +183,7 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
     def clean_telefono(self):
         return self._normalizar_rd_a_e164(
             self.cleaned_data.get("telefono"),
-            requerido=True,
+            requerido=False,  # Ya no obligatorio
             campo="Teléfono",
         )
 
@@ -162,42 +194,29 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
             campo="WhatsApp",
         )
 
-    # ===============================
-    # Guardado con estado por defecto
-    # ===============================
     def save(self, commit=True):
         instance = super().save(commit=False)
-
-        # ⛔ CAMPO NO USADO EN FORMULARIO
-        # El estado del miembro se asigna automáticamente.
-        # Si en el futuro se quiere validar o cambiar la lógica,
-        # este es el punto correcto.
         instance.estado_miembro = "activo"
-
         if commit:
             instance.save()
-
         return instance
 
     class Meta:
         model = SolicitudAltaMiembro
-
-        # ⛔ estado_miembro COMENTADO
-        # No se expone en el formulario público
         fields = [
             "nombres",
             "apellidos",
             "genero",
             "fecha_nacimiento",
-            # "estado_miembro",
+            "fecha_ingreso_iglesia",
             "telefono",
             "whatsapp",
             "direccion",
             "sector",
+            "ciudad",
             "cedula",
             "foto",
         ]
-
         widgets = {
             "nombres": forms.TextInput(attrs={
                 "class": "odoo-input",
@@ -214,15 +233,13 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
                 "class": "odoo-input",
                 "type": "date"
             }),
-
-            # ⛔ Widget comentado (no se usa por ahora)
-            # "estado_miembro": forms.Select(attrs={
-            #     "class": "odoo-input odoo-select"
-            # }),
-
+            "fecha_ingreso_iglesia": forms.DateInput(attrs={
+                "class": "odoo-input",
+                "type": "date"
+            }),
             "telefono": forms.TextInput(attrs={
                 "class": "odoo-input",
-                "placeholder": "809-123-4567",
+                "placeholder": "809-123-4567 (opcional)",
                 "inputmode": "numeric",
                 "autocomplete": "tel",
             }),
@@ -245,17 +262,23 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
                 "rows": 2,
                 "placeholder": "Dirección (opcional)"
             }),
-            "sector": forms.TextInput(attrs={
-                "class": "odoo-input",
-                "placeholder": "Sector (opcional)"
+            "sector": forms.Select(attrs={
+                "class": "odoo-input odoo-select",
+            }),
+            "ciudad": forms.Select(attrs={
+                "class": "odoo-input odoo-select",
             }),
         }
 
 
-
-
 class ActualizacionDatosConfigForm(forms.Form):
-    activo = forms.BooleanField(required=False, initial=True, label="Formulario público activo")
+    """Form para configurar qué campos se muestran en el formulario público."""
+    
+    activo = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Formulario público activo"
+    )
 
     campos_permitidos = forms.MultipleChoiceField(
         required=False,
@@ -267,27 +290,22 @@ class ActualizacionDatosConfigForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Lista de campos permitidos (debe coincidir con SolicitudActualizacionForm.Meta.fields)
         self.fields["campos_permitidos"].choices = [
             ("telefono", "Teléfono"),
             ("whatsapp", "WhatsApp"),
             ("email", "Email"),
-
             ("direccion", "Dirección"),
             ("sector", "Sector"),
             ("ciudad", "Ciudad"),
             ("provincia", "Provincia"),
             ("codigo_postal", "Código postal"),
-
             ("empleador", "Empleador"),
             ("puesto", "Puesto"),
             ("telefono_trabajo", "Teléfono trabajo"),
             ("direccion_trabajo", "Dirección trabajo"),
-
             ("contacto_emergencia_nombre", "Contacto emergencia (Nombre)"),
             ("contacto_emergencia_telefono", "Contacto emergencia (Teléfono)"),
             ("contacto_emergencia_relacion", "Contacto emergencia (Relación)"),
-
             ("tipo_sangre", "Tipo de sangre"),
             ("alergias", "Alergias"),
             ("condiciones_medicas", "Condiciones médicas"),

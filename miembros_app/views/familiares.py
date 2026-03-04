@@ -814,7 +814,9 @@ def familia_crear(request):
 
     # --- 3) Crear hogar + miembros del hogar + relaciones ---
     with transaction.atomic():
+        # ✅ ASIGNAR TENANT AL CREAR HOGAR
         hogar = HogarFamiliar.objects.create(
+            tenant=request.tenant,
             nombre=nombre or f"Familia de {base.nombres} {base.apellidos}"
         )
 
@@ -855,7 +857,9 @@ def familia_crear(request):
                 ).exists()
 
             if not existe:
+                # ✅ ASIGNAR TENANT AL CREAR RELACION
                 MiembroRelacion.objects.create(
+                    tenant=request.tenant,
                     miembro=base,
                     familiar=otro,
                     tipo_relacion=tipo,

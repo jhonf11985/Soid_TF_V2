@@ -557,6 +557,10 @@ def sincronizar_relaciones_inferidas(miembro_id):
     
     relaciones_a_crear = []
     
+    # ✅ OBTENER EL TENANT DEL MIEMBRO PRINCIPAL
+    miembro_obj = Miembro.objects.filter(id=miembro_id).only("id", "tenant").first()
+    tenant = miembro_obj.tenant if miembro_obj else None
+    
     def crear_relacion(otro_id, tipo, nota):
         if otro_id == miembro_id or otro_id in ids_directos:
             return
@@ -565,6 +569,7 @@ def sincronizar_relaciones_inferidas(miembro_id):
         ).exists()
         if not existe:
             relaciones_a_crear.append(MiembroRelacion(
+                tenant=tenant,  # ✅ AGREGAR TENANT
                 miembro_id=miembro_id,
                 familiar_id=otro_id,
                 tipo_relacion=tipo,

@@ -648,7 +648,12 @@ class NuevoCreyenteForm(forms.ModelForm):
         if not tel_norm:
             return tel  # si viene vacío, no validamos duplicados
 
+        # ✅ FILTRAR POR TENANT
         qs = Miembro.objects.filter(telefono_norm=tel_norm)
+        
+        # Si el instance ya tiene tenant, filtrar por él
+        if self.instance and self.instance.tenant_id:
+            qs = qs.filter(tenant=self.instance.tenant)
 
         if self.instance and self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
@@ -758,6 +763,8 @@ class MiembroSalidaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        # ✅ RECIBIR TENANT DESDE LA VISTA
+        self.tenant = kwargs.pop("tenant", None)
         super().__init__(*args, **kwargs)
 
         miembro = self.instance
@@ -769,12 +776,15 @@ class MiembroSalidaForm(forms.ModelForm):
         else:
             aplica = ["miembro", "ambos"]
 
-        self.fields["razon_salida"].queryset = (
-            RazonSalidaMiembro.objects
-            .filter(activo=True, aplica_a__in=aplica)
-            .order_by("orden", "nombre")
-        )
-
+        # ✅ FILTRAR POR TENANT
+        qs = RazonSalidaMiembro.objects.filter(activo=True, aplica_a__in=aplica)
+        
+        # Usar tenant del miembro o el pasado por parámetro
+        tenant = getattr(miembro, 'tenant', None) or self.tenant
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        
+        self.fields["razon_salida"].queryset = qs.order_by("orden", "nombre")
         self.fields["razon_salida"].empty_label = "— Selecciona una razón —"
 
 class MiembroReingresoForm(forms.Form):

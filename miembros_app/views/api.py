@@ -119,7 +119,8 @@ def ajax_validar_cedula(request):
             "message": "Formato inválido. Usa 000-0000000-0",
         })
 
-    qs = Miembro.objects.filter(cedula=cedula)
+    # ✅ FILTRAR POR TENANT
+    qs = Miembro.objects.filter(cedula=cedula, tenant=request.tenant)
     if pk.isdigit():
         qs = qs.exclude(pk=int(pk))
 
@@ -144,7 +145,8 @@ def ajax_validar_cedula(request):
 def listado_miembros_crear_link_publico(request):
     """Crea un link público para el listado de miembros en PDF."""
     try:
-        miembros = Miembro.objects.filter(activo=True)
+        # ✅ FILTRAR POR TENANT
+        miembros = Miembro.objects.filter(activo=True, tenant=request.tenant)
 
         q = request.GET.get("q", "").strip()
         if q:
