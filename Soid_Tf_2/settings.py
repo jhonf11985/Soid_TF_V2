@@ -31,6 +31,7 @@ ALLOWED_HOSTS = [
 ]
 # En producción, añadir CSRF trusted origins
 CSRF_TRUSTED_ORIGINS = [
+    "https://*.soidtf.com",
     "https://soid-tf-v2.onrender.com",
     "https://*.onrender.com",
 ]
