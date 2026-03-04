@@ -56,7 +56,8 @@ def compartir_ficha_whatsapp(request, pk):
     """
     Devuelve un JSON con la URL de WhatsApp para compartir la ficha de un miembro.
     """
-    miembro = get_object_or_404(Miembro, pk=pk)
+    # ✅ FILTRAR POR TENANT
+    miembro = get_object_or_404(Miembro, pk=pk, tenant=request.tenant)
     
     # URL de la ficha imprimible
     ficha_url = request.build_absolute_uri(

@@ -21,7 +21,8 @@ from .utils import calcular_edad, porcentaje
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembros_dashboard(request):
     """Dashboard principal del módulo de miembros."""
-    miembros = Miembro.objects.filter(activo=True)
+    # ✅ FILTRAR POR TENANT
+    miembros = Miembro.objects.filter(activo=True, tenant=request.tenant)
     edad_minima = get_edad_minima_miembro_oficial()
     hoy = date.today()
 
@@ -48,7 +49,8 @@ def miembros_dashboard(request):
             disciplina += 1
 
     # Descarriados (inactivos)
-    miembros_descarriados = Miembro.objects.filter(activo=False, razon_salida__isnull=False)
+    # ✅ FILTRAR POR TENANT
+    miembros_descarriados = Miembro.objects.filter(activo=False, razon_salida__isnull=False, tenant=request.tenant)
     descarriados = sum(
         1 for m in miembros_descarriados
         if calcular_edad(m.fecha_nacimiento) is not None
@@ -106,8 +108,9 @@ def miembros_dashboard(request):
     ).count()
 
     hace_7_dias = timezone.now() - timedelta(days=7)
+    # ✅ FILTRAR POR TENANT
     nuevos_creyentes_semana = Miembro.objects.filter(
-        nuevo_creyente=True, activo=True, fecha_creacion__gte=hace_7_dias
+        nuevo_creyente=True, activo=True, fecha_creacion__gte=hace_7_dias, tenant=request.tenant
     ).count()
 
     try:
@@ -125,13 +128,15 @@ def miembros_dashboard(request):
     sin_foto = miembros.filter(Q(foto__isnull=True) | Q(foto="")).count()
     sin_fecha_nacimiento = miembros.filter(fecha_nacimiento__isnull=True).count()
 
+    # ✅ FILTRAR POR TENANT
     ultimas_salidas = (
-        Miembro.objects.filter(activo=False, fecha_salida__isnull=False)
+        Miembro.objects.filter(activo=False, fecha_salida__isnull=False, tenant=request.tenant)
         .order_by("-fecha_salida", "apellidos", "nombres")[:5]
     )
 
+    # ✅ FILTRAR POR TENANT
     nuevos_creyentes_recientes = (
-        Miembro.objects.filter(nuevo_creyente=True)
+        Miembro.objects.filter(nuevo_creyente=True, tenant=request.tenant)
         .order_by("-fecha_creacion", "-id")[:5]
     )
 

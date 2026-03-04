@@ -705,7 +705,9 @@ def importar_miembros_excel(request):
                             continue
 
         try:
+            # ✅ ASIGNAR TENANT AL CREAR MIEMBRO
             Miembro.objects.create(
+                tenant=request.tenant,
                 nombres=nombres,
                 apellidos=apellidos,
                 genero=genero_val,
@@ -738,7 +740,8 @@ def listado_miembros_enviar_email(request):
             mensaje = form.cleaned_data.get("mensaje") or ""
 
             try:
-                miembros = Miembro.objects.filter(activo=True)
+                # ✅ FILTRAR POR TENANT
+                miembros = Miembro.objects.filter(activo=True, tenant=request.tenant)
                 
                 q = request.GET.get('q', '').strip()
                 if q:

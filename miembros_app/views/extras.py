@@ -42,7 +42,8 @@ def validar_telefono(request):
     if not telefono_norm:
         return JsonResponse({"existe": False})
 
-    qs = Miembro.objects.filter(telefono_norm=telefono_norm)
+    # ✅ FILTRAR POR TENANT
+    qs = Miembro.objects.filter(telefono_norm=telefono_norm, tenant=request.tenant)
 
     if pk:
         qs = qs.exclude(pk=pk)

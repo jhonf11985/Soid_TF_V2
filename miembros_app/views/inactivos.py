@@ -110,7 +110,8 @@ def salida_form(request, pk):
             return redirect("miembros_app:nuevo_creyente_detalle", pk=miembro.pk)
 
     if request.method == "POST":
-        form = MiembroSalidaForm(request.POST, instance=miembro)
+        # ✅ PASAR TENANT AL FORM
+        form = MiembroSalidaForm(request.POST, instance=miembro, tenant=request.tenant)
         if form.is_valid():
             miembro_editado = form.save(commit=False)
 
@@ -152,7 +153,8 @@ def salida_form(request, pk):
 
         messages.error(request, "Hay errores en el formulario. Revisa los campos marcados.")
     else:
-        form = MiembroSalidaForm(instance=miembro)
+        # ✅ PASAR TENANT AL FORM
+        form = MiembroSalidaForm(instance=miembro, tenant=request.tenant)
 
     return render(
         request,

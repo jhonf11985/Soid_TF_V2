@@ -999,6 +999,13 @@ class MiembroRelacion(TenantAwareModel):
     class Meta:
         verbose_name = "Relación familiar"
         verbose_name_plural = "Relaciones familiares"
+        constraints = [
+            # ✅ Evita duplicar la misma relación dentro del mismo tenant
+            models.UniqueConstraint(
+                fields=["tenant", "miembro", "familiar", "tipo_relacion"],
+                name="unique_relacion_por_tenant",
+            )
+        ]
 
     def __str__(self):
         return f"{self.miembro} - {self.get_tipo_relacion_display()} de {self.familiar}"

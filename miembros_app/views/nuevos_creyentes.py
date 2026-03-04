@@ -34,7 +34,10 @@ def nuevo_creyente_crear(request):
     if request.method == "POST":
         form = NuevoCreyenteForm(request.POST)
         if form.is_valid():
-            miembro = form.save()
+            # ✅ ASIGNAR TENANT ANTES DE GUARDAR
+            miembro = form.save(commit=False)
+            miembro.tenant = request.tenant
+            miembro.save()
 
             try:
                 url_detalle = reverse("miembros_app:nuevo_creyente_editar", args=[miembro.pk])
@@ -89,7 +92,8 @@ def nuevo_creyente_lista(request):
     solo_contacto = request.GET.get("solo_contacto", "") == "1"
     ver_inactivos = request.GET.get("ver_inactivos", "") == "1"
 
-    miembros = Miembro.objects.filter(nuevo_creyente=True)
+    # ✅ FILTRAR POR TENANT
+    miembros = Miembro.objects.filter(nuevo_creyente=True, tenant=request.tenant)
 
     # Por defecto: solo activos
     if not ver_inactivos:
@@ -169,7 +173,8 @@ def nuevo_creyente_lista(request):
 @permission_required("miembros_app.change_miembro", raise_exception=True)
 def nuevo_creyente_editar(request, pk):
     """Editar un nuevo creyente."""
-    miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True)
+    # ✅ FILTRAR POR TENANT
+    miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True, tenant=request.tenant)
 
     if request.method == "POST":
         form = NuevoCreyenteForm(request.POST, instance=miembro)
@@ -201,7 +206,8 @@ def nuevo_creyente_editar(request, pk):
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def nuevo_creyente_detalle(request, pk):
     """Detalle del Nuevo Creyente."""
-    miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True)
+    # ✅ FILTRAR POR TENANT
+    miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True, tenant=request.tenant)
 
     edad_minima = get_edad_minima_miembro_oficial()
 
@@ -235,7 +241,8 @@ def nuevo_creyente_detalle(request, pk):
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def nuevo_creyente_ficha(request, pk):
     """Ficha imprimible del nuevo creyente."""
-    miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True)
+    # ✅ FILTRAR POR TENANT
+    miembro = get_object_or_404(Miembro, pk=pk, nuevo_creyente=True, tenant=request.tenant)
 
     expediente_abierto = NuevoCreyenteExpediente.objects.filter(
         miembro=miembro,
@@ -261,7 +268,8 @@ def nuevo_creyente_ficha(request, pk):
 @permission_required("miembros_app.change_miembro", raise_exception=True)
 def enviar_a_nuevo_creyente(request, pk):
     """Envía un miembro al módulo de Nuevo Creyente."""
-    miembro = get_object_or_404(Miembro, pk=pk)
+    # ✅ FILTRAR POR TENANT
+    miembro = get_object_or_404(Miembro, pk=pk, tenant=request.tenant)
     next_url = request.POST.get("next") or request.GET.get("next") or reverse("nuevo_creyente_app:dashboard")
 
     if not miembro.activo:
@@ -272,7 +280,12 @@ def enviar_a_nuevo_creyente(request, pk):
         messages.info(request, "Este miembro ya fue enviado al módulo de Nuevo Creyente.")
         return redirect(next_url)
 
-    NuevoCreyenteExpediente.objects.create(miembro=miembro, responsable=request.user)
+    # ✅ ASIGNAR TENANT AL CREAR EXPEDIENTE (si NuevoCreyenteExpediente es tenant-aware)
+    NuevoCreyenteExpediente.objects.create(
+        tenant=request.tenant,
+        miembro=miembro,
+        responsable=request.user
+    )
 
     if not miembro.nuevo_creyente:
         miembro.nuevo_creyente = True

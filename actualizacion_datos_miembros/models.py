@@ -2,14 +2,18 @@ from django.db import models
 from django.utils import timezone
 import uuid
 
-from miembros_app.models import Miembro, GENERO_CHOICES, ESTADO_MIEMBRO_CHOICES
+from miembros_app.models import Miembro, GENERO_CHOICES, ESTADO_MIEMBRO_CHOICES, CIUDAD_CHOICES
+from tenants.models import Tenant
 
 
 class AccesoActualizacionDatos(models.Model):
     """
     Link único (sin login) por Miembro.
-    - Se genera 1 vez y se reutiliza siempre.
     """
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE,
+        related_name='accesos_actualizacion_datos'
+    )
     miembro = models.OneToOneField(
         Miembro,
         on_delete=models.CASCADE,
@@ -36,6 +40,10 @@ class SolicitudActualizacionMiembro(models.Model):
         APLICADA = "aplicada", "Aplicada"
         RECHAZADA = "rechazada", "Rechazada"
 
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE,
+        related_name='solicitudes_actualizacion_miembro'
+    )
     miembro = models.ForeignKey(
         Miembro,
         on_delete=models.CASCADE,
@@ -47,10 +55,21 @@ class SolicitudActualizacionMiembro(models.Model):
         choices=Estados.choices,
         default=Estados.PENDIENTE,
     )
-    # Después de los campos de contacto existentes:
-    telefono_secundario = models.CharField(max_length=20, blank=True)
 
-    # Datos personales:
+    # Contacto
+    telefono = models.CharField(max_length=20, blank=True)
+    telefono_secundario = models.CharField(max_length=20, blank=True)
+    whatsapp = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True)
+
+    # Dirección
+    direccion = models.TextField(blank=True)
+    sector = models.CharField(max_length=100, blank=True)
+    ciudad = models.CharField(max_length=100, blank=True)
+    provincia = models.CharField(max_length=100, blank=True)
+    codigo_postal = models.CharField(max_length=20, blank=True)
+
+    # Datos personales
     lugar_nacimiento = models.CharField(max_length=150, blank=True)
     nacionalidad = models.CharField(max_length=100, blank=True)
     estado_civil = models.CharField(max_length=20, blank=True)
@@ -58,52 +77,35 @@ class SolicitudActualizacionMiembro(models.Model):
     profesion = models.CharField(max_length=100, blank=True)
     pasaporte = models.CharField(max_length=30, blank=True)
 
-    # Membresía (estos ya los tienes, verifica):
+    # Membresía
     iglesia_anterior = models.CharField(max_length=150, blank=True)
     fecha_conversion = models.DateField(blank=True, null=True)
     fecha_bautismo = models.DateField(blank=True, null=True)
     fecha_ingreso_iglesia = models.DateField(blank=True, null=True)
 
-    # --- Datos editables (seguros) ---
-    telefono = models.CharField(max_length=20, blank=True)
-    whatsapp = models.CharField(max_length=20, blank=True)
-    email = models.EmailField(blank=True)
-
-    direccion = models.TextField(blank=True)
-    sector = models.CharField(max_length=100, blank=True)
-    ciudad = models.CharField(max_length=100, blank=True)
-    provincia = models.CharField(max_length=100, blank=True)
-    codigo_postal = models.CharField(max_length=20, blank=True)
-
-        # --- Membresía (para actualizar por etapas) ---
-    iglesia_anterior = models.CharField(max_length=150, blank=True)
-
-    fecha_conversion = models.DateField(blank=True, null=True)
-    fecha_bautismo = models.DateField(blank=True, null=True)
-    fecha_ingreso_iglesia = models.DateField(blank=True, null=True)
-
-
-
+    # Trabajo
     empleador = models.CharField(max_length=150, blank=True)
     puesto = models.CharField(max_length=100, blank=True)
     telefono_trabajo = models.CharField(max_length=20, blank=True)
     direccion_trabajo = models.TextField(blank=True)
 
+    # Contacto emergencia
     contacto_emergencia_nombre = models.CharField(max_length=150, blank=True)
     contacto_emergencia_telefono = models.CharField(max_length=20, blank=True)
     contacto_emergencia_relacion = models.CharField(max_length=50, blank=True)
 
-    # Salud (opcional)
+    # Salud
     tipo_sangre = models.CharField(max_length=10, blank=True)
     alergias = models.TextField(blank=True)
     condiciones_medicas = models.TextField(blank=True)
     medicamentos = models.TextField(blank=True)
 
-    # Auditoría
+    # Auditoría creación
     creado_en = models.DateTimeField(default=timezone.now)
     ip_origen = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
 
+    # Auditoría revisión
     revisado_en = models.DateTimeField(null=True, blank=True)
     revisado_por = models.ForeignKey(
         "auth.User",
@@ -129,36 +131,47 @@ class SolicitudAltaMiembro(models.Model):
         APROBADA = "aprobada", "Aprobada"
         RECHAZADA = "rechazada", "Rechazada"
 
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE,
+        related_name='solicitudes_alta_miembro'
+    )
     estado = models.CharField(
         max_length=20,
         choices=Estados.choices,
         default=Estados.PENDIENTE,
     )
 
-        # Documentos opcionales
+    # Documentos
     foto = models.ImageField(upload_to="solicitudes_alta/fotos/", blank=True, null=True)
     cedula = models.CharField(max_length=20, blank=True)
 
-
-    # Datos mínimos de alta masiva
+    # Datos básicos
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
-
     genero = models.CharField(max_length=20, choices=GENERO_CHOICES)
     fecha_nacimiento = models.DateField()
-
     estado_miembro = models.CharField(max_length=30, choices=ESTADO_MIEMBRO_CHOICES)
-    
-    telefono = models.CharField(max_length=20)
+
+    # Contacto
+    telefono = models.CharField(max_length=20, blank=True)  # Ya no obligatorio
     whatsapp = models.CharField(max_length=20, blank=True)
     direccion = models.TextField(blank=True)
-    sector = models.CharField(max_length=100, blank=True)
+    sector = models.CharField(max_length=100)  # Obligatorio
+    ciudad = models.CharField(
+        max_length=50,
+        choices=CIUDAD_CHOICES,
+        default="Higuey",
+    )
 
-    # Auditoría
+    # Membresía
+    fecha_ingreso_iglesia = models.DateField()
+
+    # Auditoría creación
     creado_en = models.DateTimeField(default=timezone.now)
     ip_origen = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
 
+    # Auditoría revisión
     revisado_en = models.DateTimeField(null=True, blank=True)
     revisado_por = models.ForeignKey(
         "auth.User",
@@ -177,9 +190,12 @@ class SolicitudAltaMiembro(models.Model):
     def __str__(self):
         return f"Alta({self.pk}) {self.nombres} {self.apellidos} - {self.estado}"
 
-from django.db import models
 
 class AltaMasivaConfig(models.Model):
+    tenant = models.OneToOneField(
+        Tenant, on_delete=models.CASCADE,
+        related_name='alta_masiva_config'
+    )
     activo = models.BooleanField(default=True)
     mensaje_compartir = models.TextField(
         default=(
@@ -192,10 +208,14 @@ class AltaMasivaConfig(models.Model):
     )
     actualizado_en = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = "Configuración: alta masiva"
+        verbose_name_plural = "Configuración: alta masiva"
+
     @classmethod
-    def get_solo(cls):
+    def get_solo(cls, tenant):
         obj, _ = cls.objects.get_or_create(
-            pk=1,
+            tenant=tenant,
             defaults={
                 "activo": True,
                 "mensaje_compartir": (
@@ -210,49 +230,40 @@ class AltaMasivaConfig(models.Model):
         return obj
 
     def __str__(self):
-        return "Alta masiva: " + ("Activa" if self.activo else "Cerrada")
-
+        return f"Alta masiva: " + ("Activa" if self.activo else "Cerrada")
 
 
 class ActualizacionDatosConfig(models.Model):
-    """
-    Configuración GLOBAL: define qué campos se muestran en el formulario público
-    de actualización para TODOS los miembros.
-    """
+    tenant = models.OneToOneField(
+        Tenant, on_delete=models.CASCADE,
+        related_name='actualizacion_datos_config'
+    )
     activo = models.BooleanField(default=True)
-
-    # Lista de nombres de campos permitidos (strings), ej:
-    # ["telefono", "whatsapp", "email", "direccion"]
     campos_permitidos = models.JSONField(default=list, blank=True)
-
-    actualizado_en = models.DateTimeField(default=timezone.now)
+    actualizado_en = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Configuración de Actualización de Datos"
-        verbose_name_plural = "Configuración de Actualización de Datos"
-
-    def __str__(self):
-        return "Configuración global de actualización"
+        verbose_name = "Configuración: actualización de datos"
+        verbose_name_plural = "Configuración: actualización de datos"
 
     @classmethod
-    def get_solo(cls):
-        obj, _ = cls.objects.get_or_create(pk=1, defaults={"activo": True, "campos_permitidos": []})
+    def get_solo(cls, tenant):
+        obj, _ = cls.objects.get_or_create(
+            tenant=tenant,
+            defaults={"activo": True, "campos_permitidos": []}
+        )
         return obj
-    
-import uuid
-from django.db import models
-from django.utils import timezone
-from miembros_app.models import Miembro
 
-
+    def __str__(self):
+        return f"Config actualización datos"
 
 
 class AccesoAltaFamilia(models.Model):
-    """
-    Link público (sin login) para alta de familia.
-    - No está anclado a un miembro.
-    - Se puede reutilizar muchas veces hasta que el admin lo desactive.
-    """
+    """Link público para alta de familia."""
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE,
+        related_name='accesos_alta_familia'
+    )
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     activo = models.BooleanField(default=True)
 
@@ -260,22 +271,25 @@ class AccesoAltaFamilia(models.Model):
     actualizado_en = models.DateTimeField(auto_now=True)
     ultimo_envio_en = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        verbose_name = "Acceso: alta de familia"
+        verbose_name_plural = "Accesos: alta de familia"
+
     def __str__(self):
         return f"AccesoAltaFamilia(token={self.token}) activo={self.activo}"
 
 
-
 class AltaFamiliaLog(models.Model):
-    """
-    Solicitud de alta de familia.
-    Guarda quién fue el principal elegido y qué relaciones se intentaron crear.
-    El admin debe aprobar para que las relaciones se apliquen.
-    """
+    """Solicitud de alta de familia."""
     class Estados(models.TextChoices):
         PENDIENTE = "pendiente", "Pendiente"
         APLICADA = "aplicada", "Aplicada"
         RECHAZADA = "rechazada", "Rechazada"
 
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE,
+        related_name='altas_familia_logs'
+    )
     acceso = models.ForeignKey(
         AccesoAltaFamilia,
         on_delete=models.CASCADE,
@@ -283,7 +297,6 @@ class AltaFamiliaLog(models.Model):
         null=True,
         blank=True,
     )
-
     principal = models.ForeignKey(
         Miembro,
         on_delete=models.CASCADE,
@@ -291,7 +304,6 @@ class AltaFamiliaLog(models.Model):
         null=True,
         blank=True,
     )
-
     estado = models.CharField(
         max_length=20,
         choices=Estados.choices,
@@ -306,11 +318,11 @@ class AltaFamiliaLog(models.Model):
     madre_id = models.IntegerField(null=True, blank=True)
     hijos_ids = models.JSONField(default=list, blank=True)
 
-    # Resultado (se llena cuando se aplica)
+    # Resultado
     relaciones_creadas = models.JSONField(default=list, blank=True)
     alertas = models.JSONField(default=list, blank=True)
 
-    # Auditoría de revisión
+    # Auditoría revisión
     revisado_en = models.DateTimeField(null=True, blank=True)
     revisado_por = models.ForeignKey(
         "auth.User",
@@ -321,7 +333,7 @@ class AltaFamiliaLog(models.Model):
     )
     nota_admin = models.TextField(blank=True)
 
-    # Auditoría de origen
+    # Auditoría origen
     ip_origen = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
 

@@ -205,8 +205,8 @@ def filtrar_miembros(request, miembros_base, para_paginacion=False):
 def miembro_lista(request):
     """Listado general de miembros con paginación (excluye nuevos creyentes)."""
 
-    
-    miembros_base = Miembro.objects.filter(nuevo_creyente=False)
+    # ✅ FILTRAR POR TENANT
+    miembros_base = Miembro.objects.filter(nuevo_creyente=False, tenant=request.tenant)
     miembros_qs, filtros_context = filtrar_miembros(request, miembros_base, para_paginacion=True)
     
     # ═══════════════════════════════════════════════════════════════════════════
@@ -239,7 +239,8 @@ def miembro_lista(request):
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembro_lista_pdf(request):
     """Vista PDF del listado de miembros (sin paginación - trae todos)."""
-    miembros_base = Miembro.objects.filter(nuevo_creyente=False)
+    # ✅ FILTRAR POR TENANT
+    miembros_base = Miembro.objects.filter(nuevo_creyente=False, tenant=request.tenant)
     # para_paginacion=False para que traiga todos los registros
     miembros, filtros_context = filtrar_miembros(request, miembros_base, para_paginacion=False)
     
@@ -339,8 +340,10 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         )
         familiares_ids = familiares_qs.values_list("familiar_id", flat=True)
         
+        # ✅ FILTRAR POR TENANT
         todos_miembros = (
             Miembro.objects
+            .filter(tenant=miembro.tenant)
             .exclude(pk=miembro.pk)
             .exclude(pk__in=familiares_ids)
             .order_by("nombres", "apellidos")
@@ -363,12 +366,14 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         }
 
     def get(self, request, pk):
-        miembro = get_object_or_404(Miembro, pk=pk)
+        # ✅ FILTRAR POR TENANT
+        miembro = get_object_or_404(Miembro, pk=pk, tenant=request.tenant)
         form = MiembroForm(instance=miembro)
         return render(request, self.template_name, self._get_base_context(miembro, form))
 
     def post(self, request, pk):
-        miembro = get_object_or_404(Miembro, pk=pk)
+        # ✅ FILTRAR POR TENANT
+        miembro = get_object_or_404(Miembro, pk=pk, tenant=request.tenant)
         edad_minima = get_edad_minima_miembro_oficial()
         salida_antes = not miembro.activo and miembro.fecha_salida is not None
 
@@ -509,7 +514,8 @@ class MiembroDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
     template_name = "miembros_app/miembros_detalle.html"
 
     def get(self, request, pk):
-        miembro = get_object_or_404(Miembro, pk=pk)
+        # ✅ FILTRAR POR TENANT
+        miembro = get_object_or_404(Miembro, pk=pk, tenant=request.tenant)
 
         # Finanzas
         movimientos_financieros = (
@@ -611,7 +617,8 @@ class MiembroDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def miembro_ficha(request, pk):
     """Ficha pastoral imprimible para un miembro."""
-    miembro = get_object_or_404(Miembro, pk=pk)
+    # ✅ FILTRAR POR TENANT
+    miembro = get_object_or_404(Miembro, pk=pk, tenant=request.tenant)
 
     relaciones_qs = (
         MiembroRelacion.objects
