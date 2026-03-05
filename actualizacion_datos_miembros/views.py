@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.http import HttpResponseForbidden, JsonResponse
 from django.urls import reverse
 from django.db.models import Q
+from django.core.paginator import Paginator
 import re
 
 from miembros_app.models import Miembro, ESTADO_MIEMBRO_CHOICES
@@ -21,6 +22,7 @@ from .forms import SolicitudActualizacionForm, SolicitudAltaPublicaForm, Actuali
 from .services import aplicar_solicitud_a_miembro, crear_miembro_desde_solicitud_alta, aplicar_alta_familia
 from .services import _normalizar_cedula_rd
 from .utils import traducir_user_agent
+
 
 
 # ==========================================================
@@ -45,6 +47,8 @@ def _require_tenant(request):
         from django.http import Http404
         raise Http404("Tenant no configurado")
     return tenant
+
+
 
 
 # ==========================================================
@@ -543,7 +547,7 @@ def generar_link_miembro(request, miembro_id):
 
 
 # ==========================================================
-# ADMIN - ALTAS (Registro masivo)
+# ADMIN - SOLICITUDES DE ALTA (ALTAS MASIVAS) - CON PAGINACIÓN
 # ==========================================================
 @login_required
 def altas_lista(request):
@@ -561,9 +565,21 @@ def altas_lista(request):
             Q(apellidos__icontains=q) |
             Q(telefono__icontains=q)
         )
+    
+    # Ordenar por fecha de creación (más recientes primero)
+    qs = qs.order_by("-creado_en")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # PAGINACIÓN SERVER-SIDE - 50 registros por página
+    # ═══════════════════════════════════════════════════════════════
+    paginator = Paginator(qs, 50)
+    page_number = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_number)
 
     return render(request, "actualizacion_datos_miembros/altas_lista.html", {
-        "altas": qs[:300],
+        "altas": page_obj,           # Ahora es un Page object
+        "page_obj": page_obj,        # Para controles de paginación
+        "paginator": paginator,      # Para info total
         "estado": estado,
         "q": q,
         "Estados": SolicitudAltaMiembro.Estados,
@@ -586,6 +602,7 @@ def alta_detalle(request, pk):
 
 @login_required
 def alta_aprobar(request, pk):
+    """Aprueba solicitud, crea Miembro y ELIMINA la solicitud."""
     if request.method != "POST":
         return HttpResponseForbidden("Método no permitido")
 
@@ -602,40 +619,57 @@ def alta_aprobar(request, pk):
         messages.error(request, str(e))
         return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
 
-    s.estado = SolicitudAltaMiembro.Estados.APROBADA
-    s.revisado_en = timezone.now()
-    s.revisado_por = request.user
-    s.save(update_fields=["estado", "revisado_en", "revisado_por"])
+    # ═══════════════════════════════════════════════════════════════
+    # HARD DELETE - Eliminar solicitud después de crear miembro
+    # ═══════════════════════════════════════════════════════════════
+    s.delete()
 
-    messages.success(request, f"Solicitud aprobada ✅ Miembro creado: {miembro.nombres} {miembro.apellidos}")
+    messages.success(request, f"Miembro creado: {miembro.nombres} {miembro.apellidos} ✅")
     return redirect("miembros_app:detalle", pk=miembro.pk)
 
 
 @login_required
 def alta_rechazar(request, pk):
+    """Rechaza la solicitud y NO la elimina (se queda como historial)."""
     if request.method != "POST":
         return HttpResponseForbidden("Método no permitido")
 
     tenant = _require_tenant(request)
     s = get_object_or_404(SolicitudAltaMiembro, pk=pk, tenant=tenant)
-    
+
     if s.estado != SolicitudAltaMiembro.Estados.PENDIENTE:
         messages.info(request, "Esta solicitud ya fue procesada.")
         return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
 
     nota = (request.POST.get("nota_admin") or "").strip()
-    s.estado = SolicitudAltaMiembro.Estados.RECHAZADA
-    s.nota_admin = nota
-    s.revisado_en = timezone.now()
-    s.revisado_por = request.user
-    s.save(update_fields=["estado", "nota_admin", "revisado_en", "revisado_por"])
 
-    messages.success(request, "Solicitud rechazada.")
-    return redirect("actualizacion_datos_miembros:alta_detalle", pk=s.pk)
+    s.estado = SolicitudAltaMiembro.Estados.RECHAZADA
+    if hasattr(s, "nota_admin"):
+        s.nota_admin = nota
+
+    if hasattr(s, "revisado_en"):
+        s.revisado_en = timezone.now()
+    if hasattr(s, "revisado_por"):
+        s.revisado_por = request.user
+
+    # Ajusta update_fields si esos campos existen en tu modelo
+    update_fields = ["estado"]
+    if hasattr(s, "nota_admin"):
+        update_fields.append("nota_admin")
+    if hasattr(s, "revisado_en"):
+        update_fields.append("revisado_en")
+    if hasattr(s, "revisado_por"):
+        update_fields.append("revisado_por")
+
+    s.save(update_fields=update_fields)
+
+    messages.success(request, "Solicitud rechazada. Se ha guardado como historial.")
+    return redirect("actualizacion_datos_miembros:altas_lista")
 
 
 @login_required
 def altas_aprobar_masivo(request):
+    """Aprueba múltiples solicitudes y las ELIMINA."""
     if request.method != "POST":
         return HttpResponseForbidden("Método no permitido")
 
@@ -656,24 +690,26 @@ def altas_aprobar_masivo(request):
     ok = 0
     fail = 0
     errores = []
+    ids_a_eliminar = []
 
     for s in solicitudes:
         try:
             crear_miembro_desde_solicitud_alta(s)
+            ids_a_eliminar.append(s.pk)
+            ok += 1
         except ValueError as e:
             fail += 1
             if len(errores) < 5:
                 errores.append(f"Solicitud #{s.pk}: {e}")
-            continue
 
-        s.estado = SolicitudAltaMiembro.Estados.APROBADA
-        s.revisado_en = timezone.now()
-        s.revisado_por = request.user
-        s.save(update_fields=["estado", "revisado_en", "revisado_por"])
-        ok += 1
+    # ═══════════════════════════════════════════════════════════════
+    # HARD DELETE - Eliminar solicitudes aprobadas exitosamente
+    # ═══════════════════════════════════════════════════════════════
+    if ids_a_eliminar:
+        SolicitudAltaMiembro.objects.filter(pk__in=ids_a_eliminar).delete()
 
     if ok:
-        messages.success(request, f"{ok} solicitud(es) aprobada(s) y convertida(s) en Miembro ✅")
+        messages.success(request, f"{ok} solicitud(es) aprobada(s) y miembros creados ✅")
     if fail:
         messages.warning(request, f"{fail} solicitud(es) no se aprobaron por duplicados/errores.")
         for err in errores:
@@ -686,6 +722,7 @@ def altas_aprobar_masivo(request):
 
 @login_required
 def altas_rechazar_masivo(request):
+    """Rechaza múltiples solicitudes y NO las elimina (se quedan como historial)."""
     if request.method != "POST":
         return HttpResponseForbidden("Método no permitido")
 
@@ -698,28 +735,31 @@ def altas_rechazar_masivo(request):
     ids = [int(i) for i in ids_str.split(",") if i.strip().isdigit()]
     nota = (request.POST.get("nota_admin") or "").strip()
 
-    solicitudes = SolicitudAltaMiembro.objects.filter(
+    qs = SolicitudAltaMiembro.objects.filter(
         tenant=tenant,
         pk__in=ids,
         estado=SolicitudAltaMiembro.Estados.PENDIENTE
     )
 
-    count = 0
-    for s in solicitudes:
-        s.estado = SolicitudAltaMiembro.Estados.RECHAZADA
-        s.nota_admin = nota
-        s.revisado_en = timezone.now()
-        s.revisado_por = request.user
-        s.save(update_fields=["estado", "nota_admin", "revisado_en", "revisado_por"])
-        count += 1
+    update_data = {"estado": SolicitudAltaMiembro.Estados.RECHAZADA}
+
+    # Si tu modelo tiene estos campos, los rellenamos
+    model_fields = {f.name for f in SolicitudAltaMiembro._meta.get_fields() if hasattr(f, "name")}
+    if "nota_admin" in model_fields:
+        update_data["nota_admin"] = nota
+    if "revisado_en" in model_fields:
+        update_data["revisado_en"] = timezone.now()
+    if "revisado_por" in model_fields:
+        update_data["revisado_por"] = request.user
+
+    count = qs.update(**update_data)
 
     if count:
-        messages.success(request, f"{count} solicitud(es) rechazada(s).")
+        messages.success(request, f"{count} solicitud(es) rechazada(s). Se han guardado como historial.")
     else:
         messages.info(request, "No se encontraron solicitudes pendientes para rechazar.")
 
     return redirect("actualizacion_datos_miembros:altas_lista")
-
 
 @login_required
 def alta_cambiar_estado_miembro(request, pk):
@@ -744,7 +784,6 @@ def alta_cambiar_estado_miembro(request, pk):
 
     messages.success(request, "Estado del miembro actualizado.")
     return redirect("actualizacion_datos_miembros:altas_lista")
-
 
 # ==========================================================
 # PÚBLICO - ALTA MASIVA
