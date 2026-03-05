@@ -66,9 +66,40 @@
     </div>
 
     <div class="odoo-control-right">
+        <!-- ═══════════════════════════════════════════════════════════════
+             PAGINACIÓN SERVER-SIDE
+             ═══════════════════════════════════════════════════════════════ -->
         <span class="odoo-pagination-info">
-            {% if altas %}1-{{ altas|length }} / {{ altas|length }}{% else %}0{% endif %}
+            {% if page_obj.paginator.count > 0 %}
+                {{ page_obj.start_index }}-{{ page_obj.end_index }} / {{ page_obj.paginator.count }}
+            {% else %}
+                0
+            {% endif %}
         </span>
+        
+        <div class="odoo-pager-btns">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if estado %}&estado={{ estado }}{% endif %}{% if q %}&q={{ q }}{% endif %}" 
+               class="odoo-pager-btn" title="Anterior">
+                <span class="material-icons">chevron_left</span>
+            </a>
+            {% else %}
+            <span class="odoo-pager-btn disabled">
+                <span class="material-icons">chevron_left</span>
+            </span>
+            {% endif %}
+            
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if estado %}&estado={{ estado }}{% endif %}{% if q %}&q={{ q }}{% endif %}" 
+               class="odoo-pager-btn" title="Siguiente">
+                <span class="material-icons">chevron_right</span>
+            </a>
+            {% else %}
+            <span class="odoo-pager-btn disabled">
+                <span class="material-icons">chevron_right</span>
+            </span>
+            {% endif %}
+        </div>
         
         <div class="odoo-view-toggle">
             <button type="button" class="odoo-view-btn active" title="Vista lista">
@@ -131,7 +162,7 @@
 </form>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     TABLA DE DATOS - DISTRIBUCIÓN MEJORADA
+     TABLA DE DATOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <div class="odoo-table-container">
     <table class="odoo-table">
@@ -164,7 +195,7 @@
                         {% endif %}
                     </td>
                     
-                    <!-- Solicitante (consolidado: foto, nombre, cédula, teléfono, fecha) -->
+                    <!-- Solicitante -->
                     <td>
                         <div class="solicitante-card">
                             <div class="solicitante-avatar">
@@ -207,97 +238,140 @@
                                 <select name="estado_miembro"
                                         class="estado-miembro-select"
                                         onchange="event.stopPropagation(); this.form.submit();">
-                                    {% for value, label in estado_miembro_choices %}
-                                        <option value="{{ value }}" {% if value == s.estado_miembro %}selected{% endif %}>
-                                            {{ label }}
-                                        </option>
+                                    {% for val, label in estado_miembro_choices %}
+                                    <option value="{{ val }}" {% if s.estado_miembro == val %}selected{% endif %}>{{ label }}</option>
                                     {% endfor %}
                                 </select>
                             </form>
                         {% else %}
-                            <span class="odoo-badge odoo-badge-info">{{ s.get_estado_miembro_display }}</span>
+                            <span class="tipo-badge">{{ s.get_estado_miembro_display }}</span>
                         {% endif %}
                     </td>
-                    
-                    <!-- Estado de la Solicitud -->
+
+                    <!-- Estado Solicitud -->
                     <td class="col-estado">
-                        {% if s.estado == 'pendiente' %}
-                        <span class="badge-estado badge-pendiente">
-                            <span class="material-icons">schedule</span>
+                        <span class="estado-badge estado-{{ s.estado }}">
+                            {% if s.estado == Estados.PENDIENTE %}
+                                <span class="material-icons">schedule</span>
+                            {% elif s.estado == Estados.APROBADA %}
+                                <span class="material-icons">check_circle</span>
+                            {% else %}
+                                <span class="material-icons">cancel</span>
+                            {% endif %}
                             {{ s.get_estado_display }}
                         </span>
-                        {% elif s.estado == 'aprobada' %}
-                        <span class="badge-estado badge-aprobada">
-                            <span class="material-icons">check_circle</span>
-                            {{ s.get_estado_display }}
-                        </span>
-                        {% elif s.estado == 'rechazada' %}
-                        <span class="badge-estado badge-rechazada">
-                            <span class="material-icons">cancel</span>
-                            {{ s.get_estado_display }}
-                        </span>
-                        {% else %}
-                        <span class="badge-estado badge-neutral">
-                            {{ s.get_estado_display }}
-                        </span>
-                        {% endif %}
                     </td>
-                    
-                    <!-- Acción Ver -->
+
+                    <!-- Acciones -->
                     <td class="col-actions no-print" onclick="event.stopPropagation();">
-                        <a href="{% url 'actualizacion_datos_miembros:alta_detalle' s.pk %}"
-                           class="odoo-action-btn" title="Ver detalle">
-                            <span class="material-icons">chevron_right</span>
-                        </a>
+                        {% if s.estado == Estados.PENDIENTE %}
+                        <div class="action-buttons">
+                            <form method="post" action="{% url 'actualizacion_datos_miembros:alta_aprobar' s.pk %}" class="inline-form">
+                                {% csrf_token %}
+                                <button type="submit" class="action-btn action-approve" title="Aprobar">
+                                    <span class="material-icons">check</span>
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'actualizacion_datos_miembros:alta_rechazar' s.pk %}" class="inline-form">
+                                {% csrf_token %}
+                                <button type="submit" class="action-btn action-reject" title="Rechazar">
+                                    <span class="material-icons">close</span>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             {% else %}
                 <tr>
-                    <td colspan="5" class="odoo-empty-table">
-                        <span class="material-icons">person_add_disabled</span>
-                        <p>No hay solicitudes de alta con los filtros actuales</p>
+                    <td colspan="5" class="empty-state">
+                        <div class="empty-content">
+                            <span class="material-icons">inbox</span>
+                            <p>No hay solicitudes de alta</p>
+                            {% if q or estado %}
+                            <a href="{{ request.path }}" class="odoo-btn odoo-btn-secondary">Limpiar filtros</a>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
             {% endif %}
         </tbody>
     </table>
-    
-    {% if altas %}
-    <div class="odoo-table-footer">
-        Total: {{ altas|length }} solicitud{{ altas|length|pluralize:"es" }}
-    </div>
-    {% endif %}
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PAGINACIÓN INFERIOR (móvil-friendly)
+     ══════════════════════════════════════════════════════════════════════════ -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="pagination-bottom no-print">
+    <div class="pagination-info">
+        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        <span class="pagination-total">({{ page_obj.paginator.count }} registros)</span>
+    </div>
+    <div class="pagination-controls">
+        {% if page_obj.has_previous %}
+        <a href="?page=1{% if estado %}&estado={{ estado }}{% endif %}{% if q %}&q={{ q }}{% endif %}" 
+           class="pagination-btn" title="Primera">
+            <span class="material-icons">first_page</span>
+        </a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if estado %}&estado={{ estado }}{% endif %}{% if q %}&q={{ q }}{% endif %}" 
+           class="pagination-btn" title="Anterior">
+            <span class="material-icons">chevron_left</span>
+        </a>
+        {% endif %}
+        
+        <span class="pagination-current">{{ page_obj.number }}</span>
+        
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if estado %}&estado={{ estado }}{% endif %}{% if q %}&q={{ q }}{% endif %}" 
+           class="pagination-btn" title="Siguiente">
+            <span class="material-icons">chevron_right</span>
+        </a>
+        <a href="?page={{ page_obj.paginator.num_pages }}{% if estado %}&estado={{ estado }}{% endif %}{% if q %}&q={{ q }}{% endif %}" 
+           class="pagination-btn" title="Última">
+            <span class="material-icons">last_page</span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ESTILOS
+     ══════════════════════════════════════════════════════════════════════════ -->
 <style>
-/* ═══════════════════════════════════════════════════════════════════════════
-   VARIABLES Y BASE
-   ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-    --color-primary: #0097a7;
-    --color-primary-dark: #028996;
-    --color-text-main: #111827;
-    --color-text-secondary: #6b7280;
-    --color-text-muted: #9ca3af;
-    --color-border: #e5e7eb;
-    --color-border-light: #f3f4f6;
-    --color-bg-hover: #f9fafb;
-    --radius-soft: 12px;
-    --radius-pill: 999px;
+    --color-primary: #017e84;
+    --color-primary-light: #e8f4f4;
+    --color-success: #28a745;
+    --color-success-bg: #d4edda;
+    --color-warning: #ffc107;
+    --color-warning-bg: #fff3cd;
+    --color-danger: #dc3545;
+    --color-danger-bg: #f8d7da;
+    --color-text: #212529;
+    --color-text-muted: #6c757d;
+    --color-border: #dee2e6;
+    --color-bg: #f8f9fa;
+    --color-white: #ffffff;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 2px 4px rgba(0,0,0,0.1);
+    --radius: 6px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   BARRA DE CONTROL (ODOO STYLE)
+   BARRA DE CONTROL
    ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-control-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
     padding: 12px 20px;
-    background: #fff;
+    background: var(--color-white);
     border-bottom: 1px solid var(--color-border);
+    gap: 16px;
+    flex-wrap: wrap;
 }
 
 .odoo-control-left {
@@ -306,75 +380,61 @@
     gap: 16px;
 }
 
-.odoo-breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
 .odoo-breadcrumb-title {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--color-text-main);
+    color: var(--color-text);
 }
 
-/* Acciones masivas */
 .bulk-actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding-left: 16px;
     border-left: 1px solid var(--color-border);
-    animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
 }
 
 .bulk-count {
     font-size: 13px;
-    color: var(--color-text-secondary);
-    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-right: 4px;
 }
 
 .bulk-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 8px;
+    gap: 4px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: var(--radius);
     font-size: 13px;
     font-weight: 500;
-    border: none;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s;
 }
 
 .bulk-btn .material-icons {
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .bulk-btn-approve {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--color-success);
+    color: white;
 }
 
 .bulk-btn-approve:hover {
-    background: #bbf7d0;
+    background: #218838;
 }
 
 .bulk-btn-reject {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--color-danger);
+    color: white;
 }
 
 .bulk-btn-reject:hover {
-    background: #fecaca;
+    background: #c82333;
 }
 
-/* Control Center - Búsqueda */
 .odoo-control-center {
     flex: 1;
     max-width: 500px;
@@ -382,28 +442,21 @@
 
 .odoo-search-form {
     display: flex;
-    gap: 10px;
+    gap: 8px;
 }
 
 .odoo-search-box {
     flex: 1;
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
-    background: #f9fafb;
+    background: var(--color-bg);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-pill);
-    transition: all 0.15s ease;
+    border-radius: var(--radius);
+    padding: 0 12px;
 }
 
-.odoo-search-box:focus-within {
-    background: #fff;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.15);
-}
-
-.odoo-search-box .material-icons {
+.odoo-search-box > .material-icons {
     color: var(--color-text-muted);
     font-size: 20px;
 }
@@ -412,19 +465,15 @@
     flex: 1;
     border: none;
     background: transparent;
+    padding: 8px;
     font-size: 14px;
-    color: var(--color-text-main);
     outline: none;
-}
-
-.odoo-search-box input::placeholder {
-    color: var(--color-text-muted);
 }
 
 .odoo-filter-chips {
     display: flex;
     gap: 6px;
-    flex-wrap: wrap;
+    margin-left: 8px;
 }
 
 .odoo-chip {
@@ -432,57 +481,90 @@
     align-items: center;
     gap: 4px;
     padding: 2px 8px;
-    background: #e0f7fa;
-    color: var(--color-primary-dark);
-    border-radius: 4px;
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    border-radius: 12px;
     font-size: 12px;
-    font-weight: 500;
 }
 
 .odoo-chip button {
     background: none;
     border: none;
     color: inherit;
-    font-size: 14px;
     cursor: pointer;
     padding: 0;
+    font-size: 14px;
     line-height: 1;
 }
 
 .odoo-filter-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    background: #fff;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--color-white);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-pill);
-    color: var(--color-text-secondary);
-    font-size: 14px;
-    font-weight: 500;
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--color-text);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s;
 }
 
 .odoo-filter-btn:hover {
-    background: var(--color-bg-hover);
-    border-color: #d1d5db;
+    background: var(--color-bg);
 }
 
 .odoo-filter-btn .material-icons {
     font-size: 18px;
 }
 
-/* Control Right */
 .odoo-control-right {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .odoo-pagination-info {
     font-size: 13px;
-    color: var(--color-text-secondary);
+    color: var(--color-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOTONES DE PAGINACIÓN (header)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.odoo-pager-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.odoo-pager-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.odoo-pager-btn:hover:not(.disabled) {
+    background: var(--color-bg);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.odoo-pager-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.odoo-pager-btn .material-icons {
+    font-size: 20px;
 }
 
 .odoo-view-toggle {
@@ -492,26 +574,21 @@
 
 .odoo-view-btn {
     padding: 6px;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
     color: var(--color-text-muted);
     cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.odoo-view-btn:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-text-secondary);
 }
 
 .odoo-view-btn.active {
-    background: #e0f7fa;
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
     color: var(--color-primary);
 }
 
 .odoo-view-btn .material-icons {
-    font-size: 20px;
+    font-size: 18px;
     display: block;
 }
 
@@ -519,152 +596,124 @@
    PANEL DE FILTROS
    ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-filter-panel {
-    background: #fff;
+    background: var(--color-white);
     border-bottom: 1px solid var(--color-border);
-    padding: 20px;
-}
-
-.odoo-filter-form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    padding: 16px 20px;
 }
 
 .odoo-filter-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 16px;
+    margin-bottom: 16px;
 }
 
 .odoo-filter-group label {
     display: block;
     font-size: 12px;
-    font-weight: 600;
-    color: #4b5563;
-    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
 }
 
-.odoo-filter-group select,
-.odoo-filter-group input {
+.odoo-filter-group select {
     width: 100%;
-    padding: 10px 14px;
-    font-size: 14px;
+    padding: 8px 12px;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
-    background: #fff;
-    color: var(--color-text-main);
-    transition: all 0.15s ease;
-}
-
-.odoo-filter-group select:focus,
-.odoo-filter-group input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.15);
+    border-radius: var(--radius);
+    font-size: 14px;
+    background: var(--color-white);
 }
 
 .odoo-filter-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 8px;
 }
 
 .odoo-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 18px;
-    border-radius: var(--radius-pill);
+    padding: 8px 16px;
+    border-radius: var(--radius);
     font-size: 14px;
     font-weight: 500;
-    cursor: pointer;
     text-decoration: none;
-    transition: all 0.15s ease;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
 }
 
 .odoo-btn-primary {
     background: var(--color-primary);
-    color: #fff;
-    border: none;
-    box-shadow: 0 4px 10px rgba(0, 151, 167, 0.35);
+    color: white;
 }
 
 .odoo-btn-primary:hover {
-    background: var(--color-primary-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 14px rgba(0, 151, 167, 0.4);
+    background: #016a6f;
 }
 
 .odoo-btn-secondary {
-    background: #f9fafb;
-    color: #374151;
-    border: 1px solid #d1d5db;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
 }
 
 .odoo-btn-secondary:hover {
-    background: #f3f4f6;
-    border-color: #9ca3af;
+    background: #e9ecef;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TABLA
    ═══════════════════════════════════════════════════════════════════════════ */
 .odoo-table-container {
-    background: #fff;
-    border-radius: 0 0 var(--radius-soft) var(--radius-soft);
-    overflow: hidden;
+    background: var(--color-white);
+    overflow-x: auto;
 }
 
 .odoo-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
 }
 
 .odoo-table thead {
-    background: #f9fafb;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    background: var(--color-bg);
+    border-bottom: 2px solid var(--color-border);
 }
 
 .odoo-table th {
-    padding: 14px 16px;
+    padding: 12px 16px;
     text-align: left;
-    font-weight: 600;
-    color: #4b5563;
     font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--color-border);
 }
 
 .odoo-table td {
-    padding: 16px;
-    border-bottom: 1px solid var(--color-border-light);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border);
     vertical-align: middle;
 }
 
 .odoo-row-clickable {
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background 0.15s;
 }
 
 .odoo-row-clickable:hover {
-    background: var(--color-bg-hover);
+    background: var(--color-bg);
 }
 
 .odoo-row-clickable.selected {
-    background: #e0f7fa;
-}
-
-.odoo-row-clickable.selected:hover {
-    background: #b2ebf2;
+    background: var(--color-primary-light);
 }
 
 /* Columnas específicas */
 .col-check {
-    width: 50px;
+    width: 48px;
     text-align: center;
 }
 
@@ -677,29 +726,82 @@
 }
 
 .col-actions {
-    width: 50px;
-    text-align: center;
+    width: 100px;
+    text-align: right;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   CARD DE SOLICITANTE (NUEVA ESTRUCTURA CONSOLIDADA)
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* Checkbox custom */
+.custom-checkbox {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.custom-checkbox input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.custom-checkbox .checkmark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-white);
+    transition: all 0.15s;
+}
+
+.custom-checkbox input:checked + .checkmark {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.custom-checkbox input:checked + .checkmark::after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.custom-checkbox input:indeterminate + .checkmark {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.custom-checkbox input:indeterminate + .checkmark::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 7px;
+    width: 10px;
+    height: 2px;
+    background: white;
+}
+
+/* Solicitante card */
 .solicitante-card {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
 }
 
 .solicitante-avatar {
     width: 44px;
     height: 44px;
-    background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
-    border-radius: 10px;
+    border-radius: 50%;
+    background: var(--color-bg);
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .solicitante-avatar img {
@@ -709,28 +811,24 @@
 }
 
 .solicitante-avatar .material-icons {
-    font-size: 22px;
-    color: #fff;
+    font-size: 24px;
+    color: var(--color-text-muted);
 }
 
 .solicitante-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
     min-width: 0;
 }
 
 .solicitante-nombre {
-    font-weight: 600;
-    color: var(--color-text-main);
-    font-size: 14px;
-    line-height: 1.3;
+    font-weight: 500;
+    color: var(--color-text);
+    display: block;
+    margin-bottom: 2px;
 }
 
 .solicitante-detalles {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
     gap: 12px;
 }
 
@@ -739,210 +837,196 @@
     align-items: center;
     gap: 4px;
     font-size: 12px;
-    color: var(--color-text-secondary);
+    color: var(--color-text-muted);
 }
 
 .detalle-item .material-icons {
     font-size: 14px;
-    color: var(--color-text-muted);
 }
 
-.detalle-fecha {
-    color: var(--color-text-muted);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   CHECKBOX PERSONALIZADO
-   ═══════════════════════════════════════════════════════════════════════════ */
-.custom-checkbox {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    cursor: pointer;
-    user-select: none;
-}
-
-.custom-checkbox input {
-    position: absolute;
-    opacity: 0;
-    cursor: pointer;
-    height: 0;
-    width: 0;
-}
-
-.custom-checkbox .checkmark {
-    width: 20px;
-    height: 20px;
-    background: #fff;
-    border: 2px solid #d1d5db;
-    border-radius: 6px;
-    transition: all 0.15s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.custom-checkbox:hover .checkmark {
-    border-color: var(--color-primary);
-}
-
-.custom-checkbox input:checked ~ .checkmark {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-}
-
-.custom-checkbox .checkmark::after {
-    content: '';
-    display: none;
-    width: 5px;
-    height: 10px;
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-    margin-bottom: 2px;
-}
-
-.custom-checkbox input:checked ~ .checkmark::after {
-    display: block;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SELECT Y BADGES
-   ═══════════════════════════════════════════════════════════════════════════ */
-.inline-form {
-    display: inline-block;
-    margin: 0;
-}
-
+/* Select estado miembro */
 .estado-miembro-select {
-    width: 100%;
-    min-width: 130px;
     padding: 6px 10px;
-    border-radius: 8px;
     border: 1px solid var(--color-border);
-    background: #fff;
-    font-weight: 500;
-    font-size: 12px;
-    color: #4b5563;
+    border-radius: var(--radius);
+    font-size: 13px;
+    background: var(--color-white);
     cursor: pointer;
-    transition: all 0.15s ease;
+    width: 100%;
+    max-width: 140px;
 }
 
-.estado-miembro-select:hover {
-    border-color: #d1d5db;
+.tipo-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background: var(--color-bg);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--color-text-muted);
 }
 
-.estado-miembro-select:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.15);
-}
-
-.odoo-badge {
+/* Estado badge */
+.estado-badge {
     display: inline-flex;
     align-items: center;
+    gap: 4px;
     padding: 4px 10px;
-    border-radius: 6px;
+    border-radius: 12px;
     font-size: 12px;
     font-weight: 500;
 }
 
-.odoo-badge-info {
-    background: #e0f2fe;
-    color: #0369a1;
-}
-
-/* Badges de estado */
-.badge-estado {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: var(--radius-pill);
-    font-size: 12px;
-    font-weight: 600;
-    border: 1px solid transparent;
-}
-
-.badge-estado .material-icons {
-    font-size: 16px;
-}
-
-.badge-pendiente {
-    background: #fff7ed;
-    color: #9a3412;
-    border-color: #fed7aa;
-}
-
-.badge-aprobada {
-    background: #dcfce7;
-    color: #166534;
-    border-color: #86efac;
-}
-
-.badge-rechazada {
-    background: #fee2e2;
-    color: #991b1b;
-    border-color: #fecaca;
-}
-
-.badge-neutral {
-    background: #f3f4f6;
-    color: #4b5563;
-    border-color: #e5e7eb;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   BOTÓN DE ACCIÓN
-   ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    color: var(--color-text-muted);
-    text-decoration: none;
-    transition: all 0.15s ease;
-}
-
-.odoo-action-btn:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-primary);
-}
-
-.odoo-action-btn .material-icons {
-    font-size: 20px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   TABLA VACÍA Y FOOTER
-   ═══════════════════════════════════════════════════════════════════════════ */
-.odoo-empty-table {
-    text-align: center;
-    padding: 60px 20px !important;
-    color: var(--color-text-muted);
-}
-
-.odoo-empty-table .material-icons {
-    font-size: 48px;
-    margin-bottom: 12px;
-    opacity: 0.5;
-}
-
-.odoo-empty-table p {
-    margin: 0;
+.estado-badge .material-icons {
     font-size: 14px;
 }
 
-.odoo-table-footer {
-    padding: 12px 16px;
-    background: #f9fafb;
-    border-top: 1px solid var(--color-border-light);
-    font-size: 13px;
-    color: var(--color-text-secondary);
+.estado-pendiente {
+    background: var(--color-warning-bg);
+    color: #856404;
+}
+
+.estado-aprobada {
+    background: var(--color-success-bg);
+    color: #155724;
+}
+
+.estado-rechazada {
+    background: var(--color-danger-bg);
+    color: #721c24;
+}
+
+/* Action buttons */
+.action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.inline-form {
+    display: inline;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.action-btn .material-icons {
+    font-size: 18px;
+}
+
+.action-approve {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+}
+
+.action-approve:hover {
+    background: var(--color-success);
+    color: white;
+}
+
+.action-reject {
+    background: var(--color-danger-bg);
+    color: var(--color-danger);
+}
+
+.action-reject:hover {
+    background: var(--color-danger);
+    color: white;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px !important;
+}
+
+.empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.empty-content .material-icons {
+    font-size: 48px;
+    color: var(--color-border);
+}
+
+.empty-content p {
+    color: var(--color-text-muted);
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGINACIÓN INFERIOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pagination-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--color-white);
+    border-top: 1px solid var(--color-border);
+}
+
+.pagination-info {
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.pagination-total {
+    color: var(--color-text-muted);
+    margin-left: 4px;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.pagination-btn .material-icons {
+    font-size: 20px;
+}
+
+.pagination-current {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: var(--radius);
     font-weight: 500;
 }
 
@@ -962,8 +1046,6 @@
         display: block;
         text-align: center;
         margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #000;
     }
 
     .print-header h1 {
@@ -972,22 +1054,28 @@
     }
 
     .print-header p {
-        margin: 5px 0 0;
+        margin: 4px 0 0;
         font-size: 12px;
         color: #666;
     }
 
-    .odoo-table thead {
-        position: static;
+    .odoo-table th,
+    .odoo-table td {
+        padding: 8px 12px;
+        font-size: 11px;
     }
 
-    .odoo-table th {
-        background: #f0f0f0 !important;
+    .estado-badge {
+        print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
     }
 
     .odoo-row-clickable:hover {
         background: transparent;
+    }
+    
+    .pagination-bottom {
+        display: none !important;
     }
 }
 
@@ -1039,7 +1127,6 @@
         grid-template-columns: 1fr;
     }
 
-    /* Tabla responsive */
     .odoo-table-container {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -1055,6 +1142,12 @@
     
     .detalle-item {
         font-size: 11px;
+    }
+    
+    .pagination-bottom {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
     }
 }
 
@@ -1172,7 +1265,7 @@ function aprobarSeleccionados() {
     const ids = getSelectedIds();
     if (ids.length === 0) return;
     
-    if (confirm(`¿Aprobar ${ids.length} solicitud(es) seleccionada(s)?`)) {
+    if (confirm(`¿Aprobar ${ids.length} solicitud(es) seleccionada(s)?\n\nLas solicitudes serán eliminadas después de crear los miembros.`)) {
         document.getElementById('ids-aprobar').value = ids.join(',');
         document.getElementById('form-aprobar-masivo').submit();
     }
@@ -1182,10 +1275,8 @@ function rechazarSeleccionados() {
     const ids = getSelectedIds();
     if (ids.length === 0) return;
     
-    const nota = prompt(`Motivo del rechazo para ${ids.length} solicitud(es) (opcional):`, "");
-    if (nota !== null) {
+    if (confirm(`¿Rechazar y eliminar ${ids.length} solicitud(es) seleccionada(s)?`)) {
         document.getElementById('ids-rechazar').value = ids.join(',');
-        document.getElementById('nota-rechazar').value = (nota || "").trim();
         document.getElementById('form-rechazar-masivo').submit();
     }
 }
