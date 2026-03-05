@@ -134,7 +134,7 @@ class ConfiguracionReportesForm(forms.ModelForm):
             "email_from_name",
             "email_from_address",
             "enviar_copia_a_pastor",
-            "codigo_miembro_prefijo",   # 👈 AÑADIDO AQUÍ
+            "codigo_miembro_prefijo",
             
         ]
         widgets = {
@@ -203,13 +203,11 @@ class UsuarioIglesiaForm(UserCreationForm):
         })
     )
 
-    # ya lo tienes
     miembro_id = forms.IntegerField(
         required=False,
         widget=forms.HiddenInput()
     )
 
-    # ✅ NUEVO: si el admin decide editar manualmente nombre/apellidos
     override_nombre = forms.BooleanField(
         required=False,
         initial=False,
@@ -230,69 +228,33 @@ class UsuarioIglesiaForm(UserCreationForm):
     )
 
     dias_expiracion = forms.ChoiceField(
-        label="Expira en",
-        required=False,
+        label="Días de acceso",
         choices=[
             (7, "7 días"),
             (15, "15 días"),
             (30, "30 días"),
             (60, "60 días"),
+            (90, "90 días"),
         ],
         initial=15,
+        required=False,
         widget=forms.Select(attrs={
             "class": "form-input",
             "id": "id_dias_expiracion"
         })
     )
 
-    motivo_temporal = forms.ChoiceField(
+    motivo_temporal = forms.CharField(
         label="Motivo",
+        max_length=200,
         required=False,
-        choices=[
-            ("Prueba del sistema", "Prueba del sistema"),
-            ("Demo para cliente", "Demo para cliente"),
-            ("Evaluación", "Evaluación"),
-            ("Capacitación", "Capacitación"),
-            ("Otro", "Otro"),
-        ],
         initial="Prueba del sistema",
-        widget=forms.Select(attrs={
+        widget=forms.TextInput(attrs={
             "class": "form-input",
+            "placeholder": "Ej: Demo para cliente, Evaluación, etc.",
             "id": "id_motivo_temporal"
         })
     )
-
-    def clean_miembro_id(self):
-        """
-        Limpia el campo miembro_id:
-        - Convierte string vacío a None
-        - Valida que el miembro exista y no esté ya vinculado
-        """
-        miembro_id = self.cleaned_data.get("miembro_id")
-        
-        # Si viene vacío (string vacío o None), retornar None
-        if not miembro_id:
-            return None
-            
-        # Asegurar que sea entero
-        try:
-            miembro_id = int(miembro_id)
-        except (ValueError, TypeError):
-            return None
-        
-        from miembros_app.models import Miembro
-        miembro = Miembro.objects.filter(id=miembro_id).first()
-        
-        if not miembro:
-            raise forms.ValidationError("El miembro seleccionado no existe.")
-        
-        # Verificar que no esté ya vinculado a otro usuario
-        if miembro.usuario is not None:
-            raise forms.ValidationError(
-                f"Este miembro ya está vinculado al usuario «{miembro.usuario.username}»."
-            )
-        
-        return miembro_id
 
     def clean_email(self):
         email = (self.cleaned_data.get("email") or "").strip().lower()
@@ -301,7 +263,6 @@ class UsuarioIglesiaForm(UserCreationForm):
 
         qs = User.objects.filter(email__iexact=email)
 
-        # ✅ si estoy editando, excluir mi propio usuario
         if self.instance and self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
 
@@ -313,11 +274,6 @@ class UsuarioIglesiaForm(UserCreationForm):
         return email
 
     def _get_miembro_nombres(self, miembro):
-        """
-        Intentamos encontrar nombre/apellidos con varios nombres de campos posibles,
-        para no romper si tu modelo Miembro usa otro naming.
-        """
-        # Ajusta este orden si tú sabes exactamente cómo se llaman.
         nombre = (
             getattr(miembro, "nombre", None)
             or getattr(miembro, "nombres", None)
@@ -329,22 +285,22 @@ class UsuarioIglesiaForm(UserCreationForm):
             getattr(miembro, "apellido", None)
             or getattr(miembro, "apellidos", None)
             or getattr(miembro, "last_name", None)
-            or getattr(miembro, "segundo_nombre", None)  # (por si lo usas así)
+            or getattr(miembro, "segundo_nombre", None)
             or ""
         )
         return (str(nombre).strip(), str(apellidos).strip())
 
-    def save(self, commit=True, creado_por=None):
+    # ✅ MODIFICADO: RECIBE TENANT
+    def save(self, commit=True, creado_por=None, tenant=None):
         user = super().save(commit=False)
 
-        # Datos normales del form
         miembro_id = self.cleaned_data.get("miembro_id")
 
         if miembro_id:
             from miembros_app.models import Miembro
             miembro = Miembro.objects.filter(id=miembro_id).first()
             if miembro and miembro.email:
-                user.email = miembro.email  # 🔥 el miembro manda
+                user.email = miembro.email
             else:
                 user.email = self.cleaned_data.get("email", "")
         else:
@@ -354,22 +310,17 @@ class UsuarioIglesiaForm(UserCreationForm):
         miembro_id = self.cleaned_data.get("miembro_id")
         override = bool(self.cleaned_data.get("override_nombre"))
 
-        # ✅ Regla híbrida:
-        # Si se vinculó miembro y NO se activó edición manual,
-        # el nombre/apellido del usuario se toma del Miembro (fuente de verdad).
         if miembro_id and not override:
-            from miembros_app.models import Miembro  # import local para evitar líos
+            from miembros_app.models import Miembro
             miembro = Miembro.objects.filter(id=miembro_id).first()
             if miembro:
                 nombre, apellidos = self._get_miembro_nombres(miembro)
-                # si por alguna razón vienen vacíos, cae al form
                 user.first_name = nombre or self.cleaned_data.get("first_name", "")
                 user.last_name = apellidos or self.cleaned_data.get("last_name", "")
             else:
                 user.first_name = self.cleaned_data.get("first_name", "")
                 user.last_name = self.cleaned_data.get("last_name", "")
         else:
-            # Edición manual o sin miembro
             user.first_name = self.cleaned_data.get("first_name", "")
             user.last_name = self.cleaned_data.get("last_name", "")
 
@@ -382,7 +333,7 @@ class UsuarioIglesiaForm(UserCreationForm):
             # =========================================
             # 🆕 CREAR USUARIO TEMPORAL SI APLICA
             # =========================================
-            if self.cleaned_data.get("es_temporal"):
+            if self.cleaned_data.get("es_temporal") and tenant:
                 from .models import UsuarioTemporal
                 from django.utils import timezone
                 from datetime import timedelta
@@ -391,11 +342,12 @@ class UsuarioIglesiaForm(UserCreationForm):
                 motivo = self.cleaned_data.get("motivo_temporal", "Prueba del sistema")
 
                 UsuarioTemporal.objects.create(
+                    tenant=tenant,  # ✅ AGREGAR TENANT
                     user=user,
                     creado_por=creado_por,
                     fecha_expiracion=timezone.now() + timedelta(days=dias),
                     motivo=motivo,
-                    password_temporal=""  # No guardamos la contraseña aquí porque el admin la puso manualmente
+                    password_temporal=""
                 )
 
         return user
@@ -444,7 +396,6 @@ class UsuarioIglesiaEditForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Precargar el grupo actual del usuario
         if self.instance and self.instance.pk:
             grupo_actual = self.instance.groups.first()
             if grupo_actual:
@@ -491,11 +442,9 @@ class UsuarioIglesiaEditForm(forms.ModelForm):
     def clean_miembro_id(self):
         miembro_id = self.cleaned_data.get("miembro_id")
         
-        # Si viene vacío, retornar None
         if not miembro_id:
             return None
         
-        # Asegurar que sea entero
         try:
             miembro_id = int(miembro_id)
         except (ValueError, TypeError):
@@ -507,12 +456,9 @@ class UsuarioIglesiaEditForm(forms.ModelForm):
         if not miembro:
             raise forms.ValidationError("El miembro seleccionado no existe.")
 
-        # Verificar que no esté ya vinculado a OTRO usuario
         if miembro.usuario is not None:
-            # Si el miembro ya está vinculado al usuario actual, está OK
             if self.instance and self.instance.pk and miembro.usuario.pk == self.instance.pk:
                 return miembro_id
-            # Si está vinculado a otro usuario, error
             raise forms.ValidationError(
                 f"⚠️ Este miembro ya está vinculado al usuario «{miembro.usuario.username}»."
             )

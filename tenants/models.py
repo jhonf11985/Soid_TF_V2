@@ -14,3 +14,16 @@ class Tenant(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.dominio})"
+
+class TenantAwareModel(models.Model):
+    """
+    Clase base abstracta para modelos multi-tenant.
+    """
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.PROTECT,
+        related_name="%(app_label)s_%(class)s_set",
+    )
+
+    class Meta:
+        abstract = True

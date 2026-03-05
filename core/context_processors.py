@@ -1,5 +1,6 @@
 # context_processors.py
 # Actualizado con sistema de mensajes inteligentes de bienvenida
+# ✅ CON SOPORTE MULTI-TENANT
 
 from django.conf import settings
 from django.apps import apps
@@ -19,7 +20,14 @@ def configuracion_global(request):
     Envía la configuración del sistema, módulos activos
     y contexto inteligente de SOID a TODAS las plantillas.
     """
-    config = ConfiguracionSistema.load()
+    # ✅ OBTENER TENANT (puede ser None en admin/login)
+    tenant = getattr(request, 'tenant', None)
+    
+    # ✅ CARGAR CONFIG SOLO SI HAY TENANT
+    if tenant:
+        config = ConfiguracionSistema.load(tenant)
+    else:
+        config = None
 
     # Todos los módulos activos ordenados
     todos_los_modulos = list(Module.objects.filter(is_enabled=True).order_by('order', 'name'))
@@ -71,30 +79,34 @@ def configuracion_global(request):
             else:
                 soid_ctx["rol"] = "usuario"
 
-        # 3) Pendientes del sistema (Miembros)
-        try:
-            Miembro = apps.get_model("miembros_app", "Miembro")
-        except Exception:
-            Miembro = None
+        # 3) Pendientes del sistema (Miembros) - SOLO SI HAY TENANT
+        if tenant:
+            try:
+                Miembro = apps.get_model("miembros_app", "Miembro")
+            except Exception:
+                Miembro = None
 
-        if Miembro:
-            # Miembros sin padre espiritual
-            for f in ["padre_espiritual", "padre_espiritual_miembro", "padre_espiritual_fk"]:
-                if _has_field(Miembro, f):
-                    soid_ctx["pendientes"]["sin_padre_espiritual"] = Miembro.objects.filter(**{f"{f}__isnull": True}).count()
-                    break
+            if Miembro:
+                # ✅ FILTRAR POR TENANT
+                base_qs = Miembro.objects.filter(tenant=tenant)
+                
+                # Miembros sin padre espiritual
+                for f in ["padre_espiritual", "padre_espiritual_miembro", "padre_espiritual_fk"]:
+                    if _has_field(Miembro, f):
+                        soid_ctx["pendientes"]["sin_padre_espiritual"] = base_qs.filter(**{f"{f}__isnull": True}).count()
+                        break
 
-            # Pendientes de envío a Nuevo Creyente
-            for f in [
-                "pendiente_envio_nuevo_creyente",
-                "pendiente_envio_nc",
-                "pendiente_envio",
-                "nuevo_creyente_pendiente_envio",
-                "pendiente_a_nuevo_creyente",
-            ]:
-                if _has_field(Miembro, f):
-                    soid_ctx["pendientes"]["pendiente_envio_nuevo_creyente"] = Miembro.objects.filter(**{f: True}).count()
-                    break
+                # Pendientes de envío a Nuevo Creyente
+                for f in [
+                    "pendiente_envio_nuevo_creyente",
+                    "pendiente_envio_nc",
+                    "pendiente_envio",
+                    "nuevo_creyente_pendiente_envio",
+                    "pendiente_a_nuevo_creyente",
+                ]:
+                    if _has_field(Miembro, f):
+                        soid_ctx["pendientes"]["pendiente_envio_nuevo_creyente"] = base_qs.filter(**{f: True}).count()
+                        break
 
     # ===============================
     # 💬 MENSAJE DE BIENVENIDA

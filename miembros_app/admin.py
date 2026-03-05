@@ -96,6 +96,13 @@ class MiembroAdmin(admin.ModelAdmin):
     ordering = ("nombres", "apellidos")
     list_per_page = 25
 
+    def get_queryset(self, request):
+        qs = self.model._base_manager.get_queryset()
+
+        if hasattr(request, "tenant") and request.tenant:
+            qs = qs.filter(tenant=request.tenant)
+
+        return qs
     def save_model(self, request, obj, form, change):
 
         if not change and not obj.tenant_id:

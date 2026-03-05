@@ -14,29 +14,31 @@ class ModuleAdmin(admin.ModelAdmin):
 @admin.register(ConfiguracionSistema)
 class ConfiguracionSistemaAdmin(admin.ModelAdmin):
     """
-    Solo permitimos un registro de configuración del sistema.
+    Configuración por tenant.
+    En el admin de Django no se filtra por tenant automáticamente,
+    pero el constraint único por tenant evita duplicados.
     """
-    list_display = ("nombre_iglesia", "email_oficial", "telefono_oficial")
+    list_display = ("tenant", "nombre_iglesia", "email_oficial", "telefono_oficial")
+    list_filter = ("tenant",)
+    search_fields = ("nombre_iglesia", "email_oficial")
 
-    # Evitar que se creen más de un registro
+    # ✅ YA NO LIMITAMOS A 1 REGISTRO (ahora es 1 por tenant)
     def has_add_permission(self, request):
-        from .models import ConfiguracionSistema
-        if ConfiguracionSistema.objects.exists():
-            return False
-        return super().has_add_permission(request)
+        return True
 
 
 @admin.register(DocumentoCompartido)
 class DocumentoCompartidoAdmin(admin.ModelAdmin):
-    list_display = ("titulo", "token", "activo", "creado_en", "expira_en", "creado_por")
+    list_display = ("titulo", "tenant", "token", "activo", "creado_en", "expira_en", "creado_por")
+    list_filter = ("tenant", "activo")
     search_fields = ("titulo", "token")
-    list_filter = ("activo",)
 
 
 @admin.register(UsuarioTemporal)
 class UsuarioTemporalAdmin(admin.ModelAdmin):
     list_display = [
         'usuario_display', 
+        'tenant',
         'motivo', 
         'estado_display', 
         'dias_restantes_display',
@@ -44,13 +46,16 @@ class UsuarioTemporalAdmin(admin.ModelAdmin):
         'fecha_creacion',
         'creado_por'
     ]
-    list_filter = ['activo', 'motivo', 'fecha_creacion']
+    list_filter = ['tenant', 'activo', 'motivo', 'fecha_creacion']
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'motivo', 'notas']
     readonly_fields = ['fecha_creacion', 'ultimo_acceso', 'accesos_count', 'password_temporal']
     raw_id_fields = ['user', 'creado_por']
     date_hierarchy = 'fecha_creacion'
     
     fieldsets = (
+        ('Tenant', {
+            'fields': ('tenant',)
+        }),
         ('Usuario', {
             'fields': ('user', 'password_temporal')
         }),

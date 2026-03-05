@@ -7,8 +7,11 @@ from django.db.models import Q
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 
+# Multi-tenant
+from tenants.models import Tenant, TenantAwareModel
 
-class CuentaFinanciera(models.Model):
+
+class CuentaFinanciera(TenantAwareModel):
     TIPO_CUENTA_CHOICES = [
         ("caja", "Caja"),
         ("banco", "Banco"),
@@ -42,7 +45,7 @@ class CuentaFinanciera(models.Model):
         max_digits=12,
         decimal_places=2,
         default=0,
-        validators=[MinValueValidator(Decimal("0"))],  # 👈 VALIDADOR AGREGADO
+        validators=[MinValueValidator(Decimal("0"))],
         help_text="Saldo inicial de la cuenta."
     )
     esta_activa = models.BooleanField(
@@ -55,10 +58,10 @@ class CuentaFinanciera(models.Model):
         verbose_name_plural = "Cuentas financieras"
         ordering = ["nombre"]
         constraints = [
-            # 👈 CONSTRAINT: Nombre único
+            # 👈 CONSTRAINT: Nombre único POR TENANT
             models.UniqueConstraint(
-                fields=["nombre"],
-                name="uq_cuenta_financiera_nombre"
+                fields=["tenant", "nombre"],
+                name="uq_cuenta_financiera_nombre_por_tenant"
             ),
         ]
 
@@ -124,7 +127,7 @@ class CasillaF001(models.Model):
     def __str__(self):
         return f"{self.codigo} · {self.nombre}"
 
-class CategoriaMovimiento(models.Model):
+class CategoriaMovimiento(TenantAwareModel):
     """
     Categorías para clasificar ingresos y egresos.
     Ejemplo ingreso: Diezmo, Ofrenda, Donación, Venta, Actividad.
@@ -137,7 +140,6 @@ class CategoriaMovimiento(models.Model):
 
     codigo = models.CharField(
         max_length=60,
-        unique=True,
         null=True,
         blank=True,
         help_text="Código interno estable. Ej: CAT_DIEZMO_NO_REGULAR. Recomendado."
@@ -177,10 +179,16 @@ class CategoriaMovimiento(models.Model):
         verbose_name_plural = "Categorías de movimiento"
         ordering = ["tipo", "nombre"]
         constraints = [
-            # 👈 CONSTRAINT: Nombre único por tipo
+            # 👈 CONSTRAINT: Nombre único por tipo POR TENANT
             models.UniqueConstraint(
-                fields=["nombre", "tipo"],
-                name="uq_categoria_nombre_tipo"
+                fields=["tenant", "nombre", "tipo"],
+                name="uq_categoria_nombre_tipo_por_tenant"
+            ),
+            # 👈 CONSTRAINT: Código único POR TENANT (si existe)
+            models.UniqueConstraint(
+                fields=["tenant", "codigo"],
+                condition=Q(codigo__isnull=False) & ~Q(codigo=""),
+                name="uq_categoria_codigo_por_tenant"
             ),
         ]
 
@@ -188,7 +196,7 @@ class CategoriaMovimiento(models.Model):
         return f"{self.nombre} ({self.tipo})"
 
 
-class MovimientoFinanciero(models.Model):
+class MovimientoFinanciero(TenantAwareModel):
     TIPO_MOVIMIENTO_CHOICES = [
         ("ingreso", "Ingreso"),
         ("egreso", "Egreso"),
@@ -414,7 +422,9 @@ class MovimientoFinanciero(models.Model):
         if not self.es_transferencia or not self.transferencia_id:
             return None
         
+        # 👈 FILTRAR POR TENANT
         return MovimientoFinanciero.objects.filter(
+            tenant=self.tenant,
             transferencia_id=self.transferencia_id
         ).exclude(pk=self.pk).first()
 
@@ -552,7 +562,7 @@ class AdjuntoMovimiento(models.Model):
 # ==========================================================
 # CUENTAS POR PAGAR (CxP) – MODELOS BASE
 # ==========================================================
-class ProveedorFinanciero(models.Model):
+class ProveedorFinanciero(TenantAwareModel):
     """
     Proveedor / Beneficiario al que se le debe dinero.
     Puede ser persona o empresa. Se usa en Cuentas por Pagar (CxP).
@@ -672,15 +682,16 @@ class ProveedorFinanciero(models.Model):
         verbose_name_plural = "Proveedores financieros"
         ordering = ["nombre"]
         constraints = [
+            # 👈 CONSTRAINT: Documento único por tipo POR TENANT
             models.UniqueConstraint(
-                fields=["tipo_documento", "documento"],
+                fields=["tenant", "tipo_documento", "documento"],
                 condition=Q(documento__isnull=False) & ~Q(documento=""),
-                name="uq_proveedor_tipo_doc_documento",
+                name="uq_proveedor_tipo_doc_documento_por_tenant",
             ),
-            # 👈 NUEVO: Nombre único
+            # 👈 CONSTRAINT: Nombre único POR TENANT
             models.UniqueConstraint(
-                fields=["nombre"],
-                name="uq_proveedor_nombre"
+                fields=["tenant", "nombre"],
+                name="uq_proveedor_nombre_por_tenant"
             ),
         ]
 
@@ -712,7 +723,7 @@ class ProveedorFinanciero(models.Model):
             raise ValidationError(errors)
 
 
-class CuentaPorPagar(models.Model):
+class CuentaPorPagar(TenantAwareModel):
     """
     Representa una obligación pendiente.
     NO mueve caja. La caja se afecta cuando se cree el EGRESO (Paso de pagos).

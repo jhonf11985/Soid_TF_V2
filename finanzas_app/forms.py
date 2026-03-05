@@ -166,12 +166,19 @@ class CuentaFinancieraForm(forms.ModelForm):
             }),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        super().__init__(*args, **kwargs)
+
     def clean_nombre(self):
-        """Validar que el nombre sea único."""
+        """Validar que el nombre sea único POR TENANT."""
         nombre = self.cleaned_data.get("nombre")
         if nombre:
             nombre = nombre.strip()
             qs = CuentaFinanciera.objects.filter(nombre__iexact=nombre)
+            # 👈 FILTRAR POR TENANT
+            if self.tenant:
+                qs = qs.filter(tenant=self.tenant)
             if self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
@@ -221,6 +228,8 @@ class CategoriaMovimientoForm(forms.ModelForm):
             "activo": "Categoría activa",
         }
     def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        super().__init__(*args, **kwargs)
         super().__init__(*args, **kwargs)
 
         # Agregar data-seccion a cada opción del select
@@ -244,7 +253,7 @@ class CategoriaMovimientoForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
 
-        # 1) Validar nombre único por tipo
+        # 1) Validar nombre único por tipo POR TENANT
         nombre = cleaned.get("nombre")
         tipo = cleaned.get("tipo")
 
@@ -254,6 +263,9 @@ class CategoriaMovimientoForm(forms.ModelForm):
                 nombre__iexact=nombre_norm,
                 tipo=tipo
             )
+            # 👈 FILTRAR POR TENANT
+            if self.tenant:
+                qs = qs.filter(tenant=self.tenant)
             if self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
@@ -313,12 +325,15 @@ class MovimientoFinancieroForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
         super().__init__(*args, **kwargs)
         # Cargar miembros activos ordenados por nombre y apellidos
         if "persona_asociada" in self.fields:
-            self.fields["persona_asociada"].queryset = Miembro.objects.filter(
-                activo=True
-            ).order_by("nombres", "apellidos")
+            qs = Miembro.objects.filter(activo=True)
+            # 👈 FILTRAR POR TENANT
+            if self.tenant:
+                qs = qs.filter(tenant=self.tenant)
+            self.fields["persona_asociada"].queryset = qs.order_by("nombres", "apellidos")
 
 
 # ============================================
@@ -374,24 +389,27 @@ class MovimientoIngresoForm(forms.ModelForm):
         return fecha
 
     def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
         super().__init__(*args, **kwargs)
 
-        # Filtrar categorías a solo tipo ingreso y activas
-        self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
-            tipo="ingreso",
-            activo=True
-        ).order_by("nombre")
+        # Filtrar categorías a solo tipo ingreso y activas POR TENANT
+        qs_cat = CategoriaMovimiento.objects.filter(tipo="ingreso", activo=True)
+        if self.tenant:
+            qs_cat = qs_cat.filter(tenant=self.tenant)
+        self.fields["categoria"].queryset = qs_cat.order_by("nombre")
 
-        # Filtrar solo cuentas activas
-        self.fields["cuenta"].queryset = CuentaFinanciera.objects.filter(
-            esta_activa=True
-        ).order_by("nombre")
+        # Filtrar solo cuentas activas POR TENANT
+        qs_cuenta = CuentaFinanciera.objects.filter(esta_activa=True)
+        if self.tenant:
+            qs_cuenta = qs_cuenta.filter(tenant=self.tenant)
+        self.fields["cuenta"].queryset = qs_cuenta.order_by("nombre")
 
-        # Cargar miembros activos para el select de persona_asociada
+        # Cargar miembros activos para el select de persona_asociada POR TENANT
         if "persona_asociada" in self.fields:
-            self.fields["persona_asociada"].queryset = Miembro.objects.filter(
-                activo=True
-            ).order_by("nombres", "apellidos")
+            qs_miembro = Miembro.objects.filter(activo=True)
+            if self.tenant:
+                qs_miembro = qs_miembro.filter(tenant=self.tenant)
+            self.fields["persona_asociada"].queryset = qs_miembro.order_by("nombres", "apellidos")
             self.fields["persona_asociada"].required = False
 
         # --------------------------------------------
@@ -529,18 +547,20 @@ class MovimientoEgresoForm(forms.ModelForm):
         return cleaned_data
 
     def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
         super().__init__(*args, **kwargs)
         
-        # Filtrar categorías a solo tipo egreso y activas
-        self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
-            tipo="egreso",
-            activo=True
-        ).order_by("nombre")
+        # Filtrar categorías a solo tipo egreso y activas POR TENANT
+        qs_cat = CategoriaMovimiento.objects.filter(tipo="egreso", activo=True)
+        if self.tenant:
+            qs_cat = qs_cat.filter(tenant=self.tenant)
+        self.fields["categoria"].queryset = qs_cat.order_by("nombre")
 
-        # Filtrar solo cuentas activas
-        self.fields["cuenta"].queryset = CuentaFinanciera.objects.filter(
-            esta_activa=True
-        ).order_by("nombre")
+        # Filtrar solo cuentas activas POR TENANT
+        qs_cuenta = CuentaFinanciera.objects.filter(esta_activa=True)
+        if self.tenant:
+            qs_cuenta = qs_cuenta.filter(tenant=self.tenant)
+        self.fields["cuenta"].queryset = qs_cuenta.order_by("nombre")
         
         # --------------------------------------------
         # UNIDAD (solo si Estructura está activa)
@@ -583,13 +603,13 @@ class TransferenciaForm(forms.Form):
     )
     
     cuenta_origen = forms.ModelChoiceField(
-        queryset=CuentaFinanciera.objects.filter(esta_activa=True),
+        queryset=CuentaFinanciera.objects.none(),  # 👈 Se filtra en __init__
         label="De la cuenta",
         help_text="Cuenta desde donde sale el dinero"
     )
     
     cuenta_destino = forms.ModelChoiceField(
-        queryset=CuentaFinanciera.objects.filter(esta_activa=True),
+        queryset=CuentaFinanciera.objects.none(),  # 👈 Se filtra en __init__
         label="A la cuenta",
         help_text="Cuenta donde entra el dinero"
     )
@@ -618,6 +638,18 @@ class TransferenciaForm(forms.Form):
         }),
         label="Referencia"
     )
+
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        super().__init__(*args, **kwargs)
+        
+        # 👈 FILTRAR CUENTAS POR TENANT
+        qs_cuentas = CuentaFinanciera.objects.filter(esta_activa=True)
+        if self.tenant:
+            qs_cuentas = qs_cuentas.filter(tenant=self.tenant)
+        
+        self.fields["cuenta_origen"].queryset = qs_cuentas
+        self.fields["cuenta_destino"].queryset = qs_cuentas
     
     def clean(self):
         """
@@ -647,10 +679,12 @@ class TransferenciaForm(forms.Form):
             from django.db.models import Sum, Q
             from .models import MovimientoFinanciero
             
-            # Calcular saldo de la cuenta
-            movs = MovimientoFinanciero.objects.filter(
-                cuenta=cuenta_origen
-            ).exclude(estado="anulado").aggregate(
+            # Calcular saldo de la cuenta - FILTRAR POR TENANT
+            qs_movs = MovimientoFinanciero.objects.filter(cuenta=cuenta_origen)
+            if self.tenant:
+                qs_movs = qs_movs.filter(tenant=self.tenant)
+            
+            movs = qs_movs.exclude(estado="anulado").aggregate(
                 ingresos=Sum("monto", filter=Q(tipo="ingreso")),
                 egresos=Sum("monto", filter=Q(tipo="egreso")),
             )
@@ -705,12 +739,26 @@ class ProveedorFinancieroForm(forms.ModelForm):
             "notas": forms.Textarea(attrs={"rows": 2, "placeholder": "Notas (opcional)"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar miembros por tenant
+        if "miembro" in self.fields:
+            qs_miembro = Miembro.objects.filter(activo=True)
+            if self.tenant:
+                qs_miembro = qs_miembro.filter(tenant=self.tenant)
+            self.fields["miembro"].queryset = qs_miembro.order_by("nombres", "apellidos")
+
     def clean_nombre(self):
-        """Validar que el nombre sea único."""
+        """Validar que el nombre sea único POR TENANT."""
         nombre = self.cleaned_data.get("nombre")
         if nombre:
             nombre = nombre.strip()
             qs = ProveedorFinanciero.objects.filter(nombre__iexact=nombre)
+            # 👈 FILTRAR POR TENANT
+            if self.tenant:
+                qs = qs.filter(tenant=self.tenant)
             if self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
@@ -870,6 +918,7 @@ class CuentaPorPagarForm(forms.ModelForm):
         return cleaned
 
     def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
         super().__init__(*args, **kwargs)
         # Fechas por defecto: hoy (solo cuando el formulario NO está ligado a POST y NO es edición)
         if not self.is_bound and not self.instance.pk:
@@ -882,14 +931,13 @@ class CuentaPorPagarForm(forms.ModelForm):
         self.fields["referencia"].label = "Referencia"
         self.fields["referencia"].help_text = "Número de la cuenta por pagar."
 
-        # Valor por defecto CP001, CP002...
+        # Valor por defecto CP001, CP002... FILTRAR POR TENANT
         if not self.is_bound and not self.instance.pk:
-            ultimo = (
-                CuentaPorPagar.objects
-                .filter(referencia__startswith="CP")
-                .aggregate(max_ref=Max("referencia"))
-                .get("max_ref")
-            )
+            qs_cxp = CuentaPorPagar.objects.filter(referencia__startswith="CP")
+            if self.tenant:
+                qs_cxp = qs_cxp.filter(tenant=self.tenant)
+            
+            ultimo = qs_cxp.aggregate(max_ref=Max("referencia")).get("max_ref")
 
             if ultimo:
                 try:
@@ -901,21 +949,23 @@ class CuentaPorPagarForm(forms.ModelForm):
 
             self.fields["referencia"].initial = f"CP{numero:03d}"
 
-        # Solo categorías de egreso activas
-        self.fields["categoria"].queryset = CategoriaMovimiento.objects.filter(
-            tipo="egreso",
-            activo=True
-        ).order_by("nombre")
+        # Solo categorías de egreso activas POR TENANT
+        qs_cat = CategoriaMovimiento.objects.filter(tipo="egreso", activo=True)
+        if self.tenant:
+            qs_cat = qs_cat.filter(tenant=self.tenant)
+        self.fields["categoria"].queryset = qs_cat.order_by("nombre")
 
-        # Solo cuentas activas (para sugerida)
-        self.fields["cuenta_sugerida"].queryset = CuentaFinanciera.objects.filter(
-            esta_activa=True
-        ).order_by("nombre")
+        # Solo cuentas activas (para sugerida) POR TENANT
+        qs_cuenta = CuentaFinanciera.objects.filter(esta_activa=True)
+        if self.tenant:
+            qs_cuenta = qs_cuenta.filter(tenant=self.tenant)
+        self.fields["cuenta_sugerida"].queryset = qs_cuenta.order_by("nombre")
 
-        # Proveedores activos
-        self.fields["proveedor"].queryset = ProveedorFinanciero.objects.filter(
-            activo=True
-        ).order_by("nombre")
+        # Proveedores activos POR TENANT
+        qs_prov = ProveedorFinanciero.objects.filter(activo=True)
+        if self.tenant:
+            qs_prov = qs_prov.filter(tenant=self.tenant)
+        self.fields["proveedor"].queryset = qs_prov.order_by("nombre")
 
                 # Etiquetas claras (esto es B: sugerido, no contable aún)
         self.fields["categoria"].label = "Categoría (sugerida)"
