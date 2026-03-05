@@ -8,7 +8,9 @@ from django.utils.html import format_html
 from django.db.models import Count
 from .models import (
     Miembro, 
-    MiembroRelacion, 
+    MiembroRelacion,
+    MiembroBitacora,
+    TimelineEvent,
     RazonSalidaMiembro,
     ZonaGeo,
     ClanFamiliar,
@@ -18,7 +20,29 @@ from .models import (
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ZONA GEO
+# MIXIN PARA FILTRO POR TENANT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TenantAdminMixin:
+    """
+    Mixin para filtrar automáticamente por tenant en el admin.
+    Usar en modelos que heredan de TenantAwareModel.
+    """
+
+    def get_queryset(self, request):
+        qs = self.model._base_manager.get_queryset()
+        if hasattr(request, "tenant") and request.tenant:
+            qs = qs.filter(tenant=request.tenant)
+        return qs
+
+    def save_model(self, request, obj, form, change):
+        if not change and not obj.tenant_id:
+            obj.tenant = request.tenant
+        super().save_model(request, obj, form, change)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZONA GEO (NO tiene tenant - es compartido)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @admin.register(ZonaGeo)
@@ -34,7 +58,7 @@ class ZonaGeoAdmin(admin.ModelAdmin):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @admin.register(RazonSalidaMiembro)
-class RazonSalidaMiembroAdmin(admin.ModelAdmin):
+class RazonSalidaMiembroAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ("nombre", "aplica_a", "estado_resultante", "permite_carta", "activo", "orden")
     list_filter = ("activo", "aplica_a", "estado_resultante", "permite_carta")
     search_fields = ("nombre", "descripcion")
@@ -57,19 +81,21 @@ class RazonSalidaMiembroAdmin(admin.ModelAdmin):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @admin.register(Miembro)
-class MiembroAdmin(admin.ModelAdmin):
+class MiembroAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = (
         "nombres",
         "apellidos",
         "telefono",
         "email",
         "estado_miembro",
+        "etapa_actual",
         "activo",
         "fecha_ingreso_iglesia",
     )
 
     list_filter = (
         "estado_miembro",
+        "etapa_actual",
         "activo",
         "genero",
         "estado_civil",
@@ -86,6 +112,7 @@ class MiembroAdmin(admin.ModelAdmin):
         "apellidos",
         "telefono",
         "email",
+        "cedula",
         "iglesia_anterior",
         "donde_estudio_teologia",
         "preparacion_teologica",
@@ -96,15 +123,7 @@ class MiembroAdmin(admin.ModelAdmin):
     ordering = ("nombres", "apellidos")
     list_per_page = 25
 
-    def get_queryset(self, request):
-        qs = self.model._base_manager.get_queryset()
-
-        if hasattr(request, "tenant") and request.tenant:
-            qs = qs.filter(tenant=request.tenant)
-
-        return qs
     def save_model(self, request, obj, form, change):
-
         if not change and not obj.tenant_id:
             obj.tenant = request.tenant
 
@@ -135,7 +154,7 @@ class MiembroAdmin(admin.ModelAdmin):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @admin.register(MiembroRelacion)
-class MiembroRelacionAdmin(admin.ModelAdmin):
+class MiembroRelacionAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "miembro_link",
@@ -143,8 +162,9 @@ class MiembroRelacionAdmin(admin.ModelAdmin):
         "familiar_link",
         "vive_junto",
         "es_responsable",
+        "es_inferida",
     )
-    list_filter = ("tipo_relacion", "vive_junto", "es_responsable")
+    list_filter = ("tipo_relacion", "vive_junto", "es_responsable", "es_inferida")
     search_fields = (
         "miembro__nombres",
         "miembro__apellidos",
@@ -182,6 +202,14 @@ class MiembroRelacionAdmin(admin.ModelAdmin):
             "madre": "#9c27b0",
             "hijo": "#4caf50",
             "hermano": "#ff9800",
+            "abuelo": "#795548",
+            "nieto": "#009688",
+            "tio": "#607d8b",
+            "sobrino": "#00bcd4",
+            "primo": "#8bc34a",
+            "suegro": "#673ab7",
+            "yerno": "#3f51b5",
+            "cunado": "#ff5722",
         }
         color = colores.get(obj.tipo_relacion, "#757575")
         return format_html(
@@ -199,11 +227,167 @@ class MiembroRelacionAdmin(admin.ModelAdmin):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# MIEMBRO BITÁCORA
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@admin.register(MiembroBitacora)
+class MiembroBitacoraAdmin(TenantAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "id",
+        "miembro_link",
+        "tipo_badge",
+        "titulo",
+        "fecha",
+        "creado_por",
+    )
+    list_filter = ("tipo", "fecha")
+    search_fields = (
+        "miembro__nombres",
+        "miembro__apellidos",
+        "titulo",
+        "detalle",
+    )
+    ordering = ("-fecha", "-id")
+    list_per_page = 50
+    date_hierarchy = "fecha"
+    
+    autocomplete_fields = ["miembro", "creado_por"]
+    readonly_fields = ("fecha",)
+
+    fieldsets = (
+        ("Información principal", {
+            "fields": ("miembro", "tipo", "titulo", "detalle")
+        }),
+        ("Cambios de estado/etapa", {
+            "fields": (("estado_from", "estado_to"), ("etapa_from", "etapa_to")),
+            "classes": ("collapse",),
+        }),
+        ("Metadatos", {
+            "fields": ("creado_por", "fecha"),
+        }),
+    )
+
+    @admin.display(description="Miembro")
+    def miembro_link(self, obj):
+        return format_html(
+            '<a href="/admin/miembros_app/miembro/{}/change/">{} {}</a>',
+            obj.miembro.id,
+            obj.miembro.nombres,
+            obj.miembro.apellidos
+        )
+
+    @admin.display(description="Tipo")
+    def tipo_badge(self, obj):
+        colores = {
+            "sistema": "#6b7280",
+            "salida": "#ef4444",
+            "reingreso": "#22c55e",
+            "cambio_estado": "#f59e0b",
+            "cambio_etapa": "#8b5cf6",
+            "nota": "#3b82f6",
+            "documento": "#0ea5e9",
+        }
+        color = colores.get(obj.tipo, "#757575")
+        return format_html(
+            '<span style="background:{}; color:#fff; padding:3px 8px; '
+            'border-radius:4px; font-size:11px; font-weight:bold;">{}</span>',
+            color,
+            obj.get_tipo_display()
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TIMELINE EVENT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@admin.register(TimelineEvent)
+class TimelineEventAdmin(TenantAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "id",
+        "miembro_link",
+        "tipo_badge",
+        "descripcion_truncada",
+        "cambio_display",
+        "fecha",
+        "usuario",
+    )
+    list_filter = ("tipo", "fecha")
+    search_fields = (
+        "miembro__nombres",
+        "miembro__apellidos",
+        "descripcion",
+        "detalle",
+    )
+    ordering = ("-fecha", "-id")
+    list_per_page = 50
+    date_hierarchy = "fecha"
+    
+    autocomplete_fields = ["miembro", "usuario"]
+    readonly_fields = ("fecha",)
+
+    fieldsets = (
+        ("Evento", {
+            "fields": ("miembro", "tipo", "descripcion", "detalle")
+        }),
+        ("Valores del cambio", {
+            "fields": (("valor_anterior", "valor_nuevo"),),
+            "classes": ("collapse",),
+        }),
+        ("Referencia", {
+            "fields": (("referencia_tipo", "referencia_id"),),
+            "classes": ("collapse",),
+        }),
+        ("Metadatos", {
+            "fields": ("usuario", "fecha"),
+        }),
+    )
+
+    @admin.display(description="Miembro")
+    def miembro_link(self, obj):
+        return format_html(
+            '<a href="/admin/miembros_app/miembro/{}/change/">{} {}</a>',
+            obj.miembro.id,
+            obj.miembro.nombres,
+            obj.miembro.apellidos
+        )
+
+    @admin.display(description="Tipo")
+    def tipo_badge(self, obj):
+        color = obj.color
+        return format_html(
+            '<span style="background:{}; color:#fff; padding:3px 8px; '
+            'border-radius:4px; font-size:11px; font-weight:bold;">'
+            '<span class="material-icons" style="font-size:12px; vertical-align:middle;">{}</span> '
+            '{}</span>',
+            color,
+            obj.icono,
+            obj.get_tipo_display()
+        )
+
+    @admin.display(description="Descripción")
+    def descripcion_truncada(self, obj):
+        if len(obj.descripcion) > 50:
+            return f"{obj.descripcion[:50]}..."
+        return obj.descripcion
+
+    @admin.display(description="Cambio")
+    def cambio_display(self, obj):
+        if obj.valor_anterior or obj.valor_nuevo:
+            return format_html(
+                '<span style="color:#ef4444;">{}</span> → '
+                '<span style="color:#22c55e;">{}</span>',
+                obj.valor_anterior or "—",
+                obj.valor_nuevo or "—"
+            )
+        return "—"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # CLAN FAMILIAR
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @admin.register(ClanFamiliar)
-class ClanFamiliarAdmin(admin.ModelAdmin):
+class ClanFamiliarAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ("id", "nombre", "hogares_count", "creado_en")
     search_fields = ("nombre",)
     ordering = ("nombre",)
@@ -238,7 +422,7 @@ class HogarMiembroInline(admin.TabularInline):
 
 
 @admin.register(HogarFamiliar)
-class HogarFamiliarAdmin(admin.ModelAdmin):
+class HogarFamiliarAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ("id", "nombre", "clan_link", "miembros_count", "miembros_lista", "creado_en")
     list_filter = ("clan",)
     search_fields = ("nombre", "clan__nombre")
@@ -292,7 +476,7 @@ class HogarFamiliarAdmin(admin.ModelAdmin):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# HOGAR MIEMBRO (registro intermedio)
+# HOGAR MIEMBRO (registro intermedio - NO tiene tenant directo)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @admin.register(HogarMiembro)
@@ -310,6 +494,13 @@ class HogarMiembroAdmin(admin.ModelAdmin):
     autocomplete_fields = ["hogar", "miembro"]
     
     actions = ["eliminar_seleccionados", "marcar_como_principal", "quitar_principal"]
+
+    def get_queryset(self, request):
+        """Filtra por tenant a través del hogar."""
+        qs = super().get_queryset(request)
+        if hasattr(request, "tenant") and request.tenant:
+            qs = qs.filter(hogar__tenant=request.tenant)
+        return qs
 
     @admin.display(description="Miembro")
     def miembro_link(self, obj):
@@ -334,7 +525,6 @@ class HogarMiembroAdmin(admin.ModelAdmin):
             "padre": "#2196f3",
             "madre": "#e91e63",
             "hijo": "#4caf50",
-            "abuelo": "#ff9800",
             "otro": "#757575",
         }
         color = colores.get(obj.rol, "#757575")
