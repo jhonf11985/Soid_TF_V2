@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'ejecutivo_app',
     "portal_miembros",
     "tenants",
+    "ia_app",
 
 
 
@@ -280,5 +281,6 @@ if not DEBUG:
 
 CRON_TOKEN = "soid_motor_secreto_2026"
 
-
+# ✅ Campo que el asistente usará como "fecha de registro" de Miembro
+SOID_ASSIST_MIEMBRO_DATE_FIELD = "fecha_ingreso_iglesia"
 
