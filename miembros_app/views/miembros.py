@@ -1586,7 +1586,7 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             "modo": "editar",
             "todos_miembros": todos_miembros,
             "familiares": familiares_qs,
-            "EDAD_MINIMA_MIEMBRO_OFICIAL": get_edad_minima_miembro_oficial(request.tenant),
+            "EDAD_MINIMA_MIEMBRO_OFICIAL": get_edad_minima_miembro_oficial(miembro.tenant),
             "bloquear_estado": bloquear,
             "bloquear_identidad": bloquear,
             "TIPOS_RELACION_CHOICES": MiembroRelacion.TIPO_RELACION_CHOICES,

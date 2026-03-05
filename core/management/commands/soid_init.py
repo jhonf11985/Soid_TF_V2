@@ -3,18 +3,51 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from core.models import Module, ConfiguracionSistema
+from tenants.models import Tenant
 
 
 class Command(BaseCommand):
     help = "Inicializa SOID: Configuración base, módulos oficiales y usuario admin."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--tenant',
+            type=str,
+            help='Slug o ID del tenant a inicializar (si no se especifica, crea/usa "default")',
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
         self.stdout.write(self.style.WARNING("🚀 Ejecutando soid_init..."))
 
-        # 1) Asegurar Configuración del sistema (singleton pk=1)
-        config = ConfiguracionSistema.load()
-        self.stdout.write(self.style.SUCCESS("✅ ConfiguracionSistema listo (pk=1)."))
+        # 0) Obtener o crear tenant
+        tenant_arg = options.get('tenant')
+        if tenant_arg:
+            try:
+                tenant = Tenant.objects.get(slug=tenant_arg)
+            except Tenant.DoesNotExist:
+                try:
+                    tenant = Tenant.objects.get(pk=tenant_arg)
+                except (Tenant.DoesNotExist, ValueError):
+                    self.stdout.write(self.style.ERROR(f"❌ Tenant '{tenant_arg}' no encontrado."))
+                    return
+            self.stdout.write(self.style.SUCCESS(f"✅ Usando tenant existente: '{tenant}'"))
+        else:
+            # Usar el primer tenant existente o crear uno default
+            tenant = Tenant.objects.first()
+            if tenant:
+                self.stdout.write(self.style.SUCCESS(f"✅ Usando tenant existente: '{tenant}'"))
+            else:
+                tenant = Tenant.objects.create(
+                    slug="default",
+                    nombre="Iglesia Principal",
+                    dominio="localhost"
+                )
+                self.stdout.write(self.style.SUCCESS("✅ Tenant 'default' creado."))
+
+        # 1) Asegurar Configuración del sistema (singleton por tenant)
+        config = ConfiguracionSistema.load(tenant)
+        self.stdout.write(self.style.SUCCESS(f"✅ ConfiguracionSistema listo (tenant: {tenant})."))
 
         # 2) Módulos oficiales (sin cambiar codes para no romper nada)
         modulos_oficiales = [
@@ -189,7 +222,7 @@ class Command(BaseCommand):
             admin_user.is_superuser = True
             changed = True
 
-        # Siempre forzamos password fija (tú lo pediste)
+        # Siempre forzamos password fija
         admin_user.set_password(admin_password)
         changed = True
 
