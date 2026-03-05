@@ -385,33 +385,22 @@ class MiembroForm(forms.ModelForm):
     # VALIDACIONES / LÓGICA DE NEGOCIO
     # ==========================
     def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
         super().__init__(*args, **kwargs)
 
-
-
-        # ✅ Fecha de ingreso por defecto (solo al crear)
         if not self.instance.pk and not self.initial.get("fecha_ingreso_iglesia"):
             self.initial["fecha_ingreso_iglesia"] = date.today()
 
-# ❌ NO autollenar fecha_conversion en el formulario de miembro
-# (eso solo aplica al formulario de nuevo creyente)
-
-
-        # === CÓDIGO PREVIO DE MIEMBRO, USANDO CONFIGURACIÓN ===
-        cfg = get_config()
+        cfg = get_config(self.tenant)
         prefijo = getattr(cfg, "codigo_miembro_prefijo", "TF-") or "TF-"
 
         if self.instance and self.instance.pk:
-            # Modo editar: mostramos el código real del miembro
             self.fields["codigo_miembro_display"].initial = self.instance.codigo_miembro
         else:
-            # Modo crear: calculamos el siguiente número y lo mostramos con el prefijo
             ultimo = Miembro.objects.aggregate(Max("numero_miembro"))["numero_miembro__max"] or 0
             siguiente = ultimo + 1
             self.fields["codigo_miembro_display"].initial = f"{prefijo}{siguiente:04d}"
 
-        # --- CAMPOS OBLIGATORIOS EXTRA ---
-        # Estos dos deben venir siempre rellenados
         self.fields["fecha_nacimiento"].required = True
         self.fields["estado_miembro"].required = False
 

@@ -55,9 +55,13 @@ def reporte_listado_miembros(request):
     Vista de reporte imprimible profesional con header institucional.
     Aplica los mismos filtros que miembro_lista usando filtrar_miembros().
     """
-    CFG = ConfiguracionSistema.load()
-    
-    miembros_base = Miembro.objects.filter(nuevo_creyente=False)
+    CFG = ConfiguracionSistema.load(request.tenant)
+
+    miembros_base = Miembro.objects.filter(
+        tenant=request.tenant,
+        nuevo_creyente=False
+    )
+
     miembros, filtros_context = filtrar_miembros(request, miembros_base)
     
     # Contar activos e inactivos
@@ -103,7 +107,7 @@ def reporte_listado_miembros(request):
 def reporte_cumple_mes(request):
     """Reporte imprimible de los cumpleaños de un mes."""
     hoy = timezone.localdate()
-    edad_minima = get_edad_minima_miembro_oficial()
+    edad_minima = get_edad_minima_miembro_oficial(request.tenant)
 
     # Mes seleccionado
     mes_str = request.GET.get("mes", "").strip()
@@ -118,6 +122,7 @@ def reporte_cumple_mes(request):
 
     # Base: miembros con fecha de nacimiento en ese mes
     miembros = Miembro.objects.filter(
+        tenant=request.tenant,
         fecha_nacimiento__isnull=False,
         fecha_nacimiento__month=mes,
     )
@@ -166,7 +171,7 @@ def reporte_cumple_mes(request):
 def reporte_miembros_nuevos_mes(request):
     """Reporte de miembros que ingresaron a la iglesia en un mes concreto."""
     hoy = timezone.localdate()
-    edad_minima = get_edad_minima_miembro_oficial()
+    edad_minima = get_edad_minima_miembro_oficial(request.tenant)
 
     # Mes seleccionado (input type="month" -> YYYY-MM)
     mes_str = request.GET.get("mes", "").strip()
@@ -199,6 +204,7 @@ def reporte_miembros_nuevos_mes(request):
         fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1)
 
     miembros = Miembro.objects.filter(
+        tenant=request.tenant,
         fecha_ingreso_iglesia__isnull=False,
         fecha_ingreso_iglesia__gte=fecha_inicio,
         fecha_ingreso_iglesia__lte=fecha_fin,
@@ -284,9 +290,16 @@ def reporte_miembros_salida(request):
     if razon_salida_id_str and razon_salida_id_str.isdigit():
         razon_salida_id = int(razon_salida_id_str)
         miembros = miembros.filter(razon_salida_id=razon_salida_id)
-        razon_salida_obj = RazonSalidaMiembro.objects.filter(pk=razon_salida_id).first()
+        razon_salida_obj = RazonSalidaMiembro.objects.filter(
+            tenant=request.tenant,
+            pk=razon_salida_id
+        ).first()
 
-    razones_disponibles = RazonSalidaMiembro.objects.filter(activo=True).order_by("orden", "nombre")
+    razones_disponibles = RazonSalidaMiembro.objects.filter(
+        tenant=request.tenant,
+        activo=True
+    ).order_by("orden", "nombre")
+
     miembros = miembros.order_by("-fecha_salida", "apellidos", "nombres")
 
     context = {
@@ -316,7 +329,10 @@ def reporte_nuevos_creyentes(request):
     fecha_hasta = request.GET.get("fecha_hasta", "").strip()
     solo_contacto = request.GET.get("solo_contacto", "") == "1"
 
-    miembros = Miembro.objects.filter(nuevo_creyente=True)
+    miembros = Miembro.objects.filter(
+        tenant=request.tenant,
+        nuevo_creyente=True
+    )
 
     if query:
         miembros = miembros.filter(
@@ -376,7 +392,7 @@ def reporte_relaciones_familiares(request):
     from collections import defaultdict
     
     hoy = timezone.localdate()
-    CFG = get_config()
+    CFG = get_config(request.tenant)
     
     query = request.GET.get("q", "").strip()
     tipo_filtro = request.GET.get("tipo", "").strip()
@@ -384,7 +400,12 @@ def reporte_relaciones_familiares(request):
     relaciones_qs = (
         MiembroRelacion.objects
         .select_related("miembro", "familiar")
-        .filter(miembro__activo=True, familiar__activo=True)
+        .filter(
+            miembro__tenant=request.tenant,
+            familiar__tenant=request.tenant,
+            miembro__activo=True,
+            familiar__activo=True,
+        )
     )
     
     if query:
@@ -452,7 +473,10 @@ def reporte_relaciones_familiares(request):
     
     miembros_map = {}
     if todos_ids:
-        miembros_map = {m.id: m for m in Miembro.objects.filter(id__in=todos_ids)}
+        miembros_map = {m.id: m for m in Miembro.objects.filter(
+            tenant=request.tenant,
+            id__in=todos_ids
+        )}
     
     # Funciones auxiliares
     def rel_tipo(a, b):
@@ -741,7 +765,10 @@ def listado_miembros_enviar_email(request):
 
             try:
                 # ✅ FILTRAR POR TENANT
-                miembros = Miembro.objects.filter(activo=True, tenant=request.tenant)
+                miembros = Miembro.objects.filter(
+                    tenant=request.tenant,
+                    activo=False
+                )
                 
                 q = request.GET.get('q', '').strip()
                 if q:

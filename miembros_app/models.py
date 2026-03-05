@@ -747,8 +747,14 @@ class Miembro(TenantAwareModel):
         else:
             self.categoria_edad = "adulto_mayor"
 
-    # ✅ SAVE CORREGIDO - FILTRA POR TENANT
+        # ✅ SAVE CORREGIDO - FILTRA POR TENANT
     def save(self, *args, **kwargs):
+        # ======================================
+        # VALIDAR TENANT
+        # ======================================
+        if not self.tenant_id:
+            raise ValueError("No se puede guardar el miembro sin tenant.")
+
         # ======================================
         # NORMALIZAR TELÉFONO
         # ======================================
@@ -768,7 +774,6 @@ class Miembro(TenantAwareModel):
         # ======================================
         if self.nuevo_creyente:
             if self.numero_seguimiento is None:
-                # ✅ FILTRAR POR TENANT
                 ultimo = Miembro.objects.filter(
                     tenant=self.tenant
                 ).aggregate(
@@ -776,7 +781,8 @@ class Miembro(TenantAwareModel):
                 )["numero_seguimiento__max"] or 0
 
                 self.numero_seguimiento = ultimo + 1
-                self.codigo_seguimiento = f"NC-{self.numero_seguimiento:04d}"
+
+            self.codigo_seguimiento = f"NC-{self.numero_seguimiento:04d}"
 
             # Asegurar que NO tenga código oficial
             self.numero_miembro = None
@@ -786,11 +792,10 @@ class Miembro(TenantAwareModel):
         # 2) MIEMBRO OFICIAL → TF-XXXX
         # ======================================
         else:
-            cfg = ConfiguracionSistema.load()
+            cfg = ConfiguracionSistema.load(self.tenant)
             prefijo = cfg.codigo_miembro_prefijo or "TF-"
 
             if self.numero_miembro is None:
-                # ✅ FILTRAR POR TENANT
                 ultimo = Miembro.objects.filter(
                     tenant=self.tenant
                 ).aggregate(
@@ -798,14 +803,14 @@ class Miembro(TenantAwareModel):
                 )["numero_miembro__max"] or 0
 
                 self.numero_miembro = ultimo + 1
-                self.codigo_miembro = f"{prefijo}{self.numero_miembro:04d}"
+
+            self.codigo_miembro = f"{prefijo}{self.numero_miembro:04d}"
 
             # Limpiar seguimiento
             self.numero_seguimiento = None
             self.codigo_seguimiento = None
 
         super().save(*args, **kwargs)
-
     @property
     def es_miembro_oficial(self):
         """
@@ -816,7 +821,7 @@ class Miembro(TenantAwareModel):
         edad = self.calcular_edad()
         if edad is None:
             return False
-        edad_minima = get_edad_minima_miembro_oficial()
+        edad_minima = get_edad_minima_miembro_oficial(self.tenant)  # ✅ PASAR TENANT
         return self.bautizado_confirmado and edad >= edad_minima
 
     @property
