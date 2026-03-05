@@ -1,29 +1,41 @@
 # core/utils_config.py
-from django.conf import settings
+# ✅ CON SOPORTE MULTI-TENANT
 
+from django.conf import settings
 from .models import ConfiguracionSistema
 
 
-def get_config():
+def get_config(tenant):
     """
-    Devuelve la instancia única de configuración del sistema.
-    Usamos el método load() que ya tienes definido en el modelo.
+    Devuelve la instancia de configuración del tenant.
+    
+    Args:
+        tenant: Instancia del modelo Tenant
+    
+    Returns:
+        ConfiguracionSistema del tenant (o None si no hay tenant)
     """
-    return ConfiguracionSistema.load()
+    if not tenant:
+        return None
+    return ConfiguracionSistema.load(tenant)
 
 
-def get_edad_minima_miembro_oficial():
+def get_edad_minima_miembro_oficial(tenant=None):
     """
     Devuelve la edad mínima para considerar a alguien miembro oficial/bautizable.
 
-    1) Primero lee el valor desde ConfiguracionSistema (campo edad_minima_miembro_oficial)
-    2) Si no está definido, usa el valor por defecto de settings.EDAD_MINIMA_MIEMBRO_OFICIAL
+    1) Si hay tenant, lee el valor desde ConfiguracionSistema
+    2) Si no está definido o no hay tenant, usa el valor por defecto de settings
+    
+    Args:
+        tenant: Instancia del modelo Tenant (opcional)
     """
-    cfg = get_config()
-
-    # Si en la BD está vacío o es 0, usamos el valor de settings
-    edad_cfg = getattr(cfg, "edad_minima_miembro_oficial", None)
-    if not edad_cfg:
-        return getattr(settings, "EDAD_MINIMA_MIEMBRO_OFICIAL", 12)
-
-    return edad_cfg
+    if tenant:
+        cfg = get_config(tenant)
+        if cfg:
+            edad_cfg = getattr(cfg, "edad_minima_miembro_oficial", None)
+            if edad_cfg:
+                return edad_cfg
+    
+    # Fallback a settings
+    return getattr(settings, "EDAD_MINIMA_MIEMBRO_OFICIAL", 12)
