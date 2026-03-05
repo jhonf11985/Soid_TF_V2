@@ -481,21 +481,18 @@ def configuracion_permisos(request):
     return render(request, "core/configuracion_permisos.html", context)
 
 
-
-# core/views.py - REEMPLAZAR tu función home() con esta
-
-# core/views.py - REEMPLAZAR tu función home() con esta
-
-# core/views.py - REEMPLAZAR tu función home() con esta
+# =============================================================================
+# HOME - CON TENANT
+# =============================================================================
 
 @login_required
 def home(request):
     user = request.user
-    
-    
+    tenant = request.tenant  # ✅ OBTENER TENANT DEL REQUEST
 
     if not user.is_staff and Miembro.objects.filter(usuario=user).exists():
         return redirect("portal_miembros:dashboard")
+
     # ═══════════════════════════════════════════════════════════════
     # 🧠 MENSAJE DE BIENVENIDA (solo primer acceso del día)
     # ═══════════════════════════════════════════════════════════════
@@ -503,14 +500,18 @@ def home(request):
     from core.services.welcome_messages import WelcomeMessageService
     from django.utils import timezone
     
-    previous_login = UserLoginHistory.objects.filter(user=user).order_by('-login_at').first()
+    # ✅ FILTRAR POR TENANT
+    previous_login = UserLoginHistory.objects.filter(
+        tenant=tenant,
+        user=user
+    ).order_by('-login_at').first()
     
     today = timezone.now().date()
     already_logged_today = previous_login and previous_login.login_at.date() == today
     
     if not already_logged_today:
-        # Registrar nuevo login
-        UserLoginHistory.register_login(user, request)
+        # ✅ PASAR TENANT AL REGISTRAR LOGIN
+        UserLoginHistory.register_login(tenant, user, request)
         
         # Determinar rol del usuario
         rol = 'usuario'
@@ -614,6 +615,11 @@ def home(request):
     }
     return render(request, "core/home.html", context)
 
+
+# =============================================================================
+# CONFIGURACIÓN DEL SISTEMA - CON TENANT
+# =============================================================================
+
 @login_required
 @user_passes_test(es_staff)
 def configuracion_sistema(request):
@@ -621,7 +627,7 @@ def configuracion_sistema(request):
     Página principal de configuración: muestra tarjetas
     para acceder a cada tipo de configuración.
     """
-    config = ConfiguracionSistema.load()
+    config = ConfiguracionSistema.load(request.tenant)  # ✅ PASAR TENANT
     context = {
         "config": config,
     }
@@ -634,7 +640,7 @@ def configuracion_general(request):
     """
     Configuración general: nombre, dirección, logo.
     """
-    config = ConfiguracionSistema.load()
+    config = ConfiguracionSistema.load(request.tenant)  # ✅ PASAR TENANT
 
     if request.method == "POST":
         form = ConfiguracionGeneralForm(request.POST, request.FILES, instance=config)
@@ -660,7 +666,7 @@ def configuracion_contacto(request):
     """
     Configuración de contacto y comunicación.
     """
-    config = ConfiguracionSistema.load()
+    config = ConfiguracionSistema.load(request.tenant)  # ✅ PASAR TENANT
 
     if request.method == "POST":
         form = ConfiguracionContactoForm(request.POST, instance=config)
@@ -686,7 +692,7 @@ def configuracion_reportes(request):
     """
     Parámetros de membresía y reportes.
     """
-    config = ConfiguracionSistema.load()
+    config = ConfiguracionSistema.load(request.tenant)  # ✅ PASAR TENANT
 
     if request.method == "POST":
         form = ConfiguracionReportesForm(request.POST, instance=config)
@@ -744,9 +750,10 @@ def probar_envio_correo(request):
 
     return redirect("core:configuracion_contacto")
 
-# ============================================
-# REEMPLAZAR LA FUNCIÓN crear_usuario EN views.py
-# ============================================
+
+# =============================================================================
+# CREAR USUARIO
+# =============================================================================
 
 @login_required
 @permission_required("auth.add_user", raise_exception=True)
@@ -818,6 +825,8 @@ def perfil_usuario(request):
         "VAPID_PUBLIC_KEY": settings.VAPID_PUBLIC_KEY,
     }
     return render(request, "core/usuarios/perfil_usuario.html", context)
+
+
 @login_required
 def cambiar_contrasena(request):
     """
@@ -889,6 +898,7 @@ def miembro_detalle_api(request, miembro_id):
             'success': False,
             'error': str(e)
         }, status=500)
+
 
 @login_required
 @permission_required("auth.change_user", raise_exception=True)
@@ -996,6 +1006,10 @@ def listado_miembros_compartir(request):
         return JsonResponse({"ok": False, "error": str(e)})
 
 
+# =============================================================================
+# ACTIVAR ACCESO - CON TENANT
+# =============================================================================
+
 @require_http_methods(["GET", "POST"])
 def activar_acceso(request):
     """
@@ -1006,7 +1020,7 @@ def activar_acceso(request):
     Usuario: miembro.codigo_miembro (ej: TF-0001)
     Password inicial: los 4 dígitos del numero_miembro (0001)
     """
-    cfg = ConfiguracionSistema.load()
+    cfg = ConfiguracionSistema.load(request.tenant)  # ✅ PASAR TENANT
 
     if request.method == "POST":
         numero = (request.POST.get("numero_miembro") or "").strip()
@@ -1022,7 +1036,9 @@ def activar_acceso(request):
             messages.error(request, "Fecha de nacimiento inválida.")
             return redirect("core:activar_acceso")
 
+        # ✅ FILTRAR POR TENANT
         miembro = Miembro.objects.filter(
+            tenant=request.tenant,
             numero_miembro=int(numero),
             fecha_nacimiento=fecha_nac
         ).first()

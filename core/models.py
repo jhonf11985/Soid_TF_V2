@@ -1,17 +1,19 @@
 from django.db import models
 from cloudinary_storage.storage import RawMediaCloudinaryStorage
-# ============================================
-# AGREGAR AL FINAL DE core/models.py
-# ============================================
+from tenants.models import TenantAwareModel
 
 import secrets
 import string
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
 
 
-class UsuarioTemporal(models.Model):
+# ==============================================================================
+# ✅ UsuarioTemporal - AHORA CON TENANT
+# ==============================================================================
+class UsuarioTemporal(TenantAwareModel):
     """
     Usuarios temporales para pruebas del sistema.
     Se crean con fecha de expiración y se desactivan automáticamente.
@@ -138,7 +140,6 @@ class UsuarioTemporal(models.Model):
     def generar_password(length=10):
         """Genera una contraseña segura pero legible."""
         chars = string.ascii_letters + string.digits
-        # Evitar caracteres confusos: 0, O, l, 1, I
         chars = chars.replace('0', '').replace('O', '').replace('l', '').replace('1', '').replace('I', '')
         return ''.join(secrets.choice(chars) for _ in range(length))
 
@@ -149,18 +150,17 @@ class UsuarioTemporal(models.Model):
         random_suffix = ''.join(secrets.choice(string.digits) for _ in range(3))
         return f"{base}_{timestamp}{random_suffix}"
 
+    # ✅ CORREGIDO - RECIBE TENANT
     @classmethod
-    def crear_usuario(cls, dias=15, motivo="Prueba del sistema", creado_por=None, 
+    def crear_usuario(cls, tenant, dias=15, motivo="Prueba del sistema", creado_por=None, 
                       nombre="", email="", username_base="demo"):
         """
         Crea un usuario temporal completo.
         Retorna (usuario_temporal, password) para mostrar las credenciales.
         """
-        # Generar credenciales
         username = cls.generar_username(username_base)
         password = cls.generar_password()
         
-        # Crear usuario Django
         user = User.objects.create_user(
             username=username,
             password=password,
@@ -170,39 +170,47 @@ class UsuarioTemporal(models.Model):
             is_active=True
         )
         
-        # Crear perfil temporal
         usuario_temp = cls.objects.create(
+            tenant=tenant,  # ✅ AGREGAR TENANT
             user=user,
             creado_por=creado_por,
             fecha_expiracion=timezone.now() + timedelta(days=dias),
             motivo=motivo,
-            password_temporal=password  # Guardamos para referencia
+            password_temporal=password
         )
         
         return usuario_temp, password
 
+    # ✅ CORREGIDO - FILTRAR POR TENANT
     @classmethod
-    def limpiar_expirados(cls, eliminar=False):
+    def limpiar_expirados(cls, tenant=None, eliminar=False):
         """
         Desactiva o elimina usuarios expirados.
         Retorna cantidad de usuarios procesados.
         """
-        expirados = cls.objects.filter(
+        qs = cls.objects.filter(
             fecha_expiracion__lt=timezone.now(),
             activo=True
         )
-        count = expirados.count()
+        
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        
+        count = qs.count()
         
         if eliminar:
-            # Eliminar usuarios Django asociados
-            for ut in expirados:
-                ut.user.delete()  # Esto elimina también el UsuarioTemporal por CASCADE
+            for ut in qs:
+                ut.user.delete()
         else:
-            # Solo desactivar
-            for ut in expirados:
+            for ut in qs:
                 ut.desactivar()
         
         return count
+
+
+# ==============================================================================
+# ❌ Module - SE QUEDA GLOBAL (módulos del sistema compartidos)
+# ==============================================================================
 class Module(models.Model):
     """
     Representa un módulo del sistema (Miembros, Finanzas, etc.),
@@ -253,17 +261,20 @@ class Module(models.Model):
         return self.name
 
 
-class ConfiguracionSistema(models.Model):
+# ==============================================================================
+# ✅ ConfiguracionSistema - AHORA CON TENANT (ya no singleton global)
+# ==============================================================================
+class ConfiguracionSistema(TenantAwareModel):
     """
-    Parámetros globales del sistema.
-    Usamos un único registro (pk=1) como 'singleton'.
+    Parámetros de configuración por tenant.
+    Cada iglesia tiene su propia configuración.
     """
 
     # IDENTIDAD INSTITUCIONAL
     nombre_iglesia = models.CharField(
         "Nombre de la iglesia",
         max_length=150,
-        default="Iglesia Torre Fuerte",
+        default="Mi Iglesia",
     )
     nombre_corto = models.CharField(
         "Nombre corto",
@@ -293,39 +304,32 @@ class ConfiguracionSistema(models.Model):
         blank=True,
         help_text="Nombre que se mostrará en cartas y documentos oficiales."
     )
-        # =========================
+
     # DATOS GENERALES (F001 - PARTE A)
-    # =========================
     presbiterio_nombre = models.CharField(
         max_length=150, blank=True, default="",
         help_text="Nombre del presbiterio al que pertenece la iglesia."
     )
-
     presbitero_nombre = models.CharField(
         max_length=150, blank=True, default="",
         help_text="Nombre del presbítero supervisor."
     )
-
     codigo_iglesia = models.CharField(
         max_length=50, blank=True, default="",
         help_text="Código oficial de la iglesia en el concilio (si aplica)."
     )
-
     conyuge_pastor = models.CharField(
         max_length=150, blank=True, default="",
         help_text="Nombre del cónyuge del pastor."
     )
-
     credencial_pastor = models.CharField(
         max_length=30, blank=True, default="",
         help_text="Credencial ministerial del pastor (solo números/letras)."
     )
-
     credencial_conyuge = models.CharField(
         max_length=30, blank=True, default="",
         help_text="Credencial del cónyuge (solo números/letras)."
     )
-
     email_pastor = models.EmailField(
         "Correo del pastor / administración",
         blank=True,
@@ -352,7 +356,8 @@ class ConfiguracionSistema(models.Model):
         null=True,
         help_text="Imagen suave para utilizar como fondo o marca de agua en documentos."
     )
-        # CONTACTO Y COMUNICACIÓN
+
+    # CONTACTO Y COMUNICACIÓN
     email_oficial = models.EmailField(
         "Correo oficial",
         blank=True
@@ -368,43 +373,36 @@ class ConfiguracionSistema(models.Model):
         blank=True,
         help_text="Solo números con código de país, sin espacios ni guiones."
     )
-
     encargado_comunicaciones = models.CharField(
         "Nombre del encargado de comunicaciones",
         max_length=150,
         blank=True,
         help_text="Ej: Secretaría, Administración, Ministerio de Comunicaciones."
     )
-
     horario_atencion = models.CharField(
         "Horario de atención",
         max_length=150,
         blank=True,
         help_text="Ej: Lun–Vie 9:00 a.m. – 6:00 p.m."
     )
-
     sitio_web = models.URLField(
         "Página web oficial",
         blank=True
     )
-
     facebook_url = models.URLField(
         "Facebook",
         blank=True
     )
-
     instagram_url = models.URLField(
         "Instagram",
         blank=True
     )
-
     mensaje_institucional_corto = models.CharField(
         "Mensaje institucional corto",
         max_length=150,
         blank=True,
         help_text="Se puede usar como firma en correos y reportes."
     )
-
 
     # FORMATO Y ESTILO
     zona_horaria = models.CharField(
@@ -437,6 +435,7 @@ class ConfiguracionSistema(models.Model):
         default="#F59E0B",
         help_text="Color de acento (hex)."
     )
+
     MODO_IMPRESION_CHOICES = [
         ("formal", "Formal"),
         ("minimalista", "Minimalista"),
@@ -496,33 +495,43 @@ class ConfiguracionSistema(models.Model):
         help_text="Ej: TF-, IB-, CC-, etc."
     )
 
-
     class Meta:
         verbose_name = "Configuración del sistema"
-        verbose_name_plural = "Configuración del sistema"
+        verbose_name_plural = "Configuraciones del sistema"
+        constraints = [
+            # ✅ Solo una configuración por tenant
+            models.UniqueConstraint(
+                fields=["tenant"],
+                name="unique_configuracion_por_tenant"
+            )
+        ]
 
     def __str__(self):
-        return "Configuración del sistema"
+        return f"Configuración - {self.nombre_iglesia}"
 
+    # ✅ CORREGIDO - YA NO FUERZA pk=1
     def save(self, *args, **kwargs):
-        # Forzamos que siempre sea el registro 1
-        self.pk = 1
         super().save(*args, **kwargs)
 
+    # ✅ CORREGIDO - RECIBE TENANT
     @classmethod
-    def load(cls):
+    def load(cls, tenant):
         """
-        Devuelve la configuración única (la crea si no existe).
+        Devuelve la configuración del tenant (la crea si no existe).
         """
         obj, created = cls.objects.get_or_create(
-            pk=1,
+            tenant=tenant,
             defaults={
-                "nombre_iglesia": "Iglesia Torre Fuerte",
+                "nombre_iglesia": tenant.nombre if hasattr(tenant, 'nombre') else "Mi Iglesia",
             }
         )
         return obj
 
-class UserLoginHistory(models.Model):
+
+# ==============================================================================
+# ✅ UserLoginHistory - AHORA CON TENANT
+# ==============================================================================
+class UserLoginHistory(TenantAwareModel):
     """Rastrea el historial de logins para mensajes de bienvenida."""
     user = models.ForeignKey(
         'auth.User',
@@ -541,9 +550,14 @@ class UserLoginHistory(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.login_at.strftime('%d/%m/%Y %H:%M')}"
     
+    # ✅ CORREGIDO - RECIBE TENANT
     @classmethod
-    def register_login(cls, user, request=None):
-        previous = cls.objects.filter(user=user).order_by('-login_at').first()
+    def register_login(cls, tenant, user, request=None):
+        # ✅ FILTRAR POR TENANT
+        previous = cls.objects.filter(
+            tenant=tenant,
+            user=user
+        ).order_by('-login_at').first()
         
         ip = None
         user_agent = ''
@@ -552,36 +566,65 @@ class UserLoginHistory(models.Model):
             ip = xff.split(',')[0].strip() if xff else request.META.get('REMOTE_ADDR')
             user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
         
-        cls.objects.create(user=user, ip_address=ip, user_agent=user_agent)
+        cls.objects.create(
+            tenant=tenant,  # ✅ AGREGAR TENANT
+            user=user,
+            ip_address=ip,
+            user_agent=user_agent
+        )
         
-        old = list(cls.objects.filter(user=user).order_by('-login_at').values_list('pk', flat=True)[10:])
+        # Limpiar historial viejo (mantener últimos 10 por tenant)
+        old = list(cls.objects.filter(
+            tenant=tenant,
+            user=user
+        ).order_by('-login_at').values_list('pk', flat=True)[10:])
+        
         if old:
             cls.objects.filter(pk__in=old).delete()
         
         return previous
-    
-class UserEngagement(models.Model):
+
+
+# ==============================================================================
+# ✅ UserEngagement - AHORA CON TENANT
+# ==============================================================================
+class UserEngagement(TenantAwareModel):
     """Trackea engagement del usuario para mensajes inteligentes."""
-    user = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='engagement')
+    user = models.ForeignKey(
+        'auth.User',
+        on_delete=models.CASCADE,
+        related_name='engagement'
+    )
     login_count = models.PositiveIntegerField(default=0)
     current_streak = models.PositiveIntegerField(default=0)
     max_streak = models.PositiveIntegerField(default=0)
     last_login_date = models.DateField(null=True, blank=True)
-    shown_message_ids = models.JSONField(default=list)  # No repetir mensajes
+    shown_message_ids = models.JSONField(default=list)
     
     class Meta:
         verbose_name = "Engagement de Usuario"
+        verbose_name_plural = "Engagement de Usuarios"
+        constraints = [
+            # ✅ Un registro por usuario por tenant
+            models.UniqueConstraint(
+                fields=["tenant", "user"],
+                name="unique_engagement_por_tenant_user"
+            )
+        ]
 
+    # ✅ CORREGIDO - RECIBE TENANT
     @classmethod
-    def get_or_create_for_user(cls, user):
-        obj, _ = cls.objects.get_or_create(user=user)
+    def get_or_create_for_user(cls, tenant, user):
+        obj, _ = cls.objects.get_or_create(
+            tenant=tenant,
+            user=user
+        )
         return obj
+
     def register_login(self):
         """Registra login y actualiza rachas."""
-        from django.utils import timezone
         today = timezone.now().date()
         
-        # ⚡ Si ya se registró hoy, no hacer nada
         if self.last_login_date == today:
             return {
                 'is_first_login': False,
@@ -592,7 +635,6 @@ class UserEngagement(models.Model):
         is_first = self.login_count == 0
         days_absent = (today - self.last_login_date).days if self.last_login_date else 0
         
-        # Actualizar racha
         if self.last_login_date:
             if days_absent == 1:
                 self.current_streak += 1
@@ -608,28 +650,25 @@ class UserEngagement(models.Model):
         self.last_login_date = today
         self.save()
         
-        return {'is_first_login': is_first, 'days_absent': days_absent, 'login_count': self.login_count}
+        return {
+            'is_first_login': is_first,
+            'days_absent': days_absent,
+            'login_count': self.login_count
+        }
 
 
-# core/models.py
-
-import secrets
-from django.conf import settings
-from django.db import models
-from django.utils import timezone
-
-class DocumentoCompartido(models.Model):
+# ==============================================================================
+# ✅ DocumentoCompartido - AHORA CON TENANT
+# ==============================================================================
+class DocumentoCompartido(TenantAwareModel):
     token = models.CharField(
         max_length=64,
         unique=True,
         db_index=True,
-        blank=True,  # permite dejarlo vacío en el admin
+        blank=True,
     )
-
     titulo = models.CharField(max_length=200, blank=True)
     descripcion = models.TextField(blank=True)
-
-    
 
     archivo = models.FileField(
         upload_to="docs_compartidos/",
@@ -651,6 +690,8 @@ class DocumentoCompartido(models.Model):
 
     class Meta:
         ordering = ["-creado_en"]
+        verbose_name = "Documento compartido"
+        verbose_name_plural = "Documentos compartidos"
 
     def __str__(self):
         return f"{self.titulo or 'Documento'} - {self.token[:8] if self.token else 'sin-token'}"
@@ -671,4 +712,3 @@ class DocumentoCompartido(models.Model):
         if not self.token:
             self.token = self.generar_token()
         super().save(*args, **kwargs)
-
