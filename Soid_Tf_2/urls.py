@@ -67,6 +67,7 @@ urlpatterns = [
         path("portal/", include("portal_miembros.urls")),
 
     path("ia/", include("ia_app.urls", namespace="ia_app")),
+    path("documentos/", include("documentos_app.urls")),
 ]
 
 

@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "portal_miembros",
     "tenants",
     "ia_app",
+    "documentos_app",
 
 
 
