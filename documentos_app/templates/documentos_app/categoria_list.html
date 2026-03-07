@@ -1,0 +1,519 @@
+
+{% extends 'documentos_app/base_documentos.html' %}
+{% load static %}
+
+{% block title %}Categorías{% endblock %}
+{% block documentos_content %}
+<div class="documentos-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ titulo_modulo|default:"Categorías" }}</h1>
+            <p class="page-subtitle">Administra las categorías de los documentos.</p>
+        </div>
+
+        <div class="page-actions">
+            <a href="{% url 'documentos_app:documento_list' %}" class="btn btn-light">
+                <span class="material-icons">description</span>
+                <span>Documentos</span>
+            </a>
+
+            <a href="{% url 'documentos_app:categoria_create' %}" class="btn btn-primary">
+                <span class="material-icons">add</span>
+                <span>Nueva categoría</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="documentos-layout">
+        <div class="documentos-main">
+            <div class="card filtro-card">
+                <form method="get" class="filtros-form">
+                    <div class="filtro-grupo filtro-busqueda">
+                        <label for="q">Buscar</label>
+                        <div class="input-icon">
+                            <span class="material-icons">search</span>
+                            <input
+                                type="text"
+                                name="q"
+                                id="q"
+                                placeholder="Buscar categoría..."
+                                value="{{ filtros.q|default:'' }}"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="filtro-botones">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="material-icons">filter_alt</span>
+                            <span>Filtrar</span>
+                        </button>
+
+                        <a href="{% url 'documentos_app:categoria_list' %}" class="btn btn-light">
+                            <span class="material-icons">restart_alt</span>
+                            <span>Limpiar</span>
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card tabla-card">
+                <div class="card-header">
+                    <h3>Lista de categorías</h3>
+                    <span class="badge-total">{{ categorias|length }} resultado{{ categorias|length|pluralize }}</span>
+                </div>
+
+                {% if categorias %}
+                    <div class="tabla-responsive">
+                        <table class="tabla-documentos">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Descripción</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for categoria in categorias %}
+                                    <tr>
+                                        <td>
+                                            <div class="doc-info">
+                                                <div class="doc-icon">
+                                                    <span class="material-icons">label</span>
+                                                </div>
+                                                <div>
+                                                    <div class="doc-title">{{ categoria.nombre }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            {% if categoria.descripcion %}
+                                                {{ categoria.descripcion|truncatechars:90 }}
+                                            {% else %}
+                                                <span class="text-muted">Sin descripción</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if categoria.activa %}
+                                                <span class="chip chip-ok">Activa</span>
+                                            {% else %}
+                                                <span class="chip chip-muted">Inactiva</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <span class="material-icons">label_off</span>
+                        </div>
+                        <h3>No hay categorías registradas</h3>
+                        <p>Aún no has creado categorías para organizar los documentos.</p>
+                        <a href="{% url 'documentos_app:categoria_create' %}" class="btn btn-primary">
+                            <span class="material-icons">add</span>
+                            <span>Crear primera categoría</span>
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <aside class="documentos-sidebar">
+            <div class="card sidebar-card">
+                <div class="sidebar-card-header">
+                    <h3>Resumen</h3>
+                </div>
+
+                <div class="resumen-grid">
+                    <div class="resumen-item">
+                        <div class="resumen-icon resumen-icon-primary">
+                            <span class="material-icons">label</span>
+                        </div>
+                        <div>
+                            <div class="resumen-label">Categorías</div>
+                            <div class="resumen-value">{{ resumen_sidebar.total_categorias|default:0 }}</div>
+                        </div>
+                    </div>
+
+                    <div class="resumen-item">
+                        <div class="resumen-icon resumen-icon-warning">
+                            <span class="material-icons">folder</span>
+                        </div>
+                        <div>
+                            <div class="resumen-label">Carpetas</div>
+                            <div class="resumen-value">{{ resumen_sidebar.total_carpetas|default:0 }}</div>
+                        </div>
+                    </div>
+
+                    <div class="resumen-item">
+                        <div class="resumen-icon resumen-icon-success">
+                            <span class="material-icons">description</span>
+                        </div>
+                        <div>
+                            <div class="resumen-label">Documentos</div>
+                            <div class="resumen-value">{{ resumen_sidebar.total_documentos|default:0 }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<style>
+    .documentos-page {
+        padding: 1.25rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+    }
+
+    .page-title {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .page-subtitle {
+        margin: .35rem 0 0 0;
+        color: #6b7280;
+        font-size: .95rem;
+    }
+
+    .page-actions {
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+
+    .documentos-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    .filtro-card,
+    .tabla-card,
+    .sidebar-card {
+        padding: 1rem;
+    }
+
+    .filtro-card {
+        margin-bottom: 1rem;
+    }
+
+    .filtros-form {
+        display: flex;
+        gap: 1rem;
+        align-items: end;
+        flex-wrap: wrap;
+    }
+
+    .filtro-busqueda {
+        flex: 1;
+        min-width: 260px;
+    }
+
+    .filtro-grupo label {
+        display: block;
+        font-size: .9rem;
+        font-weight: 600;
+        margin-bottom: .45rem;
+        color: #374151;
+    }
+
+    .input-icon {
+        position: relative;
+    }
+
+    .input-icon .material-icons {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 20px;
+        color: #9ca3af;
+    }
+
+    .input-icon input {
+        padding-left: 2.5rem;
+        width: 100%;
+        height: 44px;
+        border: 1px solid #d1d5db;
+        border-radius: 12px;
+        font-size: .95rem;
+        background: #fff;
+        outline: none;
+        transition: .2s ease;
+        box-sizing: border-box;
+    }
+
+    .input-icon input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .filtro-botones {
+        display: flex;
+        gap: .65rem;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+        height: 44px;
+        padding: 0 1rem;
+        border-radius: 12px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: .92rem;
+        transition: .2s ease;
+        white-space: nowrap;
+    }
+
+    .btn .material-icons {
+        font-size: 19px;
+    }
+
+    .btn-primary {
+        background: #2563eb;
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-light {
+        background: #f3f4f6;
+        color: #111827;
+    }
+
+    .btn-light:hover {
+        background: #e5e7eb;
+    }
+
+    .card-header,
+    .sidebar-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .75rem;
+        margin-bottom: 1rem;
+    }
+
+    .card-header h3,
+    .sidebar-card-header h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .badge-total {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-radius: 999px;
+        padding: .35rem .7rem;
+        font-size: .82rem;
+        font-weight: 700;
+    }
+
+    .tabla-responsive {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .tabla-documentos {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 700px;
+    }
+
+    .tabla-documentos thead th {
+        text-align: left;
+        font-size: .82rem;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: #6b7280;
+        padding: .9rem .75rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .tabla-documentos tbody td {
+        padding: .95rem .75rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #1f2937;
+        font-size: .93rem;
+    }
+
+    .tabla-documentos tbody tr:hover {
+        background: #fafafa;
+    }
+
+    .doc-info {
+        display: flex;
+        align-items: flex-start;
+        gap: .75rem;
+    }
+
+    .doc-icon {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 12px;
+        background: #eff6ff;
+        color: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .doc-title {
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: .2rem;
+    }
+
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: .35rem .65rem;
+        border-radius: 999px;
+        font-size: .82rem;
+        font-weight: 600;
+    }
+
+    .chip-ok {
+        background: #ecfdf5;
+        color: #047857;
+    }
+
+    .chip-muted {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .text-muted {
+        color: #9ca3af;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+    }
+
+    .empty-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+        background: #f3f4f6;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem auto;
+    }
+
+    .empty-icon .material-icons {
+        font-size: 34px;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 .5rem 0;
+        color: #111827;
+    }
+
+    .empty-state p {
+        margin: 0 0 1rem 0;
+        color: #6b7280;
+    }
+
+    .resumen-grid {
+        display: grid;
+        gap: .85rem;
+    }
+
+    .resumen-item {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        padding: .9rem;
+        border: 1px solid #eef2f7;
+        border-radius: 14px;
+        background: #fafafa;
+    }
+
+    .resumen-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .resumen-icon-primary {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    .resumen-icon-warning {
+        background: #fff7ed;
+        color: #ea580c;
+    }
+
+    .resumen-icon-success {
+        background: #ecfdf5;
+        color: #047857;
+    }
+
+    .resumen-label {
+        font-size: .85rem;
+        color: #6b7280;
+    }
+
+    .resumen-value {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    @media (max-width: 1100px) {
+        .documentos-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .documentos-page {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}

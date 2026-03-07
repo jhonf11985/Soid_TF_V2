@@ -1,37 +1,95 @@
-from django.db import models
-from django.utils.text import slugify
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect, render
+
+from documentos_app.forms import CategoriaDocumentoForm
+from documentos_app.models import Carpeta, CategoriaDocumento, Documento
 
 
-class CategoriaDocumento(models.Model):
-    nombre = models.CharField(max_length=120, unique=True)
-    slug = models.SlugField(max_length=140, unique=True, blank=True)
-    descripcion = models.TextField(blank=True)
-    color = models.CharField(max_length=20, blank=True, default="")
-    icono = models.CharField(max_length=50, blank=True, default="label")
-    activa = models.BooleanField(default=True)
-    orden = models.PositiveIntegerField(default=0)
+@login_required
+def categoria_list(request):
+    tenant = getattr(request, "tenant", None)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    categorias = (
+        CategoriaDocumento.objects.filter(tenant=tenant, activa=True)
+        .order_by("nombre")
+    )
 
-    class Meta:
-        verbose_name = "Categoría de documento"
-        verbose_name_plural = "Categorías de documentos"
-        ordering = ["orden", "nombre"]
+    q = (request.GET.get("q") or "").strip()
 
-    def __str__(self):
-        return self.nombre
+    if q:
+        categorias = categorias.filter(nombre__icontains=q)
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            base_slug = slugify(self.nombre) if self.nombre else "categoria"
-            slug = base_slug
-            contador = 1
+    resumen_sidebar = {
+        "total_categorias": CategoriaDocumento.objects.filter(
+            tenant=tenant,
+            activa=True,
+        ).count(),
+        "total_documentos": Documento.objects.filter(
+            tenant=tenant,
+            eliminado=False,
+        ).count(),
+        "total_carpetas": Carpeta.objects.filter(
+            tenant=tenant,
+            activa=True,
+        ).count(),
+    }
 
-            while CategoriaDocumento.objects.exclude(pk=self.pk).filter(slug=slug).exists():
-                contador += 1
-                slug = f"{base_slug}-{contador}"
+    context = {
+        "titulo_modulo": "Categorías",
+        "categorias": categorias,
+        "resumen_sidebar": resumen_sidebar,
+        "filtros": {
+            "q": q,
+        },
+    }
+    return render(request, "documentos_app/categoria_list.html", context)
 
-            self.slug = slug
 
-        super().save(*args, **kwargs)
+@login_required
+def categoria_create(request):
+    tenant = getattr(request, "tenant", None)
+
+    if request.method == "POST":
+        form = CategoriaDocumentoForm(request.POST, tenant=tenant)
+        if form.is_valid():
+            categoria = form.save(commit=False)
+            categoria.tenant = tenant
+
+            if hasattr(categoria, "activa"):
+                categoria.activa = True
+
+            if hasattr(categoria, "creado_por"):
+                categoria.creado_por = request.user
+
+            if hasattr(categoria, "propietario"):
+                categoria.propietario = request.user
+
+            categoria.save()
+
+            messages.success(request, "Categoría creada correctamente.")
+            return redirect("documentos_app:categoria_list")
+    else:
+        form = CategoriaDocumentoForm(tenant=tenant)
+
+    resumen_sidebar = {
+        "total_categorias": CategoriaDocumento.objects.filter(
+            tenant=tenant,
+            activa=True,
+        ).count(),
+        "total_documentos": Documento.objects.filter(
+            tenant=tenant,
+            eliminado=False,
+        ).count(),
+        "total_carpetas": Carpeta.objects.filter(
+            tenant=tenant,
+            activa=True,
+        ).count(),
+    }
+
+    context = {
+        "titulo_modulo": "Nueva categoría",
+        "form": form,
+        "resumen_sidebar": resumen_sidebar,
+    }
+    return render(request, "documentos_app/categoria_form.html", context)
