@@ -12,7 +12,7 @@ def carpeta_list(request):
 
     carpetas = (
         Carpeta.objects.filter(tenant=tenant, activa=True)
-        .select_related("carpeta_padre", "creado_por")
+        .select_related("carpeta_padre", "propietario")
         .order_by("nombre")
     )
 
@@ -45,7 +45,6 @@ def carpeta_create(request):
             carpeta = form.save(commit=False)
             carpeta.tenant = tenant
             carpeta.propietario = request.user
-            carpeta.creado_por = request.user
             carpeta.activa = True
             carpeta.save()
 
