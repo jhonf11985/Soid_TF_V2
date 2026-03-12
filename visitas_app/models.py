@@ -1,5 +1,27 @@
 from django.db import models
+from django.utils import timezone
 from tenants.models import TenantAwareModel
+
+
+class TipoRegistroVisita(TenantAwareModel):
+    nombre = models.CharField(max_length=100)
+    descripcion = models.CharField(max_length=200, blank=True, null=True)
+    activo = models.BooleanField(default=True)
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["orden", "nombre"]
+        verbose_name = "Tipo de registro de visita"
+        verbose_name_plural = "Tipos de registros de visitas"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "nombre"],
+                name="uniq_tipo_registro_visita_nombre_por_tenant"
+            )
+        ]
+
+    def __str__(self):
+        return self.nombre
 
 
 class ClasificacionVisita(TenantAwareModel):
@@ -23,6 +45,43 @@ class ClasificacionVisita(TenantAwareModel):
         return self.nombre
 
 
+class RegistroVisitas(TenantAwareModel):
+    fecha = models.DateField(default=timezone.localdate)
+
+    tipo = models.ForeignKey(
+        TipoRegistroVisita,
+        on_delete=models.PROTECT,
+        related_name="registros",
+    )
+
+    unidad_responsable = models.ForeignKey(
+        "estructura_app.Unidad",
+        on_delete=models.PROTECT,
+        related_name="registros_visitas",
+        null=True,
+        blank=True,
+    )
+
+    observaciones = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+        verbose_name = "Registro de visitas"
+        verbose_name_plural = "Registros de visitas"
+        indexes = [
+            models.Index(fields=["fecha"]),
+            models.Index(fields=["tipo"]),
+        ]
+
+    def __str__(self):
+        tipo = self.tipo.nombre if self.tipo_id else "Sin tipo"
+        unidad = self.unidad_responsable.nombre if self.unidad_responsable_id else "Sin unidad"
+        return f"{self.fecha} - {tipo} - {unidad}"
+
+
 class Visita(TenantAwareModel):
     ESTADO_CHOICES = [
         ("pendiente", "Pendiente"),
@@ -35,6 +94,14 @@ class Visita(TenantAwareModel):
         ("M", "Masculino"),
         ("F", "Femenino"),
     ]
+
+    registro = models.ForeignKey(
+        RegistroVisitas,
+        on_delete=models.CASCADE,
+        related_name="visitas",
+        null=True,
+        blank=True,
+    )
 
     nombre = models.CharField(max_length=150)
     telefono = models.CharField(max_length=20, blank=True, null=True)
@@ -53,8 +120,8 @@ class Visita(TenantAwareModel):
     )
 
     primera_vez = models.BooleanField(default=True)
-    fecha_primera_visita = models.DateField()
-    fecha_ultima_visita = models.DateField()
+    fecha_primera_visita = models.DateField(blank=True, null=True)
+    fecha_ultima_visita = models.DateField(blank=True, null=True)
     cantidad_visitas = models.PositiveIntegerField(default=1)
 
     invitado_por = models.CharField(max_length=150, blank=True, null=True)
@@ -67,9 +134,25 @@ class Visita(TenantAwareModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-fecha_ultima_visita", "-id"]
+        ordering = ["-created_at", "-id"]
         verbose_name = "Visita"
         verbose_name_plural = "Visitas"
+        indexes = [
+            models.Index(fields=["registro"]),
+            models.Index(fields=["estado"]),
+            models.Index(fields=["telefono"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.registro_id and not getattr(self, "tenant_id", None):
+            self.tenant = self.registro.tenant
+
+        if not self.fecha_primera_visita:
+            self.fecha_primera_visita = self.registro.fecha if self.registro_id else timezone.localdate()
+
+        self.fecha_ultima_visita = self.registro.fecha if self.registro_id else timezone.localdate()
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         clasificacion = self.clasificacion.nombre if self.clasificacion else "Sin clasificación"
