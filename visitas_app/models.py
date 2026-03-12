@@ -1,8 +1,5 @@
 from django.db import models
 
-# Create your models here.
-from django.db import models
-
 
 class Visita(models.Model):
     TIPO_CHOICES = [
@@ -20,8 +17,12 @@ class Visita(models.Model):
     nombre = models.CharField(max_length=150)
     telefono = models.CharField(max_length=20, blank=True, null=True)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default="visita")
-    fecha_visita = models.DateField()
+
     primera_vez = models.BooleanField(default=True)
+    fecha_primera_visita = models.DateField()
+    fecha_ultima_visita = models.DateField()
+    cantidad_visitas = models.PositiveIntegerField(default=1)
+
     invitado_por = models.CharField(max_length=150, blank=True, null=True)
     desea_contacto = models.BooleanField(default=True)
     peticion_oracion = models.TextField(blank=True, null=True)
@@ -32,9 +33,9 @@ class Visita(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-fecha_visita", "-id"]
+        ordering = ["-fecha_ultima_visita", "-id"]
         verbose_name = "Visita"
         verbose_name_plural = "Visitas"
 
     def __str__(self):
-        return f"{self.nombre} - {self.fecha_visita}"
+        return f"{self.nombre} - {self.tipo}"
