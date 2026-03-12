@@ -1,0 +1,70 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Visitas{% endblock %}
+
+{% block content %}
+<div class="erp-container">
+    <div class="erp-toolbar">
+        <div class="toolbar-left">
+            <a href="/" class="toolbar-btn" title="Inicio">🏠</a>
+            <div class="toolbar-divider"></div>
+            <a href="{% url 'visitas_app:visita_create' %}" class="toolbar-btn toolbar-btn-primary">
+                <span>+ Nueva visita</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="erp-card">
+        <div class="erp-card-header">
+            <h2>Registro de visitas</h2>
+            <p>Listado de personas que han visitado la iglesia.</p>
+        </div>
+
+        <div class="erp-card-body">
+            {% if visitas %}
+                <div style="overflow-x:auto;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>Tipo</th>
+                                <th>Fecha</th>
+                                <th>Primera vez</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for visita in visitas %}
+                                <tr>
+                                    <td>{{ visita.nombre }}</td>
+                                    <td>{{ visita.telefono|default:"-" }}</td>
+                                    <td>{{ visita.get_tipo_display }}</td>
+                                    <td>{{ visita.fecha_visita }}</td>
+                                    <td>
+                                        {% if visita.primera_vez %}
+                                            Sí
+                                        {% else %}
+                                            No
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ visita.get_estado_display }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div style="padding: 24px; text-align: center;">
+                    <h3 style="margin-bottom: 8px;">Aún no hay visitas registradas</h3>
+                    <p style="margin-bottom: 16px;">Empieza registrando la primera visita.</p>
+                    <a href="{% url 'visitas_app:visita_create' %}" class="toolbar-btn toolbar-btn-primary">
+                        + Nueva visita
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
