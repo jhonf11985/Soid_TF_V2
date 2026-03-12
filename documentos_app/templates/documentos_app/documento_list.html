@@ -1,52 +1,645 @@
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+{% extends 'documentos_app/base_documentos.html' %}
+{% load static %}
 
-from documentos_app.models import Carpeta, Documento
+{% block title %}Documentos{% endblock %}
 
+{% block documentos_content %}
+<div class="documentos-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ titulo_modulo|default:"Documentos" }}</h1>
+            <p class="page-subtitle">Consulta, filtra y gestiona los documentos registrados.</p>
+        </div>
 
-@login_required
-def documento_list(request):
-    tenant = getattr(request, "tenant", None)
+        <div class="page-actions">
+            <a href="{% url 'documentos_app:carpeta_list' %}" class="btn btn-light">
+                <span class="material-icons">folder</span>
+                <span>Carpetas</span>
+            </a>
 
-    documentos = (
-        Documento.objects.filter(tenant=tenant, eliminado=False)
-        .select_related("carpeta", "categoria", "propietario", "creado_por")
-        .order_by("-created_at")
-    )
+            <a href="{% url 'documentos_app:documento_create' %}" class="btn btn-primary">
+                <span class="material-icons">upload_file</span>
+                <span>Nuevo documento</span>
+            </a>
+        </div>
+    </div>
 
-    carpetas = Carpeta.objects.filter(
-        tenant=tenant,
-        eliminado=False,
-    ).order_by("nombre")
+    <div class="documentos-layout">
+        <div class="documentos-main">
+            <div class="card filtro-card">
+                <form method="get" class="filtros-form">
+                    <div class="filtro-grupo filtro-busqueda">
+                        <label for="q">Buscar</label>
+                        <div class="input-icon">
+                            <span class="material-icons">search</span>
+                            <input
+                                type="text"
+                                name="q"
+                                id="q"
+                                placeholder="Buscar por título..."
+                                value="{{ filtros.q|default:'' }}"
+                            >
+                        </div>
+                    </div>
 
-    q = (request.GET.get("q") or "").strip()
-    carpeta_id = (request.GET.get("carpeta") or "").strip()
+                    <div class="filtro-grupo">
+                        <label for="carpeta">Carpeta</label>
+                        <select name="carpeta" id="carpeta">
+                            <option value="">Todas las carpetas</option>
+                            {% for carpeta in carpetas %}
+                                <option value="{{ carpeta.id }}" {% if filtros.carpeta == carpeta.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ carpeta.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-    if q:
-        documentos = documentos.filter(titulo__icontains=q)
+                    <div class="filtro-botones">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="material-icons">filter_alt</span>
+                            <span>Filtrar</span>
+                        </button>
 
-    if carpeta_id.isdigit():
-        documentos = documentos.filter(carpeta_id=int(carpeta_id))
+                        <a href="{% url 'documentos_app:documento_list' %}" class="btn btn-light">
+                            <span class="material-icons">restart_alt</span>
+                            <span>Limpiar</span>
+                        </a>
+                    </div>
+                </form>
+            </div>
 
-    resumen_sidebar = {
-        "total_documentos": Documento.objects.filter(
-            tenant=tenant,
-            eliminado=False,
-        ).count(),
-        "total_carpetas": Carpeta.objects.filter(
-            tenant=tenant,
-            eliminado=False,
-        ).count(),
+            <div class="card tabla-card">
+                <div class="card-header">
+                    <h3>Lista de documentos</h3>
+                    <span class="badge-total">{{ documentos|length }} resultado{{ documentos|length|pluralize }}</span>
+                </div>
+
+                {% if documentos %}
+                    <div class="tabla-responsive">
+                        <table class="tabla-documentos">
+                            <thead>
+                                <tr>
+                                    <th>Documento</th>
+                                    <th>Carpeta</th>
+                                    <th>Categoría</th>
+                                    <th>Propietario</th>
+                                    <th>Fecha</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for documento in documentos %}
+                                    <tr>
+                                        <td>
+                                            <div class="doc-info">
+                                                <div class="doc-icon">
+                                                    <span class="material-icons">description</span>
+                                                </div>
+                                                <div>
+                                                    <div class="doc-title">
+                                                        {{ documento.titulo|default:"Sin título" }}
+                                                    </div>
+                                                    {% if documento.descripcion %}
+                                                        <div class="doc-desc">
+                                                            {{ documento.descripcion|truncatechars:80 }}
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            {% if documento.carpeta %}
+                                                <span class="chip chip-folder">{{ documento.carpeta.nombre }}</span>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if documento.categoria %}
+                                                <span class="chip">{{ documento.categoria.nombre }}</span>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if documento.propietario %}
+                                                {{ documento.propietario.get_full_name|default:documento.propietario.username }}
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if documento.created_at %}
+                                                {{ documento.created_at|date:"d/m/Y h:i A" }}
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td class="text-end">
+                                            <div class="acciones">
+                                                {% if documento.archivo %}
+                                                    <a href="{{ documento.archivo.url }}" target="_blank" class="btn-icon" title="Ver archivo">
+                                                        <span class="material-icons">visibility</span>
+                                                    </a>
+
+                                                    <a href="{{ documento.archivo.url }}" download class="btn-icon" title="Descargar">
+                                                        <span class="material-icons">download</span>
+                                                    </a>
+                                                {% endif %}
+
+                                                <a href="{% url 'documentos_app:documento_edit' documento.id %}" class="btn-icon" title="Editar">
+                                                    <span class="material-icons">edit</span>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <span class="material-icons">folder_open</span>
+                        </div>
+                        <h3>No hay documentos registrados</h3>
+                        <p>Aún no se han encontrado documentos con los filtros seleccionados.</p>
+                        <a href="{% url 'documentos_app:documento_create' %}" class="btn btn-primary">
+                            <span class="material-icons">add</span>
+                            <span>Subir primer documento</span>
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <aside class="documentos-sidebar">
+            <div class="card sidebar-card">
+                <div class="sidebar-card-header">
+                    <h3>Resumen</h3>
+                </div>
+
+                <div class="resumen-grid">
+                    <div class="resumen-item">
+                        <div class="resumen-icon resumen-icon-primary">
+                            <span class="material-icons">description</span>
+                        </div>
+                        <div>
+                            <div class="resumen-label">Documentos</div>
+                            <div class="resumen-value">{{ resumen_sidebar.total_documentos|default:0 }}</div>
+                        </div>
+                    </div>
+
+                    <div class="resumen-item">
+                        <div class="resumen-icon resumen-icon-warning">
+                            <span class="material-icons">folder</span>
+                        </div>
+                        <div>
+                            <div class="resumen-label">Carpetas</div>
+                            <div class="resumen-value">{{ resumen_sidebar.total_carpetas|default:0 }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card sidebar-card">
+                <div class="sidebar-card-header">
+                    <h3>Ayuda rápida</h3>
+                </div>
+
+                <ul class="help-list">
+                    <li>Usa el filtro de búsqueda para localizar documentos por título.</li>
+                    <li>Puedes filtrar por carpeta para ver documentos agrupados.</li>
+                    <li>Desde la tabla puedes ver, descargar o editar cada documento.</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<style>
+    .documentos-page {
+        padding: 1.25rem;
     }
 
-    context = {
-        "titulo_modulo": "Documentos",
-        "documentos": documentos,
-        "carpetas": carpetas,
-        "resumen_sidebar": resumen_sidebar,
-        "filtros": {
-            "q": q,
-            "carpeta": carpeta_id,
-        },
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
     }
-    return render(request, "documentos_app/documento_list.html", context)
+
+    .page-title {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .page-subtitle {
+        margin: .35rem 0 0 0;
+        color: #6b7280;
+        font-size: .95rem;
+    }
+
+    .page-actions {
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+
+    .documentos-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .documentos-main,
+    .documentos-sidebar {
+        min-width: 0;
+    }
+
+    .card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    .filtro-card,
+    .tabla-card,
+    .sidebar-card {
+        padding: 1rem;
+    }
+
+    .filtro-card {
+        margin-bottom: 1rem;
+    }
+
+    .filtros-form {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr auto;
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .filtro-grupo label {
+        display: block;
+        font-size: .9rem;
+        font-weight: 600;
+        margin-bottom: .45rem;
+        color: #374151;
+    }
+
+    .input-icon {
+        position: relative;
+    }
+
+    .input-icon .material-icons {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 20px;
+        color: #9ca3af;
+    }
+
+    .input-icon input {
+        padding-left: 2.5rem;
+    }
+
+    .filtro-grupo input,
+    .filtro-grupo select {
+        width: 100%;
+        height: 44px;
+        border: 1px solid #d1d5db;
+        border-radius: 12px;
+        padding: 0 .9rem;
+        font-size: .95rem;
+        background: #fff;
+        outline: none;
+        transition: .2s ease;
+    }
+
+    .filtro-grupo input:focus,
+    .filtro-grupo select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .filtro-botones {
+        display: flex;
+        gap: .65rem;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+        height: 44px;
+        padding: 0 1rem;
+        border-radius: 12px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: .92rem;
+        transition: .2s ease;
+        white-space: nowrap;
+    }
+
+    .btn .material-icons {
+        font-size: 19px;
+    }
+
+    .btn-primary {
+        background: #2563eb;
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-light {
+        background: #f3f4f6;
+        color: #111827;
+    }
+
+    .btn-light:hover {
+        background: #e5e7eb;
+    }
+
+    .card-header,
+    .sidebar-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .75rem;
+        margin-bottom: 1rem;
+    }
+
+    .card-header h3,
+    .sidebar-card-header h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .badge-total {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-radius: 999px;
+        padding: .35rem .7rem;
+        font-size: .82rem;
+        font-weight: 700;
+    }
+
+    .tabla-responsive {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .tabla-documentos {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+    }
+
+    .tabla-documentos thead th {
+        text-align: left;
+        font-size: .82rem;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: #6b7280;
+        padding: .9rem .75rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .tabla-documentos tbody td {
+        padding: .95rem .75rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #1f2937;
+        font-size: .93rem;
+    }
+
+    .tabla-documentos tbody tr:hover {
+        background: #fafafa;
+    }
+
+    .doc-info {
+        display: flex;
+        align-items: flex-start;
+        gap: .75rem;
+    }
+
+    .doc-icon {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 12px;
+        background: #eff6ff;
+        color: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .doc-title {
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: .2rem;
+    }
+
+    .doc-desc {
+        color: #6b7280;
+        font-size: .86rem;
+        line-height: 1.35;
+    }
+
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: .35rem .65rem;
+        border-radius: 999px;
+        background: #f3f4f6;
+        color: #374151;
+        font-size: .82rem;
+        font-weight: 600;
+    }
+
+    .chip-folder {
+        background: #fff7ed;
+        color: #c2410c;
+    }
+
+    .acciones {
+        display: flex;
+        justify-content: flex-end;
+        gap: .4rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3f4f6;
+        color: #374151;
+        text-decoration: none;
+        transition: .2s ease;
+    }
+
+    .btn-icon:hover {
+        background: #e5e7eb;
+        color: #111827;
+    }
+
+    .btn-icon .material-icons {
+        font-size: 19px;
+    }
+
+    .text-end {
+        text-align: right;
+    }
+
+    .text-muted {
+        color: #9ca3af;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+    }
+
+    .empty-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+        background: #f3f4f6;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem auto;
+    }
+
+    .empty-icon .material-icons {
+        font-size: 34px;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 .5rem 0;
+        color: #111827;
+    }
+
+    .empty-state p {
+        margin: 0 0 1rem 0;
+        color: #6b7280;
+    }
+
+    .resumen-grid {
+        display: grid;
+        gap: .85rem;
+    }
+
+    .resumen-item {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        padding: .9rem;
+        border: 1px solid #eef2f7;
+        border-radius: 14px;
+        background: #fafafa;
+    }
+
+    .resumen-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .resumen-icon-primary {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    .resumen-icon-warning {
+        background: #fff7ed;
+        color: #ea580c;
+    }
+
+    .resumen-label {
+        font-size: .85rem;
+        color: #6b7280;
+    }
+
+    .resumen-value {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    .help-list {
+        margin: 0;
+        padding-left: 1rem;
+        color: #4b5563;
+    }
+
+    .help-list li {
+        margin-bottom: .65rem;
+        line-height: 1.45;
+    }
+
+    @media (max-width: 1100px) {
+        .documentos-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .documentos-sidebar {
+            order: 2;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .documentos-page {
+            padding: 1rem;
+        }
+
+        .filtros-form {
+            grid-template-columns: 1fr;
+        }
+
+        .page-actions {
+            width: 100%;
+        }
+
+        .page-actions .btn {
+            flex: 1 1 auto;
+        }
+
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+{% endblock %}

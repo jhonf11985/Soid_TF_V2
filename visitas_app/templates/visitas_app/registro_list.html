@@ -1,0 +1,287 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Registros de visitas{% endblock %}
+
+{% block content %}
+<style>
+    .registro-list-wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .registro-list-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        overflow: hidden;
+        background: #ffffff;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .registro-list-header {
+        padding: 26px 28px 18px;
+        background: linear-gradient(135deg, #f8fafc 0%, #eef6ff 100%);
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .registro-list-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(14, 165, 164, 0.08);
+        color: #0f766e;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .registro-list-badge-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #14b8a6;
+    }
+
+    .registro-list-title {
+        margin: 0;
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+    }
+
+    .registro-list-subtitle {
+        margin: 8px 0 0;
+        color: #64748b;
+        font-size: 0.96rem;
+        line-height: 1.5;
+    }
+
+    .registro-list-body {
+        padding: 24px;
+    }
+
+    .registro-table-wrap {
+        overflow-x: auto;
+        border: 1px solid #eef2f7;
+        border-radius: 16px;
+    }
+
+    .registro-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 920px;
+        background: #fff;
+    }
+
+    .registro-table thead th {
+        background: #f8fafc;
+        color: #334155;
+        font-size: 0.88rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        white-space: nowrap;
+    }
+
+    .registro-table tbody td {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #0f172a;
+        font-size: 0.95rem;
+        vertical-align: middle;
+    }
+
+    .registro-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .registro-table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    .registro-table tbody tr:hover {
+        background: #f8fbff;
+    }
+
+    .registro-date {
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .registro-tipo-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #ecfeff;
+        color: #0f766e;
+        font-size: 0.82rem;
+        font-weight: 700;
+        border: 1px solid #ccfbf1;
+    }
+
+    .registro-visitas-total {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 0.85rem;
+        font-weight: 700;
+        border: 1px solid #dbeafe;
+    }
+
+    .registro-obs {
+        color: #475569;
+    }
+
+    .registro-btn-open {
+        background: linear-gradient(135deg, #0f766e 0%, #0ea5a4 100%);
+        color: #fff !important;
+        border: none;
+        box-shadow: 0 8px 18px rgba(14, 165, 164, 0.18);
+    }
+
+    .registro-btn-open:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(14, 165, 164, 0.22);
+    }
+
+    .registro-empty {
+        padding: 40px 24px;
+        text-align: center;
+    }
+
+    .registro-empty-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+
+    .registro-empty-title {
+        margin: 0 0 8px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .registro-empty-text {
+        margin: 0 0 18px;
+        color: #64748b;
+    }
+
+    .toolbar-btn-primary-soft {
+        background: linear-gradient(135deg, #0f766e 0%, #0ea5a4 100%);
+        color: #fff !important;
+        border: none;
+        box-shadow: 0 8px 18px rgba(14, 165, 164, 0.18);
+    }
+
+    .toolbar-btn-primary-soft:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(14, 165, 164, 0.22);
+    }
+
+    @media (max-width: 768px) {
+        .registro-list-header,
+        .registro-list-body {
+            padding: 20px;
+        }
+
+        .registro-list-title {
+            font-size: 1.3rem;
+        }
+
+        .registro-empty {
+            padding: 28px 14px;
+        }
+    }
+</style>
+
+<div class="erp-container">
+    <div class="registro-list-wrap">
+        <div class="erp-toolbar">
+            <div class="toolbar-left">
+                <a href="/" class="toolbar-btn" title="Inicio">🏠</a>
+                <div class="toolbar-divider"></div>
+                <a href="{% url 'visitas_app:registro_create' %}" class="toolbar-btn toolbar-btn-primary toolbar-btn-primary-soft">
+                    <span>+ Nuevo registro</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="erp-card registro-list-card">
+            <div class="registro-list-header">
+                <div class="registro-list-badge">
+                    <span class="registro-list-badge-dot"></span>
+                    Panel de registros
+                </div>
+                <h2 class="registro-list-title">Registros de visitas</h2>
+                <p class="registro-list-subtitle">
+                    Aquí se agrupan las visitas por fecha, tipo y unidad responsable.
+                </p>
+            </div>
+
+            <div class="registro-list-body">
+                {% if registros %}
+                    <div class="registro-table-wrap">
+                        <table class="registro-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Unidad responsable</th>
+                                    <th>Observaciones</th>
+                                    <th>Total visitas</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for registro in registros %}
+                                    <tr>
+                                        <td>
+                                            <span class="registro-date">{{ registro.fecha|date:"d/m/Y" }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="registro-tipo-badge">{{ registro.tipo }}</span>
+                                        </td>
+                                        <td>{{ registro.unidad_responsable|default:"-" }}</td>
+                                        <td class="registro-obs">{{ registro.observaciones|default:"-"|truncatechars:60 }}</td>
+                                        <td>
+                                            <span class="registro-visitas-total">{{ registro.visitas.count }}</span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'visitas_app:registro_detail' registro.pk %}" class="toolbar-btn registro-btn-open">
+                                                Abrir
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="registro-empty">
+                        <div class="registro-empty-icon">🗂️</div>
+                        <h3 class="registro-empty-title">Aún no hay registros</h3>
+                        <p class="registro-empty-text">
+                            Crea el primer registro para comenzar a agrupar las visitas por culto o actividad.
+                        </p>
+                        <a href="{% url 'visitas_app:registro_create' %}" class="toolbar-btn toolbar-btn-primary toolbar-btn-primary-soft">
+                            + Nuevo registro
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

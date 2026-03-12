@@ -1,0 +1,227 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Nueva visita{% endblock %}
+
+{% block content %}
+<div class="erp-container">
+    <div class="erp-toolbar">
+        <div class="toolbar-left">
+            <a href="{% url 'visitas_app:registro_list' %}" class="toolbar-btn">
+                <span>← Volver</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="erp-card" style="max-width: 900px; margin: 0 auto;">
+        <div class="erp-card-header">
+            <h2>Registrar visita</h2>
+            <p>Formulario corto para registrar personas que visitan la iglesia.</p>
+        </div>
+
+        <div class="erp-card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div style="margin-bottom:16px; padding:12px; border:1px solid #dc3545; background:#f8d7da; color:#842029; border-radius:8px;">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <div id="visita-encontrada-box" style="display:none; margin-bottom:16px; padding:12px; border:1px solid #0ea5e9; background:#e0f2fe; color:#075985; border-radius:8px;">
+                    Persona encontrada. Se cargarán sus datos automáticamente.
+                    <div id="visita-encontrada-info" style="margin-top:6px; font-size:14px;"></div>
+                </div>
+
+                <div class="form-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+                    <div>
+                        <label for="{{ form.nombre.id_for_label }}">Nombre</label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <div style="color:#dc3545; margin-top:6px;">{{ form.nombre.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.telefono.id_for_label }}">Teléfono</label>
+                        {{ form.telefono }}
+                        {% if form.telefono.errors %}
+                            <div style="color:#dc3545; margin-top:6px;">{{ form.telefono.errors }}</div>
+                        {% endif %}
+                    </div>
+
+      <div>
+    <label>Género</label>
+    <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+        {{ form.genero }}
+    </div>
+    {% if form.genero.errors %}
+        <div style="color:#dc3545; margin-top:6px;">{{ form.genero.errors }}</div>
+    {% endif %}
+</div>
+                    <div>
+                        <label for="{{ form.edad.id_for_label }}">Edad</label>
+                        {{ form.edad }}
+                        {% if form.edad.errors %}
+                            <div style="color:#dc3545; margin-top:6px;">{{ form.edad.errors }}</div>
+                        {% endif %}
+                    </div>
+<div>
+    <label for="{{ form.clasificacion.id_for_label }}">Clasificación</label>
+    <div style="margin-top:8px;">
+        {{ form.clasificacion }}
+    </div>
+    {% if form.clasificacion.errors %}
+        <div style="color:#dc3545; margin-top:6px;">{{ form.clasificacion.errors }}</div>
+    {% endif %}
+</div>
+
+                    <div>
+                        <label for="{{ form.invitado_por.id_for_label }}">Invitado por</label>
+                        {{ form.invitado_por }}
+                        {% if form.invitado_por.errors %}
+                            <div style="color:#dc3545; margin-top:6px;">{{ form.invitado_por.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div style="grid-column: 1 / -1;">
+                        <label for="{{ form.peticion_oracion.id_for_label }}">Petición de oración</label>
+                        {{ form.peticion_oracion }}
+                        {% if form.peticion_oracion.errors %}
+                            <div style="color:#dc3545; margin-top:6px;">{{ form.peticion_oracion.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:20px;">
+                    <div class="form-check">
+                        {{ form.primera_vez }}
+                        <label for="{{ form.primera_vez.id_for_label }}">¿Es su primera vez?</label>
+                        {% if form.primera_vez.errors %}
+                            <div style="color:#dc3545; margin-top:6px;">{{ form.primera_vez.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-check">
+                        {{ form.desea_contacto }}
+                        <label for="{{ form.desea_contacto.id_for_label }}">¿Desea que le contacten?</label>
+                        {% if form.desea_contacto.errors %}
+                            <div style="color:#dc3545; margin-top:6px;">{{ form.desea_contacto.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div style="margin-top:24px; display:flex; gap:12px; flex-wrap:wrap;">
+                    <button type="submit" class="toolbar-btn toolbar-btn-primary">
+                        Guardar visita
+                    </button>
+
+                    <a href="{% url 'visitas_app:registro_list' %}" class="toolbar-btn">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const nombreInput = document.getElementById("id_nombre");
+    const telefonoInput = document.getElementById("id_telefono");
+    const edadInput = document.getElementById("id_edad");
+    const clasificacionInput = document.getElementById("id_clasificacion");
+    const invitadoPorInput = document.getElementById("id_invitado_por");
+    const deseaContactoInput = document.getElementById("id_desea_contacto");
+    const peticionOracionInput = document.getElementById("id_peticion_oracion");
+    const primeraVezInput = document.getElementById("id_primera_vez");
+
+    const infoBox = document.getElementById("visita-encontrada-box");
+    const infoText = document.getElementById("visita-encontrada-info");
+
+    let timeout = null;
+
+    function limpiarTelefono(valor) {
+        let v = (valor || "").replace(/\D/g, "");
+        if (v.length > 0 && !v.startsWith("1")) {
+            v = "1" + v;
+        }
+        return v.slice(0, 11);
+    }
+
+    function ocultarAviso() {
+        infoBox.style.display = "none";
+        infoText.textContent = "";
+    }
+
+    function marcarGenero(valor) {
+        const radios = document.querySelectorAll('input[name="genero"]');
+        radios.forEach(radio => {
+            radio.checked = radio.value === valor;
+        });
+    }
+
+    function buscarRegistro() {
+        const nombre = nombreInput.value.trim();
+        const telefono = limpiarTelefono(telefonoInput.value);
+
+        if (telefonoInput.value !== telefono) {
+            telefonoInput.value = telefono;
+        }
+
+        if (!nombre && !telefono) {
+            ocultarAviso();
+            return;
+        }
+
+        const url = `{% url 'visitas_app:visita_buscar_ajax' %}?nombre=${encodeURIComponent(nombre)}&telefono=${encodeURIComponent(telefono)}`;
+
+        fetch(url, {
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.encontrado) {
+                nombreInput.value = data.nombre || "";
+                telefonoInput.value = data.telefono || "";
+                if (edadInput) edadInput.value = data.edad ?? "";
+                if (clasificacionInput && data.clasificacion_id) {
+                    clasificacionInput.value = data.clasificacion_id;
+                }
+                invitadoPorInput.value = data.invitado_por || "";
+                deseaContactoInput.checked = !!data.desea_contacto;
+                peticionOracionInput.value = data.peticion_oracion || "";
+                primeraVezInput.checked = !!data.primera_vez;
+                marcarGenero(data.genero || "");
+
+                infoBox.style.display = "block";
+                infoText.textContent = `Total de veces registrado: ${data.cantidad_visitas || 1}`;
+            } else {
+                ocultarAviso();
+            }
+        })
+        .catch(() => {
+            ocultarAviso();
+        });
+    }
+
+    function programarBusqueda() {
+        clearTimeout(timeout);
+        timeout = setTimeout(buscarRegistro, 500);
+    }
+
+    if (nombreInput) {
+        nombreInput.addEventListener("blur", buscarRegistro);
+        nombreInput.addEventListener("input", programarBusqueda);
+    }
+
+    if (telefonoInput) {
+        telefonoInput.addEventListener("input", programarBusqueda);
+        telefonoInput.addEventListener("blur", buscarRegistro);
+    }
+});
+</script>
+{% endblock %}

@@ -68,6 +68,8 @@ INSTALLED_APPS = [
     "tenants",
     "ia_app",
     "documentos_app",
+     'visitas_app',
+     
 
 
 
