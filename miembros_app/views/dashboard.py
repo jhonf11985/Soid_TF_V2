@@ -23,7 +23,7 @@ def miembros_dashboard(request):
     """Dashboard principal del módulo de miembros."""
     # ✅ FILTRAR POR TENANT
     miembros = Miembro.objects.filter(activo=True, tenant=request.tenant)
-    edad_minima = get_edad_minima_miembro_oficial()
+    edad_minima = get_edad_minima_miembro_oficial(request.tenant)
     hoy = date.today()
 
     # Conteo de membresía oficial
