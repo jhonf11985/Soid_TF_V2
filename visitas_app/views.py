@@ -83,7 +83,9 @@ def visita_create_en_registro(request, registro_id):
         pk=registro_id,
         tenant=tenant,
     )
-
+    if registro.estado == "cerrado":
+        return redirect("visitas_app:registro_detail", pk=registro.pk)
+        
     if request.method != "POST":
         return redirect("visitas_app:registro_detail", pk=registro.pk)
 
@@ -204,3 +206,21 @@ def visita_buscar_ajax(request):
     return JsonResponse({
         "encontrado": False
     })
+
+def registro_cerrar(request, pk):
+    tenant = _get_tenant(request)
+    if tenant is None:
+        return HttpResponseBadRequest("No se encontró tenant activo.")
+
+    registro = get_object_or_404(
+        RegistroVisitas,
+        pk=pk,
+        tenant=tenant,
+    )
+
+    if request.method == "POST" and registro.estado != "cerrado":
+        registro.estado = "cerrado"
+        registro.cerrado_at = timezone.now()
+        registro.save(update_fields=["estado", "cerrado_at", "updated_at"])
+
+    return redirect("visitas_app:registro_detail", pk=registro.pk)

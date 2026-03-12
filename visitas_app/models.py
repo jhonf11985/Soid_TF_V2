@@ -44,8 +44,12 @@ class ClasificacionVisita(TenantAwareModel):
     def __str__(self):
         return self.nombre
 
-
 class RegistroVisitas(TenantAwareModel):
+    ESTADO_CHOICES = [
+        ("abierto", "Abierto"),
+        ("cerrado", "Cerrado"),
+    ]
+
     fecha = models.DateField(default=timezone.localdate)
 
     tipo = models.ForeignKey(
@@ -62,7 +66,14 @@ class RegistroVisitas(TenantAwareModel):
         blank=True,
     )
 
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default="abierto",
+    )
+
     observaciones = models.TextField(blank=True, null=True)
+    cerrado_at = models.DateTimeField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -74,6 +85,7 @@ class RegistroVisitas(TenantAwareModel):
         indexes = [
             models.Index(fields=["fecha"]),
             models.Index(fields=["tipo"]),
+            models.Index(fields=["estado"]),
         ]
 
     def __str__(self):
@@ -81,6 +93,9 @@ class RegistroVisitas(TenantAwareModel):
         unidad = self.unidad_responsable.nombre if self.unidad_responsable_id else "Sin unidad"
         return f"{self.fecha} - {tipo} - {unidad}"
 
+    @property
+    def esta_cerrado(self):
+        return self.estado == "cerrado"
 
 class Visita(TenantAwareModel):
     ESTADO_CHOICES = [
