@@ -23,6 +23,7 @@
             <p>Detalle del culto, servicio o actividad.</p>
         </div>
 
+        
         <div class="erp-card-body">
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
                 <div>
@@ -44,18 +45,28 @@
                 <div style="grid-column: 1 / -1;">
                     <strong>Observaciones:</strong><br>
                     {{ registro.observaciones|default:"-" }}
+
+                </div>
+                <div>
+                    <strong>Estado:</strong><br>
+                    {{ registro.get_estado_display }}
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="erp-card" style="margin-bottom: 20px;">
-        <div class="erp-card-header">
-            <h2>Agregar visita</h2>
-            <p>Registra una nueva visita dentro de este registro.</p>
-        </div>
+<div class="erp-card" style="margin-bottom: 20px;">
+    <div class="erp-card-header">
+        <h2>Agregar visita</h2>
+        <p>Registra una nueva visita dentro de este registro.</p>
+    </div>
 
-        <div class="erp-card-body">
+    <div class="erp-card-body">
+        {% if registro.estado == "cerrado" %}
+            <div style="padding:12px; border:1px solid #ffc107; background:#fff3cd; color:#664d03; border-radius:8px;">
+                El registro está finalizado. Ya no se pueden agregar más visitas.
+            </div>
+        {% else %}
             <form method="post" action="{% url 'visitas_app:visita_create_en_registro' registro.pk %}">
                 {% csrf_token %}
 
@@ -152,8 +163,9 @@
                     </button>
                 </div>
             </form>
-        </div>
+        {% endif %}
     </div>
+</div>
 
     <div class="erp-card">
         <div class="erp-card-header">
