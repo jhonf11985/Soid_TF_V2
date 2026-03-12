@@ -51,13 +51,31 @@
                         {% endif %}
                     </div>
 
+      <div>
+    <label>Género</label>
+    <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+        {{ form.genero }}
+    </div>
+    {% if form.genero.errors %}
+        <div style="color:#dc3545; margin-top:6px;">{{ form.genero.errors }}</div>
+    {% endif %}
+</div>
                     <div>
-                        <label for="{{ form.tipo.id_for_label }}">Tipo</label>
-                        {{ form.tipo }}
-                        {% if form.tipo.errors %}
-                            <div style="color:#dc3545; margin-top:6px;">{{ form.tipo.errors }}</div>
+                        <label for="{{ form.edad.id_for_label }}">Edad</label>
+                        {{ form.edad }}
+                        {% if form.edad.errors %}
+                            <div style="color:#dc3545; margin-top:6px;">{{ form.edad.errors }}</div>
                         {% endif %}
                     </div>
+<div>
+    <label for="{{ form.clasificacion.id_for_label }}">Clasificación</label>
+    <div style="margin-top:8px;">
+        {{ form.clasificacion }}
+    </div>
+    {% if form.clasificacion.errors %}
+        <div style="color:#dc3545; margin-top:6px;">{{ form.clasificacion.errors }}</div>
+    {% endif %}
+</div>
 
                     <div>
                         <label for="{{ form.invitado_por.id_for_label }}">Invitado por</label>
@@ -112,7 +130,8 @@
 document.addEventListener("DOMContentLoaded", function () {
     const nombreInput = document.getElementById("id_nombre");
     const telefonoInput = document.getElementById("id_telefono");
-    const tipoInput = document.getElementById("id_tipo");
+    const edadInput = document.getElementById("id_edad");
+    const clasificacionInput = document.getElementById("id_clasificacion");
     const invitadoPorInput = document.getElementById("id_invitado_por");
     const deseaContactoInput = document.getElementById("id_desea_contacto");
     const peticionOracionInput = document.getElementById("id_peticion_oracion");
@@ -134,6 +153,13 @@ document.addEventListener("DOMContentLoaded", function () {
     function ocultarAviso() {
         infoBox.style.display = "none";
         infoText.textContent = "";
+    }
+
+    function marcarGenero(valor) {
+        const radios = document.querySelectorAll('input[name="genero"]');
+        radios.forEach(radio => {
+            radio.checked = radio.value === valor;
+        });
     }
 
     function buscarRegistro() {
@@ -161,11 +187,15 @@ document.addEventListener("DOMContentLoaded", function () {
             if (data.encontrado) {
                 nombreInput.value = data.nombre || "";
                 telefonoInput.value = data.telefono || "";
-                tipoInput.value = data.tipo || "visita";
+                if (edadInput) edadInput.value = data.edad ?? "";
+                if (clasificacionInput && data.clasificacion_id) {
+                    clasificacionInput.value = data.clasificacion_id;
+                }
                 invitadoPorInput.value = data.invitado_por || "";
                 deseaContactoInput.checked = !!data.desea_contacto;
                 peticionOracionInput.value = data.peticion_oracion || "";
                 primeraVezInput.checked = !!data.primera_vez;
+                marcarGenero(data.genero || "");
 
                 infoBox.style.display = "block";
                 infoText.textContent = `Total de veces registrado: ${data.cantidad_visitas || 1}`;
