@@ -1,6 +1,57 @@
 from django import forms
 
-from .models import Visita, ClasificacionVisita
+from .models import (
+    Visita,
+    ClasificacionVisita,
+    RegistroVisitas,
+    TipoRegistroVisita,
+)
+
+
+class RegistroVisitasForm(forms.ModelForm):
+    class Meta:
+        model = RegistroVisitas
+        fields = [
+            "fecha",
+            "tipo",
+            "unidad_responsable",
+            "observaciones",
+        ]
+        widgets = {
+            "fecha": forms.DateInput(attrs={
+                "class": "form-control",
+                "type": "date",
+            }),
+            "tipo": forms.Select(attrs={
+                "class": "form-select",
+            }),
+            "unidad_responsable": forms.Select(attrs={
+                "class": "form-select",
+            }),
+            "observaciones": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 3,
+                "placeholder": "Observaciones generales del registro",
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        tenant = kwargs.pop("tenant", None)
+        super().__init__(*args, **kwargs)
+
+        self.fields["observaciones"].required = False
+        self.fields["unidad_responsable"].required = False
+
+        if tenant is not None:
+            self.fields["tipo"].queryset = TipoRegistroVisita.objects.filter(
+                tenant=tenant,
+                activo=True
+            ).order_by("orden", "nombre")
+        else:
+            self.fields["tipo"].queryset = TipoRegistroVisita.objects.none()
+
+        self.fields["tipo"].empty_label = "Seleccione un tipo"
+        self.fields["unidad_responsable"].empty_label = "Seleccione una unidad"
 
 
 class VisitaForm(forms.ModelForm):
@@ -12,10 +63,10 @@ class VisitaForm(forms.ModelForm):
             "genero",
             "edad",
             "clasificacion",
-            "primera_vez",
             "invitado_por",
             "desea_contacto",
             "peticion_oracion",
+            "notas",
         ]
         widgets = {
             "nombre": forms.TextInput(attrs={
@@ -37,9 +88,6 @@ class VisitaForm(forms.ModelForm):
             "clasificacion": forms.Select(attrs={
                 "class": "form-select",
             }),
-            "primera_vez": forms.CheckboxInput(attrs={
-                "class": "form-check-input",
-            }),
             "invitado_por": forms.TextInput(attrs={
                 "class": "form-control",
                 "placeholder": "Invitado por",
@@ -51,6 +99,11 @@ class VisitaForm(forms.ModelForm):
                 "class": "form-control",
                 "rows": 3,
                 "placeholder": "Petición de oración",
+            }),
+            "notas": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 3,
+                "placeholder": "Notas internas",
             }),
         }
 
@@ -64,6 +117,7 @@ class VisitaForm(forms.ModelForm):
         self.fields["edad"].required = False
         self.fields["invitado_por"].required = False
         self.fields["peticion_oracion"].required = False
+        self.fields["notas"].required = False
 
         if tenant is not None:
             self.fields["clasificacion"].queryset = ClasificacionVisita.objects.filter(

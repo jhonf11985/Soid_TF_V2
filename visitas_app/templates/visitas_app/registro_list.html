@@ -1,0 +1,68 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Registros de visitas{% endblock %}
+
+{% block content %}
+<div class="erp-container">
+    <div class="erp-toolbar">
+        <div class="toolbar-left">
+            <a href="/" class="toolbar-btn" title="Inicio">🏠</a>
+            <div class="toolbar-divider"></div>
+            <a href="{% url 'visitas_app:registro_create' %}" class="toolbar-btn toolbar-btn-primary">
+                <span>+ Nuevo registro</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="erp-card">
+        <div class="erp-card-header">
+            <h2>Registros de visitas</h2>
+            <p>Aquí se agrupan las visitas por fecha, tipo y unidad responsable.</p>
+        </div>
+
+        <div class="erp-card-body">
+            {% if registros %}
+                <div style="overflow-x:auto;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Unidad responsable</th>
+                                <th>Observaciones</th>
+                                <th>Total visitas</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for registro in registros %}
+                                <tr>
+                                    <td>{{ registro.fecha|date:"d/m/Y" }}</td>
+                                    <td>{{ registro.tipo }}</td>
+                                    <td>{{ registro.unidad_responsable|default:"-" }}</td>
+                                    <td>{{ registro.observaciones|default:"-"|truncatechars:60 }}</td>
+                                    <td>{{ registro.visitas.count }}</td>
+                                    <td>
+                                        <a href="{% url 'visitas_app:registro_detail' registro.pk %}" class="toolbar-btn">
+                                            Abrir
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div style="padding:24px; text-align:center;">
+                    <h3 style="margin-bottom:8px;">Aún no hay registros</h3>
+                    <p style="margin-bottom:16px;">Crea el primer registro para comenzar a agrupar las visitas por culto o actividad.</p>
+                    <a href="{% url 'visitas_app:registro_create' %}" class="toolbar-btn toolbar-btn-primary">
+                        + Nuevo registro
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
