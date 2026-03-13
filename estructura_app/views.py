@@ -426,13 +426,15 @@ def unidad_detalle(request, pk):
         elif g in ("f", "femenino", "mujer"):
             femeninos += 1
 
-    # --- Estados (tu lógica: estado vacío = menor)
-    activos = pasivos = observacion = disciplina = catecumenos = menores_estado_vacio = 0
+    # --- Estados (prioridad: nuevo creyente antes que menor)
+    activos = pasivos = observacion = disciplina = catecumenos = 0
+    menores_estado_vacio = nuevos_creyentes = 0
+
     for m in miembros:
         e = (m.estado_miembro or "").strip().lower()
-        if e == "":
-            menores_estado_vacio += 1
-        elif e == "activo":
+        es_nuevo = bool(getattr(m, "nuevo_creyente", False))
+
+        if e == "activo":
             activos += 1
         elif e == "pasivo":
             pasivos += 1
@@ -442,8 +444,11 @@ def unidad_detalle(request, pk):
             disciplina += 1
         elif e == "catecumeno":
             catecumenos += 1
+        elif es_nuevo:
+            nuevos_creyentes += 1
+        else:
+            menores_estado_vacio += 1
 
-    # Menores/Mayores: principal por estado vacío (como tú definiste)
     menores = menores_estado_vacio
     mayores = total - menores
 
@@ -470,6 +475,7 @@ def unidad_detalle(request, pk):
         "observacion": observacion,
         "disciplina": disciplina,
         "catecumenos": catecumenos,
+        "nuevos_creyentes": nuevos_creyentes,
         "menores_estado_vacio": menores_estado_vacio,
         "categorias_edad": categorias_edad,
     }
