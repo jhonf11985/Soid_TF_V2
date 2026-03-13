@@ -197,10 +197,30 @@ def unidad_crear(request):
             unidad.edad_max = _to_int_from_post(request.POST, "edad_max")
 
             unidad.reglas = _reglas_mvp_from_post(request.POST)
+
+            asignacion_automatica = bool(unidad.reglas.get("asignacion_automatica"))
+
+            if asignacion_automatica:
+                existe_rol_base = RolUnidad.objects.filter(
+                    tipo=RolUnidad.TIPO_PARTICIPACION
+                ).exists()
+
+                if not existe_rol_base:
+                    messages.error(
+                        request,
+                        "Para activar la asignación automática, primero debes crear el rol base de participación del sistema."
+                    )
+                    context = {
+                        "form": form,
+                        "modo": "crear",
+                        "unidad": None,
+                        "reglas": unidad.reglas,
+                    }
+                    return render(request, "estructura_app/unidad_form.html", context)
+
             unidad.save()
 
             sync = _sincronizar_membresias_automaticas(unidad)
-
             if unidad.reglas.get("asignacion_automatica"):
                 messages.success(
                     request,
@@ -262,8 +282,30 @@ def unidad_editar(request, pk):
             if modo_asignacion in [Unidad.MODO_MANUAL, Unidad.MODO_AUTOMATICA]:
                 unidad_obj.modo_asignacion = modo_asignacion
 
+          
             # ✅ siempre recalculamos reglas (manteniendo valores anteriores si un checkbox no vino)
             unidad_obj.reglas = _reglas_mvp_from_post(request.POST, base_reglas=(unidad.reglas or {}))
+
+            asignacion_automatica = bool(unidad_obj.reglas.get("asignacion_automatica"))
+
+            if asignacion_automatica:
+                existe_rol_base = RolUnidad.objects.filter(
+                    tipo=RolUnidad.TIPO_PARTICIPACION
+                ).exists()
+
+                if not existe_rol_base:
+                    messages.error(
+                        request,
+                        "Para activar la asignación automática, primero debes crear el rol base de participación del sistema."
+                    )
+                    return render(request, "estructura_app/unidad_form.html", {
+                        "form": form,
+                        "modo": "editar",
+                        "unidad": unidad,
+                        "bloqueada": bloqueada,
+                        "reglas": unidad_obj.reglas,
+                    })
+
             unidad_obj.save()
 
             sync = _sincronizar_membresias_automaticas(unidad_obj)
@@ -719,14 +761,30 @@ def rol_crear(request):
     if request.method == "POST":
         form = RolUnidadForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Rol creado correctamente.")
-            return redirect("estructura_app:rol_listado")
+            tipo = form.cleaned_data.get("tipo")
+
+            if tipo == RolUnidad.TIPO_PARTICIPACION:
+                ya_existe = RolUnidad.objects.filter(
+                    tipo=RolUnidad.TIPO_PARTICIPACION
+                ).exists()
+
+                if ya_existe:
+                    form.add_error(
+                        "tipo",
+                        "Ya existe el rol base de participación del sistema. No se permite crear más de uno."
+                    )
+                else:
+                    form.save()
+                    messages.success(request, "Rol creado correctamente.")
+                    return redirect("estructura_app:rol_listado")
+            else:
+                form.save()
+                messages.success(request, "Rol creado correctamente.")
+                return redirect("estructura_app:rol_listado")
     else:
         form = RolUnidadForm()
 
     return render(request, "estructura_app/rol_form.html", {"form": form, "modo": "crear"})
-
 
 def _estado_slug(estado):
     if not estado:
