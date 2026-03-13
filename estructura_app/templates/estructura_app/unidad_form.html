@@ -480,7 +480,27 @@
 
                                 <!-- SECCIÓN: TIPOS PERMITIDOS -->
                                 <div class="odoo-section-title">TIPOS PERMITIDOS</div>
-                                
+
+                                <div class="odoo-section-field">
+    <label class="odoo-section-label">Permite activos</label>
+    <label class="odoo-switch-inline">
+        <input type="hidden" name="regla_perm_activos" value="0">
+
+        <input
+            type="checkbox"
+            name="regla_perm_activos"
+            id="id_regla_perm_activos"
+            value="1"
+            {% if modo == "crear" %}
+                checked
+            {% else %}
+                {% if r.permite_activos %}checked{% endif %}
+            {% endif %}
+        >
+
+        <span class="odoo-switch-slider-sm"></span>
+    </label>
+</div>
                                 <div class="odoo-section-field" id="membership-types">
                                     <label class="odoo-section-label">En observación</label>
                                     <label class="odoo-switch-inline">
@@ -811,34 +831,49 @@ function initMasterRule() {
     }
 }
 </script>
+
 <script>
 (function () {
   const soloActivos = document.getElementById('id_regla_solo_activos');
 
   const dependientes = [
+    'id_regla_perm_activos',
     'id_regla_perm_menores',
     'id_regla_perm_observacion',
     'id_regla_perm_pasivos',
     'id_regla_perm_disciplina',
+    'id_regla_perm_catecumenos',
     'id_regla_perm_nuevos',
-    'id_regla_perm_catecumenos'
-  ].map(id => document.getElementById(id)).filter(Boolean);
+  ];
 
-  function aplicarBloqueo() {
+  function syncSoloActivos() {
     if (!soloActivos) return;
-    const bloquear = soloActivos.checked;
 
-    dependientes.forEach(chk => {
-      chk.disabled = bloquear;
-      if (bloquear) chk.checked = false;
+    dependientes.forEach(function (id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      if (id === 'id_regla_perm_activos') {
+        if (soloActivos.checked) {
+          el.checked = true;
+          el.disabled = true;
+        } else {
+          el.disabled = false;
+        }
+      } else {
+        if (soloActivos.checked) {
+          el.checked = false;
+          el.disabled = true;
+        } else {
+          el.disabled = false;
+        }
+      }
     });
   }
 
   if (soloActivos) {
-    
-
-    soloActivos.addEventListener('change', aplicarBloqueo);
-    aplicarBloqueo();
+    soloActivos.addEventListener('change', syncSoloActivos);
+    syncSoloActivos();
   }
 })();
 </script>

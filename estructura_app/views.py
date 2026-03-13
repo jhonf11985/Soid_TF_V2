@@ -651,6 +651,8 @@ def _reglas_mvp_from_post(post, base_reglas=None):
     # ── Checkboxes: si está en POST = True, si no está = False ──
     asignacion_automatica = post.get("regla_asignacion_automatica") in ("on", "1", "true", "True")
     solo_activos = post.get("regla_solo_activos") in ("on", "1", "true", "True")
+    permite_activos = True if solo_activos else post.get("regla_perm_activos") in ("on", "1", "true", "True")
+
     admite_hombres = post.get("regla_admite_hombres") in ("on", "1", "true", "True")
     admite_mujeres = post.get("regla_admite_mujeres") in ("on", "1", "true", "True")
     permite_liderazgo = post.get("regla_perm_liderazgo") in ("on", "1", "true", "True")
@@ -667,7 +669,9 @@ def _reglas_mvp_from_post(post, base_reglas=None):
     permite_menores = False if solo_activos else post.get("regla_perm_menores") in ("on", "1", "true", "True")
 
     reglas = {
+        "asignacion_automatica": asignacion_automatica,
         "solo_activos": solo_activos,
+        "permite_activos": permite_activos,
         "admite_hombres": admite_hombres,
         "admite_mujeres": admite_mujeres,
         "permite_observacion": permite_observacion,
@@ -684,7 +688,6 @@ def _reglas_mvp_from_post(post, base_reglas=None):
         "permite_subunidades": permite_subunidades,
         "requiere_aprobacion_lider": requiere_aprobacion,
         "unidad_privada": unidad_privada,
-        "asignacion_automatica": asignacion_automatica,
     }
 
     return reglas
@@ -3273,7 +3276,6 @@ def get_lideres_heredados(unidad):
         padre = padre.padre
 
     return lideres
-
 def _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
     """
     Evalúa si un miembro debe pertenecer automáticamente a una unidad.
@@ -3314,29 +3316,40 @@ def _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
     if not _cumple_rango_edad(miembro, unidad):
         return False
 
-    # Regla de estados / tipos permitidos
+    # Reglas de membresía automática (estrictas)
     solo_activos = bool(reglas.get("solo_activos", False))
+    permite_activos = bool(reglas.get("permite_activos", False))
+    permite_observacion = bool(reglas.get("permite_observacion", False))
+    permite_pasivos = bool(reglas.get("permite_pasivos", False))
+    permite_disciplina = bool(reglas.get("permite_disciplina", False))
+    permite_catecumenos = bool(reglas.get("permite_catecumenos", False))
+    permite_nuevos = bool(reglas.get("permite_nuevos", False))
+    permite_menores = bool(reglas.get("permite_menores", False))
+
+    # Regla maestra: solo activos
     if solo_activos:
         return estado_raw == "activo"
 
-    estados_permitidos = {"activo"}
+    estados_permitidos = set()
 
-    if reglas.get("permite_observacion"):
+    if permite_activos:
+        estados_permitidos.add("activo")
+    if permite_observacion:
         estados_permitidos.add("observacion")
-    if reglas.get("permite_pasivos"):
+    if permite_pasivos:
         estados_permitidos.add("pasivo")
-    if reglas.get("permite_disciplina"):
+    if permite_disciplina:
         estados_permitidos.add("disciplina")
-    if reglas.get("permite_catecumenos"):
+    if permite_catecumenos:
         estados_permitidos.add("catecumeno")
 
     if estado_raw in estados_permitidos:
         return True
 
-    if reglas.get("permite_nuevos") and es_nuevo:
+    if permite_nuevos and es_nuevo:
         return True
 
-    if reglas.get("permite_menores") and estado_raw == "":
+    if permite_menores and estado_raw == "":
         return True
 
     return False
