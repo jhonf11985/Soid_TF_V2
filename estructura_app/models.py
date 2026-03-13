@@ -256,6 +256,20 @@ class Unidad(models.Model):
     notas = models.TextField(blank=True)
     imagen = models.ImageField(upload_to="unidades/", null=True, blank=True)
 
+    MODO_MANUAL = "manual"
+    MODO_AUTOMATICA = "automatica"
+
+    MODOS_ASIGNACION = (
+        (MODO_MANUAL, "Manual"),
+        (MODO_AUTOMATICA, "Automática"),
+    )
+
+    modo_asignacion = models.CharField(
+        max_length=20,
+        choices=MODOS_ASIGNACION,
+        default=MODO_MANUAL,
+        help_text="Define si la unidad se gestiona manualmente o por reglas automáticas."
+    )
 
     # ✅ RANGO DE EDAD (filtro estructural de la unidad)
     edad_min = models.PositiveIntegerField(null=True, blank=True)
@@ -271,13 +285,19 @@ class Unidad(models.Model):
 
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+    
     @property
     def esta_bloqueada(self):
+        reglas = self.reglas or {}
+        asignacion_automatica = bool(reglas.get("asignacion_automatica", False))
+
+        if asignacion_automatica:
+            return False
+
         return (
             self.membresias.filter(activo=True).exists()
             or self.cargos.filter(vigente=True).exists()
         )
-
     @property
     def ruta(self):
         partes = [self.nombre]

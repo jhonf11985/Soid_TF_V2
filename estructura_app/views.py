@@ -258,6 +258,9 @@ def unidad_editar(request, pk):
             unidad_obj = form.save(commit=False)
             unidad_obj.edad_min = _to_int_from_post(request.POST, "edad_min")
             unidad_obj.edad_max = _to_int_from_post(request.POST, "edad_max")
+            modo_asignacion = (request.POST.get("modo_asignacion") or "").strip()
+            if modo_asignacion in [Unidad.MODO_MANUAL, Unidad.MODO_AUTOMATICA]:
+                unidad_obj.modo_asignacion = modo_asignacion
 
             # ✅ siempre recalculamos reglas (manteniendo valores anteriores si un checkbox no vino)
             unidad_obj.reglas = _reglas_mvp_from_post(request.POST, base_reglas=(unidad.reglas or {}))
@@ -659,6 +662,7 @@ def _reglas_mvp_from_post(post, base_reglas=None):
     permite_subunidades = post.get("regla_perm_subunidades") in ("on", "1", "true", "True")
     requiere_aprobacion = post.get("regla_req_aprob_lider") in ("on", "1", "true", "True")
     unidad_privada = post.get("regla_unidad_privada") in ("on", "1", "true", "True")
+    asignacion_automatica = post.get("regla_asignacion_automatica") in ("on", "1", "true", "True")
 
     # Estados (se fuerzan a False si solo_activos está marcado)
     permite_observacion = False if solo_activos else post.get("regla_perm_observacion") in ("on", "1", "true", "True")
@@ -688,6 +692,7 @@ def _reglas_mvp_from_post(post, base_reglas=None):
         "permite_subunidades": permite_subunidades,
         "requiere_aprobacion_lider": requiere_aprobacion,
         "unidad_privada": unidad_privada,
+        "asignacion_automatica": asignacion_automatica,
     }
 
     return reglas
