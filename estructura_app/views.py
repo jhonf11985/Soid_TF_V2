@@ -199,7 +199,16 @@ def unidad_crear(request):
             unidad.reglas = _reglas_mvp_from_post(request.POST)
             unidad.save()
 
-            messages.success(request, "Unidad creada correctamente.")
+            sync = _sincronizar_membresias_automaticas(unidad)
+
+            if unidad.reglas.get("asignacion_automatica"):
+                messages.success(
+                    request,
+                    f"Unidad creada correctamente. Autoasignación aplicada: "
+                    f"{sync['creados']} creados, {sync['reactivados']} reactivados, {sync['desactivados']} desactivados."
+                )
+            else:
+                messages.success(request, "Unidad creada correctamente.")
 
             if request.POST.get("guardar_y_nuevo") == "1":
                 return redirect("estructura_app:unidad_crear")
@@ -252,10 +261,19 @@ def unidad_editar(request, pk):
 
             # ✅ siempre recalculamos reglas (manteniendo valores anteriores si un checkbox no vino)
             unidad_obj.reglas = _reglas_mvp_from_post(request.POST, base_reglas=(unidad.reglas or {}))
-
-
             unidad_obj.save()
-            messages.success(request, "Cambios guardados correctamente.")
+
+            sync = _sincronizar_membresias_automaticas(unidad_obj)
+
+            if unidad_obj.reglas.get("asignacion_automatica"):
+                messages.success(
+                    request,
+                    f"Cambios guardados correctamente. Autoasignación aplicada: "
+                    f"{sync['creados']} creados, {sync['reactivados']} reactivados, {sync['desactivados']} desactivados."
+                )
+            else:
+                messages.success(request, "Cambios guardados correctamente.")
+
             return redirect("estructura_app:unidad_listado")
         else:
             messages.error(request, "Revisa los campos marcados.")
@@ -631,6 +649,7 @@ def _reglas_mvp_from_post(post, base_reglas=None):
             return default
 
     # ── Checkboxes: si está en POST = True, si no está = False ──
+    asignacion_automatica = post.get("regla_asignacion_automatica") in ("on", "1", "true", "True")
     solo_activos = post.get("regla_solo_activos") in ("on", "1", "true", "True")
     admite_hombres = post.get("regla_admite_hombres") in ("on", "1", "true", "True")
     admite_mujeres = post.get("regla_admite_mujeres") in ("on", "1", "true", "True")
@@ -665,6 +684,7 @@ def _reglas_mvp_from_post(post, base_reglas=None):
         "permite_subunidades": permite_subunidades,
         "requiere_aprobacion_lider": requiere_aprobacion,
         "unidad_privada": unidad_privada,
+        "asignacion_automatica": asignacion_automatica,
     }
 
     return reglas
@@ -3254,3 +3274,169 @@ def get_lideres_heredados(unidad):
 
     return lideres
 
+def _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
+    """
+    Evalúa si un miembro debe pertenecer automáticamente a una unidad.
+    SOLO aplica a membresía base (UnidadMembresia), nunca a liderazgo.
+    """
+    reglas = unidad.reglas or {}
+
+    # Solo miembros activos en el sistema
+    if not getattr(miembro, "activo", False):
+        return False
+
+    # Nunca descarriados
+    estado_raw = (getattr(miembro, "estado_miembro", "") or "").strip().lower()
+    es_nuevo = bool(getattr(miembro, "nuevo_creyente", False))
+
+    if estado_raw == "descarriado":
+        return False
+
+    # Regla de género
+    admite_hombres = bool(reglas.get("admite_hombres", True))
+    admite_mujeres = bool(reglas.get("admite_mujeres", True))
+
+    genero = (getattr(miembro, "genero", "") or "").strip().lower()
+
+    es_hombre = genero in ("m", "masculino", "hombre")
+    es_mujer = genero in ("f", "femenino", "mujer")
+
+    if admite_hombres and not admite_mujeres:
+        if not es_hombre:
+            return False
+    elif admite_mujeres and not admite_hombres:
+        if not es_mujer:
+            return False
+    elif not admite_hombres and not admite_mujeres:
+        return False
+
+    # Rango de edad estructural de la unidad
+    if not _cumple_rango_edad(miembro, unidad):
+        return False
+
+    # Regla de estados / tipos permitidos
+    solo_activos = bool(reglas.get("solo_activos", False))
+    if solo_activos:
+        return estado_raw == "activo"
+
+    estados_permitidos = {"activo"}
+
+    if reglas.get("permite_observacion"):
+        estados_permitidos.add("observacion")
+    if reglas.get("permite_pasivos"):
+        estados_permitidos.add("pasivo")
+    if reglas.get("permite_disciplina"):
+        estados_permitidos.add("disciplina")
+    if reglas.get("permite_catecumenos"):
+        estados_permitidos.add("catecumeno")
+
+    if estado_raw in estados_permitidos:
+        return True
+
+    if reglas.get("permite_nuevos") and es_nuevo:
+        return True
+
+    if reglas.get("permite_menores") and estado_raw == "":
+        return True
+
+    return False
+
+
+def _sincronizar_membresias_automaticas(unidad):
+    """
+    Sincroniza automáticamente la membresía base de la unidad según sus reglas.
+    NO toca liderazgo (UnidadCargo).
+    """
+    reglas = unidad.reglas or {}
+    if not reglas.get("asignacion_automatica", False):
+        return {
+            "creados": 0,
+            "reactivados": 0,
+            "desactivados": 0,
+            "sin_cambios": 0,
+        }
+
+    hoy = timezone.localdate()
+
+    candidatos = Miembro.objects.filter(activo=True).order_by("nombres", "apellidos")
+
+    ids_elegibles = set()
+    for miembro in candidatos:
+        if _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
+            ids_elegibles.add(miembro.id)
+
+    membresias_actuales = UnidadMembresia.objects.filter(unidad=unidad)
+
+    creados = 0
+    reactivados = 0
+    desactivados = 0
+    sin_cambios = 0
+
+    # 1) Crear o reactivar a quienes sí cumplen
+    existentes_por_miembro = {m.miembo_fk_id: m for m in membresias_actuales}
+
+    for miembro_id in ids_elegibles:
+        obj = existentes_por_miembro.get(miembro_id)
+
+        if obj is None:
+            UnidadMembresia.objects.create(
+                unidad=unidad,
+                miembo_fk_id=miembro_id,
+                rol=None,
+                tipo="miembro",
+                activo=True,
+                fecha_ingreso=hoy,
+                fecha_salida=None,
+                notas="Asignación automática.",
+            )
+            creados += 1
+        else:
+            update_fields = []
+
+            if obj.rol_id is not None:
+                obj.rol = None
+                update_fields.append("rol")
+
+            if not obj.activo:
+                obj.activo = True
+                update_fields.append("activo")
+                reactivados += 1
+
+            if obj.fecha_ingreso is None:
+                obj.fecha_ingreso = hoy
+                update_fields.append("fecha_ingreso")
+
+            if obj.fecha_salida is not None:
+                obj.fecha_salida = None
+                update_fields.append("fecha_salida")
+
+            nota_auto = "Asignación automática."
+            notas_actuales = (obj.notas or "").strip()
+            if nota_auto not in notas_actuales:
+                obj.notas = (notas_actuales + "\n" + nota_auto).strip() if notas_actuales else nota_auto
+                update_fields.append("notas")
+
+            if update_fields:
+                obj.save(update_fields=update_fields)
+            else:
+                sin_cambios += 1
+
+    # 2) Desactivar a quienes ya no cumplen
+    for obj in membresias_actuales:
+        if obj.miembo_fk_id not in ids_elegibles and obj.activo:
+            obj.activo = False
+            obj.fecha_salida = hoy
+
+            nota_salida = "Salida automática por reglas de unidad."
+            notas_actuales = (obj.notas or "").strip()
+            obj.notas = (notas_actuales + "\n" + nota_salida).strip() if notas_actuales else nota_salida
+
+            obj.save(update_fields=["activo", "fecha_salida", "notas"])
+            desactivados += 1
+
+    return {
+        "creados": creados,
+        "reactivados": reactivados,
+        "desactivados": desactivados,
+        "sin_cambios": sin_cambios,
+    }

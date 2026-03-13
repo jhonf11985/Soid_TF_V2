@@ -2,5 +2,8 @@ from django.apps import AppConfig
 
 
 class EstructuraAppConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'estructura_app'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "estructura_app"
+
+    def ready(self):
+        import estructura_app.signals

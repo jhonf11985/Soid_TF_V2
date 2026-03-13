@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     'notificaciones_app',
     'votacion_app',
     'finanzas_app',
-    'estructura_app',
+    "estructura_app.apps.EstructuraAppConfig",
     'nuevo_creyente_app',
     'actualizacion_datos_miembros',
     'django.contrib.humanize',
