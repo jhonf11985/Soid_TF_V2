@@ -66,5 +66,7 @@ path("unidades/<int:pk>/finanzas/nuevo/", views.unidad_movimiento_crear, name="u
 path("unidades/<int:pk>/finanzas/<int:mov_id>/editar/", views.unidad_movimiento_editar, name="unidad_movimiento_editar"),
 path("unidades/<int:pk>/finanzas/<int:mov_id>/anular/", views.unidad_movimiento_anular, name="unidad_movimiento_anular"),
 
+path("mis-unidades/", views.lider_home, name="lider_home"),
+
 
 ]

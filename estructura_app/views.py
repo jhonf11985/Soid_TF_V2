@@ -19,7 +19,7 @@ from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriod
 from datetime import datetime
 import datetime
 from django.contrib.auth.decorators import login_required, permission_required
-
+from django.core.exceptions import PermissionDenied
 from .models import (
     Unidad,
     TipoUnidad,
@@ -50,18 +50,103 @@ def _get_client_ip(request):
 def estructura_home(request):
     return render(request, "estructura_app/home.html")
 
+def _get_miembro_from_user(user):
+    """
+    Devuelve el Miembro vinculado al User.
+    Reutiliza la misma lógica que ya usas en evaluaciones.
+    """
+    try:
+        from miembros_app.models import Miembro
+        m = Miembro.objects.filter(usuario=user).first()
+        if m:
+            return m
+    except Exception:
+        pass
+
+    m = getattr(user, "miembro", None)
+    if m:
+        return m
+
+    for attr in ("miembro_fk", "miembro_vinculado", "miembro_asociado"):
+        m = getattr(user, attr, None)
+        if m:
+            return m
+
+    perfil = getattr(user, "perfil", None)
+    if perfil:
+        m = getattr(perfil, "miembro", None)
+        if m:
+            return m
+
+    return None
+
+
+def _get_unidades_lideradas_por_usuario(user):
+    """
+    Devuelve las unidades donde el usuario es líder vigente.
+    """
+    miembro = _get_miembro_from_user(user)
+    if not miembro:
+        return []
+
+    cargos = (
+        UnidadCargo.objects
+        .select_related("unidad", "rol", "unidad__tipo")
+        .filter(
+            miembo_fk=miembro,
+            vigente=True,
+            rol__tipo=RolUnidad.TIPO_LIDERAZGO,
+        )
+        .order_by("unidad__nombre", "rol__orden", "rol__nombre")
+    )
+
+    unidades_map = {}
+    for cargo in cargos:
+        if cargo.unidad_id not in unidades_map:
+            unidades_map[cargo.unidad_id] = {
+                "unidad": cargo.unidad,
+                "cargo": cargo,
+            }
+
+    return list(unidades_map.values())
+
 
 @login_required
+def lider_home(request):
+    miembro = _get_miembro_from_user(request.user)
 
+    if not miembro:
+        messages.error(request, "Tu usuario no está vinculado a un miembro.")
+        return render(request, "estructura_app/lider_home.html", {
+            "unidades_info": [],
+            "miembro": None,
+        })
+
+    unidades_info = _get_unidades_lideradas_por_usuario(request.user)
+
+    return render(request, "estructura_app/lider_home.html", {
+        "miembro": miembro,
+        "unidades_info": unidades_info,
+    })
+
+@login_required
 def dashboard(request):
     u = request.user
 
-    # Si NO tiene permiso de ver dashboard, lo mandamos a una pantalla permitida
+    # Si NO tiene permiso de ver dashboard,
+    # primero verificamos si es líder y lo enviamos a su home.
     if not u.has_perm("estructura_app.ver_dashboard_estructura"):
+        unidades_lideradas = _get_unidades_lideradas_por_usuario(u)
+
+        if unidades_lideradas:
+            return redirect("estructura_app:lider_home")
+
         if u.has_perm("estructura_app.view_unidad"):
             return redirect("estructura_app:unidad_listado")
+
         if u.has_perm("estructura_app.change_unidadmembresia"):
             return redirect("estructura_app:asignacion_unidad")
+
         if u.has_perm("estructura_app.view_rolunidad"):
             return redirect("estructura_app:rol_listado")
 
@@ -99,18 +184,12 @@ def dashboard(request):
         .annotate(total=Count("unidades"))
         .order_by("orden", "nombre")
     )
-    # ============================================================
-    # KPI: Miembros sirviendo (rol TIPO_TRABAJO)
-    # Referencia: membresía oficial
-    # ============================================================
 
-    # Total de miembros oficiales
     total_miembros_oficiales = Miembro.objects.filter(
         activo=True,
         nuevo_creyente=False
     ).count()
 
-    # Miembros sirviendo (TRABAJO) – personas únicas
     miembros_sirviendo = (
         UnidadMembresia.objects.filter(
             activo=True,
@@ -123,13 +202,12 @@ def dashboard(request):
         .count()
     )
 
-    # Porcentaje
     porcentaje_sirviendo = (
         round((miembros_sirviendo * 100) / total_miembros_oficiales, 1)
         if total_miembros_oficiales > 0
         else 0
     )
-    # Miembros oficiales NO sirviendo (complemento)
+
     miembros_no_sirviendo = max(total_miembros_oficiales - miembros_sirviendo, 0)
 
     porcentaje_no_sirviendo = (
@@ -137,10 +215,6 @@ def dashboard(request):
         if total_miembros_oficiales > 0
         else 0
     )
-
-    # ============================================================
-    # KPI: Líderes vigentes (porcentaje sobre membresía oficial)
-    # ============================================================
 
     lideres_vigentes_personas = (
         UnidadCargo.objects.filter(
@@ -160,31 +234,24 @@ def dashboard(request):
         else 0
     )
 
-
     context = {
         "total_unidades": total_unidades,
         "total_tipos": total_tipos,
         "total_roles": total_roles,
-        "lideres_vigentes": lideres_vigentes,
+        "lideres_vigentes": lideres_vigentes_personas,
         "unidades_activas": unidades_activas,
         "unidades_inactivas": unidades_inactivas,
         "unidades_sin_lider": unidades_sin_lider,
         "top_unidades": top_unidades,
         "distribucion_por_tipo": distribucion_por_tipo,
-            "miembros_sirviendo": miembros_sirviendo,
+        "miembros_sirviendo": miembros_sirviendo,
         "total_miembros_oficiales": total_miembros_oficiales,
         "porcentaje_sirviendo": porcentaje_sirviendo,
-            "miembros_no_sirviendo": miembros_no_sirviendo,
-    "porcentaje_no_sirviendo": porcentaje_no_sirviendo,
-        "lideres_vigentes": lideres_vigentes_personas,
-    "porcentaje_lideres": porcentaje_lideres,
+        "miembros_no_sirviendo": miembros_no_sirviendo,
+        "porcentaje_no_sirviendo": porcentaje_no_sirviendo,
+        "porcentaje_lideres": porcentaje_lideres,
     }
     return render(request, "estructura_app/dashboard.html", context)
-
-
-# ============================================================
-# UNIDADES
-# ============================================================
 
 @login_required
 @permission_required("estructura_app.add_unidad", raise_exception=True)
@@ -382,7 +449,7 @@ def unidad_listado(request):
 
 
 @login_required
-@permission_required("estructura_app.view_unidad", raise_exception=True)
+
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -3253,28 +3320,36 @@ def unidad_movimiento_anular(request, pk, mov_id):
 
 def get_unidades_permitidas(user):
     from miembros_app.models import Miembro
-    from .models import Unidad, UnidadCargo, RolUnidad
+    from .models import Unidad, UnidadCargo, UnidadMembresia, RolUnidad
 
-    # Admin o staff → ve todo
     if user.is_superuser or user.is_staff:
         return Unidad.objects.all()
 
-    # Buscar miembro asociado al usuario
+    if not user.has_perm("estructura_app.view_unidad"):
+        return Unidad.objects.none()
+
     try:
         miembro = Miembro.objects.get(usuario=user)
-
     except Miembro.DoesNotExist:
         return Unidad.objects.none()
 
-    # Buscar unidades donde es líder
-    unidades_ids = UnidadCargo.objects.filter(
+    unidades_liderazgo_ids = UnidadCargo.objects.filter(
         miembo_fk=miembro,
         vigente=True,
         rol__tipo=RolUnidad.TIPO_LIDERAZGO
     ).values_list("unidad_id", flat=True)
 
-    return Unidad.objects.filter(id__in=unidades_ids)
+    unidades_membresia_ids = UnidadMembresia.objects.filter(
+        miembo_fk=miembro,
+        activo=True
+    ).values_list("unidad_id", flat=True)
 
+    return Unidad.objects.filter(
+        Q(id__in=unidades_liderazgo_ids) | Q(id__in=unidades_membresia_ids)
+    ).distinct()
+
+
+   
 def get_lideres_en_cadena(unidad):
     """
     Devuelve UnidadCargo heredado en cadena (padre -> abuelo -> ...),
