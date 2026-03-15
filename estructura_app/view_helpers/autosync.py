@@ -1,7 +1,7 @@
 from django.utils import timezone
 
 from miembros_app.models import Miembro
-from estructura_app.models import UnidadMembresia
+from estructura_app.models import UnidadMembresia, RolUnidad
 from estructura_app.view_helpers.unidad_helpers import _cumple_rango_edad
 
 
@@ -78,6 +78,23 @@ def _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
     return False
 
 
+def _get_rol_participacion_automatico(unidad, tenant):
+    """
+    Devuelve el rol de participación que debe usarse en la autoasignación.
+    Si luego quieres uno específico por unidad, aquí es donde lo ajustamos.
+    """
+    return (
+        RolUnidad.objects
+        .filter(
+            tenant=tenant,
+            activo=True,
+            tipo=RolUnidad.TIPO_PARTICIPACION,
+        )
+        .order_by("id")
+        .first()
+    )
+
+
 def _sincronizar_membresias_automaticas(unidad, tenant):
     """
     Sincroniza automáticamente la membresía base de la unidad según sus reglas.
@@ -92,9 +109,22 @@ def _sincronizar_membresias_automaticas(unidad, tenant):
             "sin_cambios": 0,
         }
 
+    rol_participacion = _get_rol_participacion_automatico(unidad, tenant)
+    if rol_participacion is None:
+        return {
+            "creados": 0,
+            "reactivados": 0,
+            "desactivados": 0,
+            "sin_cambios": 0,
+            "error": "No existe un rol activo de tipo PARTICIPACIÓN para la autoasignación.",
+        }
+
     hoy = timezone.localdate()
 
-    candidatos = Miembro.objects.filter(tenant=tenant, activo=True).order_by("nombres", "apellidos")
+    candidatos = Miembro.objects.filter(
+        tenant=tenant,
+        activo=True
+    ).order_by("nombres", "apellidos")
 
     ids_elegibles = set()
     for miembro in candidatos:
@@ -118,7 +148,7 @@ def _sincronizar_membresias_automaticas(unidad, tenant):
                 tenant=tenant,
                 unidad=unidad,
                 miembo_fk_id=miembro_id,
-                rol=None,
+                rol=rol_participacion,
                 tipo="miembro",
                 activo=True,
                 fecha_ingreso=hoy,
@@ -129,8 +159,8 @@ def _sincronizar_membresias_automaticas(unidad, tenant):
         else:
             update_fields = []
 
-            if obj.rol_id is not None:
-                obj.rol = None
+            if obj.rol_id != rol_participacion.id:
+                obj.rol = rol_participacion
                 update_fields.append("rol")
 
             if not obj.activo:

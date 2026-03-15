@@ -110,12 +110,18 @@ def _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
 
 def _sincronizar_miembro_en_unidades_automaticas(miembro):
     """
-    Evalúa un solo miembro contra todas las unidades automáticas.
+    Evalúa un solo miembro contra todas las unidades automáticas
+    DEL MISMO TENANT.
     Solo toca UnidadMembresia. Nunca toca liderazgo.
     """
+    tenant = getattr(miembro, "tenant", None)
+    if tenant is None:
+        return
+
     hoy = timezone.localdate()
 
     unidades = Unidad.objects.filter(
+        tenant=tenant,
         activa=True,
         reglas__asignacion_automatica=True,
     )
@@ -124,6 +130,7 @@ def _sincronizar_miembro_en_unidades_automaticas(miembro):
         debe_estar = _miembro_cumple_reglas_unidad_automatica(miembro, unidad)
 
         membresia = UnidadMembresia.objects.filter(
+            tenant=tenant,
             unidad=unidad,
             miembo_fk=miembro,
         ).first()
@@ -131,6 +138,7 @@ def _sincronizar_miembro_en_unidades_automaticas(miembro):
         if debe_estar:
             if membresia is None:
                 UnidadMembresia.objects.create(
+                    tenant=tenant,
                     unidad=unidad,
                     miembo_fk=miembro,
                     rol=None,
