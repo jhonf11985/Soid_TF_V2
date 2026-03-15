@@ -75,7 +75,6 @@ def unidad_crear(request):
         "reglas": {},
     })
 
-
 @login_required
 @permission_required("estructura_app.change_unidad", raise_exception=True)
 def unidad_editar(request, pk):

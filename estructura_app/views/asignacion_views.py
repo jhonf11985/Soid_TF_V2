@@ -121,10 +121,16 @@ def asignacion_unidad_contexto(request):
         q = Q(estado_miembro__in=estados_permitidos)
 
         if reglas.get("permite_nuevos"):
-            q |= Q(nuevo_creyente=True)
+            q |= (
+                (Q(estado_miembro__isnull=True) | Q(estado_miembro="")) &
+                Q(nuevo_creyente=True)
+            )
 
         if reglas.get("permite_menores"):
-            q |= Q(estado_miembro__isnull=True) | Q(estado_miembro="")
+            q |= (
+                (Q(estado_miembro__isnull=True) | Q(estado_miembro="")) &
+                Q(nuevo_creyente=False)
+            )
 
         q &= ~Q(estado_miembro__iexact="descarriado")
         qs = qs.filter(q)

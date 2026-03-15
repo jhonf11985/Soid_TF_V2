@@ -68,13 +68,12 @@ def _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
 
     if estado_raw in estados_permitidos:
         return True
-
-    if permite_nuevos and es_nuevo:
+    if permite_nuevos and estado_raw == "" and es_nuevo:
         return True
 
-    if permite_menores and estado_raw == "":
+    if permite_menores and estado_raw == "" and not es_nuevo:
         return True
-
+  
     return False
 
 
