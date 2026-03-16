@@ -20,9 +20,8 @@ from estructura_app.view_helpers.common import _require_tenant
 from estructura_app.view_helpers.permisos import (
     get_lideres_en_cadena,
     get_unidades_permitidas,
+    _get_descendientes_heredados,
 )
-
-
 @login_required
 @permission_required("estructura_app.view_unidad", raise_exception=True)
 def unidad_listado(request):
@@ -31,8 +30,9 @@ def unidad_listado(request):
 
     unidades_permitidas = get_unidades_permitidas(request.user, tenant)
 
-    unidades = (
+    unidades_qs = (
         unidades_permitidas
+        .select_related("padre", "tipo")
         .annotate(
             total_miembros=Count(
                 "membresias__miembo_fk",
@@ -48,16 +48,51 @@ def unidad_listado(request):
                 distinct=True
             ),
         )
-        .order_by("nombre")
     )
 
     if query:
-        unidades = unidades.filter(
+        unidades_qs = unidades_qs.filter(
             Q(nombre__icontains=query) | Q(codigo__icontains=query)
         )
 
+    # ══════════════════════════════════════════════════════════════
+    # Ordenar jerárquicamente: padre seguido de sus hijos
+    # ══════════════════════════════════════════════════════════════
+    todas = list(unidades_qs.order_by("nombre"))
+    
+    # Separar padres (sin padre) e hijos
+    padres = [u for u in todas if u.padre is None]
+    hijos_por_padre = {}
+    
+    for u in todas:
+        if u.padre_id:
+            hijos_por_padre.setdefault(u.padre_id, []).append(u)
+    
+    # Construir lista ordenada: padre → hijos → padre → hijos...
+    unidades_ordenadas = []
+    ids_agregados = set()
+    
+    for padre in padres:
+        unidades_ordenadas.append(padre)
+        ids_agregados.add(padre.pk)
+        
+        # Agregar hijos de este padre
+        for hijo in hijos_por_padre.get(padre.pk, []):
+            unidades_ordenadas.append(hijo)
+            ids_agregados.add(hijo.pk)
+            
+            # Agregar nietos (hijos del hijo) - segundo nivel
+            for nieto in hijos_por_padre.get(hijo.pk, []):
+                unidades_ordenadas.append(nieto)
+                ids_agregados.add(nieto.pk)
+    
+    # Agregar huérfanos (hijos cuyo padre no está en la lista filtrada)
+    for u in todas:
+        if u.pk not in ids_agregados:
+            unidades_ordenadas.append(u)
+
     return render(request, "estructura_app/unidad_listado.html", {
-        "unidades": unidades,
+        "unidades": unidades_ordenadas,
         "query": query,
     })
 
@@ -307,6 +342,31 @@ def unidad_detalle(request, pk):
 
     movimientos = movimientos_manual
 
+
+    # =====================================================
+    # 5) NUEVOS CREYENTES
+    # =====================================================
+    reglas = unidad.reglas or {}
+    permite_nuevos = bool(reglas.get("permite_nuevos", False))
+
+    nuevos_creyentes_asignados = UnidadMembresia.objects.none()
+
+    if permite_nuevos:
+        nuevos_creyentes_asignados = (
+            UnidadMembresia.objects
+            .filter(
+                tenant=tenant,
+                unidad=unidad,
+                activo=True,
+                miembo_fk__nuevo_creyente=True,
+            )
+            .filter(
+                Q(miembo_fk__estado_miembro__isnull=True) |
+                Q(miembo_fk__estado_miembro__exact="")
+            )
+            .select_related("miembo_fk", "rol")
+            .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
+        )
     return render(request, "estructura_app/unidad_detalle.html", {
         "unidad": unidad,
         "miembros_asignados": miembros_asignados,
@@ -321,7 +381,8 @@ def unidad_detalle(request, pk):
         "balance": balance,
         "movimientos_finanzas": movimientos_finanzas,
         "movimientos_manual": movimientos_manual,
-
+        "permite_nuevos": permite_nuevos,
+        "nuevos_creyentes_asignados": nuevos_creyentes_asignados,
         "miembros_count": total,
 
         "capacidad_maxima": capacidad_maxima,
@@ -391,4 +452,62 @@ def actividad_crear(request, pk):
     return render(request, "estructura_app/actividad_form.html", {
         "unidad": unidad,
         "form": form,
+    })
+
+
+@login_required
+def lider_home(request):
+    tenant = _require_tenant(request)
+
+    miembro = Miembro.objects.filter(tenant=tenant, usuario=request.user).first()
+
+    unidades_info = []
+
+    if miembro:
+        cargos_directos = (
+            UnidadCargo.objects
+            .filter(
+                tenant=tenant,
+                miembo_fk=miembro,
+                vigente=True,
+                rol__tipo=RolUnidad.TIPO_LIDERAZGO,
+                unidad__activa=True,
+            )
+            .select_related("unidad", "unidad__tipo", "unidad__padre", "rol")
+            .order_by("unidad__nombre", "rol__orden", "rol__nombre")
+        )
+
+        unidades_agregadas = set()
+
+        for cargo in cargos_directos:
+            unidad = cargo.unidad
+
+            if unidad.id not in unidades_agregadas:
+                unidades_info.append({
+                    "unidad": unidad,
+                    "cargo": cargo,
+                    "es_heredada": False,
+                    "unidad_origen": None,
+                    "rol_nombre": cargo.rol.nombre,
+                })
+                unidades_agregadas.add(unidad.id)
+
+            descendientes = _get_descendientes_heredados(unidad)
+
+            for hija in descendientes:
+                if hija.id in unidades_agregadas:
+                    continue
+
+                unidades_info.append({
+                    "unidad": hija,
+                    "cargo": cargo,  # cargo origen
+                    "es_heredada": True,
+                    "unidad_origen": unidad,
+                    "rol_nombre": f"{cargo.rol.nombre} (heredado)",
+                })
+                unidades_agregadas.add(hija.id)
+
+    return render(request, "estructura_app/lider_home.html", {
+        "miembro": miembro,
+        "unidades_info": unidades_info,
     })

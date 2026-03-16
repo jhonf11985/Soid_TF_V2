@@ -1,13 +1,45 @@
-from django.db.models import Q
-
 from miembros_app.models import Miembro
 from estructura_app.models import Unidad, UnidadCargo, UnidadMembresia, RolUnidad
+from collections import deque
+
+
+def _get_descendientes_heredados(unidad):
+    resultado = []
+    visitadas = set()
+    cola = deque([unidad])
+
+    while cola:
+        actual = cola.popleft()
+        if actual.id in visitadas:
+            continue
+        visitadas.add(actual.id)
+
+        hijas = Unidad.objects.filter(
+            tenant=actual.tenant,
+            padre=actual,
+            activa=True,
+        ).select_related("tipo", "padre")
+
+        for hija in hijas:
+            if hija.hereda_liderazgo:
+                resultado.append(hija)
+                cola.append(hija)
+
+    return resultado
+
+
+def _get_unidades_liderazgo_directo(miembro, tenant):
+    return list(
+        Unidad.objects.filter(
+            tenant=tenant,
+            cargos__miembo_fk=miembro,
+            cargos__vigente=True,
+            cargos__rol__tipo=RolUnidad.TIPO_LIDERAZGO,
+        ).distinct()
+    )
 
 
 def get_unidades_permitidas(user, tenant):
-    """
-    Unidades visibles para el usuario dentro del tenant.
-    """
     if user.is_superuser or user.is_staff:
         return Unidad.objects.filter(tenant=tenant)
 
@@ -19,36 +51,33 @@ def get_unidades_permitidas(user, tenant):
     except Miembro.DoesNotExist:
         return Unidad.objects.none()
 
-    unidades_liderazgo_ids = UnidadCargo.objects.filter(
-        tenant=tenant,
-        miembo_fk=miembro,
-        vigente=True,
-        rol__tipo=RolUnidad.TIPO_LIDERAZGO
-    ).values_list("unidad_id", flat=True)
+    unidades_liderazgo_directo = _get_unidades_liderazgo_directo(miembro, tenant)
+    ids_liderazgo = {u.id for u in unidades_liderazgo_directo}
 
-    unidades_membresia_ids = UnidadMembresia.objects.filter(
-        tenant=tenant,
-        miembo_fk=miembro,
-        activo=True
-    ).values_list("unidad_id", flat=True)
+    for unidad in unidades_liderazgo_directo:
+        ids_liderazgo.update(u.id for u in _get_descendientes_heredados(unidad))
+
+    unidades_membresia_ids = set(
+        UnidadMembresia.objects.filter(
+            tenant=tenant,
+            miembo_fk=miembro,
+            activo=True
+        ).values_list("unidad_id", flat=True)
+    )
+
+    ids_finales = ids_liderazgo | unidades_membresia_ids
 
     return Unidad.objects.filter(
-        tenant=tenant
-    ).filter(
-        Q(id__in=unidades_liderazgo_ids) | Q(id__in=unidades_membresia_ids)
+        tenant=tenant,
+        id__in=ids_finales
     ).distinct()
 
 
 def get_lideres_en_cadena(unidad):
-    """
-    Devuelve UnidadCargo heredado en cadena (padre -> abuelo -> ...),
-    heredando TODOS los roles de tipo LIDERAZGO.
-    Nota: no necesita tenant explícito porque filtra por unidad (que ya pertenece a un tenant).
-    """
     if not unidad.padre:
         return UnidadCargo.objects.none()
 
-    if hasattr(unidad, "hereda_lideres_padre") and not unidad.hereda_lideres_padre:
+    if not unidad.hereda_liderazgo:
         return UnidadCargo.objects.none()
 
     heredados = UnidadCargo.objects.none()
@@ -65,39 +94,9 @@ def get_lideres_en_cadena(unidad):
         )
         heredados = heredados.union(qs)
 
-        if hasattr(padre, "hereda_lideres_padre") and not padre.hereda_lideres_padre:
+        if not padre.hereda_liderazgo:
             break
 
         padre = padre.padre
 
     return heredados
-
-
-def get_lideres_heredados(unidad):
-    """
-    Variante heredada basada en el flag hereda_liderazgo.
-    """
-    lideres = UnidadCargo.objects.none()
-    visitadas = set()
-    padre = unidad.padre
-
-    if not getattr(unidad, "hereda_liderazgo", True):
-        return lideres
-
-    while padre and padre.id not in visitadas:
-        visitadas.add(padre.id)
-
-        qs = UnidadCargo.objects.filter(
-            unidad=padre,
-            vigente=True,
-            rol__tipo=RolUnidad.TIPO_LIDERAZGO
-        )
-
-        lideres = lideres.union(qs)
-
-        if hasattr(padre, "hereda_liderazgo") and not padre.hereda_liderazgo:
-            break
-
-        padre = padre.padre
-
-    return lideres

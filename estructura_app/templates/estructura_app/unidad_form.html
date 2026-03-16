@@ -188,7 +188,7 @@
                                 {% endfor %}
                             </select>
                             <!-- ✅ Switch: heredar líderes (solo se muestra si hay unidad padre) -->
-<div class="odoo-quick-field" id="wrap-heredar-lideres" style="display:none; justify-content:flex-end;">
+<div class="odoo-quick-field" id="wrap-heredar-lideres" style="justify-content:flex-end;">
     <span class="material-icons">supervisor_account</span>
 
     <div style="display:flex; align-items:center; gap:10px; margin-left:6px;">
@@ -196,11 +196,16 @@
             Heredar líderes
         </span>
 
-        <label class="odoo-switch-inline" title="Copiar líderes principales (roles tipo Liderazgo) desde la unidad principal (raíz) del árbol">
-            <!-- 🔒 valor por defecto si el switch está apagado -->
-            <input type="hidden" name="heredar_lideres" value="0">
+        <label class="odoo-switch-inline" title="Indica si la unidad hereda líderes de la unidad padre">
+            <input type="hidden" name="hereda_liderazgo" value="False">
 
-            <input type="checkbox" name="heredar_lideres" id="id_heredar_lideres" value="1" checked>
+            <input
+                type="checkbox"
+                name="hereda_liderazgo"
+                id="id_hereda_liderazgo"
+                value="True"
+                {% if form.hereda_liderazgo.value %}checked{% endif %}
+            >
             <span class="odoo-switch-slider-sm"></span>
         </label>
     </div>
@@ -1001,25 +1006,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const padreSelect = document.getElementById("{{ form.padre.id_for_label }}");
+    const padreSelect = document.getElementById("id_padre");
     const wrap = document.getElementById("wrap-heredar-lideres");
-    const chk = document.getElementById("id_heredar_lideres");
+    const chk = document.getElementById("id_hereda_liderazgo");
 
-    if (!padreSelect || !wrap || !chk) return;
+    if (!wrap || !chk) return;
 
     function syncHeredar() {
-        const tienePadre = !!padreSelect.value;
-        wrap.style.display = tienePadre ? "" : "none";
+        const tienePadre = padreSelect && padreSelect.value;
 
-        // Si no hay padre, lo apagamos para que no se envíe como "1"
-        if (!tienePadre) chk.checked = false;
+        if (tienePadre) {
+            wrap.style.display = "";
+        } else {
+            wrap.style.display = "none";
+            chk.checked = false;
+        }
     }
 
-    padreSelect.addEventListener("change", syncHeredar);
-    syncHeredar(); // estado inicial al cargar (crear/editar)
+    if (padreSelect) {
+        padreSelect.addEventListener("change", syncHeredar);
+    }
+
+    syncHeredar();
 });
 </script>
-
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("unidad-form");

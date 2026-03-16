@@ -129,6 +129,17 @@
             <span class="material-icons">groups</span>
             Miembros
         </button>
+                {% if permite_nuevos %}
+        <button type="button" class="odoo-tab" data-tab="nuevos-creyentes">
+            <span class="material-icons">auto_stories</span>
+            Nuevos creyentes
+            {% if nuevos_creyentes_asignados %}
+                <span class="odoo-badge odoo-badge-warning" style="margin-left:6px;">
+                    {{ nuevos_creyentes_asignados|length }}
+                </span>
+            {% endif %}
+        </button>
+        {% endif %}
         <button type="button" class="odoo-tab" data-tab="actividades">
         <span class="material-icons">event_note</span>
         Actividades
@@ -612,6 +623,111 @@
   </p>
   {% endif %}
 </div>
+
+{% if permite_nuevos %}
+<div class="odoo-tab-content" id="tab-nuevos-creyentes">
+
+  <div class="odoo-card" style="margin-bottom:12px;">
+    <div class="odoo-card-header">
+      <h3>Nuevos creyentes asignados</h3>
+    </div>
+    <p class="odoo-muted" style="margin:0;">
+      Aquí se muestran los nuevos creyentes que actualmente pertenecen a esta unidad.
+    </p>
+  </div>
+
+  {% if nuevos_creyentes_asignados %}
+  <div class="odoo-table-container">
+    <table class="odoo-table">
+      <thead>
+        <tr>
+          <th>Miembro</th>
+          <th>Código</th>
+          <th>Estado</th>
+          <th>Edad</th>
+          <th>Categoría</th>
+          <th>Desde</th>
+          <th>Hasta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in nuevos_creyentes_asignados %}
+        {% with mb=m.miembo_fk %}
+        <tr>
+          <td>
+            <div class="member-cell">
+              <div class="member-avatar">
+                {% if mb.foto %}
+                  <img src="{{ mb.foto.url }}" alt="{{ mb }}">
+                {% else %}
+                  <span class="material-icons" style="font-size:18px;color:#6c757d;">person</span>
+                {% endif %}
+              </div>
+              <div class="member-meta">
+                <div class="member-name">
+                  <a href="{% url 'miembros_app:detalle' mb.pk %}">
+                    {{ mb }}
+                  </a>
+                </div>
+                <div class="member-sub">
+                  {% if mb.genero %}{{ mb.get_genero_display }}{% endif %}
+                </div>
+              </div>
+            </div>
+          </td>
+
+          <td>
+            <a href="{% url 'miembros_app:detalle' mb.pk %}" class="odoo-badge odoo-badge-neutral">
+              {{ mb.codigo_miembro|default:"—" }}
+            </a>
+          </td>
+
+          <td>
+            <span class="odoo-badge odoo-badge-info">Nuevo creyente</span>
+          </td>
+
+          <td>
+            {% if mb.edad is not None %}
+              {{ mb.edad }} años
+            {% else %}
+              —
+            {% endif %}
+          </td>
+
+          <td>
+            {{ mb.get_categoria_edad_display|default:"—" }}
+          </td>
+
+          <td>
+            {% if m.fecha_ingreso %}
+              {{ m.fecha_ingreso|date:"d/m/Y" }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+
+          <td>
+            {% if m.fecha_salida %}
+              {{ m.fecha_salida|date:"d/m/Y" }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="odoo-empty">
+    <span class="material-icons" style="font-size: 48px; color: #dee2e6; display: block; margin-bottom: 12px;">auto_stories</span>
+    No hay nuevos creyentes asignados actualmente a esta unidad.
+  </p>
+  {% endif %}
+
+</div>
+{% endif %}
 
 <!-- TAB: Finanzas -->
 <div class="odoo-tab-content" id="tab-finanzas">
