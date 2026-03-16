@@ -1,3 +1,5 @@
+import os
+
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -7,11 +9,11 @@ from tenants.models import Tenant
 
 
 class Command(BaseCommand):
-    help = "Inicializa SOID: Configuración base, módulos oficiales y usuario admin."
+    help = "Inicializa SOID: configuración base, módulos oficiales y usuario admin."
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--tenant',
+            "--tenant",
             type=str,
             help='Slug o ID del tenant a inicializar (si no se especifica, crea/usa "default")',
         )
@@ -20,36 +22,53 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.WARNING("🚀 Ejecutando soid_init..."))
 
-        # 0) Obtener o crear tenant
-        tenant_arg = options.get('tenant')
+        default_tenant_slug = os.getenv("SOID_DEFAULT_TENANT_SLUG", "default")
+        default_tenant_nombre = os.getenv("SOID_DEFAULT_TENANT_NOMBRE", "Iglesia Principal")
+        default_tenant_dominio = os.getenv("SOID_DEFAULT_TENANT_DOMAIN", "localhost")
+
+        admin_username = os.getenv("SOID_ADMIN_USER", "admin")
+        admin_password = os.getenv("SOID_ADMIN_PASSWORD", "admin123")
+
+        tenant_arg = options.get("tenant")
+
         if tenant_arg:
+            tenant = None
+
             try:
                 tenant = Tenant.objects.get(slug=tenant_arg)
             except Tenant.DoesNotExist:
                 try:
                     tenant = Tenant.objects.get(pk=tenant_arg)
                 except (Tenant.DoesNotExist, ValueError):
-                    self.stdout.write(self.style.ERROR(f"❌ Tenant '{tenant_arg}' no encontrado."))
+                    self.stdout.write(
+                        self.style.ERROR(f"❌ Tenant '{tenant_arg}' no encontrado.")
+                    )
                     return
+
             self.stdout.write(self.style.SUCCESS(f"✅ Usando tenant existente: '{tenant}'"))
+
         else:
-            # Usar el primer tenant existente o crear uno default
             tenant = Tenant.objects.first()
+
             if tenant:
                 self.stdout.write(self.style.SUCCESS(f"✅ Usando tenant existente: '{tenant}'"))
             else:
                 tenant = Tenant.objects.create(
-                    slug="default",
-                    nombre="Iglesia Principal",
-                    dominio="localhost"
+                    slug=default_tenant_slug,
+                    nombre=default_tenant_nombre,
+                    dominio=default_tenant_dominio,
                 )
-                self.stdout.write(self.style.SUCCESS("✅ Tenant 'default' creado."))
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"✅ Tenant '{default_tenant_slug}' creado con dominio '{default_tenant_dominio}'."
+                    )
+                )
 
-        # 1) Asegurar Configuración del sistema (singleton por tenant)
-        config = ConfiguracionSistema.load(tenant)
-        self.stdout.write(self.style.SUCCESS(f"✅ ConfiguracionSistema listo (tenant: {tenant})."))
+        ConfiguracionSistema.load(tenant)
+        self.stdout.write(
+            self.style.SUCCESS(f"✅ ConfiguracionSistema listo (tenant: {tenant}).")
+        )
 
-        # 2) Módulos oficiales (sin cambiar codes para no romper nada)
         modulos_oficiales = [
             {
                 "name": "Miembros",
@@ -192,6 +211,7 @@ class Command(BaseCommand):
                 "order": 13,
             },
         ]
+
         creados = 0
         actualizados = 0
 
@@ -200,38 +220,47 @@ class Command(BaseCommand):
             defaults = data.copy()
             defaults.pop("code", None)
 
-            obj, created = Module.objects.update_or_create(code=code, defaults=defaults)
+            obj, created = Module.objects.update_or_create(
+                code=code,
+                defaults=defaults,
+            )
+
             if created:
                 creados += 1
             else:
                 actualizados += 1
 
-        self.stdout.write(self.style.SUCCESS(f"✅ Módulos listos: {creados} creados, {actualizados} actualizados."))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"✅ Módulos listos: {creados} creados, {actualizados} actualizados."
+            )
+        )
 
-        # 3) Usuario admin fijo
         User = get_user_model()
-        admin_username = "admin"
-        admin_password = "admin123"
 
-        admin_user, created = User.objects.get_or_create(username=admin_username, defaults={
-            "is_active": True,
-            "is_staff": True,
-            "is_superuser": True,
-        })
+        admin_user, created = User.objects.get_or_create(
+            username=admin_username,
+            defaults={
+                "is_active": True,
+                "is_staff": True,
+                "is_superuser": True,
+            },
+        )
 
-        # Si ya existía, asegurar flags (y que sea superuser)
         changed = False
+
         if not admin_user.is_active:
             admin_user.is_active = True
             changed = True
+
         if not admin_user.is_staff:
             admin_user.is_staff = True
             changed = True
+
         if not admin_user.is_superuser:
             admin_user.is_superuser = True
             changed = True
 
-        # Siempre forzamos password fija
         admin_user.set_password(admin_password)
         changed = True
 
@@ -239,8 +268,16 @@ class Command(BaseCommand):
             admin_user.save()
 
         if created:
-            self.stdout.write(self.style.SUCCESS("✅ Usuario 'admin' creado como superusuario."))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"✅ Usuario '{admin_username}' creado como superusuario."
+                )
+            )
         else:
-            self.stdout.write(self.style.SUCCESS("✅ Usuario 'admin' verificado/actualizado como superusuario."))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"✅ Usuario '{admin_username}' verificado/actualizado como superusuario."
+                )
+            )
 
         self.stdout.write(self.style.SUCCESS("🎉 soid_init terminado correctamente."))
