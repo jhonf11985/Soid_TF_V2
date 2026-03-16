@@ -21,7 +21,7 @@ from django.conf import settings
 
 from openpyxl import Workbook, load_workbook
 
-from miembros_app.models import Miembro, MiembroRelacion, RazonSalidaMiembro
+from miembros_app.models import Miembro, MiembroRelacion, RazonSalidaMiembro, CATEGORIA_EDAD_CHOICES
 from miembros_app.forms import EnviarFichaMiembroEmailForm
 from core.models import ConfiguracionSistema
 from core.utils_config import get_edad_minima_miembro_oficial, get_config
@@ -80,7 +80,7 @@ def reporte_listado_miembros(request):
     
     estado_label = dict(Miembro.ESTADOS_MIEMBRO).get(estado, estado) if estado else ""
     genero_label = dict(Miembro.GENERO_CHOICES).get(genero_filtro, genero_filtro) if genero_filtro else ""
-    categoria_label = dict(Miembro.CATEGORIA_EDAD_CHOICES).get(categoria_edad_filtro, categoria_edad_filtro) if categoria_edad_filtro else ""
+    categoria_label = dict(CATEGORIA_EDAD_CHOICES).get(categoria_edad_filtro, categoria_edad_filtro) if categoria_edad_filtro else ""
     
     context = {
         "miembros": miembros,
@@ -262,7 +262,7 @@ def reporte_miembros_salida(request):
     fecha_hasta_str = request.GET.get("fecha_hasta", "").strip()
     razon_salida_id_str = request.GET.get("razon_salida", "").strip()
 
-    miembros = Miembro.objects.filter(activo=False)
+    miembros = Miembro.objects.filter(tenant=request.tenant, activo=False)
 
     if query:
         miembros = miembros.filter(
@@ -574,7 +574,7 @@ def reporte_relaciones_familiares(request):
 @permission_required("miembros_app.view_miembro", raise_exception=True)
 def exportar_miembros_excel(request):
     """Exporta a Excel los miembros que se están viendo en el listado."""
-    miembros_base = Miembro.objects.filter(nuevo_creyente=False)
+    miembros_base = Miembro.objects.filter(tenant=request.tenant, nuevo_creyente=False)
     miembros, filtros_context = filtrar_miembros(request, miembros_base)
 
     wb = Workbook()
