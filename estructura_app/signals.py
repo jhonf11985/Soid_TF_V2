@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from miembros_app.models import Miembro
-from estructura_app.models import Unidad, UnidadMembresia
+from estructura_app.models import Unidad, UnidadMembresia, RolUnidad
 
 
 def _get_edad_value(miembro):
@@ -112,7 +112,8 @@ def _sincronizar_miembro_en_unidades_automaticas(miembro):
     """
     Evalúa un solo miembro contra todas las unidades automáticas
     DEL MISMO TENANT.
-    Solo toca UnidadMembresia. Nunca toca liderazgo.
+    Solo toca UnidadMembresia con rol de PARTICIPACIÓN o sin rol.
+    Nunca toca liderazgo ni roles de TRABAJO (asignados manualmente).
     """
     tenant = getattr(miembro, "tenant", None)
     if tenant is None:
@@ -129,7 +130,8 @@ def _sincronizar_miembro_en_unidades_automaticas(miembro):
     for unidad in unidades:
         debe_estar = _miembro_cumple_reglas_unidad_automatica(miembro, unidad)
 
-        membresia = UnidadMembresia.objects.filter(
+        # Buscar membresía existente CON el rol cargado
+        membresia = UnidadMembresia.objects.select_related("rol").filter(
             tenant=tenant,
             unidad=unidad,
             miembo_fk=miembro,
@@ -137,6 +139,7 @@ def _sincronizar_miembro_en_unidades_automaticas(miembro):
 
         if debe_estar:
             if membresia is None:
+                # Crear nueva membresía (sin rol = participación automática)
                 UnidadMembresia.objects.create(
                     tenant=tenant,
                     unidad=unidad,
@@ -149,11 +152,20 @@ def _sincronizar_miembro_en_unidades_automaticas(miembro):
                     notas="Asignación automática.",
                 )
             else:
+                # Ya existe membresía - solo reactivar si estaba inactiva
+                # IMPORTANTE: No tocar el rol si es de TRABAJO (asignado manualmente)
                 cambios = []
 
-                if membresia.rol_id is not None:
+                # Determinar el tipo de rol actual
+                rol_tipo = None
+                if membresia.rol is not None:
+                    rol_tipo = getattr(membresia.rol, "tipo", None)
+
+                # Solo limpiar rol si es de PARTICIPACIÓN (no tocar TRABAJO)
+                if membresia.rol_id is not None and rol_tipo == RolUnidad.TIPO_PARTICIPACION:
                     membresia.rol = None
                     cambios.append("rol")
+                # Si es TRABAJO o cualquier otro, no tocamos el rol
 
                 if not membresia.activo:
                     membresia.activo = True
@@ -177,13 +189,25 @@ def _sincronizar_miembro_en_unidades_automaticas(miembro):
                     membresia.save(update_fields=cambios)
 
         else:
+            # El miembro NO debe estar en esta unidad
             if membresia and membresia.activo:
-                nota_salida = "Salida automática por reglas de unidad."
-                notas_actuales = (membresia.notas or "").strip()
-                membresia.notas = (notas_actuales + "\n" + nota_salida).strip() if notas_actuales else nota_salida
-                membresia.activo = False
-                membresia.fecha_salida = hoy
-                membresia.save(update_fields=["activo", "fecha_salida", "notas"])
+                # Determinar el tipo de rol actual
+                rol_tipo = None
+                if membresia.rol is not None:
+                    rol_tipo = getattr(membresia.rol, "tipo", None)
+
+                # Solo desactivar si NO tiene rol o si el rol es PARTICIPACIÓN
+                # Los roles de TRABAJO se asignan manualmente y no se tocan
+                es_participacion_o_sin_rol = (rol_tipo is None or rol_tipo == RolUnidad.TIPO_PARTICIPACION)
+
+                if es_participacion_o_sin_rol:
+                    nota_salida = "Salida automática por reglas de unidad."
+                    notas_actuales = (membresia.notas or "").strip()
+                    membresia.notas = (notas_actuales + "\n" + nota_salida).strip() if notas_actuales else nota_salida
+                    membresia.activo = False
+                    membresia.fecha_salida = hoy
+                    membresia.save(update_fields=["activo", "fecha_salida", "notas"])
+                # Si es TRABAJO, no hacemos nada - se mantiene activo
 
 
 @receiver(post_save, sender=Miembro)

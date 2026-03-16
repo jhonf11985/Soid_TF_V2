@@ -98,6 +98,7 @@ def _sincronizar_membresias_automaticas(unidad, tenant):
     """
     Sincroniza automáticamente la membresía base de la unidad según sus reglas.
     NO toca liderazgo (UnidadCargo).
+    NO toca membresías con rol de TRABAJO (asignados manualmente).
     """
     reglas = unidad.reglas or {}
     if not reglas.get("asignacion_automatica", False):
@@ -130,7 +131,11 @@ def _sincronizar_membresias_automaticas(unidad, tenant):
         if _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
             ids_elegibles.add(miembro.id)
 
-    membresias_actuales = UnidadMembresia.objects.filter(tenant=tenant, unidad=unidad)
+    # Cargar membresías CON el rol para poder verificar el tipo
+    membresias_actuales = UnidadMembresia.objects.select_related("rol").filter(
+        tenant=tenant, 
+        unidad=unidad
+    )
 
     creados = 0
     reactivados = 0
@@ -143,6 +148,7 @@ def _sincronizar_membresias_automaticas(unidad, tenant):
         obj = existentes_por_miembro.get(miembro_id)
 
         if obj is None:
+            # Crear nueva membresía con rol de participación
             UnidadMembresia.objects.create(
                 tenant=tenant,
                 unidad=unidad,
@@ -158,9 +164,17 @@ def _sincronizar_membresias_automaticas(unidad, tenant):
         else:
             update_fields = []
 
-            if obj.rol_id != rol_participacion.id:
-                obj.rol = rol_participacion
-                update_fields.append("rol")
+            # Determinar el tipo de rol actual
+            rol_tipo_actual = None
+            if obj.rol is not None:
+                rol_tipo_actual = getattr(obj.rol, "tipo", None)
+
+            # Solo cambiar rol si es PARTICIPACIÓN o sin rol
+            # NUNCA tocar roles de TRABAJO (asignados manualmente)
+            if rol_tipo_actual != RolUnidad.TIPO_TRABAJO:
+                if obj.rol_id != rol_participacion.id:
+                    obj.rol = rol_participacion
+                    update_fields.append("rol")
 
             if not obj.activo:
                 obj.activo = True
@@ -186,17 +200,27 @@ def _sincronizar_membresias_automaticas(unidad, tenant):
             else:
                 sin_cambios += 1
 
+    # Desactivar membresías de miembros que ya no son elegibles
     for obj in membresias_actuales:
         if obj.miembo_fk_id not in ids_elegibles and obj.activo:
-            obj.activo = False
-            obj.fecha_salida = hoy
+            # Determinar el tipo de rol actual
+            rol_tipo_actual = None
+            if obj.rol is not None:
+                rol_tipo_actual = getattr(obj.rol, "tipo", None)
 
-            nota_salida = "Salida automática por reglas de unidad."
-            notas_actuales = (obj.notas or "").strip()
-            obj.notas = (notas_actuales + "\n" + nota_salida).strip() if notas_actuales else nota_salida
+            # Solo desactivar si es PARTICIPACIÓN o sin rol
+            # NUNCA tocar roles de TRABAJO (asignados manualmente)
+            if rol_tipo_actual is None or rol_tipo_actual == RolUnidad.TIPO_PARTICIPACION:
+                obj.activo = False
+                obj.fecha_salida = hoy
 
-            obj.save(update_fields=["activo", "fecha_salida", "notas"])
-            desactivados += 1
+                nota_salida = "Salida automática por reglas de unidad."
+                notas_actuales = (obj.notas or "").strip()
+                obj.notas = (notas_actuales + "\n" + nota_salida).strip() if notas_actuales else nota_salida
+
+                obj.save(update_fields=["activo", "fecha_salida", "notas"])
+                desactivados += 1
+            # Si es TRABAJO, no hacemos nada - se mantiene activo
 
     return {
         "creados": creados,

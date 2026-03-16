@@ -219,6 +219,8 @@ def asignacion_unidad_contexto(request):
                 "permite_liderazgo": reglas.get("permite_liderazgo", True),
                 "limite_lideres": reglas.get("limite_lideres", None),
                 "rol_es_liderazgo": rol_es_liderazgo,
+
+                "asignacion_automatica": reglas.get("asignacion_automatica", False),
             }
         },
         "personas": personas,
@@ -273,6 +275,19 @@ def asignacion_aplicar(request):
     unidad = get_object_or_404(Unidad, pk=unidad_id, tenant=tenant)
     rol = get_object_or_404(RolUnidad, pk=rol_id, tenant=tenant)
 
+    reglas = unidad.reglas or {}
+    tipo = getattr(rol, "tipo", None)
+
+    asignacion_automatica = bool(reglas.get("asignacion_automatica", False))
+
+    if asignacion_automatica and tipo == RolUnidad.TIPO_PARTICIPACION:
+        return JsonResponse({
+            "ok": False,
+            "error": (
+                "Esta unidad usa asignación automática. "
+                "No se permite agregar miembros manualmente en roles de participación."
+            )
+        }, status=400)
     clean_ids = []
     for x in miembro_ids:
         try:
@@ -575,7 +590,19 @@ def asignacion_remover(request):
 
     unidad = get_object_or_404(Unidad, pk=unidad_id, tenant=tenant)
     rol = get_object_or_404(RolUnidad, pk=rol_id, tenant=tenant)
+    reglas = unidad.reglas or {}
+    tipo = getattr(rol, "tipo", None)
 
+    asignacion_automatica = bool(reglas.get("asignacion_automatica", False))
+
+    if asignacion_automatica and tipo == RolUnidad.TIPO_PARTICIPACION:
+        return JsonResponse({
+            "ok": False,
+            "error": (
+                "Esta unidad usa asignación automática. "
+                "No se permite quitar miembros manualmente en roles de participación."
+            )
+        }, status=400)
     clean_ids = []
     for x in miembro_ids:
         try:
