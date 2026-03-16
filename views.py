@@ -19,7 +19,7 @@ from .forms import UnidadForm, RolUnidadForm, ActividadUnidadForm, ReportePeriod
 from datetime import datetime
 import datetime
 from django.contrib.auth.decorators import login_required, permission_required
-
+from django.core.exceptions import PermissionDenied
 from .models import (
     Unidad,
     TipoUnidad,
@@ -50,18 +50,103 @@ def _get_client_ip(request):
 def estructura_home(request):
     return render(request, "estructura_app/home.html")
 
+def _get_miembro_from_user(user):
+    """
+    Devuelve el Miembro vinculado al User.
+    Reutiliza la misma lógica que ya usas en evaluaciones.
+    """
+    try:
+        from miembros_app.models import Miembro
+        m = Miembro.objects.filter(usuario=user).first()
+        if m:
+            return m
+    except Exception:
+        pass
+
+    m = getattr(user, "miembro", None)
+    if m:
+        return m
+
+    for attr in ("miembro_fk", "miembro_vinculado", "miembro_asociado"):
+        m = getattr(user, attr, None)
+        if m:
+            return m
+
+    perfil = getattr(user, "perfil", None)
+    if perfil:
+        m = getattr(perfil, "miembro", None)
+        if m:
+            return m
+
+    return None
+
+
+def _get_unidades_lideradas_por_usuario(user):
+    """
+    Devuelve las unidades donde el usuario es líder vigente.
+    """
+    miembro = _get_miembro_from_user(user)
+    if not miembro:
+        return []
+
+    cargos = (
+        UnidadCargo.objects
+        .select_related("unidad", "rol", "unidad__tipo")
+        .filter(
+            miembo_fk=miembro,
+            vigente=True,
+            rol__tipo=RolUnidad.TIPO_LIDERAZGO,
+        )
+        .order_by("unidad__nombre", "rol__orden", "rol__nombre")
+    )
+
+    unidades_map = {}
+    for cargo in cargos:
+        if cargo.unidad_id not in unidades_map:
+            unidades_map[cargo.unidad_id] = {
+                "unidad": cargo.unidad,
+                "cargo": cargo,
+            }
+
+    return list(unidades_map.values())
+
 
 @login_required
+def lider_home(request):
+    miembro = _get_miembro_from_user(request.user)
 
+    if not miembro:
+        messages.error(request, "Tu usuario no está vinculado a un miembro.")
+        return render(request, "estructura_app/lider_home.html", {
+            "unidades_info": [],
+            "miembro": None,
+        })
+
+    unidades_info = _get_unidades_lideradas_por_usuario(request.user)
+
+    return render(request, "estructura_app/lider_home.html", {
+        "miembro": miembro,
+        "unidades_info": unidades_info,
+    })
+
+@login_required
 def dashboard(request):
     u = request.user
 
-    # Si NO tiene permiso de ver dashboard, lo mandamos a una pantalla permitida
+    # Si NO tiene permiso de ver dashboard,
+    # primero verificamos si es líder y lo enviamos a su home.
     if not u.has_perm("estructura_app.ver_dashboard_estructura"):
+        unidades_lideradas = _get_unidades_lideradas_por_usuario(u)
+
+        if unidades_lideradas:
+            return redirect("estructura_app:lider_home")
+
         if u.has_perm("estructura_app.view_unidad"):
             return redirect("estructura_app:unidad_listado")
+
         if u.has_perm("estructura_app.change_unidadmembresia"):
             return redirect("estructura_app:asignacion_unidad")
+
         if u.has_perm("estructura_app.view_rolunidad"):
             return redirect("estructura_app:rol_listado")
 
@@ -99,18 +184,12 @@ def dashboard(request):
         .annotate(total=Count("unidades"))
         .order_by("orden", "nombre")
     )
-    # ============================================================
-    # KPI: Miembros sirviendo (rol TIPO_TRABAJO)
-    # Referencia: membresía oficial
-    # ============================================================
 
-    # Total de miembros oficiales
     total_miembros_oficiales = Miembro.objects.filter(
         activo=True,
         nuevo_creyente=False
     ).count()
 
-    # Miembros sirviendo (TRABAJO) – personas únicas
     miembros_sirviendo = (
         UnidadMembresia.objects.filter(
             activo=True,
@@ -123,13 +202,12 @@ def dashboard(request):
         .count()
     )
 
-    # Porcentaje
     porcentaje_sirviendo = (
         round((miembros_sirviendo * 100) / total_miembros_oficiales, 1)
         if total_miembros_oficiales > 0
         else 0
     )
-    # Miembros oficiales NO sirviendo (complemento)
+
     miembros_no_sirviendo = max(total_miembros_oficiales - miembros_sirviendo, 0)
 
     porcentaje_no_sirviendo = (
@@ -137,10 +215,6 @@ def dashboard(request):
         if total_miembros_oficiales > 0
         else 0
     )
-
-    # ============================================================
-    # KPI: Líderes vigentes (porcentaje sobre membresía oficial)
-    # ============================================================
 
     lideres_vigentes_personas = (
         UnidadCargo.objects.filter(
@@ -160,31 +234,24 @@ def dashboard(request):
         else 0
     )
 
-
     context = {
         "total_unidades": total_unidades,
         "total_tipos": total_tipos,
         "total_roles": total_roles,
-        "lideres_vigentes": lideres_vigentes,
+        "lideres_vigentes": lideres_vigentes_personas,
         "unidades_activas": unidades_activas,
         "unidades_inactivas": unidades_inactivas,
         "unidades_sin_lider": unidades_sin_lider,
         "top_unidades": top_unidades,
         "distribucion_por_tipo": distribucion_por_tipo,
-            "miembros_sirviendo": miembros_sirviendo,
+        "miembros_sirviendo": miembros_sirviendo,
         "total_miembros_oficiales": total_miembros_oficiales,
         "porcentaje_sirviendo": porcentaje_sirviendo,
-            "miembros_no_sirviendo": miembros_no_sirviendo,
-    "porcentaje_no_sirviendo": porcentaje_no_sirviendo,
-        "lideres_vigentes": lideres_vigentes_personas,
-    "porcentaje_lideres": porcentaje_lideres,
+        "miembros_no_sirviendo": miembros_no_sirviendo,
+        "porcentaje_no_sirviendo": porcentaje_no_sirviendo,
+        "porcentaje_lideres": porcentaje_lideres,
     }
     return render(request, "estructura_app/dashboard.html", context)
-
-
-# ============================================================
-# UNIDADES
-# ============================================================
 
 @login_required
 @permission_required("estructura_app.add_unidad", raise_exception=True)
@@ -197,9 +264,38 @@ def unidad_crear(request):
             unidad.edad_max = _to_int_from_post(request.POST, "edad_max")
 
             unidad.reglas = _reglas_mvp_from_post(request.POST)
+
+            asignacion_automatica = bool(unidad.reglas.get("asignacion_automatica"))
+
+            if asignacion_automatica:
+                existe_rol_base = RolUnidad.objects.filter(
+                    tipo=RolUnidad.TIPO_PARTICIPACION
+                ).exists()
+
+                if not existe_rol_base:
+                    messages.error(
+                        request,
+                        "Para activar la asignación automática, primero debes crear el rol base de participación del sistema."
+                    )
+                    context = {
+                        "form": form,
+                        "modo": "crear",
+                        "unidad": None,
+                        "reglas": unidad.reglas,
+                    }
+                    return render(request, "estructura_app/unidad_form.html", context)
+
             unidad.save()
 
-            messages.success(request, "Unidad creada correctamente.")
+            sync = _sincronizar_membresias_automaticas(unidad)
+            if unidad.reglas.get("asignacion_automatica"):
+                messages.success(
+                    request,
+                    f"Unidad creada correctamente. Autoasignación aplicada: "
+                    f"{sync['creados']} creados, {sync['reactivados']} reactivados, {sync['desactivados']} desactivados."
+                )
+            else:
+                messages.success(request, "Unidad creada correctamente.")
 
             if request.POST.get("guardar_y_nuevo") == "1":
                 return redirect("estructura_app:unidad_crear")
@@ -249,13 +345,47 @@ def unidad_editar(request, pk):
             unidad_obj = form.save(commit=False)
             unidad_obj.edad_min = _to_int_from_post(request.POST, "edad_min")
             unidad_obj.edad_max = _to_int_from_post(request.POST, "edad_max")
+            modo_asignacion = (request.POST.get("modo_asignacion") or "").strip()
+            if modo_asignacion in [Unidad.MODO_MANUAL, Unidad.MODO_AUTOMATICA]:
+                unidad_obj.modo_asignacion = modo_asignacion
 
+          
             # ✅ siempre recalculamos reglas (manteniendo valores anteriores si un checkbox no vino)
             unidad_obj.reglas = _reglas_mvp_from_post(request.POST, base_reglas=(unidad.reglas or {}))
 
+            asignacion_automatica = bool(unidad_obj.reglas.get("asignacion_automatica"))
+
+            if asignacion_automatica:
+                existe_rol_base = RolUnidad.objects.filter(
+                    tipo=RolUnidad.TIPO_PARTICIPACION
+                ).exists()
+
+                if not existe_rol_base:
+                    messages.error(
+                        request,
+                        "Para activar la asignación automática, primero debes crear el rol base de participación del sistema."
+                    )
+                    return render(request, "estructura_app/unidad_form.html", {
+                        "form": form,
+                        "modo": "editar",
+                        "unidad": unidad,
+                        "bloqueada": bloqueada,
+                        "reglas": unidad_obj.reglas,
+                    })
 
             unidad_obj.save()
-            messages.success(request, "Cambios guardados correctamente.")
+
+            sync = _sincronizar_membresias_automaticas(unidad_obj)
+
+            if unidad_obj.reglas.get("asignacion_automatica"):
+                messages.success(
+                    request,
+                    f"Cambios guardados correctamente. Autoasignación aplicada: "
+                    f"{sync['creados']} creados, {sync['reactivados']} reactivados, {sync['desactivados']} desactivados."
+                )
+            else:
+                messages.success(request, "Cambios guardados correctamente.")
+
             return redirect("estructura_app:unidad_listado")
         else:
             messages.error(request, "Revisa los campos marcados.")
@@ -319,7 +449,7 @@ def unidad_listado(request):
 
 
 @login_required
-@permission_required("estructura_app.view_unidad", raise_exception=True)
+
 def unidad_detalle(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
 
@@ -426,13 +556,15 @@ def unidad_detalle(request, pk):
         elif g in ("f", "femenino", "mujer"):
             femeninos += 1
 
-    # --- Estados (tu lógica: estado vacío = menor)
-    activos = pasivos = observacion = disciplina = catecumenos = menores_estado_vacio = 0
+    # --- Estados (prioridad: nuevo creyente antes que menor)
+    activos = pasivos = observacion = disciplina = catecumenos = 0
+    menores_estado_vacio = nuevos_creyentes = 0
+
     for m in miembros:
         e = (m.estado_miembro or "").strip().lower()
-        if e == "":
-            menores_estado_vacio += 1
-        elif e == "activo":
+        es_nuevo = bool(getattr(m, "nuevo_creyente", False))
+
+        if e == "activo":
             activos += 1
         elif e == "pasivo":
             pasivos += 1
@@ -442,8 +574,11 @@ def unidad_detalle(request, pk):
             disciplina += 1
         elif e == "catecumeno":
             catecumenos += 1
+        elif es_nuevo:
+            nuevos_creyentes += 1
+        else:
+            menores_estado_vacio += 1
 
-    # Menores/Mayores: principal por estado vacío (como tú definiste)
     menores = menores_estado_vacio
     mayores = total - menores
 
@@ -470,6 +605,7 @@ def unidad_detalle(request, pk):
         "observacion": observacion,
         "disciplina": disciplina,
         "catecumenos": catecumenos,
+        "nuevos_creyentes": nuevos_creyentes,
         "menores_estado_vacio": menores_estado_vacio,
         "categorias_edad": categorias_edad,
     }
@@ -625,13 +761,17 @@ def _reglas_mvp_from_post(post, base_reglas=None):
             return default
 
     # ── Checkboxes: si está en POST = True, si no está = False ──
+    asignacion_automatica = post.get("regla_asignacion_automatica") in ("on", "1", "true", "True")
     solo_activos = post.get("regla_solo_activos") in ("on", "1", "true", "True")
+    permite_activos = True if solo_activos else post.get("regla_perm_activos") in ("on", "1", "true", "True")
+
     admite_hombres = post.get("regla_admite_hombres") in ("on", "1", "true", "True")
     admite_mujeres = post.get("regla_admite_mujeres") in ("on", "1", "true", "True")
     permite_liderazgo = post.get("regla_perm_liderazgo") in ("on", "1", "true", "True")
     permite_subunidades = post.get("regla_perm_subunidades") in ("on", "1", "true", "True")
     requiere_aprobacion = post.get("regla_req_aprob_lider") in ("on", "1", "true", "True")
     unidad_privada = post.get("regla_unidad_privada") in ("on", "1", "true", "True")
+    asignacion_automatica = post.get("regla_asignacion_automatica") in ("on", "1", "true", "True")
 
     # Estados (se fuerzan a False si solo_activos está marcado)
     permite_observacion = False if solo_activos else post.get("regla_perm_observacion") in ("on", "1", "true", "True")
@@ -642,7 +782,9 @@ def _reglas_mvp_from_post(post, base_reglas=None):
     permite_menores = False if solo_activos else post.get("regla_perm_menores") in ("on", "1", "true", "True")
 
     reglas = {
+        "asignacion_automatica": asignacion_automatica,
         "solo_activos": solo_activos,
+        "permite_activos": permite_activos,
         "admite_hombres": admite_hombres,
         "admite_mujeres": admite_mujeres,
         "permite_observacion": permite_observacion,
@@ -659,6 +801,7 @@ def _reglas_mvp_from_post(post, base_reglas=None):
         "permite_subunidades": permite_subunidades,
         "requiere_aprobacion_lider": requiere_aprobacion,
         "unidad_privada": unidad_privada,
+        "asignacion_automatica": asignacion_automatica,
     }
 
     return reglas
@@ -685,14 +828,30 @@ def rol_crear(request):
     if request.method == "POST":
         form = RolUnidadForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Rol creado correctamente.")
-            return redirect("estructura_app:rol_listado")
+            tipo = form.cleaned_data.get("tipo")
+
+            if tipo == RolUnidad.TIPO_PARTICIPACION:
+                ya_existe = RolUnidad.objects.filter(
+                    tipo=RolUnidad.TIPO_PARTICIPACION
+                ).exists()
+
+                if ya_existe:
+                    form.add_error(
+                        "tipo",
+                        "Ya existe el rol base de participación del sistema. No se permite crear más de uno."
+                    )
+                else:
+                    form.save()
+                    messages.success(request, "Rol creado correctamente.")
+                    return redirect("estructura_app:rol_listado")
+            else:
+                form.save()
+                messages.success(request, "Rol creado correctamente.")
+                return redirect("estructura_app:rol_listado")
     else:
         form = RolUnidadForm()
 
     return render(request, "estructura_app/rol_form.html", {"form": form, "modo": "crear"})
-
 
 def _estado_slug(estado):
     if not estado:
@@ -3161,28 +3320,36 @@ def unidad_movimiento_anular(request, pk, mov_id):
 
 def get_unidades_permitidas(user):
     from miembros_app.models import Miembro
-    from .models import Unidad, UnidadCargo, RolUnidad
+    from .models import Unidad, UnidadCargo, UnidadMembresia, RolUnidad
 
-    # Admin o staff → ve todo
     if user.is_superuser or user.is_staff:
         return Unidad.objects.all()
 
-    # Buscar miembro asociado al usuario
+    if not user.has_perm("estructura_app.view_unidad"):
+        return Unidad.objects.none()
+
     try:
         miembro = Miembro.objects.get(usuario=user)
-
     except Miembro.DoesNotExist:
         return Unidad.objects.none()
 
-    # Buscar unidades donde es líder
-    unidades_ids = UnidadCargo.objects.filter(
+    unidades_liderazgo_ids = UnidadCargo.objects.filter(
         miembo_fk=miembro,
         vigente=True,
         rol__tipo=RolUnidad.TIPO_LIDERAZGO
     ).values_list("unidad_id", flat=True)
 
-    return Unidad.objects.filter(id__in=unidades_ids)
+    unidades_membresia_ids = UnidadMembresia.objects.filter(
+        miembo_fk=miembro,
+        activo=True
+    ).values_list("unidad_id", flat=True)
 
+    return Unidad.objects.filter(
+        Q(id__in=unidades_liderazgo_ids) | Q(id__in=unidades_membresia_ids)
+    ).distinct()
+
+
+   
 def get_lideres_en_cadena(unidad):
     """
     Devuelve UnidadCargo heredado en cadena (padre -> abuelo -> ...),
@@ -3247,4 +3414,180 @@ def get_lideres_heredados(unidad):
         padre = padre.padre
 
     return lideres
+def _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
+    """
+    Evalúa si un miembro debe pertenecer automáticamente a una unidad.
+    SOLO aplica a membresía base (UnidadMembresia), nunca a liderazgo.
+    """
+    reglas = unidad.reglas or {}
 
+    # Solo miembros activos en el sistema
+    if not getattr(miembro, "activo", False):
+        return False
+
+    # Nunca descarriados
+    estado_raw = (getattr(miembro, "estado_miembro", "") or "").strip().lower()
+    es_nuevo = bool(getattr(miembro, "nuevo_creyente", False))
+
+    if estado_raw == "descarriado":
+        return False
+
+    # Regla de género
+    admite_hombres = bool(reglas.get("admite_hombres", True))
+    admite_mujeres = bool(reglas.get("admite_mujeres", True))
+
+    genero = (getattr(miembro, "genero", "") or "").strip().lower()
+
+    es_hombre = genero in ("m", "masculino", "hombre")
+    es_mujer = genero in ("f", "femenino", "mujer")
+
+    if admite_hombres and not admite_mujeres:
+        if not es_hombre:
+            return False
+    elif admite_mujeres and not admite_hombres:
+        if not es_mujer:
+            return False
+    elif not admite_hombres and not admite_mujeres:
+        return False
+
+    # Rango de edad estructural de la unidad
+    if not _cumple_rango_edad(miembro, unidad):
+        return False
+
+    # Reglas de membresía automática (estrictas)
+    solo_activos = bool(reglas.get("solo_activos", False))
+    permite_activos = bool(reglas.get("permite_activos", False))
+    permite_observacion = bool(reglas.get("permite_observacion", False))
+    permite_pasivos = bool(reglas.get("permite_pasivos", False))
+    permite_disciplina = bool(reglas.get("permite_disciplina", False))
+    permite_catecumenos = bool(reglas.get("permite_catecumenos", False))
+    permite_nuevos = bool(reglas.get("permite_nuevos", False))
+    permite_menores = bool(reglas.get("permite_menores", False))
+
+    # Regla maestra: solo activos
+    if solo_activos:
+        return estado_raw == "activo"
+
+    estados_permitidos = set()
+
+    if permite_activos:
+        estados_permitidos.add("activo")
+    if permite_observacion:
+        estados_permitidos.add("observacion")
+    if permite_pasivos:
+        estados_permitidos.add("pasivo")
+    if permite_disciplina:
+        estados_permitidos.add("disciplina")
+    if permite_catecumenos:
+        estados_permitidos.add("catecumeno")
+
+    if estado_raw in estados_permitidos:
+        return True
+
+    if permite_nuevos and es_nuevo:
+        return True
+
+    if permite_menores and estado_raw == "":
+        return True
+
+    return False
+
+
+def _sincronizar_membresias_automaticas(unidad):
+    """
+    Sincroniza automáticamente la membresía base de la unidad según sus reglas.
+    NO toca liderazgo (UnidadCargo).
+    """
+    reglas = unidad.reglas or {}
+    if not reglas.get("asignacion_automatica", False):
+        return {
+            "creados": 0,
+            "reactivados": 0,
+            "desactivados": 0,
+            "sin_cambios": 0,
+        }
+
+    hoy = timezone.localdate()
+
+    candidatos = Miembro.objects.filter(activo=True).order_by("nombres", "apellidos")
+
+    ids_elegibles = set()
+    for miembro in candidatos:
+        if _miembro_cumple_reglas_unidad_automatica(miembro, unidad):
+            ids_elegibles.add(miembro.id)
+
+    membresias_actuales = UnidadMembresia.objects.filter(unidad=unidad)
+
+    creados = 0
+    reactivados = 0
+    desactivados = 0
+    sin_cambios = 0
+
+    # 1) Crear o reactivar a quienes sí cumplen
+    existentes_por_miembro = {m.miembo_fk_id: m for m in membresias_actuales}
+
+    for miembro_id in ids_elegibles:
+        obj = existentes_por_miembro.get(miembro_id)
+
+        if obj is None:
+            UnidadMembresia.objects.create(
+                unidad=unidad,
+                miembo_fk_id=miembro_id,
+                rol=None,
+                tipo="miembro",
+                activo=True,
+                fecha_ingreso=hoy,
+                fecha_salida=None,
+                notas="Asignación automática.",
+            )
+            creados += 1
+        else:
+            update_fields = []
+
+            if obj.rol_id is not None:
+                obj.rol = None
+                update_fields.append("rol")
+
+            if not obj.activo:
+                obj.activo = True
+                update_fields.append("activo")
+                reactivados += 1
+
+            if obj.fecha_ingreso is None:
+                obj.fecha_ingreso = hoy
+                update_fields.append("fecha_ingreso")
+
+            if obj.fecha_salida is not None:
+                obj.fecha_salida = None
+                update_fields.append("fecha_salida")
+
+            nota_auto = "Asignación automática."
+            notas_actuales = (obj.notas or "").strip()
+            if nota_auto not in notas_actuales:
+                obj.notas = (notas_actuales + "\n" + nota_auto).strip() if notas_actuales else nota_auto
+                update_fields.append("notas")
+
+            if update_fields:
+                obj.save(update_fields=update_fields)
+            else:
+                sin_cambios += 1
+
+    # 2) Desactivar a quienes ya no cumplen
+    for obj in membresias_actuales:
+        if obj.miembo_fk_id not in ids_elegibles and obj.activo:
+            obj.activo = False
+            obj.fecha_salida = hoy
+
+            nota_salida = "Salida automática por reglas de unidad."
+            notas_actuales = (obj.notas or "").strip()
+            obj.notas = (notas_actuales + "\n" + nota_salida).strip() if notas_actuales else nota_salida
+
+            obj.save(update_fields=["activo", "fecha_salida", "notas"])
+            desactivados += 1
+
+    return {
+        "creados": creados,
+        "reactivados": reactivados,
+        "desactivados": desactivados,
+        "sin_cambios": sin_cambios,
+    }

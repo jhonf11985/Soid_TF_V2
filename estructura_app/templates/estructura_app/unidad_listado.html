@@ -62,38 +62,41 @@ Estructura / Unidades
         <tbody>
         {% if unidades %}
             {% for u in unidades %}
-            <tr>
+            <tr class="{% if u.padre %}row-child{% endif %}" data-parent="{{ u.padre.pk|default:'' }}">
                 <td class="col-checkbox"><input type="checkbox" name="selected" value="{{ u.pk }}"></td>
-<td>
-    <div class="unit-cell">
-        <div class="unit-avatar">
-            {% if u.imagen %}
-                <img src="{{ u.imagen.url }}" alt="{{ u.nombre }}">
-            {% else %}
-                <span class="material-icons">account_tree</span>
-            {% endif %}
-        </div>
+                <td>
+                    <div class="unit-cell {% if u.padre %}unit-cell-child{% endif %}">
+                        {% if u.padre %}
+                        <span class="child-connector">
+                            <span class="material-icons">subdirectory_arrow_right</span>
+                        </span>
+                        {% endif %}
+                        <div class="unit-avatar">
+                            {% if u.imagen %}
+                                <img src="{{ u.imagen.url }}" alt="{{ u.nombre }}">
+                            {% else %}
+                                <span class="material-icons">account_tree</span>
+                            {% endif %}
+                        </div>
 
-        <div class="unit-meta">
-            <a href="{% url 'estructura_app:unidad_detalle' u.pk %}" class="cell-link">
-                {{ u.nombre }}
-            </a>
+                        <div class="unit-meta">
+                            <a href="{% url 'estructura_app:unidad_detalle' u.pk %}" class="cell-link">
+                                {{ u.nombre }}
+                            </a>
 
-            {% if u.codigo %}
-                <span class="cell-subtext">{{ u.codigo }}</span>
-            {% endif %}
+                            {% if u.codigo %}
+                                <span class="cell-subtext">{{ u.codigo }}</span>
+                            {% endif %}
 
-            <span class="cell-subtext">
-                {{ u.total_miembros }} miembro{{ u.total_miembros|pluralize }}
-            </span>
-            <span class="cell-subtext">
-                {{ u.total_lideres }} líder{{ u.total_lideres|pluralize }}
-            </span>
-
-        </div>
-    </div>
-</td>
-
+                            <span class="cell-subtext">
+                                {{ u.total_miembros }} miembro{{ u.total_miembros|pluralize }}
+                            </span>
+                            <span class="cell-subtext">
+                                {{ u.total_lideres }} líder{{ u.total_lideres|pluralize }}
+                            </span>
+                        </div>
+                    </div>
+                </td>
 
                 <td>{{ u.tipo.nombre|default:"—" }}</td>
                 <td>{{ u.categoria|default:"—" }}</td>
@@ -118,7 +121,6 @@ Estructura / Unidades
                         <span class="material-icons">edit</span>
                     </a>
                     <a href="{% url 'estructura_app:asignacion_unidad' %}?unidad_id={{ u.pk }}" class="row-action" title="Asignar personas">
-
                         <span class="material-icons">group_add</span>
                     </a>
                 </td>
@@ -138,57 +140,64 @@ Estructura / Unidades
     <div class="kanban-grid">
         {% if unidades %}
             {% for u in unidades %}
-            <div class="kanban-card">
-                <div class="kanban-card-left">
-                    <div class="kanban-avatar">
-                        {% if u.imagen %}
-                            <img src="{{ u.imagen.url }}" alt="{{ u.nombre }}">
-                        {% else %}
-                            <span class="avatar-letter">{{ u.nombre|slice:":1"|upper }}</span>
+            <div class="kanban-card {% if u.padre %}is-child{% endif %}">
+                {% if u.padre %}
+                <div class="child-indicator">
+                    <span class="material-icons">subdirectory_arrow_right</span>
+                </div>
+                {% endif %}
+                <div class="kanban-card-inner">
+                    <div class="kanban-card-left">
+                        <div class="kanban-avatar">
+                            {% if u.imagen %}
+                                <img src="{{ u.imagen.url }}" alt="{{ u.nombre }}">
+                            {% else %}
+                                <span class="avatar-letter">{{ u.nombre|slice:":1"|upper }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="kanban-card-right">
+                        <a href="{% url 'estructura_app:unidad_detalle' u.pk %}" class="kanban-card-title">{{ u.nombre }}</a>
+                        <div class="kanban-card-info">
+                            <span class="material-icons">tag</span> {{ u.codigo|default:"—" }}
+                        </div>
+                        <div class="kanban-card-info">
+                            <span class="material-icons">category</span> {{ u.tipo.nombre|default:"—" }}
+                        </div>
+                        <div class="kanban-card-info">
+                            <span class="material-icons">folder</span> {{ u.categoria|default:"—" }}
+                        </div>
+                        {% if u.padre %}
+                        <div class="kanban-card-info parent-info">
+                            <span class="material-icons">account_tree</span> {{ u.padre.nombre }}
+                        </div>
                         {% endif %}
                     </div>
-                </div>
-                <div class="kanban-card-right">
-                    <a href="{% url 'estructura_app:unidad_detalle' u.pk %}" class="kanban-card-title">{{ u.nombre }}</a>
-                    <div class="kanban-card-info">
-                        <span class="material-icons">tag</span> {{ u.codigo|default:"—" }}
-                    </div>
-                    <div class="kanban-card-info">
-                        <span class="material-icons">category</span> {{ u.tipo.nombre|default:"—" }}
-                    </div>
-                    <div class="kanban-card-info">
-                        <span class="material-icons">folder</span> {{ u.categoria|default:"—" }}
-                    </div>
-                    <div class="kanban-card-info">
-                        <span class="material-icons">account_tree</span> {{ u.padre.nombre|default:"—" }}
-                    </div>
-                </div>
-                <div class="kanban-card-footer">
-                    <div class="kanban-footer-left">
-                    <span class="kanban-badge">
-                        <span class="material-icons">people</span> {{ u.total_miembros }}
-                    </span>
-                    <span class="kanban-badge">
-                        <span class="material-icons">military_tech</span> {{ u.total_lideres }}
-                    </span>
-
-                        {% if u.activa %}
-                            <span class="badge badge-success">Activa</span>
-                        {% else %}
-                            <span class="badge badge-danger">Inactiva</span>
-                        {% endif %}
-                    </div>
-                    <div class="kanban-footer-right">
-                        <a href="{% url 'estructura_app:unidad_editar' u.pk %}" class="kanban-action" title="Editar">
-                            <span class="material-icons">edit</span>
-                        </a>
-                      <a href="{% url 'estructura_app:asignacion_unidad' %}?unidad_id={{ u.pk }}" class="kanban-action" title="Asignar personas">
-
-                            <span class="material-icons">group_add</span>
-                        </a>
-                        <span class="kanban-clock">
-                            <span class="material-icons">schedule</span>
-                        </span>
+                    <div class="kanban-card-footer">
+                        <div class="kanban-footer-left">
+                            <span class="kanban-badge">
+                                <span class="material-icons">people</span> {{ u.total_miembros }}
+                            </span>
+                            <span class="kanban-badge">
+                                <span class="material-icons">military_tech</span> {{ u.total_lideres }}
+                            </span>
+                            {% if u.activa %}
+                                <span class="badge badge-success">Activa</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inactiva</span>
+                            {% endif %}
+                        </div>
+                        <div class="kanban-footer-right">
+                            <a href="{% url 'estructura_app:unidad_editar' u.pk %}" class="kanban-action" title="Editar">
+                                <span class="material-icons">edit</span>
+                            </a>
+                            <a href="{% url 'estructura_app:asignacion_unidad' %}?unidad_id={{ u.pk }}" class="kanban-action" title="Asignar personas">
+                                <span class="material-icons">group_add</span>
+                            </a>
+                            <span class="kanban-clock">
+                                <span class="material-icons">schedule</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -200,6 +209,13 @@ Estructura / Unidades
 </div>
 
 <style>
+:root {
+    --color-primary: #0097A7;
+    --color-primary-dark: #00838F;
+    --color-primary-light: #B2EBF2;
+    --color-primary-bg: #E0F7FA;
+}
+
 /* ========== Control Panel Odoo ========== */
 .odoo-control-panel {
     display: flex;
@@ -238,9 +254,9 @@ Estructura / Unidades
     gap: 12px;
 }
 
-/* Botones estilo Odoo */
+/* Botones estilo Odoo - Color teal */
 .btn-odoo-primary {
-    background: #714B67;
+    background: var(--color-primary);
     color: #fff;
     border: none;
     padding: 6px 16px;
@@ -255,7 +271,7 @@ Estructura / Unidades
 }
 
 .btn-odoo-primary:hover {
-    background: #5a3c52;
+    background: var(--color-primary-dark);
     color: #fff;
 }
 
@@ -278,7 +294,7 @@ Estructura / Unidades
     position: absolute;
     left: 34px;
     font-size: 18px;
-    color: #714B67;
+    color: var(--color-primary);
     pointer-events: none;
 }
 
@@ -293,8 +309,8 @@ Estructura / Unidades
 
 .search-input:focus {
     outline: none;
-    border-color: #714B67;
-    box-shadow: 0 0 0 2px rgba(113, 75, 103, 0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(0, 151, 167, 0.1);
 }
 
 /* Paginador */
@@ -320,7 +336,8 @@ Estructura / Unidades
 }
 
 .pager-btn:hover:not(:disabled) {
-    background: #f1f3f5;
+    background: #f8f9fa;
+    color: var(--color-primary);
 }
 
 .pager-btn:disabled {
@@ -332,36 +349,36 @@ Estructura / Unidades
     font-size: 20px;
 }
 
-/* Switcher de vistas */
+/* View Switcher */
 .cp-view-switcher {
     display: flex;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    overflow: hidden;
+    gap: 2px;
 }
 
 .view-btn {
-    background: #fff;
-    border: none;
-    padding: 6px 10px;
+    background: none;
+    border: 1px solid #ced4da;
+    padding: 4px 8px;
     cursor: pointer;
     color: #6c757d;
-    border-right: 1px solid #ced4da;
-    display: flex;
-    align-items: center;
+}
+
+.view-btn:first-child {
+    border-radius: 4px 0 0 4px;
 }
 
 .view-btn:last-child {
-    border-right: none;
-}
-
-.view-btn:hover {
-    background: #f8f9fa;
+    border-radius: 0 4px 4px 0;
 }
 
 .view-btn.active {
-    background: #714B67;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
     color: #fff;
+}
+
+.view-btn:hover:not(.active) {
+    background: #f8f9fa;
 }
 
 .view-btn .material-icons {
@@ -382,30 +399,39 @@ Estructura / Unidades
     width: 100%;
     border-collapse: collapse;
     background: #fff;
-    font-size: 13px;
-}
-
-.odoo-table thead {
-    background: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
 }
 
 .odoo-table th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
     padding: 10px 12px;
     text-align: left;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
     color: #495057;
-    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .odoo-table td {
     padding: 10px 12px;
-    border-bottom: 1px solid #f1f3f5;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+    color: #212529;
     vertical-align: middle;
 }
 
 .odoo-table tbody tr:hover {
     background: #f8f9fa;
+}
+
+/* Filas hijas - indentación visual */
+.odoo-table tbody tr.row-child {
+    background: linear-gradient(90deg, var(--color-primary-bg) 0%, #fff 5%);
+}
+
+.odoo-table tbody tr.row-child:hover {
+    background: linear-gradient(90deg, var(--color-primary-light) 0%, #f8f9fa 5%);
 }
 
 .col-checkbox {
@@ -419,21 +445,24 @@ Estructura / Unidades
 }
 
 .cell-link {
-    color: #714B67;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 500;
 }
 
 .cell-link:hover {
     text-decoration: underline;
+    color: var(--color-primary-dark);
 }
 
 .cell-link-secondary {
-    color: #714B67;
+    color: #6c757d;
     text-decoration: none;
+    font-size: 12px;
 }
 
 .cell-link-secondary:hover {
+    color: var(--color-primary);
     text-decoration: underline;
 }
 
@@ -441,20 +470,23 @@ Estructura / Unidades
     display: block;
     font-size: 11px;
     color: #6c757d;
-    margin-top: 2px;
 }
 
 .row-action {
-    color: #6c757d;
-    padding: 4px;
-    border-radius: 4px;
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    color: #6c757d;
     text-decoration: none;
+    transition: all 0.15s ease;
 }
 
 .row-action:hover {
-    background: #e9ecef;
-    color: #212529;
+    background: var(--color-primary-bg);
+    color: var(--color-primary);
 }
 
 .row-action .material-icons {
@@ -465,6 +497,63 @@ Estructura / Unidades
     text-align: center;
     color: #6c757d;
     padding: 40px !important;
+}
+
+/* Unidad cell con conector de jerarquía */
+.unit-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 260px;
+}
+
+.unit-cell.unit-cell-child {
+    padding-left: 0;
+}
+
+.child-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.child-connector .material-icons {
+    font-size: 14px;
+    color: #fff;
+}
+
+.unit-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.unit-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.unit-avatar .material-icons {
+    font-size: 18px;
+    color: #6c757d;
+}
+
+.unit-meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
 }
 
 /* Badges */
@@ -486,7 +575,7 @@ Estructura / Unidades
     color: #721c24;
 }
 
-/* ========== Vista Kanban Estilo Odoo ========== */
+/* ========== Vista Kanban ========== */
 .kanban-grid {
     display: flex;
     flex-wrap: wrap;
@@ -502,16 +591,49 @@ Estructura / Unidades
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     width: 380px;
-    height: 180px;
+    min-height: 180px;
     display: flex;
-    flex-wrap: nowrap;
+    flex-direction: row;
     position: relative;
-    transition: box-shadow 0.15s ease;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
     flex-shrink: 0;
 }
 
+/* Tarjeta hija - indicador visual */
+.kanban-card.is-child {
+    border-left: 4px solid var(--color-primary);
+    background: linear-gradient(90deg, var(--color-primary-bg) 0%, #fff 8%);
+}
+
+.child-indicator {
+    position: absolute;
+    top: 12px;
+    left: -2px;
+    width: 24px;
+    height: 24px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.child-indicator .material-icons {
+    font-size: 14px;
+    color: #fff;
+}
+
+.kanban-card-inner {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    padding-bottom: 48px;
+}
+
 .kanban-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 20px rgba(0, 151, 167, 0.15);
+    transform: translateY(-2px);
 }
 
 .kanban-card-left {
@@ -527,7 +649,7 @@ Estructura / Unidades
     height: 70px;
     border-radius: 4px;
     overflow: hidden;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -568,7 +690,7 @@ Estructura / Unidades
 }
 
 .kanban-card-title:hover {
-    color: #714B67;
+    color: var(--color-primary);
     text-decoration: underline;
 }
 
@@ -589,6 +711,15 @@ Estructura / Unidades
     flex-shrink: 0;
 }
 
+.kanban-card-info.parent-info {
+    color: var(--color-primary-dark);
+    font-weight: 500;
+}
+
+.kanban-card-info.parent-info .material-icons {
+    color: var(--color-primary);
+}
+
 .kanban-card-footer {
     width: 100%;
     display: flex;
@@ -601,6 +732,10 @@ Estructura / Unidades
     left: 0;
     background: #fff;
     border-radius: 0 0 4px 4px;
+}
+
+.kanban-card.is-child .kanban-card-footer {
+    background: linear-gradient(90deg, var(--color-primary-bg) 0%, #fff 15%);
 }
 
 .kanban-footer-left {
@@ -628,8 +763,8 @@ Estructura / Unidades
 }
 
 .kanban-action:hover {
-    background: #e9ecef;
-    color: #212529;
+    background: var(--color-primary-bg);
+    color: var(--color-primary);
 }
 
 .kanban-action .material-icons {
@@ -696,44 +831,6 @@ Estructura / Unidades
         display: none;
     }
 }
-
-/* Unidad cell (imagen + nombre) */
-.unit-cell{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    min-width:260px;
-}
-
-.unit-avatar{
-    width:34px;
-    height:34px;
-    border-radius:8px;
-    overflow:hidden;
-    background:#e9ecef;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    flex-shrink:0;
-}
-
-.unit-avatar img{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-}
-
-.unit-avatar .material-icons{
-    font-size:18px;
-    color:#6c757d;
-}
-
-.unit-meta{
-    display:flex;
-    flex-direction:column;
-    line-height:1.2;
-}
-
 </style>
 
 <script>

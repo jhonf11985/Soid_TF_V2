@@ -12,7 +12,7 @@
 
 {% block estructura_content %}
 
-<form method="post" class="odoo-form" enctype="multipart/form-data">
+<form method="post" class="odoo-form" enctype="multipart/form-data" id="unidad-form">
 
     {% csrf_token %}
 {% if form.errors %}
@@ -188,7 +188,7 @@
                                 {% endfor %}
                             </select>
                             <!-- ✅ Switch: heredar líderes (solo se muestra si hay unidad padre) -->
-<div class="odoo-quick-field" id="wrap-heredar-lideres" style="display:none; justify-content:flex-end;">
+<div class="odoo-quick-field" id="wrap-heredar-lideres" style="justify-content:flex-end;">
     <span class="material-icons">supervisor_account</span>
 
     <div style="display:flex; align-items:center; gap:10px; margin-left:6px;">
@@ -196,11 +196,16 @@
             Heredar líderes
         </span>
 
-        <label class="odoo-switch-inline" title="Copiar líderes principales (roles tipo Liderazgo) desde la unidad principal (raíz) del árbol">
-            <!-- 🔒 valor por defecto si el switch está apagado -->
-            <input type="hidden" name="heredar_lideres" value="0">
+        <label class="odoo-switch-inline" title="Indica si la unidad hereda líderes de la unidad padre">
+            <input type="hidden" name="hereda_liderazgo" value="False">
 
-            <input type="checkbox" name="heredar_lideres" id="id_heredar_lideres" value="1" checked>
+            <input
+                type="checkbox"
+                name="hereda_liderazgo"
+                id="id_hereda_liderazgo"
+                value="True"
+                {% if form.hereda_liderazgo.value %}checked{% endif %}
+            >
             <span class="odoo-switch-slider-sm"></span>
         </label>
     </div>
@@ -360,6 +365,30 @@
                             <div class="odoo-tab-column">
                                 
                                 <!-- SECCIÓN: MEMBRESÍA -->
+
+                                <div class="odoo-section-field">
+    <label class="odoo-section-label">Asignación automática</label>
+    <label class="odoo-switch-inline">
+        <input type="hidden" name="regla_asignacion_automatica" value="0">
+
+        <input
+            type="checkbox"
+            name="regla_asignacion_automatica"
+            id="id_regla_asignacion_automatica"
+            value="1"
+            {% if r.asignacion_automatica %}checked{% endif %}
+        >
+        <span class="odoo-switch-slider-sm"></span>
+    </label>
+</div>
+
+<div
+    id="autoasignacion-help"
+    style="margin-top:-4px; margin-bottom:12px; font-size:12px; color:#6c757d;"
+>
+    Si está activada, la unidad asigna automáticamente miembros según sus reglas.
+    No afecta liderazgo.
+</div>
                                 <div class="odoo-section-title">MEMBRESÍA</div>
 <div class="odoo-section-field">
     <label class="odoo-section-label">Admite hombres</label>
@@ -456,7 +485,27 @@
 
                                 <!-- SECCIÓN: TIPOS PERMITIDOS -->
                                 <div class="odoo-section-title">TIPOS PERMITIDOS</div>
-                                
+
+                                <div class="odoo-section-field">
+    <label class="odoo-section-label">Permite activos</label>
+    <label class="odoo-switch-inline">
+        <input type="hidden" name="regla_perm_activos" value="0">
+
+        <input
+            type="checkbox"
+            name="regla_perm_activos"
+            id="id_regla_perm_activos"
+            value="1"
+            {% if modo == "crear" %}
+                checked
+            {% else %}
+                {% if r.permite_activos %}checked{% endif %}
+            {% endif %}
+        >
+
+        <span class="odoo-switch-slider-sm"></span>
+    </label>
+</div>
                                 <div class="odoo-section-field" id="membership-types">
                                     <label class="odoo-section-label">En observación</label>
                                     <label class="odoo-switch-inline">
@@ -787,34 +836,49 @@ function initMasterRule() {
     }
 }
 </script>
+
 <script>
 (function () {
   const soloActivos = document.getElementById('id_regla_solo_activos');
 
   const dependientes = [
+    'id_regla_perm_activos',
     'id_regla_perm_menores',
     'id_regla_perm_observacion',
     'id_regla_perm_pasivos',
     'id_regla_perm_disciplina',
+    'id_regla_perm_catecumenos',
     'id_regla_perm_nuevos',
-    'id_regla_perm_catecumenos'
-  ].map(id => document.getElementById(id)).filter(Boolean);
+  ];
 
-  function aplicarBloqueo() {
+  function syncSoloActivos() {
     if (!soloActivos) return;
-    const bloquear = soloActivos.checked;
 
-    dependientes.forEach(chk => {
-      chk.disabled = bloquear;
-      if (bloquear) chk.checked = false;
+    dependientes.forEach(function (id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      if (id === 'id_regla_perm_activos') {
+        if (soloActivos.checked) {
+          el.checked = true;
+          el.disabled = true;
+        } else {
+          el.disabled = false;
+        }
+      } else {
+        if (soloActivos.checked) {
+          el.checked = false;
+          el.disabled = true;
+        } else {
+          el.disabled = false;
+        }
+      }
     });
   }
 
   if (soloActivos) {
-    
-
-    soloActivos.addEventListener('change', aplicarBloqueo);
-    aplicarBloqueo();
+    soloActivos.addEventListener('change', syncSoloActivos);
+    syncSoloActivos();
   }
 })();
 </script>
@@ -942,24 +1006,78 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const padreSelect = document.getElementById("{{ form.padre.id_for_label }}");
+    const padreSelect = document.getElementById("id_padre");
     const wrap = document.getElementById("wrap-heredar-lideres");
-    const chk = document.getElementById("id_heredar_lideres");
+    const chk = document.getElementById("id_hereda_liderazgo");
 
-    if (!padreSelect || !wrap || !chk) return;
+    if (!wrap || !chk) return;
 
     function syncHeredar() {
-        const tienePadre = !!padreSelect.value;
-        wrap.style.display = tienePadre ? "" : "none";
+        const tienePadre = padreSelect && padreSelect.value;
 
-        // Si no hay padre, lo apagamos para que no se envíe como "1"
-        if (!tienePadre) chk.checked = false;
+        if (tienePadre) {
+            wrap.style.display = "";
+        } else {
+            wrap.style.display = "none";
+            chk.checked = false;
+        }
     }
 
-    padreSelect.addEventListener("change", syncHeredar);
-    syncHeredar(); // estado inicial al cargar (crear/editar)
+    if (padreSelect) {
+        padreSelect.addEventListener("change", syncHeredar);
+    }
+
+    syncHeredar();
 });
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("unidad-form");
+    const chkAuto = document.getElementById("id_regla_asignacion_automatica");
 
+    if (!form || !chkAuto) return;
 
+    const esEditar = "{{ modo }}" === "editar";
+    const autoInicial = chkAuto.checked;
+
+    let confirmando = false;
+
+    form.addEventListener("submit", function (e) {
+        if (confirmando) return;
+
+        // En crear no mostrar confirmación
+        if (!esEditar) return;
+
+        const autoActual = chkAuto.checked;
+
+        // Solo preguntar si cambió el estado de la autoasignación
+        if (autoActual !== autoInicial) {
+            e.preventDefault();
+
+            let mensaje = "";
+
+            if (!autoInicial && autoActual) {
+                mensaje =
+                    "Vas a activar la asignación automática de esta unidad.\n\n" +
+                    "A partir de este cambio, algunos miembros podrán asignarse " +
+                    "automáticamente y otros podrán salir automáticamente según las reglas configuradas.\n\n" +
+                    "¿Deseas continuar?";
+            } else if (autoInicial && !autoActual) {
+                mensaje =
+                    "Vas a desactivar la asignación automática de esta unidad.\n\n" +
+                    "Este cambio puede alterar la forma en que la unidad gestiona " +
+                    "las asignaciones automáticas de miembros.\n\n" +
+                    "¿Deseas continuar?";
+            }
+
+            const seguir = window.confirm(mensaje);
+
+            if (seguir) {
+                confirmando = true;
+                form.submit();
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

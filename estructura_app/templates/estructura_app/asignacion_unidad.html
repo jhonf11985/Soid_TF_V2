@@ -238,6 +238,12 @@
              CONTENT (Lista de personas)
              ──────────────────────────────────────────────────────────────────── -->
         <main class="au-content">
+
+            <!-- Banner de alerta (oculto por defecto) -->
+            <div id="au-alert-banner" class="au-alert-banner" style="display: none;">
+                <span class="material-icons">warning</span>
+                <span id="au-alert-text"></span>
+            </div>
             
             <!-- Toolbar -->
             <div class="au-toolbar">
@@ -543,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnAsignar) btnAsignar.disabled = !enabled;
         if (btnRemover) btnRemover.disabled = !enabled;
 
-        validarContextoLiderazgoUI();
+        validarContextoAsignacionUI();
     }
 
 
@@ -866,9 +872,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const rolTipo = rolOptionSelected?.dataset?.tipo || null;
 
             // Guardamos en estado global
+            const asignacionAutomatica = !!(data2.unidad?.reglas_aplicadas?.asignacion_automatica);
+
             window.__contextoAsignacion = {
                 permiteLiderazgo,
                 rolTipo,
+                asignacionAutomatica,
             };
 
             tbody.innerHTML = personas.map(rowHTML).join("");
@@ -891,7 +900,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             applyFilters();
-            validarContextoLiderazgoUI();
+            validarContextoAsignacionUI();
             attachSelectionHandlers();
 
 
@@ -902,26 +911,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function validarContextoLiderazgoUI() {
+    function validarContextoAsignacionUI() {
         const ctx = window.__contextoAsignacion;
-        if (!ctx) return true;
+        const alertBanner = document.getElementById('au-alert-banner');
+        const alertText = document.getElementById('au-alert-text');
 
-        const { permiteLiderazgo, rolTipo } = ctx;
-
-        // Limpieza visual por defecto (aplicar al trigger del dropdown)
-        rolTrigger.classList.remove('au-input-error');
-
-        // Si el rol NO es liderazgo, no hacemos nada especial
-        if (rolTipo !== 'LIDERAZGO') {
-            return true;
+        // Ocultar banner por defecto
+        if (alertBanner) {
+            alertBanner.style.display = 'none';
+            alertBanner.classList.remove('au-alert-error');
         }
 
-        // Rol es liderazgo pero la unidad NO lo permite
-        if (!permiteLiderazgo) {
+        if (!ctx) return true;
+
+        const { permiteLiderazgo, rolTipo, asignacionAutomatica } = ctx;
+
+        rolTrigger.classList.remove('au-input-error');
+
+        // 1) Bloqueo de liderazgo
+        if (rolTipo === 'LIDERAZGO' && !permiteLiderazgo) {
             rolTrigger.classList.add('au-input-error');
 
             if (btnAsignar) btnAsignar.disabled = true;
             if (btnRemover) btnRemover.disabled = true;
+
+            // Mostrar banner de error
+            if (alertBanner && alertText) {
+                alertText.textContent = 'Esta unidad no permite liderazgo. Activa la opción «Permite liderazgo» en la configuración de la unidad.';
+                alertBanner.classList.add('au-alert-error');
+                alertBanner.style.display = 'flex';
+            }
 
             renderEmpty(
                 "Esta unidad no permite liderazgo. Activa la opción «Permite liderazgo» en la configuración de la unidad."
@@ -929,9 +948,27 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         }
 
+        // 2) Bloqueo de participación manual cuando la unidad es automática
+        if (rolTipo === 'PARTICIPACION' && asignacionAutomatica) {
+            rolTrigger.classList.add('au-input-error');
+
+            if (btnAsignar) btnAsignar.disabled = true;
+            if (btnRemover) btnRemover.disabled = true;
+
+            // Mostrar banner de advertencia
+            if (alertBanner && alertText) {
+                alertText.textContent = 'Esta unidad usa asignación automática. No se permite agregar ni quitar miembros manualmente con rol de participación.';
+                alertBanner.style.display = 'flex';
+            }
+
+            renderEmpty(
+                "Esta unidad usa asignación automática. No se permite agregar ni quitar manualmente miembros con rol de participación."
+            );
+            return false;
+        }
+
         return true;
     }
-
 
 
     // API: Asignar
@@ -2255,6 +2292,54 @@ document.addEventListener('DOMContentLoaded', () => {
 .au-input-error {
     border-color: #dc3545 !important;
     background: #fff5f5 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BANNER DE ALERTA
+   ═══════════════════════════════════════════════════════════════════════════ */
+.au-alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+    border: 1px solid #ffc107;
+    border-left: 4px solid #ff9800;
+    border-radius: 8px;
+    color: #856404;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.15);
+    animation: au-alert-slide-in 0.3s ease-out;
+}
+
+.au-alert-banner .material-icons {
+    font-size: 22px;
+    color: #e65100;
+    flex-shrink: 0;
+}
+
+.au-alert-banner.au-alert-error {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border-color: #dc3545;
+    border-left-color: #c82333;
+    color: #721c24;
+}
+
+.au-alert-banner.au-alert-error .material-icons {
+    color: #c82333;
+}
+
+@keyframes au-alert-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

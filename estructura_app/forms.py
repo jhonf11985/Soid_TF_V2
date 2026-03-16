@@ -1,19 +1,16 @@
 from django import forms
+from .models import (
+    Unidad, RolUnidad, TipoUnidad, CategoriaUnidad,
+    ActividadUnidad, UnidadMembresia, MovimientoUnidad,
+    ReporteUnidadPeriodo, ReporteUnidadCierre
+)
 
-from .models import Unidad, RolUnidad
-from django import forms
-from django.http import HttpResponse
-from .models import Unidad, RolUnidad
-
-from django import forms
-from .models import ActividadUnidad, Unidad, UnidadMembresia,MovimientoUnidad
-from .models import ReporteUnidadPeriodo
-from .models import ReporteUnidadCierre
 
 class ReporteCierreForm(forms.ModelForm):
     class Meta:
         model = ReporteUnidadCierre
         fields = ("reflexion", "necesidades", "plan_proximo")
+
 
 class UnidadForm(forms.ModelForm):
     class Meta:
@@ -38,8 +35,6 @@ class UnidadForm(forms.ModelForm):
             }),
             "categoria": forms.Select(attrs={"class": "odoo-input"}),
             "hereda_liderazgo": forms.CheckboxInput(attrs={"class": "odoo-checkbox"}),
-
-
             "tipo": forms.Select(attrs={"class": "odoo-input"}),
             "padre": forms.Select(attrs={"class": "odoo-input"}),
             "descripcion": forms.Textarea(attrs={
@@ -52,15 +47,20 @@ class UnidadForm(forms.ModelForm):
             "notas": forms.Textarea(attrs={"class": "odoo-textarea", "rows": 4, "placeholder": "Notas internas..."}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, tenant=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.tenant = tenant
 
-        # ✅ Tipo (FK) solo activos
-        self.fields["tipo"].queryset = self.fields["tipo"].queryset.filter(activo=True)
+        # ✅ Filtrar por tenant
+        if tenant:
+            self.fields["tipo"].queryset = TipoUnidad.objects.filter(tenant=tenant, activo=True)
+            self.fields["categoria"].queryset = CategoriaUnidad.objects.filter(tenant=tenant, activo=True)
+            self.fields["padre"].queryset = Unidad.objects.filter(tenant=tenant, activa=True)
+        else:
+            self.fields["tipo"].queryset = self.fields["tipo"].queryset.filter(activo=True)
+            self.fields["categoria"].queryset = self.fields["categoria"].queryset.filter(activo=True)
+
         self.fields["tipo"].empty_label = None
-
-        # ✅ Categoría (FK) solo activas
-        self.fields["categoria"].queryset = self.fields["categoria"].queryset.filter(activo=True)
         self.fields["categoria"].empty_label = None
 
         # ✅ Defaults al crear (si existe al menos 1)
@@ -77,6 +77,15 @@ class UnidadForm(forms.ModelForm):
         # Padre opcional
         self.fields["padre"].required = False
 
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if not obj.pk and self.tenant:
+            obj.tenant = self.tenant
+        if commit:
+            obj.save()
+        return obj
+
+
 class RolUnidadForm(forms.ModelForm):
     class Meta:
         model = RolUnidad
@@ -84,8 +93,18 @@ class RolUnidadForm(forms.ModelForm):
         widgets = {
             "descripcion": forms.Textarea(attrs={"rows": 3}),
         }
-from django import forms
-from .models import ActividadUnidad, Unidad, UnidadMembresia
+
+    def __init__(self, *args, tenant=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tenant = tenant
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if not obj.pk and self.tenant:
+            obj.tenant = self.tenant
+        if commit:
+            obj.save()
+        return obj
 
 
 class ActividadUnidadForm(forms.ModelForm):
@@ -108,20 +127,20 @@ class ActividadUnidadForm(forms.ModelForm):
             "notas": forms.Textarea(attrs={"rows": 4}),
         }
 
-    def __init__(self, *args, unidad: Unidad = None, **kwargs):
+    def __init__(self, *args, unidad: Unidad = None, tenant=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.tenant = tenant
+        self.unidad = unidad
 
         # Limitar participantes a miembros activos de la unidad
         MiembroModel = ActividadUnidad._meta.get_field("participantes").remote_field.model
 
         if unidad:
-            miembros_ids = (
-                UnidadMembresia.objects
-                .filter(unidad=unidad, activo=True)
-                .values_list("miembo_fk_id", flat=True)
-                .values_list("miembo_fk_id", flat=True)
-
-            )
+            qs_membresias = UnidadMembresia.objects.filter(unidad=unidad, activo=True)
+            if tenant:
+                qs_membresias = qs_membresias.filter(tenant=tenant)
+            
+            miembros_ids = qs_membresias.values_list("miembo_fk_id", flat=True)
             self.fields["participantes"].queryset = (
                 MiembroModel.objects.filter(id__in=miembros_ids).order_by("nombres", "apellidos")
             )
@@ -139,6 +158,14 @@ class ActividadUnidadForm(forms.ModelForm):
     def save(self, commit=True):
         obj = super().save(commit=False)
 
+        # Asignar tenant si es nuevo
+        if not obj.pk and self.tenant:
+            obj.tenant = self.tenant
+
+        # Asignar unidad si se pasó
+        if self.unidad and not obj.unidad_id:
+            obj.unidad = self.unidad
+
         datos = obj.datos or {}
         datos["oyentes"] = int(self.cleaned_data.get("oyentes") or 0)
         datos["nuevos_creyentes"] = int(self.cleaned_data.get("nuevos_creyentes") or 0)
@@ -154,8 +181,6 @@ class ActividadUnidadForm(forms.ModelForm):
         return obj
 
 
-
-
 class ReportePeriodoForm(forms.ModelForm):
     class Meta:
         model = ReporteUnidadPeriodo
@@ -166,7 +191,17 @@ class ReportePeriodoForm(forms.ModelForm):
             "plan_proximo": forms.Textarea(attrs={"rows": 4}),
         }
 
-from django import forms
+    def __init__(self, *args, tenant=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tenant = tenant
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if not obj.pk and self.tenant:
+            obj.tenant = self.tenant
+        if commit:
+            obj.save()
+        return obj
 
 
 class MovimientoUnidadForm(forms.ModelForm):
@@ -180,6 +215,18 @@ class MovimientoUnidadForm(forms.ModelForm):
             "concepto": forms.TextInput(attrs={"placeholder": "Ej: Ofrenda, Actividad, Compra, Transporte..."}),
             "descripcion": forms.Textarea(attrs={"rows": 3, "placeholder": "Opcional"}),
         }
+
+    def __init__(self, *args, tenant=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tenant = tenant
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if not obj.pk and self.tenant:
+            obj.tenant = self.tenant
+        if commit:
+            obj.save()
+        return obj
 
 
 class MovimientoUnidadEditarForm(forms.ModelForm):

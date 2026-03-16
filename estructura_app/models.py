@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from decimal import Decimal
+from tenants.models import Tenant
+
 
 class ReporteUnidadCierre(models.Model):
     TIPO_CHOICES = (
@@ -9,6 +11,11 @@ class ReporteUnidadCierre(models.Model):
         ("anio", "Anual"),
     )
 
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="reportes_cierre",
+    )
     unidad = models.ForeignKey("estructura_app.Unidad", on_delete=models.CASCADE, related_name="reportes_cierre")
     anio = models.PositiveIntegerField()
     tipo = models.CharField(max_length=12, choices=TIPO_CHOICES)
@@ -31,7 +38,7 @@ class ReporteUnidadCierre(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["unidad", "anio", "tipo", "trimestre"],
+                fields=["tenant", "unidad", "anio", "tipo", "trimestre"],
                 name="uniq_reporte_unidad_cierre"
             ),
         ]
@@ -41,6 +48,7 @@ class ReporteUnidadCierre(models.Model):
         if self.tipo == "anio":
             return f"{self.unidad} · Anual {self.anio}"
         return f"{self.unidad} · Trimestral Q{self.trimestre} {self.anio}"
+
 
 class ActividadUnidad(models.Model):
     TIPO_REUNION = "REUNION"
@@ -57,6 +65,11 @@ class ActividadUnidad(models.Model):
         (TIPO_OTRO, "Otro"),
     )
 
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="actividades_unidad",
+    )
     unidad = models.ForeignKey(
         "estructura_app.Unidad",
         on_delete=models.CASCADE,
@@ -102,6 +115,7 @@ class ActividadUnidad(models.Model):
         verbose_name_plural = "Actividades de unidad"
         ordering = ["-fecha", "-creado_en"]
         indexes = [
+            models.Index(fields=["tenant"]),
             models.Index(fields=["unidad", "fecha"]),
             models.Index(fields=["unidad", "tipo"]),
         ]
@@ -111,6 +125,11 @@ class ActividadUnidad(models.Model):
 
 
 class ReporteUnidadPeriodo(models.Model):
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="reportes_periodo",
+    )
     unidad = models.ForeignKey(
         "estructura_app.Unidad",
         on_delete=models.CASCADE,
@@ -145,11 +164,12 @@ class ReporteUnidadPeriodo(models.Model):
         ordering = ["-anio", "-mes", "unidad__nombre"]
         constraints = [
             models.UniqueConstraint(
-                fields=["unidad", "anio", "mes"],
+                fields=["tenant", "unidad", "anio", "mes"],
                 name="uniq_reporte_unidad_anio_mes",
             )
         ]
         indexes = [
+            models.Index(fields=["tenant"]),
             models.Index(fields=["unidad", "anio", "mes"]),
         ]
 
@@ -168,7 +188,12 @@ class RolUnidad(models.Model):
         (TIPO_TRABAJO, "Trabajo (servicio)"),
     )
 
-    nombre = models.CharField(max_length=60, unique=True)
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="roles_unidad",
+    )
+    nombre = models.CharField(max_length=60)
     tipo = models.CharField(max_length=20, choices=TIPOS, default=TIPO_PARTICIPACION)
     descripcion = models.TextField(blank=True)
     orden = models.PositiveIntegerField(default=10)
@@ -178,13 +203,27 @@ class RolUnidad(models.Model):
         verbose_name = "Rol"
         verbose_name_plural = "Roles"
         ordering = ["orden", "nombre"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "nombre"],
+                name="uniq_rol_unidad_nombre"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["tenant"]),
+        ]
 
     def __str__(self):
         return self.nombre
 
 
 class TipoUnidad(models.Model):
-    nombre = models.CharField(max_length=60, unique=True)
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="tipos_unidad",
+    )
+    nombre = models.CharField(max_length=60)
     icono = models.CharField(
         max_length=40,
         default="account_tree",
@@ -197,12 +236,28 @@ class TipoUnidad(models.Model):
         verbose_name = "Tipo de unidad"
         verbose_name_plural = "Tipos de unidad"
         ordering = ["orden", "nombre"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "nombre"],
+                name="uniq_tipo_unidad_nombre"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["tenant"]),
+        ]
 
     def __str__(self):
         return self.nombre
+
+
 class CategoriaUnidad(models.Model):
-    codigo = models.SlugField(max_length=30, unique=True)
-    nombre = models.CharField(max_length=60, unique=True)
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="categorias_unidad",
+    )
+    codigo = models.SlugField(max_length=30)
+    nombre = models.CharField(max_length=60)
     orden = models.PositiveIntegerField(default=10)
     activo = models.BooleanField(default=True)
 
@@ -210,14 +265,30 @@ class CategoriaUnidad(models.Model):
         verbose_name = "Categoría de unidad"
         verbose_name_plural = "Categorías de unidad"
         ordering = ["orden", "nombre"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "codigo"],
+                name="uniq_categoria_unidad_codigo"
+            ),
+            models.UniqueConstraint(
+                fields=["tenant", "nombre"],
+                name="uniq_categoria_unidad_nombre"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["tenant"]),
+        ]
 
     def __str__(self):
         return self.nombre
 
 
-
-
 class Unidad(models.Model):
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="unidades",
+    )
     nombre = models.CharField(max_length=120)
 
     categoria = models.ForeignKey(
@@ -256,23 +327,42 @@ class Unidad(models.Model):
     notas = models.TextField(blank=True)
     imagen = models.ImageField(upload_to="unidades/", null=True, blank=True)
 
+    MODO_MANUAL = "manual"
+    MODO_AUTOMATICA = "automatica"
+
+    MODOS_ASIGNACION = (
+        (MODO_MANUAL, "Manual"),
+        (MODO_AUTOMATICA, "Automática"),
+    )
+
+    modo_asignacion = models.CharField(
+        max_length=20,
+        choices=MODOS_ASIGNACION,
+        default=MODO_MANUAL,
+        help_text="Define si la unidad se gestiona manualmente o por reglas automáticas."
+    )
 
     # ✅ RANGO DE EDAD (filtro estructural de la unidad)
     edad_min = models.PositiveIntegerField(null=True, blank=True)
     edad_max = models.PositiveIntegerField(null=True, blank=True)
 
-      # 🔴🔴🔴 AQUÍ ESTÁ LO QUE FALTABA 🔴🔴🔴
     reglas = models.JSONField(
         default=dict,
         blank=True,
         help_text="Reglas de membresía, acceso y restricciones de la unidad"
     )
 
-
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+
     @property
     def esta_bloqueada(self):
+        reglas = self.reglas or {}
+        asignacion_automatica = bool(reglas.get("asignacion_automatica", False))
+
+        if asignacion_automatica:
+            return False
+
         return (
             self.membresias.filter(activo=True).exists()
             or self.cargos.filter(vigente=True).exists()
@@ -293,15 +383,16 @@ class Unidad(models.Model):
     class Meta:
         ordering = ["orden", "nombre"]
         permissions = [
-        ("ver_dashboard_estructura", "Puede ver el dashboard de Estructura"),
-    ]
+            ("ver_dashboard_estructura", "Puede ver el dashboard de Estructura"),
+        ]
         constraints = [
             models.UniqueConstraint(
-                fields=["tipo", "nombre", "padre"],
+                fields=["tenant", "tipo", "nombre", "padre"],
                 name="uniq_unidad_por_tipo_nombre_padre"
             )
         ]
         indexes = [
+            models.Index(fields=["tenant"]),
             models.Index(fields=["activa", "visible"]),
             models.Index(fields=["categoria"]),
             models.Index(fields=["padre"]),
@@ -309,6 +400,11 @@ class Unidad(models.Model):
 
 
 class UnidadMembresia(models.Model):
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="membresias_unidad",
+    )
     miembo_fk = models.ForeignKey(
         "miembros_app.Miembro",
         on_delete=models.PROTECT,
@@ -346,7 +442,13 @@ class UnidadMembresia(models.Model):
         verbose_name_plural = "Membresías de unidad"
         ordering = ["-activo", "unidad__nombre"]
         constraints = [
-            models.UniqueConstraint(fields=["miembo_fk", "unidad"], name="uniq_miembro_unidad")
+            models.UniqueConstraint(
+                fields=["tenant", "miembo_fk", "unidad"],
+                name="uniq_miembro_unidad"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["tenant"]),
         ]
 
     def __str__(self):
@@ -354,6 +456,11 @@ class UnidadMembresia(models.Model):
 
 
 class UnidadCargo(models.Model):
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="cargos_unidad",
+    )
     miembo_fk = models.ForeignKey(
         "miembros_app.Miembro",
         on_delete=models.PROTECT,
@@ -375,6 +482,7 @@ class UnidadCargo(models.Model):
         verbose_name_plural = "Cargos en unidad"
         ordering = ["-vigente", "unidad__nombre", "rol__orden"]
         indexes = [
+            models.Index(fields=["tenant"]),
             models.Index(fields=["unidad", "vigente"]),
             models.Index(fields=["miembo_fk", "vigente"]),
         ]
@@ -392,6 +500,11 @@ class MovimientoUnidad(models.Model):
         (TIPO_EGRESO, "Egreso"),
     )
 
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="movimientos_unidad",
+    )
     unidad = models.ForeignKey(
         "estructura_app.Unidad",
         on_delete=models.CASCADE,
@@ -431,6 +544,7 @@ class MovimientoUnidad(models.Model):
     class Meta:
         ordering = ["-fecha", "-id"]
         indexes = [
+            models.Index(fields=["tenant"]),
             models.Index(fields=["unidad", "fecha"]),
             models.Index(fields=["unidad", "tipo"]),
             models.Index(fields=["unidad", "anulado"]),
@@ -439,7 +553,7 @@ class MovimientoUnidad(models.Model):
     def __str__(self):
         return f"{self.unidad} · {self.get_tipo_display()} · {self.fecha} · {self.monto}"
 
-    
+
 class MovimientoUnidadLog(models.Model):
     ACCION_CREAR = "CREAR"
     ACCION_EDITAR = "EDITAR"
@@ -450,6 +564,11 @@ class MovimientoUnidadLog(models.Model):
         (ACCION_ANULAR, "Anular"),
     )
 
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="logs_movimientos_unidad",
+    )
     movimiento = models.ForeignKey(
         "MovimientoUnidad",
         on_delete=models.CASCADE,
@@ -477,6 +596,9 @@ class MovimientoUnidadLog(models.Model):
 
     class Meta:
         ordering = ["-creado_en"]
+        indexes = [
+            models.Index(fields=["tenant"]),
+        ]
 
     def __str__(self):
         return f"{self.movimiento_id} {self.accion} {self.creado_en:%Y-%m-%d %H:%M}"

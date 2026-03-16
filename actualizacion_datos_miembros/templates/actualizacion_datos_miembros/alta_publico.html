@@ -220,19 +220,14 @@
         .form-label {
             display: block;
             font-size: 12px;
-        }
-
-        .required-mark {
-            color: var(--color-error);
-            font-weight: 600;
-        }
             font-weight: 600;
             margin-bottom: 6px;
             color: var(--color-text-muted);
         }
 
-        .form-label .required {
+        .required-mark, .required {
             color: var(--color-error);
+            font-weight: 600;
         }
 
         .input-wrapper {
@@ -373,16 +368,37 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
         }
 
-        .submit-btn:hover {
+        .submit-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0,151,167,0.3);
         }
 
-        .submit-btn:active {
+        .submit-btn:active:not(:disabled) {
             transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ═══════════════════════════════════════
+           SPINNER
+           ═══════════════════════════════════════ */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        .submit-btn .spinner {
+            font-size: 20px;
         }
 
         /* ═══════════════════════════════════════
@@ -449,7 +465,7 @@
             </div>
         </div>
 
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" id="altaForm">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
@@ -540,22 +556,6 @@
                             <div class="field-error">{{ form.fecha_ingreso_iglesia.errors|striptags }}</div>
                         {% endif %}
                     </div>
-
-                   <!--
-                    <div class="form-group full-width">
-                        <label class="form-label" for="{{ form.estado_miembro.id_for_label }}">
-                            Estado en la iglesia <span class="required">*</span>
-                        </label>
-                        <div class="input-wrapper">
-                            <span class="material-icons">verified_user</span>
-                            {{ form.estado_miembro }}
-                        </div>
-                        {% if form.estado_miembro.errors %}
-                            <div class="field-error">{{ form.estado_miembro.errors|striptags }}</div>
-                        {% endif %}
-                    </div>
-                    -->
-
                 </div>
             </div>
 
@@ -565,7 +565,7 @@
             <div class="form-section">
                 <div class="section-header">
                     <div class="section-icon">
-                        <span class="material-icons">phone</span>
+                        <span class="material-icons">contact_phone</span>
                     </div>
                     <span class="section-title">Contacto</span>
                 </div>
@@ -696,9 +696,9 @@
                 </div>
             </div>
 
-            <button type="submit" class="submit-btn">
-                <span class="material-icons">send</span>
-                Enviar solicitud
+            <button type="submit" class="submit-btn" id="btnSubmit">
+                <span class="material-icons" id="btnIcon">send</span>
+                <span id="btnText">Enviar solicitud</span>
             </button>
 
             <div class="form-footer">
@@ -774,6 +774,7 @@ document.addEventListener("DOMContentLoaded", function () {
     syncFromTelefono();
 });
 </script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const cedula = document.getElementById("id_cedula");
@@ -804,6 +805,51 @@ document.addEventListener("DOMContentLoaded", function () {
       cedula.style.borderBottomColor = "";
     }
   });
+});
+</script>
+
+<!-- ✅ FIX: Loading state al enviar formulario -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("altaForm");
+    const btn = document.getElementById("btnSubmit");
+    const btnIcon = document.getElementById("btnIcon");
+    const btnText = document.getElementById("btnText");
+    
+    if (!form || !btn) return;
+    
+    let isSubmitting = false;
+    
+    form.addEventListener("submit", function (e) {
+        // Prevenir doble envío
+        if (isSubmitting) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Marcar como enviando
+        isSubmitting = true;
+        
+        // Cambiar estado visual del botón
+        btn.disabled = true;
+        btnIcon.textContent = "sync";
+        btnIcon.classList.add("spinner");
+        btnText.textContent = "Enviando...";
+        
+        // Por seguridad, si tarda más de 60 segundos, rehabilitar
+        setTimeout(function() {
+            if (isSubmitting) {
+                isSubmitting = false;
+                btn.disabled = false;
+                btnIcon.textContent = "send";
+                btnIcon.classList.remove("spinner");
+                btnText.textContent = "Enviar solicitud";
+            }
+        }, 60000);
+        
+        // Permitir el envío
+        return true;
+    });
 });
 </script>
 
