@@ -496,16 +496,19 @@ class ConfiguracionSistema(TenantAwareModel):
     )
 
     class Meta:
-        verbose_name = "Configuración del sistema"
-        verbose_name_plural = "Configuraciones del sistema"
-        constraints = [
-            # ✅ Solo una configuración por tenant
-            models.UniqueConstraint(
-                fields=["tenant"],
-                name="unique_configuracion_por_tenant"
-            )
-        ]
-
+            verbose_name = "Configuración del sistema"
+            verbose_name_plural = "Configuraciones del sistema"
+            constraints = [
+                # ✅ Solo una configuración por tenant
+                models.UniqueConstraint(
+                    fields=["tenant"],
+                    name="unique_configuracion_por_tenant"
+                )
+            ]
+            # ✅ PERMISO PARA ACCESO AL SISTEMA ADMINISTRATIVO
+            permissions = [
+                ("acceso_sistema", "Puede acceder al sistema administrativo"),
+            ]
     def __str__(self):
         return f"Configuración - {self.nombre_iglesia}"
 

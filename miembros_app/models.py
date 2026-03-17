@@ -206,7 +206,12 @@ class Miembro(TenantAwareModel):
         choices=GENERO_CHOICES,
         blank=True,
     )
-
+    apodo = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Apodo",
+        help_text="Nombre por el cual se le conoce comúnmente.",
+    )
     # Padres espirituales (complemento: funciona aunque NO exista el módulo Nuevo Creyente)
     padres_espirituales = models.ManyToManyField(
         "self",
@@ -669,9 +674,17 @@ class Miembro(TenantAwareModel):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.nombres} {self.apellidos}"
+ 
+    @property
+    def nombre_completo(self):
+        """Retorna nombre completo con apodo si existe. Ej: Juan Solano (Jhon)"""
+        nombre = f"{self.nombres} {self.apellidos}".strip()
+        if self.apodo:
+            nombre = f"{nombre} ({self.apodo})"
+        return nombre
 
+    def __str__(self):
+        return self.nombre_completo
     # ✅ CONSTRAINTS POR TENANT (no globales)
     class Meta:
         constraints = [

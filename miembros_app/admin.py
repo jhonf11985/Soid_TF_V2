@@ -110,6 +110,7 @@ class MiembroAdmin(TenantAdminMixin, admin.ModelAdmin):
     search_fields = (
         "nombres",
         "apellidos",
+         "apodo", 
         "telefono",
         "email",
         "cedula",

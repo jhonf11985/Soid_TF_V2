@@ -148,6 +148,7 @@ class SolicitudAltaMiembro(models.Model):
     # Datos básicos
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
+    apodo = models.CharField(max_length=50, blank=True) 
     genero = models.CharField(max_length=20, choices=GENERO_CHOICES)
     fecha_nacimiento = models.DateField()
     estado_miembro = models.CharField(max_length=30, choices=ESTADO_MIEMBRO_CHOICES)

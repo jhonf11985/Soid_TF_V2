@@ -74,9 +74,10 @@ def crear_miembro_desde_solicitud_alta(solicitud: SolicitudAltaMiembro) -> Miemb
 
     with transaction.atomic():
         miembro = Miembro.objects.create(
-            tenant=tenant,  # <-- TENANT
+            tenant=tenant,
             nombres=(solicitud.nombres or "").strip(),
             apellidos=(solicitud.apellidos or "").strip(),
+            apodo=(solicitud.apodo or "").strip(),  # ← AGREGAR ESTA LÍNEA
             genero=solicitud.genero,
             fecha_nacimiento=solicitud.fecha_nacimiento,
             fecha_ingreso_iglesia=solicitud.fecha_ingreso_iglesia,
@@ -91,7 +92,6 @@ def crear_miembro_desde_solicitud_alta(solicitud: SolicitudAltaMiembro) -> Miemb
             foto=solicitud.foto if getattr(solicitud, "foto", None) else None,
             bautizado_confirmado=(solicitud.estado_miembro != "catecumeno"),
         )
-
         acceso, _ = AccesoActualizacionDatos.objects.get_or_create(
             miembro=miembro,
             defaults={"tenant": tenant}

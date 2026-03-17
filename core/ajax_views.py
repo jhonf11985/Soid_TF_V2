@@ -41,10 +41,10 @@ def buscar_miembros(request):
         miembros = miembros.filter(
             Q(nombres__icontains=q) |
             Q(apellidos__icontains=q) |
+            Q(apodo__icontains=q) |
             Q(codigo_miembro__icontains=q) |
             Q(cedula__icontains=q)
         )
-    
     # === ORDENAR Y LIMITAR ===
     miembros = miembros.order_by("nombres", "apellidos")[:limit]
     
@@ -55,7 +55,7 @@ def buscar_miembros(request):
         
         resultados.append({
             "id": miembro.id,
-            "nombre": f"{miembro.nombres} {miembro.apellidos}".strip(),
+            "nombre": miembro.nombre_completo,
             "codigo": miembro.codigo_miembro or "—",
             "estado": miembro.get_estado_miembro_display() if miembro.estado_miembro else "—",
             "estado_activo": "✓ Activo" if miembro.activo else "✗ Inactivo",
@@ -66,7 +66,7 @@ def buscar_miembros(request):
             "cedula": miembro.cedula or "—",
             "bautizado": "✓ Bautizado" if miembro.bautizado_confirmado else "○ Sin bautismo confirmado",
             "es_miembro_oficial": "✓ Oficial" if miembro.es_miembro_oficial else "○ No oficial",
-            "texto_mostrado": f"{miembro.nombres} {miembro.apellidos} ({miembro.codigo_miembro or 'sin código'})",
+            "texto_mostrado": f"{miembro.nombre_completo} ({miembro.codigo_miembro or 'sin código'})",
         })
     
     return JsonResponse({
