@@ -50,8 +50,8 @@ class RegistroVisitasForm(forms.ModelForm):
         else:
             self.fields["tipo"].queryset = TipoRegistroVisita.objects.none()
 
-        self.fields["tipo"].empty_label = "Seleccione un tipo"
-        self.fields["unidad_responsable"].empty_label = "Seleccione una unidad"
+        self.fields["tipo"].empty_label = "Seleccione Culto,Actividad"
+        self.fields["unidad_responsable"].empty_label = "Seleccione Sociedad o Dpto."
 
 
 class VisitaForm(forms.ModelForm):
