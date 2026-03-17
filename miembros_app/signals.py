@@ -16,6 +16,11 @@ from django.db.models import Q
 
 from django.contrib.auth.signals import user_logged_in
 
+
+from django.contrib.auth.signals import user_logged_in
+from django.dispatch import receiver
+ 
+ 
 @receiver(user_logged_in)
 def on_user_login_welcome(sender, request, user, **kwargs):
     """Genera mensaje de bienvenida contextual."""
@@ -25,7 +30,16 @@ def on_user_login_welcome(sender, request, user, **kwargs):
         from core.models import UserLoginHistory
         from core.services.welcome_messages import WelcomeMessageService
         
-        previous = UserLoginHistory.register_login(user, request)
+        # ✅ OBTENER TENANT DEL REQUEST
+        tenant = getattr(request, 'tenant', None)
+        
+        # ✅ PASAR TENANT AL MÉTODO
+        if tenant:
+            previous = UserLoginHistory.register_login(tenant, user, request)
+        else:
+            # Sin tenant, no registrar historial pero continuar
+            previous = None
+            print("   ⚠️ Sin tenant, omitiendo registro de historial")
         
         # Determinar rol
         soid_ctx = {'rol': 'usuario'}
@@ -51,11 +65,12 @@ def on_user_login_welcome(sender, request, user, **kwargs):
         
         request.session['welcome_message'] = mensaje_data
         request.session.modified = True
-        print(f"   ✅ Mensaje: {mensaje_data.get('mensaje')[:40]}...")
+        print(f"   ✅ Mensaje: {mensaje_data.get('mensaje', '')[:40]}...")
         
     except Exception as e:
-        print(f"   ❌ Error: {e}")
-
+        import traceback
+        print(f"   ❌ Error en welcome signal: {e}")
+        traceback.print_exc()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HELPER: Obtener usuario actual del request (thread-local)
