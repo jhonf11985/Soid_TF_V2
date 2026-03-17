@@ -3,19 +3,34 @@
 import json
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_GET, require_POST
 
 from pywebpush import webpush, WebPushException
 from .models import PushSubscription
 
 
+def _require_tenant(request):
+    """Retorna el tenant o None si no está disponible."""
+    tenant = getattr(request, 'tenant', None)
+    return tenant
+
+
 @login_required
 @require_GET
 def push_status(request):
     """Verifica si el usuario tiene suscripciones push activas."""
-    activo = PushSubscription.objects.filter(user=request.user, activo=True).exists()
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponseForbidden("Tenant no disponible.")
+    
+    activo = PushSubscription.objects.filter(
+        tenant=tenant,
+        user=request.user,
+        activo=True
+    ).exists()
     return JsonResponse({"activo": activo})
+
 
 @login_required
 @require_POST
@@ -24,6 +39,10 @@ def push_unsubscribe(request):
     Desactiva la suscripción del dispositivo actual.
     Si no se envía endpoint, desactiva todas las del usuario.
     """
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponseForbidden("Tenant no disponible.")
+    
     try:
         data = json.loads(request.body.decode("utf-8"))
     except Exception:
@@ -34,6 +53,7 @@ def push_unsubscribe(request):
     if endpoint:
         # Desactivar solo la suscripción específica
         PushSubscription.objects.filter(
+            tenant=tenant,
             user=request.user,
             endpoint=endpoint,
             activo=True
@@ -41,11 +61,13 @@ def push_unsubscribe(request):
     else:
         # Sin endpoint: desactivar todas las del usuario
         PushSubscription.objects.filter(
+            tenant=tenant,
             user=request.user,
             activo=True
         ).update(activo=False)
 
     return JsonResponse({"ok": True})
+
 
 @login_required
 @require_POST
@@ -60,6 +82,10 @@ def push_subscribe(request):
       "keys": {"p256dh": "...", "auth": "..."}
     }
     """
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponseForbidden("Tenant no disponible.")
+    
     try:
         data = json.loads(request.body.decode("utf-8"))
     except Exception:
@@ -76,6 +102,7 @@ def push_subscribe(request):
     user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
 
     obj, _ = PushSubscription.objects.update_or_create(
+        tenant=tenant,
         endpoint=endpoint,
         defaults={
             "user": request.user,
@@ -93,7 +120,15 @@ def push_subscribe(request):
 @require_POST
 def push_test(request):
     """Envía una notificación push de prueba al usuario actual."""
-    subs = PushSubscription.objects.filter(user=request.user, activo=True)
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponseForbidden("Tenant no disponible.")
+    
+    subs = PushSubscription.objects.filter(
+        tenant=tenant,
+        user=request.user,
+        activo=True
+    )
 
     if not subs.exists():
         return JsonResponse({"ok": False, "error": "No hay suscripciones activas."}, status=400)
@@ -123,7 +158,7 @@ def push_test(request):
                 },
                 data=payload,
                 vapid_private_key=vapid_private,
-                vapid_claims={"sub": vapid_subject},  # ✅ Corregido
+                vapid_claims={"sub": vapid_subject},
             )
             enviados += 1
         except WebPushException as e:

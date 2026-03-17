@@ -290,6 +290,7 @@ def miembro_crear(request):
             try:
                 url_detalle = reverse("miembros_app:detalle", args=[miembro.pk])
                 crear_notificacion(
+                    tenant=request.tenant,
                     usuario=request.user,
                     titulo="Nuevo miembro registrado",
                     mensaje=f"{miembro.nombres} {miembro.apellidos} ha sido añadido al sistema.",
@@ -424,7 +425,8 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             if not salida_antes and salida_despues:
                 try:
                     crear_notificacion(
-                        request.user,
+                        tenant=request.tenant,
+                        usuario=request.user, 
                         titulo="Miembro dado de salida",
                         mensaje=f"Se ha dado salida al miembro {miembro_editado.nombres} {miembro_editado.apellidos}.",
                         url_name="miembros_app:detalle",
@@ -904,6 +906,7 @@ def miembro_crear(request):
             try:
                 url_detalle = reverse("miembros_app:detalle", args=[miembro.pk])
                 crear_notificacion(
+                    tenant=request.tenant,
                     usuario=request.user,
                     titulo="Nuevo miembro registrado",
                     mensaje=f"{miembro.nombres} {miembro.apellidos} ha sido añadido al sistema.",
@@ -1038,7 +1041,8 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             if not salida_antes and salida_despues:
                 try:
                     crear_notificacion(
-                        request.user,
+                        tenant=request.tenant,
+                        usuario=request.user,
                         titulo="Miembro dado de salida",
                         mensaje=f"Se ha dado salida al miembro {miembro_editado.nombres} {miembro_editado.apellidos}.",
                         url_name="miembros_app:detalle",
@@ -1518,6 +1522,7 @@ def miembro_crear(request):
             try:
                 url_detalle = reverse("miembros_app:detalle", args=[miembro.pk])
                 crear_notificacion(
+                    tenant=request.tenant,
                     usuario=request.user,
                     titulo="Nuevo miembro registrado",
                     mensaje=f"{miembro.nombres} {miembro.apellidos} ha sido añadido al sistema.",
@@ -1652,7 +1657,8 @@ class MiembroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             if not salida_antes and salida_despues:
                 try:
                     crear_notificacion(
-                        request.user,
+                        tenant=request.tenant,
+                        usuario=request.user,
                         titulo="Miembro dado de salida",
                         mensaje=f"Se ha dado salida al miembro {miembro_editado.nombres} {miembro_editado.apellidos}.",
                         url_name="miembros_app:detalle",

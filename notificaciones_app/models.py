@@ -3,6 +3,8 @@
 from django.conf import settings
 from django.db import models
 
+from tenants.models import Tenant
+
 
 class Notification(models.Model):
     """
@@ -22,6 +24,12 @@ class Notification(models.Model):
         (TIPO_ERROR, "Error"),
     ]
 
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="notificaciones",
+        verbose_name="Tenant",
+    )
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -61,22 +69,32 @@ class Notification(models.Model):
         verbose_name = "Notificación"
         verbose_name_plural = "Notificaciones"
         ordering = ["-fecha_creacion"]
+        indexes = [
+            models.Index(fields=["tenant", "usuario", "leida"]),
+        ]
 
     def __str__(self):
         return f"{self.titulo} → {self.usuario}"
 
-from django.conf import settings
-from django.db import models
-
 
 class PushSubscription(models.Model):
+    """
+    Suscripción push para notificaciones web (VAPID).
+    """
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+        verbose_name="Tenant",
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="push_subscriptions"
+        related_name="push_subscriptions",
     )
 
-    endpoint = models.TextField(unique=True)
+    endpoint = models.TextField()
     p256dh = models.CharField(max_length=255)
     auth = models.CharField(max_length=255)
 
@@ -87,9 +105,17 @@ class PushSubscription(models.Model):
     actualizado_en = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = "Suscripción Push"
+        verbose_name_plural = "Suscripciones Push"
         indexes = [
-            models.Index(fields=["user", "activo"]),
+            models.Index(fields=["tenant", "user", "activo"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "endpoint"],
+                name="unique_endpoint_per_tenant",
+            ),
         ]
 
     def __str__(self):
-        return f"PushSubscription({self.user_id}, activo={self.activo})"
+        return f"PushSubscription({self.user_id}, tenant={self.tenant_id}, activo={self.activo})"

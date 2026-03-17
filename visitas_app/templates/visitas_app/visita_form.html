@@ -3,121 +3,596 @@
 
 {% block title %}Nueva visita{% endblock %}
 
+{% block extra_css %}
+<style>
+:root {
+    --teal-primary: #0097A7;
+    --teal-dark: #00838F;
+    --teal-light: #B2EBF2;
+    --teal-bg: #E0F7FA;
+    --gray-100: #F8F9FA;
+    --gray-200: #E9ECEF;
+    --gray-400: #CED4DA;
+    --gray-500: #ADB5BD;
+    --gray-600: #6C757D;
+    --gray-700: #495057;
+    --gray-800: #343A40;
+    --danger: #DC3545;
+    --danger-bg: #FEE2E5;
+    --info-bg: #E0F2FE;
+    --info-border: #0EA5E9;
+    --info-text: #075985;
+}
+
+/* ══════════════════════════════════════════
+   CONTENEDOR PRINCIPAL
+   ══════════════════════════════════════════ */
+.visita-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--teal-bg) 0%, #fff 50%);
+    padding: 16px;
+}
+
+@media (min-width: 640px) {
+    .visita-page {
+        padding: 24px;
+    }
+}
+
+/* ══════════════════════════════════════════
+   HEADER / TOOLBAR
+   ══════════════════════════════════════════ */
+.visita-header {
+    max-width: 600px;
+    margin: 0 auto 16px;
+}
+
+.btn-volver {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-700);
+    background: #fff;
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.btn-volver:hover {
+    background: var(--gray-100);
+    border-color: var(--teal-primary);
+    color: var(--teal-primary);
+}
+
+.btn-volver svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ══════════════════════════════════════════
+   CARD PRINCIPAL
+   ══════════════════════════════════════════ */
+.visita-card {
+    max-width: 600px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 151, 167, 0.1), 0 1px 3px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.visita-card-header {
+    background: linear-gradient(135deg, var(--teal-primary) 0%, var(--teal-dark) 100%);
+    padding: 24px 20px;
+    color: #fff;
+}
+
+.visita-card-header h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.visita-card-header p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.visita-card-body {
+    padding: 24px 20px 32px;
+}
+
+@media (min-width: 640px) {
+    .visita-card-header {
+        padding: 28px 32px;
+    }
+    .visita-card-header h1 {
+        font-size: 26px;
+    }
+    .visita-card-body {
+        padding: 32px;
+    }
+}
+
+/* ══════════════════════════════════════════
+   MENSAJES / ALERTAS
+   ══════════════════════════════════════════ */
+.alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.alert-error {
+    background: var(--danger-bg);
+    border: 1px solid var(--danger);
+    color: #842029;
+}
+
+.alert-info {
+    background: var(--info-bg);
+    border: 1px solid var(--info-border);
+    color: var(--info-text);
+}
+
+.alert-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-content strong {
+    display: block;
+    margin-bottom: 2px;
+}
+
+#visita-encontrada-box {
+    display: none;
+}
+
+/* ══════════════════════════════════════════
+   CAMPOS DE FORMULARIO - ESTILO LÍNEA
+   ══════════════════════════════════════════ */
+.form-group {
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+}
+
+/* Input línea */
+.form-group input[type="text"],
+.form-group input[type="tel"],
+.form-group input[type="number"],
+.form-group input[type="email"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 0;
+    font-size: 16px;
+    color: var(--gray-800);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--gray-300);
+    border-radius: 0;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-bottom-color: var(--teal-primary);
+    box-shadow: 0 2px 0 0 var(--teal-primary);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: var(--gray-500);
+}
+
+/* Select con flecha */
+.form-group select {
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236C757D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    cursor: pointer;
+}
+
+/* Textarea */
+.form-group textarea {
+    min-height: 80px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+/* Error en campo */
+.form-group .field-error {
+    color: var(--danger);
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+.form-group.has-error input,
+.form-group.has-error select,
+.form-group.has-error textarea {
+    border-bottom-color: var(--danger);
+}
+
+/* ══════════════════════════════════════════
+   GRID DE CAMPOS
+   ══════════════════════════════════════════ */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+
+@media (min-width: 480px) {
+    .form-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0 24px;
+    }
+    .form-grid .full-width {
+        grid-column: 1 / -1;
+    }
+}
+
+/* ══════════════════════════════════════════
+   RADIO BUTTONS - GÉNERO
+   ══════════════════════════════════════════ */
+.radio-group {
+    display: flex;
+    gap: 24px;
+    padding-top: 4px;
+}
+
+.radio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.radio-item input[type="radio"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--gray-400);
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.radio-item input[type="radio"]:checked {
+    border-color: var(--teal-primary);
+}
+
+.radio-item input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: var(--teal-primary);
+    border-radius: 50%;
+}
+
+.radio-item span {
+    font-size: 15px;
+    color: var(--gray-700);
+}
+
+/* ══════════════════════════════════════════
+   CHECKBOXES
+   ══════════════════════════════════════════ */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 8px;
+    padding: 20px;
+    background: var(--gray-100);
+    border-radius: 12px;
+}
+
+@media (min-width: 480px) {
+    .checkbox-group {
+        flex-direction: row;
+        gap: 32px;
+    }
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.checkbox-item input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--gray-400);
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.checkbox-item input[type="checkbox"]:checked {
+    background: var(--teal-primary);
+    border-color: var(--teal-primary);
+}
+
+.checkbox-item input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 7px;
+    width: 5px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-item span {
+    font-size: 15px;
+    color: var(--gray-700);
+}
+
+/* ══════════════════════════════════════════
+   BOTONES DE ACCIÓN
+   ══════════════════════════════════════════ */
+.form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 32px;
+}
+
+@media (min-width: 480px) {
+    .form-actions {
+        flex-direction: row;
+    }
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--teal-primary) 0%, var(--teal-dark) 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 151, 167, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 151, 167, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: #fff;
+    color: var(--gray-700);
+    border: 1px solid var(--gray-300);
+}
+
+.btn-secondary:hover {
+    background: var(--gray-100);
+    border-color: var(--gray-400);
+}
+
+.btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ══════════════════════════════════════════
+   ANIMACIONES
+   ══════════════════════════════════════════ */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#visita-encontrada-box.show {
+    display: flex !important;
+    animation: fadeIn 0.3s ease-out;
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="erp-container">
-    <div class="erp-toolbar">
-        <div class="toolbar-left">
-            <a href="{% url 'visitas_app:registro_list' %}" class="toolbar-btn">
-                <span>← Volver</span>
-            </a>
-        </div>
+<div class="visita-page">
+    <!-- Header -->
+    <div class="visita-header">
+        <a href="{% url 'visitas_app:registro_list' %}" class="btn-volver">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Volver
+        </a>
     </div>
 
-    <div class="erp-card" style="max-width: 900px; margin: 0 auto;">
-        <div class="erp-card-header">
-            <h2>Registrar visita</h2>
-            <p>Formulario corto para registrar personas que visitan la iglesia.</p>
+    <!-- Card principal -->
+    <div class="visita-card">
+        <div class="visita-card-header">
+            <h1>Registrar visita</h1>
+            <p>Formulario para registrar personas que visitan la iglesia</p>
         </div>
 
-        <div class="erp-card-body">
-            <form method="post">
+        <div class="visita-card-body">
+            <form method="post" id="visita-form">
                 {% csrf_token %}
 
+                <!-- Errores generales -->
                 {% if form.non_field_errors %}
-                    <div style="margin-bottom:16px; padding:12px; border:1px solid #dc3545; background:#f8d7da; color:#842029; border-radius:8px;">
-                        {{ form.non_field_errors }}
-                    </div>
+                <div class="alert alert-error">
+                    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 8v4M12 16h.01"/>
+                    </svg>
+                    <div class="alert-content">{{ form.non_field_errors }}</div>
+                </div>
                 {% endif %}
 
-                <div id="visita-encontrada-box" style="display:none; margin-bottom:16px; padding:12px; border:1px solid #0ea5e9; background:#e0f2fe; color:#075985; border-radius:8px;">
-                    Persona encontrada. Se cargarán sus datos automáticamente.
-                    <div id="visita-encontrada-info" style="margin-top:6px; font-size:14px;"></div>
+                <!-- Aviso persona encontrada -->
+                <div id="visita-encontrada-box" class="alert alert-info">
+                    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <div class="alert-content">
+                        <strong>Persona encontrada</strong>
+                        <span id="visita-encontrada-info"></span>
+                    </div>
                 </div>
 
-                <div class="form-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
-                    <div>
-                        <label for="{{ form.nombre.id_for_label }}">Nombre</label>
+                <!-- Campos del formulario -->
+                <div class="form-grid">
+                    <!-- Nombre -->
+                    <div class="form-group {% if form.nombre.errors %}has-error{% endif %}">
+                        <label for="{{ form.nombre.id_for_label }}">Nombre completo</label>
                         {{ form.nombre }}
                         {% if form.nombre.errors %}
-                            <div style="color:#dc3545; margin-top:6px;">{{ form.nombre.errors }}</div>
+                            <div class="field-error">{{ form.nombre.errors.0 }}</div>
                         {% endif %}
                     </div>
 
-                    <div>
+                    <!-- Teléfono -->
+                    <div class="form-group {% if form.telefono.errors %}has-error{% endif %}">
                         <label for="{{ form.telefono.id_for_label }}">Teléfono</label>
                         {{ form.telefono }}
                         {% if form.telefono.errors %}
-                            <div style="color:#dc3545; margin-top:6px;">{{ form.telefono.errors }}</div>
+                            <div class="field-error">{{ form.telefono.errors.0 }}</div>
                         {% endif %}
                     </div>
 
-      <div>
-    <label>Género</label>
-    <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap; margin-top:8px;">
-        {{ form.genero }}
-    </div>
-    {% if form.genero.errors %}
-        <div style="color:#dc3545; margin-top:6px;">{{ form.genero.errors }}</div>
-    {% endif %}
-</div>
-                    <div>
+                    <!-- Género -->
+                    <div class="form-group {% if form.genero.errors %}has-error{% endif %}">
+                        <label>Género</label>
+                        <div class="radio-group">
+                            {% for radio in form.genero %}
+                            <label class="radio-item">
+                                {{ radio.tag }}
+                                <span>{{ radio.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% if form.genero.errors %}
+                            <div class="field-error">{{ form.genero.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Edad -->
+                    <div class="form-group {% if form.edad.errors %}has-error{% endif %}">
                         <label for="{{ form.edad.id_for_label }}">Edad</label>
                         {{ form.edad }}
                         {% if form.edad.errors %}
-                            <div style="color:#dc3545; margin-top:6px;">{{ form.edad.errors }}</div>
+                            <div class="field-error">{{ form.edad.errors.0 }}</div>
                         {% endif %}
                     </div>
-<div>
-    <label for="{{ form.clasificacion.id_for_label }}">Clasificación</label>
-    <div style="margin-top:8px;">
-        {{ form.clasificacion }}
-    </div>
-    {% if form.clasificacion.errors %}
-        <div style="color:#dc3545; margin-top:6px;">{{ form.clasificacion.errors }}</div>
-    {% endif %}
-</div>
 
-                    <div>
+                    <!-- Clasificación -->
+                    <div class="form-group {% if form.clasificacion.errors %}has-error{% endif %}">
+                        <label for="{{ form.clasificacion.id_for_label }}">Clasificación</label>
+                        {{ form.clasificacion }}
+                        {% if form.clasificacion.errors %}
+                            <div class="field-error">{{ form.clasificacion.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Invitado por -->
+                    <div class="form-group {% if form.invitado_por.errors %}has-error{% endif %}">
                         <label for="{{ form.invitado_por.id_for_label }}">Invitado por</label>
                         {{ form.invitado_por }}
                         {% if form.invitado_por.errors %}
-                            <div style="color:#dc3545; margin-top:6px;">{{ form.invitado_por.errors }}</div>
+                            <div class="field-error">{{ form.invitado_por.errors.0 }}</div>
                         {% endif %}
                     </div>
 
-                    <div style="grid-column: 1 / -1;">
+                    <!-- Petición de oración -->
+                    <div class="form-group full-width {% if form.peticion_oracion.errors %}has-error{% endif %}">
                         <label for="{{ form.peticion_oracion.id_for_label }}">Petición de oración</label>
                         {{ form.peticion_oracion }}
                         {% if form.peticion_oracion.errors %}
-                            <div style="color:#dc3545; margin-top:6px;">{{ form.peticion_oracion.errors }}</div>
+                            <div class="field-error">{{ form.peticion_oracion.errors.0 }}</div>
                         {% endif %}
                     </div>
                 </div>
 
-                <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:20px;">
-                    <div class="form-check">
+                <!-- Checkboxes -->
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
                         {{ form.primera_vez }}
-                        <label for="{{ form.primera_vez.id_for_label }}">¿Es su primera vez?</label>
-                        {% if form.primera_vez.errors %}
-                            <div style="color:#dc3545; margin-top:6px;">{{ form.primera_vez.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-check">
+                        <span>¿Es su primera vez?</span>
+                    </label>
+                    <label class="checkbox-item">
                         {{ form.desea_contacto }}
-                        <label for="{{ form.desea_contacto.id_for_label }}">¿Desea que le contacten?</label>
-                        {% if form.desea_contacto.errors %}
-                            <div style="color:#dc3545; margin-top:6px;">{{ form.desea_contacto.errors }}</div>
-                        {% endif %}
-                    </div>
+                        <span>¿Desea que le contacten?</span>
+                    </label>
                 </div>
 
-                <div style="margin-top:24px; display:flex; gap:12px; flex-wrap:wrap;">
-                    <button type="submit" class="toolbar-btn toolbar-btn-primary">
+                <!-- Botones -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
                         Guardar visita
                     </button>
-
-                    <a href="{% url 'visitas_app:registro_list' %}" class="toolbar-btn">
+                    <a href="{% url 'visitas_app:registro_list' %}" class="btn btn-secondary">
                         Cancelar
                     </a>
                 </div>
@@ -151,8 +626,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function ocultarAviso() {
-        infoBox.style.display = "none";
-        infoText.textContent = "";
+        infoBox.classList.remove("show");
     }
 
     function marcarGenero(valor) {
@@ -178,9 +652,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const url = `{% url 'visitas_app:visita_buscar_ajax' %}?nombre=${encodeURIComponent(nombre)}&telefono=${encodeURIComponent(telefono)}`;
 
         fetch(url, {
-            headers: {
-                "X-Requested-With": "XMLHttpRequest"
-            }
+            headers: { "X-Requested-With": "XMLHttpRequest" }
         })
         .then(response => response.json())
         .then(data => {
@@ -191,21 +663,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (clasificacionInput && data.clasificacion_id) {
                     clasificacionInput.value = data.clasificacion_id;
                 }
-                invitadoPorInput.value = data.invitado_por || "";
-                deseaContactoInput.checked = !!data.desea_contacto;
-                peticionOracionInput.value = data.peticion_oracion || "";
-                primeraVezInput.checked = !!data.primera_vez;
+                if (invitadoPorInput) invitadoPorInput.value = data.invitado_por || "";
+                if (deseaContactoInput) deseaContactoInput.checked = !!data.desea_contacto;
+                if (peticionOracionInput) peticionOracionInput.value = data.peticion_oracion || "";
+                if (primeraVezInput) primeraVezInput.checked = !!data.primera_vez;
                 marcarGenero(data.genero || "");
 
-                infoBox.style.display = "block";
-                infoText.textContent = `Total de veces registrado: ${data.cantidad_visitas || 1}`;
+                infoText.textContent = `Registrado ${data.cantidad_visitas || 1} vez(es) anteriormente`;
+                infoBox.classList.add("show");
             } else {
                 ocultarAviso();
             }
         })
-        .catch(() => {
-            ocultarAviso();
-        });
+        .catch(() => ocultarAviso());
     }
 
     function programarBusqueda() {

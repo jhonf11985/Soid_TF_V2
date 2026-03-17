@@ -98,11 +98,12 @@ def unidad_listado(request):
 
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def unidad_detalle(request, pk):
     tenant = _require_tenant(request)
     unidad = get_object_or_404(Unidad, pk=pk, tenant=tenant)
 
-    # 🔐 PROTECCIÓN DE ACCESO POR UNIDAD
+    # 🔐 PROTECCIÓN DE ACCESO POR UNIDAD (doble capa: permiso Django + filtro por unidades asignadas)
     unidades_permitidas = get_unidades_permitidas(request.user, tenant)
     if not unidades_permitidas.filter(id=unidad.id).exists():
         messages.error(request, "No tienes permiso para acceder a esta unidad.")
@@ -456,6 +457,7 @@ def actividad_crear(request, pk):
 
 
 @login_required
+@permission_required("estructura_app.view_unidad", raise_exception=True)
 def lider_home(request):
     tenant = _require_tenant(request)
 

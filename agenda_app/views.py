@@ -1,13 +1,22 @@
-from datetime import date
+# agenda_app/views.py
 
+from datetime import date, datetime, timedelta
+from datetime import timezone as dt_timezone
+
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required, permission_required
-
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 
+from notificaciones_app.models import Notification
 from .models import Actividad
 from .forms import ActividadForm
 
+
+User = get_user_model()
 
 MESES_ES = [
     (1, "Enero"),
@@ -25,6 +34,11 @@ MESES_ES = [
 ]
 
 
+def _require_tenant(request):
+    """Retorna el tenant o None si no está disponible."""
+    return getattr(request, 'tenant', None)
+
+
 @login_required
 def home(request):
     return render(request, "agenda_app/home.html")
@@ -33,6 +47,10 @@ def home(request):
 @login_required
 @permission_required('agenda_app.view_actividad', raise_exception=True)
 def agenda_anual(request):
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponseForbidden("Tenant no disponible.")
+
     hoy = date.today()
 
     year_str = request.GET.get("year")
@@ -41,13 +59,8 @@ def agenda_anual(request):
     except ValueError:
         year = hoy.year
 
-    # ==========================================================
-    # SOLO FUTURAS:
-    # - Si el año es el actual: fecha >= hoy
-    # - Si el año es futuro: todas (porque todas son futuras)
-    # - Si el año es pasado: ninguna
-    # ==========================================================
-    qs = Actividad.objects.all()
+    # Base queryset filtrado por tenant
+    qs = Actividad.objects.filter(tenant=tenant)
 
     if year < hoy.year:
         actividades = Actividad.objects.none()
@@ -84,21 +97,22 @@ def agenda_anual(request):
     return render(request, "agenda_app/agenda_anual.html", context)
 
 
-from django.contrib.auth import get_user_model
-from notificaciones_app.models import Notification
-
-User = get_user_model()
-
 @login_required
 @permission_required('agenda_app.add_actividad', raise_exception=True)
 def actividad_create(request):
     """
     Crear actividad + notificación PWA
     """
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponseForbidden("Tenant no disponible.")
+
     if request.method == "POST":
-        form = ActividadForm(request.POST)
+        form = ActividadForm(request.POST, tenant=tenant)
         if form.is_valid():
-            actividad = form.save()
+            actividad = form.save(commit=False)
+            actividad.tenant = tenant
+            actividad.save()
 
             # ===============================
             # 🔔 Notificación PWA
@@ -117,6 +131,7 @@ def actividad_create(request):
 
             for u in usuarios:
                 Notification.objects.create(
+                    tenant=tenant,
                     usuario=u,
                     titulo=titulo,
                     mensaje=mensaje,
@@ -126,31 +141,40 @@ def actividad_create(request):
             messages.success(request, "✅ Actividad agendada y notificada.")
             return redirect("agenda_app:agenda_anual")
     else:
-        form = ActividadForm()
+        form = ActividadForm(tenant=tenant)
 
     context = {"form": form}
     return render(request, "agenda_app/actividad_form.html", context)
 
+
 @login_required
 @permission_required('agenda_app.view_actividad', raise_exception=True)
 def actividad_detail(request, pk):
-    actividad = get_object_or_404(Actividad, pk=pk)
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponseForbidden("Tenant no disponible.")
+
+    actividad = get_object_or_404(Actividad, pk=pk, tenant=tenant)
     return render(request, "agenda_app/actividad_detail.html", {"actividad": actividad})
 
 
 @login_required
 @permission_required('agenda_app.change_actividad', raise_exception=True)
 def actividad_update(request, pk):
-    actividad = get_object_or_404(Actividad, pk=pk)
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponseForbidden("Tenant no disponible.")
+
+    actividad = get_object_or_404(Actividad, pk=pk, tenant=tenant)
 
     if request.method == "POST":
-        form = ActividadForm(request.POST, instance=actividad)
+        form = ActividadForm(request.POST, instance=actividad, tenant=tenant)
         if form.is_valid():
             form.save()
             messages.success(request, "✅ Actividad actualizada correctamente.")
             return redirect("agenda_app:actividad_detail", pk=actividad.pk)
     else:
-        form = ActividadForm(instance=actividad)
+        form = ActividadForm(instance=actividad, tenant=tenant)
 
     return render(request, "agenda_app/actividad_form.html", {"form": form, "actividad": actividad})
 
@@ -158,7 +182,11 @@ def actividad_update(request, pk):
 @login_required
 @permission_required('agenda_app.delete_actividad', raise_exception=True)
 def actividad_delete(request, pk):
-    actividad = get_object_or_404(Actividad, pk=pk)
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponseForbidden("Tenant no disponible.")
+
+    actividad = get_object_or_404(Actividad, pk=pk, tenant=tenant)
 
     if request.method == "POST":
         year = actividad.fecha.year
@@ -168,10 +196,10 @@ def actividad_delete(request, pk):
 
     return render(request, "agenda_app/actividad_confirm_delete.html", {"actividad": actividad})
 
-from datetime import datetime, timedelta
-from django.http import HttpResponse
-from django.utils import timezone
 
+# ============================================================
+# ICS Calendar Export
+# ============================================================
 
 def _ics_escape(value: str) -> str:
     """
@@ -191,8 +219,6 @@ def _ics_escape(value: str) -> str:
     return value
 
 
-from datetime import timezone as dt_timezone
-
 def _dt_utc_str(dt: datetime) -> str:
     """
     Formato UTC para ICS: YYYYMMDDTHHMMSSZ
@@ -206,16 +232,23 @@ def calendario_ics(request):
     Calendario ICS público (solo lectura) para actividades de SOID.
     Los miembros agregan este link a Google Calendar / iPhone / Outlook.
     """
+    tenant = _require_tenant(request)
+    if not tenant:
+        return HttpResponse("Tenant no disponible.", status=404)
+
     hoy = timezone.localdate()
 
-    # Básico: solo futuras y programadas
+    # Solo futuras y programadas, filtradas por tenant
     actividades = (
         Actividad.objects
-        .filter(fecha__gte=hoy)
+        .filter(tenant=tenant, fecha__gte=hoy)
         .order_by("fecha", "hora_inicio", "titulo")
     )
 
     now_utc_stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+
+    # Nombre del calendario basado en tenant
+    cal_name = f"{tenant.nombre} - Agenda" if hasattr(tenant, 'nombre') else "SOID - Agenda"
 
     lines = [
         "BEGIN:VCALENDAR",
@@ -223,22 +256,19 @@ def calendario_ics(request):
         "PRODID:-//SOID//Agenda Iglesia//ES",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
-        "X-WR-CALNAME:SOID - Agenda",
+        f"X-WR-CALNAME:{_ics_escape(cal_name)}",
         "X-WR-TIMEZONE:America/Santo_Domingo",
-
     ]
 
     for a in actividades:
-        # UID estable por actividad
-        uid = f"soid-actividad-{a.id}@soid"
+        # UID estable por actividad (incluye tenant para unicidad)
+        uid = f"soid-actividad-{tenant.id}-{a.id}@soid"
 
         summary = _ics_escape(a.titulo)
         description = _ics_escape(a.descripcion or "")
         location = _ics_escape(a.lugar or "")
 
         # Estado
-        # PROGRAMADA -> CONFIRMED
-        # CANCELADA -> CANCELLED
         status = "CONFIRMED"
         if a.estado == Actividad.Estado.CANCELADA:
             status = "CANCELLED"
@@ -246,7 +276,6 @@ def calendario_ics(request):
         # Si no hay hora, lo tratamos como "all-day event"
         if not a.hora_inicio:
             dtstart = a.fecha.strftime("%Y%m%d")
-            # En eventos de día completo, DTEND suele ser el día siguiente
             dtend = (a.fecha + timedelta(days=1)).strftime("%Y%m%d")
 
             lines.extend([
@@ -263,14 +292,13 @@ def calendario_ics(request):
                 "END:VEVENT",
             ])
         else:
-            # Evento con hora: crear datetimes aware (zona local del proyecto)
+            # Evento con hora
             tz = timezone.get_current_timezone()
             inicio_local = timezone.make_aware(datetime.combine(a.fecha, a.hora_inicio), tz)
 
             if a.hora_fin:
                 fin_local = timezone.make_aware(datetime.combine(a.fecha, a.hora_fin), tz)
             else:
-                # Si no hay fin, por defecto +1 hora
                 fin_local = inicio_local + timedelta(hours=1)
 
             lines.extend([
@@ -284,7 +312,6 @@ def calendario_ics(request):
                 f"STATUS:{status}",
                 f"DTSTART:{inicio_local.strftime('%Y%m%dT%H%M%S')}",
                 f"DTEND:{fin_local.strftime('%Y%m%dT%H%M%S')}",
-
                 "END:VEVENT",
             ])
 
@@ -296,7 +323,6 @@ def calendario_ics(request):
     response["Cache-Control"] = "no-cache"
     return response
 
-from django.shortcuts import render
 
 def calendario_info(request):
     return render(request, "agenda_app/calendario_info.html")

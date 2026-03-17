@@ -3,572 +3,904 @@
 
 {% block title %}Detalle del registro{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-    .registro-detail-wrap {
-        max-width: 1200px;
-        margin: 0 auto;
+:root {
+    --teal-primary: #0097A7;
+    --teal-dark: #00838F;
+    --teal-light: #B2EBF2;
+    --teal-bg: #E0F7FA;
+    --amber: #f59e0b;
+    --amber-light: #fef3c7;
+    --amber-dark: #d97706;
+    --gray-100: #F8F9FA;
+    --gray-200: #E9ECEF;
+    --gray-300: #DEE2E6;
+    --gray-400: #ADB5BD;
+    --gray-500: #6C757D;
+    --gray-600: #495057;
+    --gray-700: #343A40;
+    --gray-800: #212529;
+    --danger: #DC3545;
+    --danger-bg: #FEE2E5;
+    --info-bg: #E0F2FE;
+    --info-border: #0EA5E9;
+    --info-text: #075985;
+}
+
+/* ══════════════════════════════════════════
+   CONTENEDOR PRINCIPAL
+   ══════════════════════════════════════════ */
+.detail-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--teal-bg) 0%, #fff 50%);
+    padding: 16px;
+}
+
+@media (min-width: 640px) {
+    .detail-page {
+        padding: 24px;
     }
+}
 
-    .registro-card {
-        border: 1px solid #e5e7eb;
-        border-radius: 18px;
-        overflow: hidden;
-        background: #ffffff;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-        margin-bottom: 20px;
-    }
+.detail-wrap {
+    max-width: 500px;
+    margin: 0 auto;
+}
 
-    .registro-card-header {
-        padding: 24px 28px 18px;
-        background: linear-gradient(135deg, #f8fafc 0%, #eef6ff 100%);
-        border-bottom: 1px solid #e5e7eb;
-    }
+/* ══════════════════════════════════════════
+   HEADER / TOOLBAR
+   ══════════════════════════════════════════ */
+.detail-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
 
-    .registro-card-header h2 {
-        margin: 0;
-        font-size: 1.45rem;
-        font-weight: 700;
-        color: #0f172a;
-        letter-spacing: -0.02em;
-    }
+.btn-volver {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-700);
+    background: #fff;
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
 
-    .registro-card-header p {
-        margin: 8px 0 0;
-        color: #64748b;
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
+.btn-volver:hover {
+    background: var(--gray-100);
+    border-color: var(--teal-primary);
+    color: var(--teal-primary);
+}
 
-    .registro-card-body {
-        padding: 24px 28px 28px;
-    }
+.btn-volver svg {
+    width: 18px;
+    height: 18px;
+}
 
-    .registro-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 12px;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: rgba(14, 165, 164, 0.08);
-        color: #0f766e;
-        font-size: 0.82rem;
-        font-weight: 700;
-    }
+.btn-nuevo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, var(--teal-primary) 0%, var(--teal-dark) 100%);
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(0, 151, 167, 0.3);
+}
 
-    .registro-badge-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #14b8a6;
-    }
+.btn-nuevo:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 151, 167, 0.4);
+}
 
-    .registro-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 16px;
-    }
+.btn-nuevo svg {
+    width: 16px;
+    height: 16px;
+}
 
-    .registro-info-item {
-        padding: 16px;
-        border: 1px solid #eef2f7;
-        border-radius: 14px;
-        background: #fbfdff;
-    }
+/* ══════════════════════════════════════════
+   CARDS
+   ══════════════════════════════════════════ */
+.detail-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 151, 167, 0.1), 0 1px 3px rgba(0,0,0,0.05);
+    overflow: hidden;
+    margin-bottom: 16px;
+}
 
-    .registro-info-item-full {
-        grid-column: 1 / -1;
-    }
+.detail-card-header {
+    background: linear-gradient(135deg, var(--teal-primary) 0%, var(--teal-dark) 100%);
+    padding: 20px;
+    color: #fff;
+}
 
-    .registro-info-label {
-        display: block;
-        margin-bottom: 6px;
-        font-size: 0.82rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-        color: #64748b;
-    }
+.detail-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 
-    .registro-info-value {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #0f172a;
-        line-height: 1.5;
-    }
+.detail-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+    animation: pulse 2s infinite;
+}
 
-    .registro-estado-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: #ecfeff;
-        color: #0f766e;
-        font-size: 0.84rem;
-        font-weight: 700;
-        border: 1px solid #ccfbf1;
-    }
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
 
-    .registro-warning {
-        padding: 14px 16px;
-        border: 1px solid #fcd34d;
-        background: #fffbeb;
-        color: #92400e;
-        border-radius: 12px;
-        font-size: 0.95rem;
-    }
+.detail-card-header h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 600;
+}
 
-    .registro-error-box {
-        margin-bottom: 16px;
-        padding: 14px 16px;
-        border: 1px solid #fecaca;
-        background: #fef2f2;
-        color: #991b1b;
-        border-radius: 12px;
-        font-size: 0.95rem;
-    }
+.detail-card-header p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
 
-    .registro-info-found {
-        display: none;
-        margin-bottom: 16px;
-        padding: 14px 16px;
-        border: 1px solid #7dd3fc;
-        background: #e0f2fe;
-        color: #075985;
-        border-radius: 12px;
-        font-size: 0.95rem;
-    }
+.detail-card-body {
+    padding: 20px;
+}
 
-    .registro-info-found small {
-        display: block;
-        margin-top: 6px;
-        font-size: 0.85rem;
-    }
+/* ══════════════════════════════════════════
+   INFO GRID (Resumen del registro)
+   ══════════════════════════════════════════ */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
 
-    .registro-form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 18px;
-    }
+.info-item {
+    padding: 12px;
+    background: var(--gray-100);
+    border-radius: 10px;
+}
 
-    .registro-field {
-        display: flex;
-        flex-direction: column;
-    }
+.info-item.full-width {
+    grid-column: 1 / -1;
+}
 
-    .registro-field-full {
-        grid-column: 1 / -1;
-    }
+.info-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--gray-600);
+    margin-bottom: 4px;
+}
 
-    .registro-field label {
-        font-size: 0.92rem;
-        font-weight: 600;
-        color: #334155;
-        margin-bottom: 8px;
-    }
+.info-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-800);
+    line-height: 1.4;
+}
 
-    .registro-field-error {
-        color: #dc2626;
-        margin-top: 6px;
-        font-size: 0.86rem;
-    }
+.estado-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--teal-bg);
+    color: var(--teal-dark);
+    font-size: 11px;
+    font-weight: 600;
+}
 
-    .registro-card input,
-    .registro-card select,
-    .registro-card textarea {
-        width: 100%;
-        border: 1px solid #cbd5e1;
-        border-radius: 12px;
-        background: #fff;
-        padding: 12px 14px;
-        font-size: 0.95rem;
-        color: #0f172a;
-        transition: all 0.2s ease;
-        outline: none;
-    }
+.estado-badge.cerrado {
+    background: var(--amber-light);
+    color: var(--amber-dark);
+}
 
-    .registro-card textarea {
-        min-height: 120px;
-        resize: vertical;
-    }
+/* ══════════════════════════════════════════
+   ALERTAS
+   ══════════════════════════════════════════ */
+.alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
 
-    .registro-card input:focus,
-    .registro-card select:focus,
-    .registro-card textarea:focus {
-        border-color: #0ea5a4;
-        box-shadow: 0 0 0 4px rgba(14, 165, 164, 0.10);
-        background: #fcfffe;
-    }
+.alert-warning {
+    background: var(--amber-light);
+    border: 1px solid var(--amber);
+    color: var(--amber-dark);
+}
 
-    .registro-check-row {
-        display: flex;
-        gap: 24px;
-        flex-wrap: wrap;
-        margin-top: 20px;
-    }
+.alert-error {
+    background: var(--danger-bg);
+    border: 1px solid var(--danger);
+    color: #842029;
+}
 
-    .registro-check {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 14px;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        background: #f8fafc;
-    }
+.alert-info {
+    background: var(--info-bg);
+    border: 1px solid var(--info-border);
+    color: var(--info-text);
+}
 
-    .registro-check input[type="checkbox"] {
-        width: auto;
-        margin: 0;
-        padding: 0;
-        box-shadow: none;
-    }
+.alert-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+}
 
-    .registro-actions {
-        margin-top: 24px;
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
+.alert-content {
+    flex: 1;
+}
 
-    .registro-btn-primary-soft {
-        background: linear-gradient(135deg, #0f766e 0%, #0ea5a4 100%);
-        color: #fff !important;
-        border: none;
-        box-shadow: 0 8px 18px rgba(14, 165, 164, 0.18);
-    }
+.alert-content strong {
+    display: block;
+    margin-bottom: 2px;
+}
 
-    .registro-btn-primary-soft:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 10px 22px rgba(14, 165, 164, 0.22);
-    }
+#visita-encontrada-box {
+    display: none;
+}
 
-    .registro-table-wrap {
-        overflow-x: auto;
-        border: 1px solid #eef2f7;
-        border-radius: 16px;
-    }
+#visita-encontrada-box.show {
+    display: flex !important;
+    animation: fadeIn 0.3s ease-out;
+}
 
-    .registro-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        min-width: 1100px;
-        background: #fff;
-    }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
-    .registro-table thead th {
-        background: #f8fafc;
-        color: #334155;
-        font-size: 0.88rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-        padding: 14px 16px;
-        border-bottom: 1px solid #e5e7eb;
-        white-space: nowrap;
-    }
+/* ══════════════════════════════════════════
+   FORMULARIO COMPACTO
+   ══════════════════════════════════════════ */
+.form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+}
 
-    .registro-table tbody td {
-        padding: 15px 16px;
-        border-bottom: 1px solid #f1f5f9;
-        color: #0f172a;
-        font-size: 0.94rem;
-        vertical-align: middle;
-    }
+.form-group {
+    margin-bottom: 20px;
+}
 
-    .registro-table tbody tr:last-child td {
-        border-bottom: none;
-    }
+.form-group.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 90px;
+    gap: 16px;
+}
 
-    .registro-table tbody tr:hover {
-        background: #f8fbff;
-    }
+/* Input línea */
+.form-input {
+    width: 100%;
+    padding: 10px 0;
+    font-size: 16px;
+    color: var(--gray-800);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--gray-300);
+    border-radius: 0;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+}
 
-    .registro-empty {
-        padding: 34px 20px;
-        text-align: center;
-    }
+.form-input:focus {
+    border-bottom-color: var(--teal-primary);
+    box-shadow: 0 2px 0 0 var(--teal-primary);
+}
 
-    .registro-empty h3 {
-        margin: 0 0 8px;
-        font-size: 1.15rem;
-        color: #0f172a;
-    }
+.form-input::placeholder {
+    color: var(--gray-500);
+}
 
-    .registro-empty p {
-        margin: 0;
-        color: #64748b;
-    }
+.form-input.input-large {
+    font-size: 20px;
+    font-weight: 600;
+    padding: 12px 0;
+}
 
-    @media (max-width: 768px) {
-        .registro-card-header,
-        .registro-card-body {
-            padding: 20px;
-        }
+/* Textarea compacto */
+.form-textarea {
+    width: 100%;
+    padding: 10px 0;
+    font-size: 15px;
+    color: var(--gray-800);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--gray-300);
+    border-radius: 0;
+    outline: none;
+    resize: none;
+    min-height: 50px;
+    line-height: 1.4;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
 
-        .registro-card-header h2 {
-            font-size: 1.25rem;
-        }
+.form-textarea:focus {
+    border-bottom-color: var(--teal-primary);
+    box-shadow: 0 2px 0 0 var(--teal-primary);
+}
 
-        .registro-actions .toolbar-btn {
-            width: 100%;
-            justify-content: center;
-        }
-    }
+.form-textarea::placeholder {
+    color: var(--gray-500);
+    font-style: italic;
+}
+
+/* Chips de género */
+.gender-chips {
+    display: flex;
+    gap: 12px;
+}
+
+.gender-chip {
+    flex: 1;
+    padding: 14px 0;
+    border-radius: 12px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.gender-chip:hover {
+    background: var(--gray-200);
+}
+
+.gender-chip.active {
+    background: var(--teal-bg);
+    color: var(--teal-dark);
+    border-color: var(--teal-primary);
+}
+
+.gender-chip input {
+    display: none;
+}
+
+/* Checkbox custom */
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--gray-100);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.checkbox-row:hover {
+    background: var(--gray-200);
+}
+
+.checkbox-box {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 2px solid var(--gray-400);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.checkbox-row input {
+    display: none;
+}
+
+.checkbox-row input:checked + .checkbox-box {
+    background: var(--teal-primary);
+    border-color: var(--teal-primary);
+}
+
+.checkbox-row input:checked + .checkbox-box svg {
+    display: block;
+}
+
+.checkbox-box svg {
+    display: none;
+    width: 14px;
+    height: 14px;
+    color: #fff;
+}
+
+.checkbox-label {
+    font-size: 15px;
+    color: var(--gray-700);
+}
+
+/* Error */
+.field-error {
+    color: var(--danger);
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+/* Botón guardar */
+.btn-submit {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--teal-primary) 0%, var(--teal-dark) 100%);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(0, 151, 167, 0.3);
+    margin-top: 24px;
+}
+
+.btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 151, 167, 0.4);
+}
+
+.btn-submit:active {
+    transform: translateY(0);
+}
+
+.btn-submit svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ══════════════════════════════════════════
+   LISTA COLAPSABLE
+   ══════════════════════════════════════════ */
+.collapsible-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.collapsible-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    user-select: none;
+}
+
+.collapsible-header:hover {
+    background: var(--gray-100);
+}
+
+.collapsible-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.collapsible-title span {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.collapsible-count {
+    background: var(--amber-light);
+    color: var(--amber-dark);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.collapsible-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--gray-600);
+    transition: transform 0.3s;
+}
+
+.collapsible-card.open .collapsible-icon {
+    transform: rotate(180deg);
+}
+
+.collapsible-body {
+    display: none;
+    border-top: 1px solid var(--gray-200);
+}
+
+.collapsible-card.open .collapsible-body {
+    display: block;
+}
+
+/* ══════════════════════════════════════════
+   LISTA DE VISITAS DENTRO DEL COLLAPSIBLE
+   ══════════════════════════════════════════ */
+.visita-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.visita-item:last-child {
+    border-bottom: none;
+}
+
+.visita-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.visita-nombre {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-800);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.visita-detalle {
+    font-size: 13px;
+    color: var(--gray-600);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.visita-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--teal-bg);
+    color: var(--teal-dark);
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+/* Estado vacío */
+.visitas-empty {
+    padding: 32px 20px;
+    text-align: center;
+}
+
+.visitas-empty p {
+    margin: 0;
+    color: var(--gray-500);
+    font-size: 14px;
+}
 </style>
+{% endblock %}
 
-<div class="erp-container">
-    <div class="registro-detail-wrap">
-        <div class="erp-toolbar">
-            <div class="toolbar-left">
-                <a href="{% url 'visitas_app:registro_list' %}" class="toolbar-btn">
-                    <span>← Volver</span>
-                </a>
-                <div class="toolbar-divider"></div>
-                <a href="{% url 'visitas_app:registro_create' %}" class="toolbar-btn toolbar-btn-primary registro-btn-primary-soft">
-                    <span>+ Nuevo registro</span>
-                </a>
-            </div>
+{% block content %}
+<div class="detail-page">
+    <div class="detail-wrap">
+        <!-- Header -->
+        <div class="detail-header">
+            <a href="{% url 'visitas_app:registro_list' %}" class="btn-volver">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Volver
+            </a>
         </div>
 
-        <div class="erp-card registro-card">
-            <div class="registro-card-header">
-                <div class="registro-badge">
-                    <span class="registro-badge-dot"></span>
-                    Resumen del registro
+        <!-- Card: Resumen del registro (colapsable) -->
+        <div class="collapsible-card" id="resumen-collapsible">
+            <div class="collapsible-header" onclick="toggleResumen()">
+                <div class="collapsible-title">
+                    <span>{{ registro.tipo }} — {{ registro.fecha|date:"d/m/Y" }}</span>
                 </div>
-                <h2>Registro de visitas</h2>
-                <p>Detalle del culto, servicio o actividad.</p>
+                <svg class="collapsible-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 9l6 6 6-6"/>
+                </svg>
             </div>
-
-            <div class="registro-card-body">
-                <div class="registro-info-grid">
-                    <div class="registro-info-item">
-                        <span class="registro-info-label">Fecha</span>
-                        <div class="registro-info-value">{{ registro.fecha|date:"d/m/Y" }}</div>
-                    </div>
-
-                    <div class="registro-info-item">
-                        <span class="registro-info-label">Tipo</span>
-                        <div class="registro-info-value">{{ registro.tipo }}</div>
-                    </div>
-
-                    <div class="registro-info-item">
-                        <span class="registro-info-label">Unidad responsable</span>
-                        <div class="registro-info-value">{{ registro.unidad_responsable|default:"-" }}</div>
-                    </div>
-
-                    <div class="registro-info-item">
-                        <span class="registro-info-label">Total visitas</span>
-                        <div class="registro-info-value">{{ visitas|length }}</div>
-                    </div>
-
-                    <div class="registro-info-item registro-info-item-full">
-                        <span class="registro-info-label">Observaciones</span>
-                        <div class="registro-info-value">{{ registro.observaciones|default:"-" }}</div>
-                    </div>
-
-                    <div class="registro-info-item">
-                        <span class="registro-info-label">Estado</span>
-                        <div class="registro-info-value">
-                            <span class="registro-estado-badge">{{ registro.get_estado_display }}</span>
+            <div class="collapsible-body">
+                <div style="padding: 16px;">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Fecha</span>
+                            <div class="info-value">{{ registro.fecha|date:"d/m/Y" }}</div>
                         </div>
+                        <div class="info-item">
+                            <span class="info-label">Tipo</span>
+                            <div class="info-value">{{ registro.tipo }}</div>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Visitas</span>
+                            <div class="info-value">{{ visitas|length }}</div>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Estado</span>
+                            <div class="info-value">
+                                <span class="estado-badge {% if registro.estado == 'cerrado' %}cerrado{% endif %}">
+                                    {{ registro.get_estado_display }}
+                                </span>
+                            </div>
+                        </div>
+                        {% if registro.unidad_responsable %}
+                        <div class="info-item full-width">
+                            <span class="info-label">Unidad</span>
+                            <div class="info-value">{{ registro.unidad_responsable }}</div>
+                        </div>
+                        {% endif %}
+                        {% if registro.observaciones %}
+                        <div class="info-item full-width">
+                            <span class="info-label">Observaciones</span>
+                            <div class="info-value">{{ registro.observaciones }}</div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="erp-card registro-card">
-            <div class="registro-card-header">
-                <div class="registro-badge">
-                    <span class="registro-badge-dot"></span>
-                    Captura de visita
-                </div>
-                <h2>Agregar visita</h2>
-                <p>Registra una nueva visita dentro de este registro.</p>
-            </div>
-
-            <div class="registro-card-body">
+        <!-- Card: Agregar visita (sin header, directo al form) -->
+        <div class="detail-card">
+            <div class="detail-card-body">
                 {% if registro.estado == "cerrado" %}
-                    <div class="registro-warning">
-                        El registro está finalizado. Ya no se pueden agregar más visitas.
+                    <div class="alert alert-warning">
+                        <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        </svg>
+                        <div>Registro finalizado. No se pueden agregar más visitas.</div>
                     </div>
                 {% else %}
-                    <form method="post" action="{% url 'visitas_app:visita_create_en_registro' registro.pk %}">
+                    <form method="post" action="{% url 'visitas_app:visita_create_en_registro' registro.pk %}" id="visita-form">
                         {% csrf_token %}
 
                         {% if form.non_field_errors %}
-                            <div class="registro-error-box">
-                                {{ form.non_field_errors }}
-                            </div>
+                        <div class="alert alert-error">
+                            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 8v4M12 16h.01"/>
+                            </svg>
+                            <div>{{ form.non_field_errors }}</div>
+                        </div>
                         {% endif %}
 
-                        <div id="visita-encontrada-box" class="registro-info-found">
-                            Persona encontrada. Se cargarán sus datos automáticamente.
-                            <small id="visita-encontrada-info"></small>
+                        <!-- Aviso persona encontrada -->
+                        <div id="visita-encontrada-box" class="alert alert-info">
+                            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            <div class="alert-content">
+                                <strong>Persona encontrada</strong>
+                                <span id="visita-encontrada-info"></span>
+                            </div>
                         </div>
 
-                        <div class="registro-form-grid">
-                            <div class="registro-field">
-                                <label for="{{ form.nombre.id_for_label }}">Nombre</label>
-                                {{ form.nombre }}
-                                {% if form.nombre.errors %}
-                                    <div class="registro-field-error">{{ form.nombre.errors }}</div>
-                                {% endif %}
-                            </div>
+                        <!-- Nombre (grande) -->
+                        <div class="form-group">
+                            <label class="form-label" for="{{ form.nombre.id_for_label }}">Nombre *</label>
+                            {{ form.nombre }}
+                            {% if form.nombre.errors %}
+                                <div class="field-error">{{ form.nombre.errors.0 }}</div>
+                            {% endif %}
+                        </div>
 
-                            <div class="registro-field">
-                                <label for="{{ form.telefono.id_for_label }}">Teléfono</label>
+                        <!-- Teléfono + Edad -->
+                        <div class="form-group grid-2">
+                            <div>
+                                <label class="form-label" for="{{ form.telefono.id_for_label }}">Teléfono</label>
                                 {{ form.telefono }}
                                 {% if form.telefono.errors %}
-                                    <div class="registro-field-error">{{ form.telefono.errors }}</div>
+                                    <div class="field-error">{{ form.telefono.errors.0 }}</div>
                                 {% endif %}
                             </div>
-
-                            <div class="registro-field">
-                                <label for="{{ form.genero.id_for_label }}">Género</label>
-                                {{ form.genero }}
-                                {% if form.genero.errors %}
-                                    <div class="registro-field-error">{{ form.genero.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="registro-field">
-                                <label for="{{ form.edad.id_for_label }}">Edad</label>
+                            <div>
+                                <label class="form-label" for="{{ form.edad.id_for_label }}">Edad</label>
                                 {{ form.edad }}
                                 {% if form.edad.errors %}
-                                    <div class="registro-field-error">{{ form.edad.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="registro-field">
-                                <label for="{{ form.clasificacion.id_for_label }}">Clasificación</label>
-                                {{ form.clasificacion }}
-                                {% if form.clasificacion.errors %}
-                                    <div class="registro-field-error">{{ form.clasificacion.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="registro-field">
-                                <label for="{{ form.invitado_por.id_for_label }}">Invitado por</label>
-                                {{ form.invitado_por }}
-                                {% if form.invitado_por.errors %}
-                                    <div class="registro-field-error">{{ form.invitado_por.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="registro-field registro-field-full">
-                                <label for="{{ form.peticion_oracion.id_for_label }}">Petición de oración</label>
-                                {{ form.peticion_oracion }}
-                                {% if form.peticion_oracion.errors %}
-                                    <div class="registro-field-error">{{ form.peticion_oracion.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="registro-field registro-field-full">
-                                <label for="{{ form.notas.id_for_label }}">Notas</label>
-                                {{ form.notas }}
-                                {% if form.notas.errors %}
-                                    <div class="registro-field-error">{{ form.notas.errors }}</div>
+                                    <div class="field-error">{{ form.edad.errors.0 }}</div>
                                 {% endif %}
                             </div>
                         </div>
 
-                        <div class="registro-check-row">
-                            <div class="registro-check">
-                                {{ form.desea_contacto }}
-                                <label for="{{ form.desea_contacto.id_for_label }}">¿Desea que le contacten?</label>
+                        <!-- Género (chips) -->
+                        <div class="form-group">
+                            <label class="form-label">Género</label>
+                            <div class="gender-chips" id="gender-chips">
+                                {% for radio in form.genero %}
+                                <label class="gender-chip {% if radio.is_checked %}active{% endif %}">
+                                    {{ radio.tag }}
+                                    {% if radio.choice_label == "Femenino" or radio.choice_label == "F" %}F{% else %}M{% endif %}
+                                </label>
+                                {% endfor %}
                             </div>
+                            {% if form.genero.errors %}
+                                <div class="field-error">{{ form.genero.errors.0 }}</div>
+                            {% endif %}
                         </div>
 
+                        <!-- Invitado por -->
+                        <div class="form-group">
+                            <label class="form-label" for="{{ form.invitado_por.id_for_label }}">Invitado por</label>
+                            {{ form.invitado_por }}
+                            {% if form.invitado_por.errors %}
+                                <div class="field-error">{{ form.invitado_por.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Petición de oración -->
+                        <div class="form-group">
+                            <label class="form-label" for="{{ form.peticion_oracion.id_for_label }}">Petición de oración</label>
+                            {{ form.peticion_oracion }}
+                            {% if form.peticion_oracion.errors %}
+                                <div class="field-error">{{ form.peticion_oracion.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Checkbox contacto -->
+                        <label class="checkbox-row">
+                            {{ form.desea_contacto }}
+                            <span class="checkbox-box">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </span>
+                            <span class="checkbox-label">¿Desea que le contacten?</span>
+                        </label>
                         {% if form.desea_contacto.errors %}
-                            <div class="registro-field-error" style="margin-top:8px;">{{ form.desea_contacto.errors }}</div>
+                            <div class="field-error">{{ form.desea_contacto.errors.0 }}</div>
                         {% endif %}
 
-                        <div class="registro-actions">
-                            <button type="submit" class="toolbar-btn toolbar-btn-primary registro-btn-primary-soft">
-                                Guardar visita
-                            </button>
-                        </div>
+                        <button type="submit" class="btn-submit">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                <polyline points="17 21 17 13 7 13 7 21"/>
+                            </svg>
+                            Guardar visita
+                        </button>
                     </form>
                 {% endif %}
             </div>
         </div>
 
-        <div class="erp-card registro-card">
-            <div class="registro-card-header">
-                <div class="registro-badge">
-                    <span class="registro-badge-dot"></span>
-                    Historial del registro
+        <!-- Lista colapsable de visitas -->
+        <div class="collapsible-card" id="visitas-collapsible">
+            <div class="collapsible-header" onclick="toggleVisitas()">
+                <div class="collapsible-title">
+                    <span>Visitas registradas</span>
+                    <span class="collapsible-count">{{ visitas|length }}</span>
                 </div>
-                <h2>Visitas del registro</h2>
-                <p>Listado de personas agregadas a esta actividad.</p>
+                <svg class="collapsible-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 9l6 6 6-6"/>
+                </svg>
             </div>
-
-            <div class="registro-card-body">
+            <div class="collapsible-body">
                 {% if visitas %}
-                    <div class="registro-table-wrap">
-                        <table class="registro-table">
-                            <thead>
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th>Teléfono</th>
-                                    <th>Género</th>
-                                    <th>Edad</th>
-                                    <th>Clasificación</th>
-                                    <th>Invitado por</th>
-                                    <th>Primera visita</th>
-                                    <th>Última visita</th>
-                                    <th>Visitas</th>
-                                    <th>Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for visita in visitas %}
-                                    <tr>
-                                        <td>{{ visita.nombre }}</td>
-                                        <td>{{ visita.telefono|default:"-" }}</td>
-                                        <td>{{ visita.get_genero_display|default:"-" }}</td>
-                                        <td>{{ visita.edad|default:"-" }}</td>
-                                        <td>{{ visita.clasificacion|default:"-" }}</td>
-                                        <td>{{ visita.invitado_por|default:"-" }}</td>
-                                        <td>{{ visita.fecha_primera_visita|date:"d/m/Y"|default:"-" }}</td>
-                                        <td>{{ visita.fecha_ultima_visita|date:"d/m/Y"|default:"-" }}</td>
-                                        <td>{{ visita.cantidad_visitas|default:"1" }}</td>
-                                        <td>{{ visita.get_estado_display }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    {% for visita in visitas %}
+                    <div class="visita-item">
+                        <div class="visita-info">
+                            <span class="visita-nombre">{{ visita.nombre }}</span>
+                            <span class="visita-detalle">
+                                {{ visita.telefono|default:"Sin tel." }}
+                                {% if visita.edad %} · {{ visita.edad }} años{% endif %}
+                                {% if visita.invitado_por %} · {{ visita.invitado_por }}{% endif %}
+                            </span>
+                        </div>
+                        <span class="visita-badge">{{ visita.get_genero_display|default:"—" }}</span>
                     </div>
+                    {% endfor %}
                 {% else %}
-                    <div class="registro-empty">
-                        <h3>Aún no hay visitas en este registro</h3>
-                        <p>Usa el formulario de arriba para agregar la primera.</p>
+                    <div class="visitas-empty">
+                        <p>Aún no hay visitas en este registro.</p>
                     </div>
                 {% endif %}
             </div>
         </div>
+
     </div>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    // ══════════════════════════════════════════
+    // Aplicar clases a inputs del formulario
+    // ══════════════════════════════════════════
     const nombreInput = document.getElementById("id_nombre");
     const telefonoInput = document.getElementById("id_telefono");
     const edadInput = document.getElementById("id_edad");
-    const generoInput = document.getElementById("id_genero");
-    const clasificacionInput = document.getElementById("id_clasificacion");
     const invitadoPorInput = document.getElementById("id_invitado_por");
-    const deseaContactoInput = document.getElementById("id_desea_contacto");
-    const peticionOracionInput = document.getElementById("id_peticion_oracion");
-    const notasInput = document.getElementById("id_notas");
+    const peticionInput = document.getElementById("id_peticion_oracion");
+    
+    if (nombreInput) {
+        nombreInput.classList.add("form-input", "input-large");
+        nombreInput.placeholder = "Nombre completo";
+    }
+    if (telefonoInput) {
+        telefonoInput.classList.add("form-input");
+        telefonoInput.placeholder = "809...";
+    }
+    if (edadInput) {
+        edadInput.classList.add("form-input");
+        edadInput.placeholder = "--";
+    }
+    if (invitadoPorInput) {
+        invitadoPorInput.classList.add("form-input");
+        invitadoPorInput.placeholder = "Nombre del miembro";
+    }
+    if (peticionInput) {
+        peticionInput.classList.add("form-textarea");
+        peticionInput.placeholder = "Opcional...";
+        peticionInput.rows = 2;
+    }
 
+    // ══════════════════════════════════════════
+    // Gender chips toggle
+    // ══════════════════════════════════════════
+    const genderChips = document.querySelectorAll('.gender-chip');
+    genderChips.forEach(chip => {
+        const radio = chip.querySelector('input[type="radio"]');
+        if (radio) {
+            chip.addEventListener('click', function() {
+                genderChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                radio.checked = true;
+            });
+        }
+    });
+
+    // ══════════════════════════════════════════
+    // Búsqueda AJAX de visitante existente
+    // ══════════════════════════════════════════
     const infoBox = document.getElementById("visita-encontrada-box");
     const infoText = document.getElementById("visita-encontrada-info");
-
     let timeout = null;
 
     function limpiarTelefono(valor) {
@@ -580,8 +912,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function ocultarAviso() {
-        infoBox.style.display = "none";
-        infoText.textContent = "";
+        if (infoBox) infoBox.classList.remove("show");
     }
 
     function buscarRegistro() {
@@ -600,9 +931,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const url = `{% url 'visitas_app:visita_buscar_ajax' %}?nombre=${encodeURIComponent(nombre)}&telefono=${encodeURIComponent(telefono)}`;
 
         fetch(url, {
-            headers: {
-                "X-Requested-With": "XMLHttpRequest"
-            }
+            headers: { "X-Requested-With": "XMLHttpRequest" }
         })
         .then(response => response.json())
         .then(data => {
@@ -610,22 +939,32 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (nombreInput) nombreInput.value = data.nombre || "";
                 if (telefonoInput) telefonoInput.value = data.telefono || "";
                 if (edadInput) edadInput.value = data.edad ?? "";
-                if (generoInput) generoInput.value = data.genero || "";
-                if (clasificacionInput) clasificacionInput.value = data.clasificacion || "";
                 if (invitadoPorInput) invitadoPorInput.value = data.invitado_por || "";
-                if (deseaContactoInput) deseaContactoInput.checked = !!data.desea_contacto;
-                if (peticionOracionInput) peticionOracionInput.value = data.peticion_oracion || "";
-                if (notasInput && data.notas) notasInput.value = data.notas || "";
+                if (peticionInput) peticionInput.value = data.peticion_oracion || "";
+                
+                // Marcar género
+                if (data.genero) {
+                    genderChips.forEach(chip => {
+                        const radio = chip.querySelector('input[type="radio"]');
+                        if (radio && radio.value === data.genero) {
+                            genderChips.forEach(c => c.classList.remove('active'));
+                            chip.classList.add('active');
+                            radio.checked = true;
+                        }
+                    });
+                }
 
-                infoBox.style.display = "block";
-                infoText.textContent = `Total de veces registrado: ${data.cantidad_visitas || 1}`;
+                // Checkbox contacto
+                const deseaContacto = document.getElementById("id_desea_contacto");
+                if (deseaContacto) deseaContacto.checked = !!data.desea_contacto;
+
+                if (infoText) infoText.textContent = `Registrado ${data.cantidad_visitas || 1} vez(es)`;
+                if (infoBox) infoBox.classList.add("show");
             } else {
                 ocultarAviso();
             }
         })
-        .catch(() => {
-            ocultarAviso();
-        });
+        .catch(() => ocultarAviso());
     }
 
     function programarBusqueda() {
@@ -643,5 +982,16 @@ document.addEventListener("DOMContentLoaded", function () {
         telefonoInput.addEventListener("blur", buscarRegistro);
     }
 });
+
+// ══════════════════════════════════════════
+// Toggle collapsibles
+// ══════════════════════════════════════════
+function toggleResumen() {
+    document.getElementById('resumen-collapsible').classList.toggle('open');
+}
+
+function toggleVisitas() {
+    document.getElementById('visitas-collapsible').classList.toggle('open');
+}
 </script>
 {% endblock %}
