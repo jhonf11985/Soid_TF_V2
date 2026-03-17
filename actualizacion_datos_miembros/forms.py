@@ -265,6 +265,7 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
             "ciudad",
             "cedula",
             "foto",
+             "apodo",  
         ]
         widgets = {
             "nombres": forms.TextInput(attrs={
@@ -275,6 +276,12 @@ class SolicitudAltaPublicaForm(forms.ModelForm):
                 "class": "odoo-input",
                 "placeholder": "Apellidos"
             }),
+
+            "apodo": forms.TextInput(attrs={
+                "class": "odoo-input",
+                "placeholder": "Apodo (opcional)"
+            }),
+
             "genero": forms.Select(attrs={
                 "class": "odoo-input odoo-select"
             }),

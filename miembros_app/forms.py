@@ -177,6 +177,7 @@ class MiembroForm(forms.ModelForm):
             "profesion": "Profesión",
             "cedula": "Cédula",              # ✔ CORREGIDO
              "pasaporte": "Pasaporte", 
+             "apodo": "Apodo", 
                     
 
             "telefono": "Teléfono",
@@ -246,6 +247,7 @@ class MiembroForm(forms.ModelForm):
         widgets = {
             "nombres": forms.TextInput(attrs={"placeholder": "Introduce los nombres"}),
             "apellidos": forms.TextInput(attrs={"placeholder": "Introduce los apellidos"}),
+            "apodo": forms.TextInput(attrs={"placeholder": "Ej: Juanito, Pepe, etc."}),
             "fecha_nacimiento": forms.DateInput(
                 attrs={
                     "type": "date",

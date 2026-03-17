@@ -206,7 +206,12 @@ class Miembro(TenantAwareModel):
         choices=GENERO_CHOICES,
         blank=True,
     )
-
+    apodo = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Apodo",
+        help_text="Nombre por el cual se le conoce comúnmente.",
+    )
     # Padres espirituales (complemento: funciona aunque NO exista el módulo Nuevo Creyente)
     padres_espirituales = models.ManyToManyField(
         "self",
