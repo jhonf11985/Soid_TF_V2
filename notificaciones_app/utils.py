@@ -18,6 +18,8 @@ def crear_notificacion(
     mensaje="",
     url_name=None,
     tipo="info",
+    kwargs=None,
+    args=None,
 ):
     """
     Crea una notificación para un usuario dentro de un tenant.
@@ -27,9 +29,11 @@ def crear_notificacion(
         usuario: instancia de User (request.user, por ejemplo)
         titulo: texto corto que se mostrará en la lista
         mensaje: texto más largo (opcional)
-        url_name: nombre de URL de Django, por ejemplo "miembros_app:dashboard"
+        url_name: nombre de URL de Django, por ejemplo "miembros_app:detalle"
                   Si no se puede resolver, se guarda tal cual (por si es una ruta absoluta).
         tipo: "info", "success", "warning", "error"
+        kwargs: dict con parámetros para reverse() (ej: {"pk": 123})
+        args: lista con parámetros posicionales para reverse()
     
     Returns:
         Notification instance
@@ -39,7 +43,7 @@ def crear_notificacion(
     if url_name:
         try:
             # Intentamos resolver el nombre de URL a una ruta real
-            url_destino = reverse(url_name)
+            url_destino = reverse(url_name, kwargs=kwargs, args=args)
         except NoReverseMatch:
             # Si falla, guardamos el valor tal cual (por si es un path directo)
             url_destino = url_name

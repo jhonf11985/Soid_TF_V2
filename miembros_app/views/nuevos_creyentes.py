@@ -42,6 +42,7 @@ def nuevo_creyente_crear(request):
             try:
                 url_detalle = reverse("miembros_app:nuevo_creyente_editar", args=[miembro.pk])
                 crear_notificacion(
+                    tenant=request.tenant,  
                     usuario=request.user,
                     titulo="Nuevo creyente registrado",
                     mensaje=f"{miembro.nombres} {miembro.apellidos} ha entregado su vida a Cristo.",
