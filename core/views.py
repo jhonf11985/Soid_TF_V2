@@ -543,14 +543,16 @@ def configuracion_permisos(request):
     }
 
     return render(request, "core/configuracion_permisos.html", context)
+
+
 @login_required
 def home(request):
     user = request.user
     tenant = request.tenant  # ✅ OBTENER TENANT DEL REQUEST
 
-    if not user.is_staff and Miembro.objects.filter(usuario=user).exists():
+    if not es_usuario_interno(user) and Miembro.objects.filter(usuario=user).exists():
         return redirect("portal_miembros:dashboard")
-
+    
     # ═══════════════════════════════════════════════════════════════
     # 🧠 MENSAJE DE BIENVENIDA (solo primer acceso del día)
     # ═══════════════════════════════════════════════════════════════
