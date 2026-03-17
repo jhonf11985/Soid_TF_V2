@@ -83,21 +83,34 @@ def usuarios_listado(request):
     return render(request, "core/usuarios/listado_usuarios.html", context)
 
 
+
+# =============================================================================
+# ✅ VALIDACIÓN POR PERMISO (YA NO USA GRUPOS HARDCODEADOS)
+# =============================================================================
+def es_usuario_interno(user):
+    """
+    Retorna True si el usuario puede acceder al sistema administrativo.
+    """
+    if not user.is_authenticated:
+        return False
+    return user.is_superuser or user.has_perm("core.acceso_sistema")
+
+# Alias para compatibilidad
+es_staff = es_usuario_interno
+ 
 def root_redirect(request):
-    # Si ya está autenticado
+    """
+    Redirige al usuario según sus permisos:
+    - Sistema administrativo si tiene permiso 'core.acceso_sistema'
+    - Portal de miembros en caso contrario
+    """
     if request.user.is_authenticated:
-        # Staff/superuser → home (admin dashboard)
-        if request.user.is_staff or request.user.is_superuser:
+        if es_usuario_interno(request.user):
             return redirect("core:home")
-        # Usuario normal → portal de miembros
         return redirect("portal_miembros:dashboard")
-    # Si no está autenticado → login
     return redirect("/accounts/login/")
+ 
 
-
-# ✅ DEBE ESTAR AQUÍ ARRIBA
-def es_staff(user):
-    return user.is_staff or user.is_superuser
 
 
 # =============================================================================
@@ -326,7 +339,6 @@ class PermisoTraducido:
     def __getattr__(self, name):
         return getattr(self._permission, name)
 
-
 @login_required
 @user_passes_test(es_staff)
 def configuracion_permisos(request):
@@ -418,10 +430,48 @@ def configuracion_permisos(request):
         return code
 
     # =========================================================
-    # Módulos y permisos (con traducción)
+    # Función para clasificar permisos por acción
+    # =========================================================
+    def clasificar_permisos(perms_list):
+        """
+        Clasifica los permisos en:
+        - perms_by_action: {'view': perm, 'add': perm, 'change': perm, 'delete': perm}
+        - otros_perms: lista de permisos que no son CRUD básicos
+        """
+        perms_by_action = {
+            'view': None,
+            'add': None,
+            'change': None,
+            'delete': None,
+        }
+        otros_perms = []
+        
+        for p in perms_list:
+            codename = p.codename if hasattr(p, 'codename') else p.perm.codename
+            
+            # Buscar el primer permiso de cada tipo
+            if codename.startswith('view_') and not perms_by_action['view']:
+                perms_by_action['view'] = p
+            elif codename.startswith('add_') and not perms_by_action['add']:
+                perms_by_action['add'] = p
+            elif codename.startswith('change_') and not perms_by_action['change']:
+                perms_by_action['change'] = p
+            elif codename.startswith('delete_') and not perms_by_action['delete']:
+                perms_by_action['delete'] = p
+            else:
+                # Si ya hay uno de ese tipo o no es CRUD, va a otros
+                if codename.startswith(('view_', 'add_', 'change_', 'delete_')):
+                    otros_perms.append(p)
+                else:
+                    otros_perms.append(p)
+        
+        return perms_by_action, otros_perms
+
+    # =========================================================
+    # Módulos y permisos (con traducción y clasificación)
     # =========================================================
     modules = Module.objects.all().order_by("order", "name")
-    mod_perms = []
+    modulos_con_permisos = []
 
     for m in modules:
         app_label = resolve_app_label(m.code)
@@ -432,13 +482,23 @@ def configuracion_permisos(request):
         
         # Envolver cada permiso con la traducción
         perms_traducidos = [PermisoTraducido(p) for p in perms_raw]
+        
+        # Clasificar permisos
+        perms_by_action, otros_perms = clasificar_permisos(perms_traducidos)
 
-        mod_perms.append({
+        modulos_con_permisos.append({
             "module": m,
             "app_label": app_label,
             "perms": perms_traducidos,
+            "perms_by_action": perms_by_action,
+            "otros_perms": otros_perms,
             "pm_count": len(perms_traducidos),
         })
+
+    # =========================================================
+    # Obtener el permiso especial de acceso al sistema
+    # =========================================================
+    acceso_sistema_perm = Permission.objects.filter(codename='acceso_sistema').first()
 
     # =========================================================
     # Guardar cambios
@@ -468,23 +528,21 @@ def configuracion_permisos(request):
     # =========================================================
     # Contexto
     # =========================================================
+    role_perm_ids = set(role.permissions.values_list("id", flat=True)) if role else set()
+    
     context = {
         "roles": roles,
         "role": role,
         "users": users,
         "modules": modules,
-        "mod_perms": mod_perms,
-        "role_perm_ids": set(role.permissions.values_list("id", flat=True)),
-        "role_user_ids": set(role.user_set.values_list("id", flat=True)),
+        "modulos_con_permisos": modulos_con_permisos,  # Nueva estructura
+        "mod_perms": modulos_con_permisos,  # Alias para compatibilidad
+        "role_perm_ids": role_perm_ids,
+        "role_user_ids": set(role.user_set.values_list("id", flat=True)) if role else set(),
+        "acceso_sistema_perm": acceso_sistema_perm,  # Permiso especial
     }
 
     return render(request, "core/configuracion_permisos.html", context)
-
-
-# =============================================================================
-# HOME - CON TENANT
-# =============================================================================
-
 @login_required
 def home(request):
     user = request.user
