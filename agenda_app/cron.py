@@ -1,44 +1,37 @@
 # agenda_app/cron.py
+
 import json
 from datetime import datetime, timedelta
 
+import pytz
 from django.conf import settings
 from django.utils import timezone
-
 from pywebpush import webpush, WebPushException
 
 from notificaciones_app.models import PushSubscription
 from agenda_app.models import Actividad, ActividadRecordatorio
+from tenants.models import Tenant
 
-
-import pytz
 
 def _actividad_datetime_inicio(a: Actividad):
+    """Convierte fecha + hora_inicio de una actividad a datetime UTC."""
     tz = pytz.timezone("America/Santo_Domingo")
-
     hora = a.hora_inicio or datetime.strptime("08:00", "%H:%M").time()
     dt_local = datetime.combine(a.fecha, hora)
-
-    # Interpretar la fecha/hora como local (RD)
     dt_local = tz.localize(dt_local)
-
-    # Convertir a UTC (para compararla con timezone.now())
     return dt_local.astimezone(pytz.UTC)
 
 
-def _usuarios_de_unidad(unidad):
+def _usuarios_de_unidad(unidad, tenant):
     """
-    ✅ Resolver destinatarios sin pedirte más archivos ahora.
-
-    Intenta el patrón más común que tú ya usas en otras partes:
-    Miembro.objects.filter(membresias_unidad__unidad=unidad, estado_miembro="activo")
-
-    Si no existe exactamente, devolvemos [] y lo ajustamos después con tu modelo real.
+    Resolver destinatarios de una unidad dentro de un tenant.
     """
     try:
         from miembros_app.models import Miembro
-        qs = Miembro.objects.filter(membresias_unidad__unidad=unidad).distinct()
-        # si existe estado_miembro, filtra activos
+        qs = Miembro.objects.filter(
+            tenant=tenant,
+            membresias_unidad__unidad=unidad
+        ).distinct()
         if hasattr(Miembro, "estado_miembro"):
             qs = qs.filter(estado_miembro="activo")
         usuarios = []
@@ -51,8 +44,13 @@ def _usuarios_de_unidad(unidad):
         return []
 
 
-def _enviar_push_a_usuario(user, titulo, body, url="/agenda/"):
-    subs = PushSubscription.objects.filter(user=user, activo=True)
+def _enviar_push_a_usuario(user, tenant, titulo, body, url="/agenda/"):
+    """Envía push a un usuario específico dentro de un tenant."""
+    subs = PushSubscription.objects.filter(
+        tenant=tenant,
+        user=user,
+        activo=True
+    )
     if not subs.exists():
         return {"enviados": 0, "errores": 0}
 
@@ -87,18 +85,28 @@ def _enviar_push_a_usuario(user, titulo, body, url="/agenda/"):
     return {"enviados": enviados, "errores": errores}
 
 
-def task_recordatorios_agenda():
+def task_recordatorios_agenda(tenant: Tenant):
     """
-    Task del motor para agenda:
-    - Actividades PROGRAMADAS
-    - Recordatorio 60 min antes (de momento)
+    Task del motor para agenda dentro de un tenant específico:
+    - Actividades PROGRAMADAS del tenant
+    - Recordatorio 60 min antes
     - Sin duplicados gracias a ActividadRecordatorio
+    
+    Args:
+        tenant: Tenant instance para el cual ejecutar la tarea.
+    
+    Returns:
+        dict con estadísticas de ejecución.
     """
     ahora = timezone.now()
     ventana_hasta = ahora + timedelta(minutes=65)  # margen
     minutos_antes = 60
 
-    actividades = Actividad.objects.filter(estado=Actividad.Estado.PROGRAMADA)
+    # Filtrar actividades por tenant
+    actividades = Actividad.objects.filter(
+        tenant=tenant,
+        estado=Actividad.Estado.PROGRAMADA
+    )
 
     enviados = 0
     errores = 0
@@ -119,9 +127,11 @@ def task_recordatorios_agenda():
         if (not created) and rec.enviado_en is not None:
             continue
 
-        # Destinatarios
-        # ✅ BROADCAST: enviar a TODAS las suscripciones activas
-        subs = PushSubscription.objects.filter(activo=True)
+        # ✅ BROADCAST dentro del tenant: enviar a TODAS las suscripciones activas del tenant
+        subs = PushSubscription.objects.filter(
+            tenant=tenant,
+            activo=True
+        )
 
         if not subs.exists():
             rec.enviado_en = timezone.now()
@@ -156,12 +166,12 @@ def task_recordatorios_agenda():
                     s.activo = False
                     s.save(update_fields=["activo", "actualizado_en"])
 
-
         rec.enviado_en = timezone.now()
         rec.save(update_fields=["enviado_en"])
         marcados += 1
 
     return {
+        "tenant": tenant.nombre if hasattr(tenant, 'nombre') else str(tenant.id),
         "recordatorios_marcados": marcados,
         "enviados": enviados,
         "errores": errores,

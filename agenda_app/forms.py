@@ -1,11 +1,30 @@
+# agenda_app/forms.py
+
 from django import forms
-from .models import Actividad
+
 from estructura_app.models import Unidad
+from .models import Actividad
+
 
 class ActividadForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
+    """
+    Formulario para crear/editar actividades.
+    Requiere pasar `tenant` en el constructor para filtrar unidades.
+    """
+
+    def __init__(self, *args, tenant=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["unidad"].queryset = Unidad.objects.filter(activa=True, visible=True).order_by("nombre")
+        self.tenant = tenant
+
+        # Filtrar unidades por tenant
+        if tenant:
+            self.fields["unidad"].queryset = Unidad.objects.filter(
+                tenant=tenant,
+                activa=True,
+                visible=True
+            ).order_by("nombre")
+        else:
+            self.fields["unidad"].queryset = Unidad.objects.none()
 
     class Meta:
         model = Actividad
@@ -15,12 +34,12 @@ class ActividadForm(forms.ModelForm):
             "hora_inicio",
             "hora_fin",
             "tipo",
-             "unidad", 
+            "unidad",
             "estado",
             "lugar",
             "responsable_texto",
             "descripcion",
-             "visibilidad",  
+            "visibilidad",
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date", "class": "odoo-input"}),
@@ -33,7 +52,7 @@ class ActividadForm(forms.ModelForm):
             "tipo": forms.Select(attrs={"class": "odoo-input"}),
             "estado": forms.Select(attrs={"class": "odoo-input"}),
             "unidad": forms.Select(attrs={"class": "odoo-input"}),
-
+            "visibilidad": forms.Select(attrs={"class": "odoo-input"}),
         }
 
     def clean(self):
@@ -43,5 +62,3 @@ class ActividadForm(forms.ModelForm):
         if hi and hf and hf <= hi:
             self.add_error("hora_fin", "La hora fin debe ser mayor que la hora inicio.")
         return cleaned
-
-

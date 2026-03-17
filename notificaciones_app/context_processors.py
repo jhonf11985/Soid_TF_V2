@@ -14,12 +14,15 @@ def notificaciones_context(request):
     # VAPID siempre disponible (para la página de perfil)
     vapid_key = getattr(settings, 'VAPID_PUBLIC_KEY', '')
     
-    if not request.user.is_authenticated:
+    tenant = getattr(request, 'tenant', None)
+    
+    if not request.user.is_authenticated or not tenant:
         return {
             "VAPID_PUBLIC_KEY": vapid_key,
         }
 
     qs = Notification.objects.filter(
+        tenant=tenant,
         usuario=request.user,
         leida=False
     ).order_by("-fecha_creacion")

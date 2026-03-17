@@ -12,12 +12,13 @@ from .models import Notification, PushSubscription
 logger = logging.getLogger(__name__)
 
 
-def enviar_push_a_usuario(usuario, titulo, mensaje, url="/", badge_count=0):
+def enviar_push_a_usuario(usuario, tenant, titulo, mensaje, url="/", badge_count=0):
     """
-    Envía notificación push a todas las suscripciones activas del usuario.
+    Envía notificación push a todas las suscripciones activas del usuario en un tenant.
     
     Args:
         usuario: User instance
+        tenant: Tenant instance
         titulo: Título de la notificación
         mensaje: Cuerpo del mensaje
         url: URL a abrir al hacer clic
@@ -26,10 +27,18 @@ def enviar_push_a_usuario(usuario, titulo, mensaje, url="/", badge_count=0):
     Returns:
         dict con 'enviados' y 'errores'
     """
-    suscripciones = PushSubscription.objects.filter(user=usuario, activo=True)
+    if not tenant:
+        logger.warning(f"[Push] No se puede enviar push sin tenant para usuario {usuario}")
+        return {"enviados": 0, "errores": 0}
+    
+    suscripciones = PushSubscription.objects.filter(
+        tenant=tenant,
+        user=usuario,
+        activo=True
+    )
     
     if not suscripciones.exists():
-        logger.debug(f"[Push] Usuario {usuario} no tiene suscripciones activas")
+        logger.debug(f"[Push] Usuario {usuario} no tiene suscripciones activas en tenant {tenant}")
         return {"enviados": 0, "errores": 0}
     
     # Verificar que tenemos las claves VAPID
@@ -88,14 +97,21 @@ def enviar_push_a_usuario(usuario, titulo, mensaje, url="/", badge_count=0):
 def enviar_push_al_crear_notificacion(sender, instance, created, **kwargs):
     """
     Signal que se ejecuta automáticamente cuando se crea una Notification.
-    Envía push al usuario correspondiente.
+    Envía push al usuario correspondiente dentro del mismo tenant.
     """
     if not created:
         # Solo enviar push cuando se CREA, no cuando se actualiza
         return
     
-    # Contar notificaciones no leídas para el badge
+    tenant = instance.tenant
+    
+    if not tenant:
+        logger.warning(f"[Push] Notificación {instance.id} sin tenant, no se envía push")
+        return
+    
+    # Contar notificaciones no leídas para el badge (dentro del tenant)
     no_leidas = Notification.objects.filter(
+        tenant=tenant,
         usuario=instance.usuario,
         leida=False
     ).count()
@@ -103,6 +119,7 @@ def enviar_push_al_crear_notificacion(sender, instance, created, **kwargs):
     # Enviar push
     resultado = enviar_push_a_usuario(
         usuario=instance.usuario,
+        tenant=tenant,
         titulo=instance.titulo,
         mensaje=instance.mensaje or "",
         url=instance.url_destino or "/",
@@ -112,5 +129,5 @@ def enviar_push_al_crear_notificacion(sender, instance, created, **kwargs):
     if resultado["enviados"] > 0:
         logger.info(
             f"[Push] Notificación '{instance.titulo}' enviada a {instance.usuario} "
-            f"({resultado['enviados']} dispositivos)"
+            f"en tenant {tenant} ({resultado['enviados']} dispositivos)"
         )

@@ -3,14 +3,16 @@
 import json
 import logging
 from django.conf import settings
-from pywebpush import webpush, WebPushException
 from django.urls import reverse, NoReverseMatch
-from .models import Notification
+from pywebpush import webpush, WebPushException
+
+from .models import Notification, PushSubscription
 
 logger = logging.getLogger(__name__)
 
 
 def crear_notificacion(
+    tenant,
     usuario,
     titulo,
     mensaje="",
@@ -18,16 +20,20 @@ def crear_notificacion(
     tipo="info",
 ):
     """
-    Crea una notificación para un usuario.
+    Crea una notificación para un usuario dentro de un tenant.
 
-    - usuario: instancia de User (request.user, por ejemplo)
-    - titulo: texto corto que se mostrará en la lista
-    - mensaje: texto más largo (opcional)
-    - url_name: nombre de URL de Django, por ejemplo "miembros_app:dashboard"
-                Si no se puede resolver, se guarda tal cual (por si es una ruta absoluta).
-    - tipo: "info", "success", "warning", "error"
+    Args:
+        tenant: instancia de Tenant
+        usuario: instancia de User (request.user, por ejemplo)
+        titulo: texto corto que se mostrará en la lista
+        mensaje: texto más largo (opcional)
+        url_name: nombre de URL de Django, por ejemplo "miembros_app:dashboard"
+                  Si no se puede resolver, se guarda tal cual (por si es una ruta absoluta).
+        tipo: "info", "success", "warning", "error"
+    
+    Returns:
+        Notification instance
     """
-
     url_destino = ""
 
     if url_name:
@@ -39,6 +45,7 @@ def crear_notificacion(
             url_destino = url_name
 
     return Notification.objects.create(
+        tenant=tenant,
         usuario=usuario,
         titulo=titulo,
         mensaje=mensaje,
@@ -72,7 +79,7 @@ def enviar_push_notification(suscripcion, titulo, mensaje, url="/", badge_count=
         "title": titulo,
         "body": mensaje,
         "url": url,
-        "badge_count": badge_count,  # ✅ Agregado
+        "badge_count": badge_count,
     })
     
     try:
@@ -104,10 +111,31 @@ def enviar_push_notification(suscripcion, titulo, mensaje, url="/", badge_count=
         logger.error(f"[Push] Error inesperado: {e}")
         return False
 
-from .models import PushSubscription  # ✅ asegúrate de tener este modelo
 
-def enviar_push_a_usuario(usuario, titulo, mensaje, url="/", badge_count=0):
-    subs = PushSubscription.objects.filter(user=usuario, activo=True)
+def enviar_push_a_usuario(usuario, tenant, titulo, mensaje, url="/", badge_count=0):
+    """
+    Envía notificación push a todas las suscripciones activas del usuario en un tenant.
+    
+    Args:
+        usuario: User instance
+        tenant: Tenant instance
+        titulo: Título de la notificación
+        mensaje: Cuerpo del mensaje
+        url: URL a abrir al hacer clic
+        badge_count: Número para mostrar en el badge del icono
+    
+    Returns:
+        dict con 'enviados', 'errores' y 'subs'
+    """
+    if not tenant:
+        logger.warning(f"[Push] No se puede enviar push sin tenant para usuario {usuario}")
+        return {"enviados": 0, "errores": 0, "subs": 0}
+    
+    subs = PushSubscription.objects.filter(
+        tenant=tenant,
+        user=usuario,
+        activo=True
+    )
 
     enviados = 0
     errores = 0
