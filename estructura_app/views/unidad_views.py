@@ -5,7 +5,7 @@ from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-
+from estructura_app.view_helpers.visitas_unidad import get_visitas_para_unidad, get_resumen_visitas_unidad
 from miembros_app.models import Miembro
 from estructura_app.forms import ActividadUnidadForm
 from estructura_app.models import (
@@ -368,6 +368,17 @@ def unidad_detalle(request, pk):
             .select_related("miembo_fk", "rol")
             .order_by("miembo_fk__nombres", "miembo_fk__apellidos")
         )
+
+    reglas = unidad.reglas or {}
+    permite_visitas = bool(reglas.get("permite_visitas", False))
+ 
+    visitas_unidad = []
+    visitas_resumen = {}
+ 
+    if permite_visitas:
+        visitas_unidad = get_visitas_para_unidad(unidad, tenant)
+        visitas_resumen = get_resumen_visitas_unidad(visitas_unidad)
+        
     return render(request, "estructura_app/unidad_detalle.html", {
         "unidad": unidad,
         "miembros_asignados": miembros_asignados,
@@ -385,9 +396,12 @@ def unidad_detalle(request, pk):
         "permite_nuevos": permite_nuevos,
         "nuevos_creyentes_asignados": nuevos_creyentes_asignados,
         "miembros_count": total,
-
         "capacidad_maxima": capacidad_maxima,
         "capacidad_excedida": capacidad_excedida,
+        # ═══ VISITAS ═══
+        "permite_visitas": permite_visitas,
+        "visitas_unidad": visitas_unidad,
+        "visitas_resumen": visitas_resumen,
     })
 
 

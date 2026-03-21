@@ -155,6 +155,11 @@ def _reglas_mvp_from_post(post, base_reglas=None):
     permite_catecumenos = False if solo_activos else post.get("regla_perm_catecumenos") in ("on", "1", "true", "True")
     permite_nuevos = False if solo_activos else post.get("regla_perm_nuevos") in ("on", "1", "true", "True")
     permite_menores = False if solo_activos else post.get("regla_perm_menores") in ("on", "1", "true", "True")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # NUEVA REGLA: permite_visitas
+    # ═══════════════════════════════════════════════════════════════
+    permite_visitas = post.get("regla_perm_visitas") in ("on", "1", "true", "True")
 
     return {
         "asignacion_automatica": asignacion_automatica,
@@ -168,6 +173,7 @@ def _reglas_mvp_from_post(post, base_reglas=None):
         "permite_catecumenos": permite_catecumenos,
         "permite_nuevos": permite_nuevos,
         "permite_menores": permite_menores,
+        "permite_visitas": permite_visitas,  # ← NUEVO
         "lider_edad_min": to_int("regla_lider_edad_min"),
         "lider_edad_max": to_int("regla_lider_edad_max"),
         "permite_liderazgo": permite_liderazgo,

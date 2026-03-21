@@ -139,6 +139,20 @@
                 </span>
             {% endif %}
         </button>
+
+        
+
+        {% endif %}
+        {% if permite_visitas %}
+        <button type="button" class="odoo-tab" data-tab="visitas">
+            <span class="material-icons">diversity_3</span>
+            Visitas
+            {% if visitas_resumen.total %}
+                <span class="odoo-badge odoo-badge-info" style="margin-left:6px;">
+                    {{ visitas_resumen.total }}
+                </span>
+            {% endif %}
+        </button>
         {% endif %}
         <button type="button" class="odoo-tab" data-tab="actividades">
         <span class="material-icons">event_note</span>
@@ -790,6 +804,262 @@
   </p>
   {% endif %}
 
+</div>
+{% endif %}
+
+{% if permite_visitas %}
+<!-- TAB: Visitas -->
+<div class="odoo-tab-content" id="tab-visitas">
+    
+    <!-- Header con resumen -->
+    <div class="odoo-card" style="margin-bottom: 16px;">
+        <div class="odoo-card-header">
+            <h3 style="margin: 0;">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">diversity_3</span>
+                Visitas que cumplen criterios
+            </h3>
+        </div>
+        
+        <!-- Criterios de la unidad -->
+        <div style="
+            background: linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 100%);
+            border: 1px solid #80DEEA;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 12px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        ">
+            <span class="material-icons" style="color: #00838F; font-size: 18px;">filter_alt</span>
+            <span style="font-size: 13px; color: #00695C; font-weight: 500;">Criterios:</span>
+            
+            {% if unidad.edad_min or unidad.edad_max %}
+            <span style="
+                background: #fff;
+                padding: 4px 10px;
+                border-radius: 16px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #00838F;
+                border: 1px solid #4DD0E1;
+            ">
+                <span class="material-icons" style="font-size: 14px; vertical-align: middle;">cake</span>
+                {% if unidad.edad_min and unidad.edad_max %}
+                    {{ unidad.edad_min }} - {{ unidad.edad_max }} años
+                {% elif unidad.edad_min %}
+                    Desde {{ unidad.edad_min }} años
+                {% elif unidad.edad_max %}
+                    Hasta {{ unidad.edad_max }} años
+                {% endif %}
+            </span>
+            {% endif %}
+            
+            {% with reglas=unidad.reglas %}
+            {% if reglas.admite_hombres and reglas.admite_mujeres %}
+            <span style="
+                background: #fff;
+                padding: 4px 10px;
+                border-radius: 16px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #6A1B9A;
+                border: 1px solid #CE93D8;
+            ">
+                <span class="material-icons" style="font-size: 14px; vertical-align: middle;">wc</span>
+                Ambos géneros
+            </span>
+            {% elif reglas.admite_hombres %}
+            <span style="
+                background: #E3F2FD;
+                padding: 4px 10px;
+                border-radius: 16px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #1565C0;
+                border: 1px solid #64B5F6;
+            ">
+                <span class="material-icons" style="font-size: 14px; vertical-align: middle;">male</span>
+                Solo hombres
+            </span>
+            {% elif reglas.admite_mujeres %}
+            <span style="
+                background: #FCE4EC;
+                padding: 4px 10px;
+                border-radius: 16px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #C2185B;
+                border: 1px solid #F48FB1;
+            ">
+                <span class="material-icons" style="font-size: 14px; vertical-align: middle;">female</span>
+                Solo mujeres
+            </span>
+            {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+
+    <!-- Resumen de visitas -->
+    {% if visitas_resumen.total %}
+    <div style="
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    ">
+        <div style="background: #E0F7FA; padding: 16px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 700; color: #00838F;">{{ visitas_resumen.total }}</div>
+            <div style="font-size: 11px; color: #00695C; text-transform: uppercase;">Total</div>
+        </div>
+        <div style="background: #E8F5E9; padding: 16px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 700; color: #2E7D32;">{{ visitas_resumen.primera_vez }}</div>
+            <div style="font-size: 11px; color: #1B5E20; text-transform: uppercase;">Primera vez</div>
+        </div>
+        <div style="background: #FFF3E0; padding: 16px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 700; color: #E65100;">{{ visitas_resumen.recurrentes }}</div>
+            <div style="font-size: 11px; color: #BF360C; text-transform: uppercase;">Recurrentes</div>
+        </div>
+        <div style="background: #E3F2FD; padding: 16px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 700; color: #1565C0;">{{ visitas_resumen.masculinos }}</div>
+            <div style="font-size: 11px; color: #0D47A1; text-transform: uppercase;">Hombres</div>
+        </div>
+        <div style="background: #FCE4EC; padding: 16px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 700; color: #C2185B;">{{ visitas_resumen.femeninos }}</div>
+            <div style="font-size: 11px; color: #880E4F; text-transform: uppercase;">Mujeres</div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if visitas_unidad %}
+    <!-- Tabla de visitas -->
+    <div class="odoo-table-container">
+        <table class="odoo-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Género</th>
+                    <th>Edad</th>
+                    <th>Clasificación</th>
+                    <th>Última visita</th>
+                    <th>Visitas</th>
+                    <th>Contactar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for visita in visitas_unidad %}
+                <tr>
+                    <td>
+                        <div style="font-weight: 500; color: #333;">{{ visita.nombre|default:"—" }}</div>
+                        {% if visita.primera_vez %}
+                        <span class="odoo-badge odoo-badge-success" style="font-size: 10px;">1ª VEZ</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if visita.telefono %}
+                        <a href="tel:{{ visita.telefono }}" style="color: #0097A7; text-decoration: none;">
+                            {{ visita.telefono }}
+                        </a>
+                        {% else %}
+                        <span style="color: #999;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if visita.genero == "M" %}
+                        <span style="color: #1565C0;">
+                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">male</span>
+                            Hombre
+                        </span>
+                        {% elif visita.genero == "F" %}
+                        <span style="color: #C2185B;">
+                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">female</span>
+                            Mujer
+                        </span>
+                        {% else %}
+                        <span style="color: #999;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if visita.edad %}
+                        <span style="
+                            display: inline-block;
+                            min-width: 32px;
+                            padding: 4px 8px;
+                            background: #F5F5F5;
+                            border-radius: 6px;
+                            font-weight: 600;
+                            color: #555;
+                        ">{{ visita.edad }}</span>
+                        {% else %}
+                        <span style="color: #999;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if visita.clasificacion %}
+                        <span class="odoo-badge odoo-badge-neutral">{{ visita.clasificacion.nombre }}</span>
+                        {% else %}
+                        <span style="color: #999;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if visita.fecha_ultima_visita %}
+                        <span style="white-space: nowrap;">{{ visita.fecha_ultima_visita|date:"d/m/Y" }}</span>
+                        {% else %}
+                        <span style="color: #999;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <span style="
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            min-width: 28px;
+                            height: 24px;
+                            padding: 0 8px;
+                            background: {% if visita.cantidad_visitas > 1 %}#FFF3E0{% else %}#E8F5E9{% endif %};
+                            color: {% if visita.cantidad_visitas > 1 %}#E65100{% else %}#2E7D32{% endif %};
+                            border-radius: 12px;
+                            font-size: 12px;
+                            font-weight: 700;
+                        ">{{ visita.cantidad_visitas|default:1 }}</span>
+                    </td>
+                    <td>
+                        {% if visita.desea_contacto %}
+                        <span class="odoo-badge odoo-badge-success">
+                            <span class="material-icons" style="font-size: 14px;">check</span>
+                            Sí
+                        </span>
+                        {% else %}
+                        <span class="odoo-badge odoo-badge-neutral">
+                            No
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <!-- Estado vacío -->
+    <div style="
+        text-align: center;
+        padding: 48px 24px;
+        background: #FAFAFA;
+        border-radius: 12px;
+        border: 1px dashed #E0E0E0;
+    ">
+        <span class="material-icons" style="font-size: 48px; color: #BDBDBD; margin-bottom: 12px; display: block;">
+            diversity_3
+        </span>
+        <h3 style="margin: 0 0 8px; font-size: 16px; color: #666;">No hay visitas que coincidan</h3>
+        <p style="margin: 0; font-size: 14px; color: #999;">
+            Ninguna visita registrada cumple con los criterios de edad y género de esta unidad.
+        </p>
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 
