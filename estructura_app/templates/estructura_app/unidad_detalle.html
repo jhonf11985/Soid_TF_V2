@@ -503,9 +503,69 @@
   <div class="odoo-card" style="margin-bottom:12px;">
     <div class="odoo-card-header">
       <h3>Miembros asignados</h3>
+      <div class="odoo-actions">
+        <button type="button" class="odoo-btn odoo-btn-secondary" onclick="imprimirMiembros()">
+          <span class="material-icons">print</span>
+          Imprimir
+        </button>
+        <button type="button" class="odoo-btn odoo-btn-success" onclick="compartirWhatsApp()">
+          <span class="material-icons">share</span>
+          WhatsApp
+        </button>
+      </div>
     </div>
-    <p class="odoo-muted" style="margin:0;">
-    </p>
+  </div>
+
+  <!-- Filtros de miembros -->
+  <div class="miembros-filtros" style="margin-bottom: 16px;">
+    <div class="filtros-row">
+      <div class="filtro-group">
+        <label class="filtro-label">Buscar</label>
+        <input type="text" id="filtro-buscar" class="filtro-input" placeholder="Nombre o código..." oninput="filtrarMiembros()">
+      </div>
+      <div class="filtro-group">
+        <label class="filtro-label">Rol</label>
+        <select id="filtro-rol" class="filtro-select" onchange="filtrarMiembros()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="filtro-group">
+        <label class="filtro-label">Estado</label>
+        <select id="filtro-estado" class="filtro-select" onchange="filtrarMiembros()">
+          <option value="">Todos</option>
+          <option value="Activo">Activo</option>
+          <option value="Pasivo">Pasivo</option>
+          <option value="Observación">Observación</option>
+          <option value="Disciplina">Disciplina</option>
+          <option value="Catecúmeno">Catecúmeno</option>
+          <option value="Nuevo creyente">Nuevo creyente</option>
+          <option value="Menor">Menor</option>
+        </select>
+      </div>
+      <div class="filtro-group">
+        <label class="filtro-label">Categoría</label>
+        <select id="filtro-categoria" class="filtro-select" onchange="filtrarMiembros()">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="filtro-group">
+        <label class="filtro-label">Género</label>
+        <select id="filtro-genero" class="filtro-select" onchange="filtrarMiembros()">
+          <option value="">Todos</option>
+          <option value="Masculino">Masculino</option>
+          <option value="Femenino">Femenino</option>
+        </select>
+      </div>
+      <div class="filtro-group filtro-actions">
+        <button type="button" class="odoo-btn odoo-btn-secondary btn-sm" onclick="limpiarFiltros()">
+          <span class="material-icons">clear_all</span>
+          Limpiar
+        </button>
+      </div>
+    </div>
+    <div class="filtros-info">
+      <span id="contador-miembros">{{ miembros_asignados|length }} miembro(s)</span>
+    </div>
   </div>
 
   {% if miembros_asignados %}
@@ -2191,6 +2251,177 @@ function actualizarLinkActividades(){
     }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   ESTILOS FILTROS MIEMBROS
+   ══════════════════════════════════════════════════════════════════════════ */
+.miembros-filtros {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.filtros-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 140px;
+}
+
+.filtro-group.filtro-actions {
+    flex: 0 0 auto;
+    min-width: auto;
+}
+
+.filtro-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.filtro-input,
+.filtro-select {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filtro-input:focus,
+.filtro-select:focus {
+    outline: none;
+    border-color: #0097A7;
+    box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.1);
+}
+
+.filtros-info {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e9ecef;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+#contador-miembros {
+    font-weight: 600;
+    color: #0097A7;
+}
+
+.btn-sm {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+}
+
+.btn-sm .material-icons {
+    font-size: 16px !important;
+}
+
+/* Botón WhatsApp verde */
+.odoo-btn-success {
+    background: #25D366;
+    color: #fff;
+    border: none;
+}
+
+.odoo-btn-success:hover {
+    background: #1ebe5d;
+    color: #fff;
+}
+
+/* Fila oculta por filtro */
+tr.filtro-oculto {
+    display: none !important;
+}
+
+/* Responsive filtros */
+@media (max-width: 768px) {
+    .filtros-row {
+        flex-direction: column;
+    }
+    .filtro-group {
+        width: 100%;
+    }
+    .filtro-group.filtro-actions {
+        width: 100%;
+    }
+    .filtro-group.filtro-actions .odoo-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Estilos para impresión */
+@media print {
+    .odoo-control-bar,
+    .odoo-detail-tabs,
+    .miembros-filtros,
+    .odoo-actions,
+    .no-print {
+        display: none !important;
+    }
+    
+    .odoo-tab-content {
+        display: block !important;
+        padding: 0 !important;
+    }
+    
+    .odoo-tab-content:not(#tab-miembros) {
+        display: none !important;
+    }
+    
+    .odoo-detail-container {
+        padding: 0 !important;
+    }
+    
+    .odoo-table-container {
+        overflow: visible !important;
+    }
+    
+    .odoo-table {
+        font-size: 11px;
+    }
+    
+    .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #0097A7;
+    }
+    
+    .print-header h1 {
+        font-size: 18px;
+        margin: 0 0 5px 0;
+        color: #0097A7;
+    }
+    
+    .print-header p {
+        margin: 0;
+        font-size: 12px;
+        color: #666;
+    }
+    
+    tr.filtro-oculto {
+        display: none !important;
+    }
+}
+
+.print-header {
+    display: none;
+}
+
 
 </style>
 
@@ -2226,7 +2457,220 @@ document.addEventListener('DOMContentLoaded', function() {
             targetTab.click();
         }
     }
+
+    // Inicializar filtros de miembros
+    inicializarFiltrosMiembros();
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+// FUNCIONES DE FILTROS DE MIEMBROS
+// ══════════════════════════════════════════════════════════════════════════
+
+function inicializarFiltrosMiembros() {
+    const tabla = document.querySelector('#tab-miembros .odoo-table');
+    if (!tabla) return;
+
+    const filas = tabla.querySelectorAll('tbody tr');
+    const roles = new Set();
+    const categorias = new Set();
+
+    // Recopilar roles y categorías únicos
+    filas.forEach(fila => {
+        const rolCell = fila.querySelector('td:nth-child(1)');
+        const catCell = fila.querySelector('td:nth-child(6)');
+        
+        if (rolCell) {
+            const badge = rolCell.querySelector('.odoo-badge');
+            if (badge && badge.textContent.trim() !== '—') {
+                roles.add(badge.textContent.trim());
+            }
+        }
+        
+        if (catCell && catCell.textContent.trim() !== '—') {
+            categorias.add(catCell.textContent.trim());
+        }
+    });
+
+    // Poblar select de roles
+    const selectRol = document.getElementById('filtro-rol');
+    if (selectRol) {
+        roles.forEach(rol => {
+            const opt = document.createElement('option');
+            opt.value = rol;
+            opt.textContent = rol;
+            selectRol.appendChild(opt);
+        });
+    }
+
+    // Poblar select de categorías
+    const selectCat = document.getElementById('filtro-categoria');
+    if (selectCat) {
+        categorias.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            selectCat.appendChild(opt);
+        });
+    }
+}
+
+function filtrarMiembros() {
+    const buscar = document.getElementById('filtro-buscar').value.toLowerCase();
+    const rol = document.getElementById('filtro-rol').value;
+    const estado = document.getElementById('filtro-estado').value;
+    const categoria = document.getElementById('filtro-categoria').value;
+    const genero = document.getElementById('filtro-genero').value;
+
+    const tabla = document.querySelector('#tab-miembros .odoo-table');
+    if (!tabla) return;
+
+    const filas = tabla.querySelectorAll('tbody tr');
+    let visibles = 0;
+
+    filas.forEach(fila => {
+        let mostrar = true;
+
+        // Filtro por búsqueda (nombre o código)
+        if (buscar) {
+            const nombreCell = fila.querySelector('td:nth-child(2)');
+            const codigoCell = fila.querySelector('td:nth-child(3)');
+            const nombre = nombreCell ? nombreCell.textContent.toLowerCase() : '';
+            const codigo = codigoCell ? codigoCell.textContent.toLowerCase() : '';
+            
+            if (!nombre.includes(buscar) && !codigo.includes(buscar)) {
+                mostrar = false;
+            }
+        }
+
+        // Filtro por rol
+        if (mostrar && rol) {
+            const rolCell = fila.querySelector('td:nth-child(1)');
+            const rolTexto = rolCell ? rolCell.textContent.trim() : '';
+            if (!rolTexto.includes(rol)) {
+                mostrar = false;
+            }
+        }
+
+        // Filtro por estado
+        if (mostrar && estado) {
+            const estadoCell = fila.querySelector('td:nth-child(4)');
+            const estadoTexto = estadoCell ? estadoCell.textContent.trim() : '';
+            if (!estadoTexto.includes(estado)) {
+                mostrar = false;
+            }
+        }
+
+        // Filtro por categoría
+        if (mostrar && categoria) {
+            const catCell = fila.querySelector('td:nth-child(6)');
+            const catTexto = catCell ? catCell.textContent.trim() : '';
+            if (!catTexto.includes(categoria)) {
+                mostrar = false;
+            }
+        }
+
+        // Filtro por género
+        if (mostrar && genero) {
+            const nombreCell = fila.querySelector('td:nth-child(2)');
+            const generoTexto = nombreCell ? nombreCell.textContent : '';
+            if (!generoTexto.includes(genero)) {
+                mostrar = false;
+            }
+        }
+
+        // Aplicar visibilidad
+        if (mostrar) {
+            fila.classList.remove('filtro-oculto');
+            visibles++;
+        } else {
+            fila.classList.add('filtro-oculto');
+        }
+    });
+
+    // Actualizar contador
+    const contador = document.getElementById('contador-miembros');
+    if (contador) {
+        contador.textContent = visibles + ' miembro(s) ' + (visibles !== filas.length ? 'de ' + filas.length : '');
+    }
+}
+
+function limpiarFiltros() {
+    document.getElementById('filtro-buscar').value = '';
+    document.getElementById('filtro-rol').value = '';
+    document.getElementById('filtro-estado').value = '';
+    document.getElementById('filtro-categoria').value = '';
+    document.getElementById('filtro-genero').value = '';
+    filtrarMiembros();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FUNCIONES DE IMPRESIÓN Y COMPARTIR
+// ══════════════════════════════════════════════════════════════════════════
+
+function imprimirMiembros() {
+    // Crear header de impresión si no existe
+    let printHeader = document.querySelector('#tab-miembros .print-header');
+    if (!printHeader) {
+        printHeader = document.createElement('div');
+        printHeader.className = 'print-header';
+        printHeader.innerHTML = `
+            <h1>{{ unidad.nombre }}</h1>
+            <p>Listado de Miembros - Generado el ${new Date().toLocaleDateString('es-DO')}</p>
+        `;
+        const tabMiembros = document.getElementById('tab-miembros');
+        tabMiembros.insertBefore(printHeader, tabMiembros.firstChild);
+    }
+
+    // Asegurar que la pestaña de miembros esté activa
+    const tabMiembros = document.querySelector('.odoo-tab[data-tab="miembros"]');
+    if (tabMiembros && !tabMiembros.classList.contains('active')) {
+        tabMiembros.click();
+    }
+
+    // Imprimir
+    setTimeout(() => {
+        window.print();
+    }, 100);
+}
+
+function compartirWhatsApp() {
+    const unidadNombre = '{{ unidad.nombre }}';
+    const tabla = document.querySelector('#tab-miembros .odoo-table');
+    
+    if (!tabla) {
+        alert('No hay miembros para compartir.');
+        return;
+    }
+
+    const filas = tabla.querySelectorAll('tbody tr:not(.filtro-oculto)');
+    let mensaje = `📋 *${unidadNombre}*\n`;
+    mensaje += `📅 ${new Date().toLocaleDateString('es-DO')}\n\n`;
+    mensaje += `👥 *Miembros (${filas.length}):*\n`;
+    mensaje += `────────────────\n`;
+
+    filas.forEach((fila, index) => {
+        const rolCell = fila.querySelector('td:nth-child(1)');
+        const nombreCell = fila.querySelector('td:nth-child(2) .member-name a');
+        const estadoCell = fila.querySelector('td:nth-child(4) .odoo-badge');
+        
+        const rol = rolCell?.querySelector('.odoo-badge')?.textContent.trim() || '';
+        const nombre = nombreCell?.textContent.trim() || '';
+        const estado = estadoCell?.textContent.trim() || '';
+
+        if (nombre) {
+            mensaje += `${index + 1}. ${nombre}`;
+            if (rol && rol !== '—') mensaje += ` (${rol})`;
+            if (estado) mensaje += ` - ${estado}`;
+            mensaje += `\n`;
+        }
+    });
+
+    mensaje += `\n✅ Total: ${filas.length} miembro(s)`;
+
+    // Codificar y abrir WhatsApp
+    const urlWhatsApp = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+    window.open(urlWhatsApp, '_blank');
+}
 </script>
 
 
