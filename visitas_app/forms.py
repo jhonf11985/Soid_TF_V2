@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 
 from .models import (
     Visita,
@@ -36,22 +37,50 @@ class RegistroVisitasForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        tenant = kwargs.pop("tenant", None)
+        self.tenant = kwargs.pop("tenant", None)
         super().__init__(*args, **kwargs)
 
         self.fields["observaciones"].required = False
         self.fields["unidad_responsable"].required = False
 
-        if tenant is not None:
+        if self.tenant is not None:
             self.fields["tipo"].queryset = TipoRegistroVisita.objects.filter(
-                tenant=tenant,
+                tenant=self.tenant,
                 activo=True
             ).order_by("orden", "nombre")
         else:
             self.fields["tipo"].queryset = TipoRegistroVisita.objects.none()
 
-        self.fields["tipo"].empty_label = "Seleccione Culto,Actividad"
+        self.fields["tipo"].empty_label = "Seleccione Culto, Actividad"
         self.fields["unidad_responsable"].empty_label = "Seleccione Sociedad o Dpto."
+
+    def clean_tipo(self):
+        """Validar que no exista otro registro abierto del mismo tipo."""
+        tipo = self.cleaned_data.get("tipo")
+
+        if not tipo or not self.tenant:
+            return tipo
+
+        # Verificar si ya existe un registro abierto de este tipo
+        qs = RegistroVisitas.objects.filter(
+            tenant=self.tenant,
+            tipo=tipo,
+            estado="abierto",
+        )
+
+        # Si estamos editando, excluir el registro actual
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            registro_existente = qs.first()
+            raise ValidationError(
+                f'Ya existe un registro abierto para "{tipo.nombre}" '
+                f'(Fecha: {registro_existente.fecha.strftime("%d/%m/%Y")}). '
+                f'Debe cerrarlo antes de crear uno nuevo.'
+            )
+
+        return tipo
 
 
 class VisitaForm(forms.ModelForm):

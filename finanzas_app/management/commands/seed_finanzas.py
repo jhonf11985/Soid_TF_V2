@@ -19,41 +19,60 @@ class Command(BaseCommand):
             choices=["DOP", "USD", "EUR"],
             help="Moneda por defecto para las cuentas base (DOP por defecto).",
         )
+        parser.add_argument(
+            "--tenant",
+            type=int,
+            help="ID del tenant específico. Si no se indica, se siembra para TODOS los tenants.",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
         reset = options["reset"]
         moneda = options["moneda"]
+        tenant_id = options.get("tenant")
 
-        # Importamos modelos en caliente (así no explota si cambias nombres al mover cosas)
-        from finanzas_app.models import CuentaFinanciera, CategoriaMovimiento, MovimientoFinanciero
+        # Importamos modelos
+        from tenants.models import Tenant
+        from finanzas_app.models import (
+            CuentaFinanciera,
+            CategoriaMovimiento,
+            MovimientoFinanciero,
+            CasillaF001,
+        )
 
-        # Estos 2 existen en tu proyecto (ya los migraste). Si no, aquí fallaría y lo verías de inmediato.
-        from finanzas_app.models import CasillaF001
-
-        # Algunos proyectos tienen adjuntos; si no existe, lo ignoramos sin inventar.
+        # Adjuntos opcionales
         AdjuntoMovimiento = None
         try:
-            from finanzas_app.models import AdjuntoMovimiento  # type: ignore
+            from finanzas_app.models import AdjuntoMovimiento
         except Exception:
-            AdjuntoMovimiento = None
+            pass
 
+        # Detectar qué modelos tienen tenant
+        casilla_fields = {f.name for f in CasillaF001._meta.get_fields()}
+        casilla_has_tenant = "tenant" in casilla_fields
+
+        categoria_fields = {f.name for f in CategoriaMovimiento._meta.get_fields()}
+        categoria_has_tenant = "tenant" in categoria_fields
+        has_codigo = "codigo" in categoria_fields
+        has_casilla = "casilla_f001" in categoria_fields
+
+        cuenta_fields = {f.name for f in CuentaFinanciera._meta.get_fields()}
+        cuenta_has_tenant = "tenant" in cuenta_fields
+
+        # ----------------------------------------------------------------
+        # RESET GLOBAL (casillas son globales)
+        # ----------------------------------------------------------------
         if reset:
-            self.stdout.write(self.style.WARNING("⚠️  RESET ACTIVADO: borrando TODO lo de finanzas..."))
+            self.stdout.write(self.style.WARNING("⚠️  RESET ACTIVADO..."))
+            
+            # Casillas son globales, se borran sin filtro de tenant
+            if not casilla_has_tenant:
+                CasillaF001.objects.all().delete()
+                self.stdout.write("  - Casillas F001 borradas (globales)")
 
-            if AdjuntoMovimiento is not None:
-                AdjuntoMovimiento.objects.all().delete()
-
-            MovimientoFinanciero.objects.all().delete()
-            CategoriaMovimiento.objects.all().delete()
-            CasillaF001.objects.all().delete()
-            CuentaFinanciera.objects.all().delete()
-
-            self.stdout.write(self.style.SUCCESS("✔ Finanzas limpiado."))
-
-        # ------------------------------------------------------------
-        # 1) CASILLAS F001
-        # ------------------------------------------------------------
+        # ----------------------------------------------------------------
+        # 1) CASILLAS F001 (GLOBALES - sin tenant)
+        # ----------------------------------------------------------------
         casillas = [
             # INGRESOS IGLESIA
             ("ING_DIEZMOS", "Diezmos", "ingresos_iglesia", 10),
@@ -64,7 +83,7 @@ class Command(BaseCommand):
             ("ING_AYUDA_CONCILIO", "Ayudas del Concilio", "ingresos_iglesia", 60),
             ("ING_EXTERIOR", "Ofrendas del Exterior", "ingresos_iglesia", 70),
 
-            # INGRESOS MINISTERIOS (en el informe)
+            # INGRESOS MINISTERIOS
             ("MIN_FEMENIL", "Ministerio Femenil", "ingresos_ministerios", 10),
             ("MIN_HOMBRES", "Hombres de Honor", "ingresos_ministerios", 20),
             ("MIN_EMBAJADORES", "Embajadores de Cristo", "ingresos_ministerios", 30),
@@ -98,7 +117,7 @@ class Command(BaseCommand):
             ("ENV_MIN_MISIONES", "Misiones", "envios_ministerios", 90),
             ("ENV_MIN_OTROS", "Otros Ministerios", "envios_ministerios", 100),
 
-            # APORTES ESPECIALES (abreviado como pediste: A_)
+            # APORTES ESPECIALES
             ("A_EVANGELISMO", "Ministerio de Evangelismo", "aportes_especiales", 10),
             ("A_DESEAD", "DESEAD", "aportes_especiales", 20),
             ("A_PLANTACION", "Plantación de Iglesias", "aportes_especiales", 30),
@@ -123,23 +142,26 @@ class Command(BaseCommand):
             )
             casilla_by_codigo[codigo] = obj
 
-        self.stdout.write(self.style.SUCCESS(f"✔ Casillas F.001 listas: {len(casilla_by_codigo)}"))
+        self.stdout.write(self.style.SUCCESS(f"✔ Casillas F.001 (globales): {len(casilla_by_codigo)}"))
 
-        # ------------------------------------------------------------
-        # 2) CATEGORÍAS (lo que el usuario selecciona)
-        #    Regla: ministerios en ingreso => 'Ofrenda ...'
-        #           envíos egreso => 'Envío a ... Nacional'
-        #           aportes => 'Aporte a ...'
-        # ------------------------------------------------------------
-        # Detectamos si existen campos nuevos (codigo, casilla_f001)
-        categoria_fields = {f.name for f in CategoriaMovimiento._meta.get_fields()}
-        has_codigo = "codigo" in categoria_fields
-        has_casilla = "casilla_f001" in categoria_fields
+        # ----------------------------------------------------------------
+        # 2) CATEGORÍAS Y CUENTAS (POR TENANT)
+        # ----------------------------------------------------------------
+        if tenant_id:
+            tenants = Tenant.objects.filter(pk=tenant_id)
+            if not tenants.exists():
+                self.stdout.write(self.style.ERROR(f"❌ No existe tenant con ID {tenant_id}"))
+                return
+        else:
+            tenants = Tenant.objects.all()
+            if not tenants.exists():
+                self.stdout.write(self.style.ERROR("❌ No hay tenants en el sistema."))
+                return
 
-        
+        self.stdout.write(f"\n📦 Procesando {tenants.count()} tenant(s)...")
+
         categorias = [
-
-            # ---------------- INGRESOS GENERALES ----------------
+            # INGRESOS GENERALES
             ("ingreso", "Diezmos", "1001", "ING_DIEZMOS"),
             ("ingreso", "Ofrendas Voluntarias", "1002", "ING_OFRENDA_VOL"),
             ("ingreso", "Ofrendas Especiales", "1003", "ING_OFRENDA_ESP"),
@@ -148,7 +170,7 @@ class Command(BaseCommand):
             ("ingreso", "Ayudas del Concilio", "1006", "ING_AYUDA_CONCILIO"),
             ("ingreso", "Ofrendas del Exterior", "1007", "ING_EXTERIOR"),
 
-            # ---------------- INGRESOS MINISTERIOS ----------------
+            # INGRESOS MINISTERIOS
             ("ingreso", "Ofrenda Ministerio Femenil", "1101", "MIN_FEMENIL"),
             ("ingreso", "Ofrenda Hombres de Honor", "1102", "MIN_HOMBRES"),
             ("ingreso", "Ofrenda Embajadores de Cristo", "1103", "MIN_EMBAJADORES"),
@@ -159,7 +181,7 @@ class Command(BaseCommand):
             ("ingreso", "Ofrenda Misiones", "1108", "MIN_MISIONES"),
             ("ingreso", "Ofrenda Otros Ministerios", "1109", "MIN_OTROS"),
 
-            # ---------------- EGRESOS IGLESIA ----------------
+            # EGRESOS IGLESIA
             ("egreso", "Asignación Pastoral", "2001", "EGR_ASIG_PASTORAL"),
             ("egreso", "Alquileres Casa/Templo", "2002", "EGR_ALQUILER"),
             ("egreso", "Evangelismo y Misiones", "2003", "EGR_EVANGELISMO"),
@@ -170,7 +192,7 @@ class Command(BaseCommand):
             ("egreso", "Apoyo a Minist. Locales", "2008", "EGR_APOYO_MIN"),
             ("egreso", "Otras Salidas", "2009", "EGR_OTRAS"),
 
-            # ---------------- ENVIOS NACIONALES ----------------
+            # ENVIOS NACIONALES
             ("egreso", "Envío a Ministerio Femenil Nacional", "3001", "ENV_MIN_FEMENIL"),
             ("egreso", "Envío a Hombres de Honor Nacional", "3002", "ENV_MIN_HOMBRES"),
             ("egreso", "Envío a Embajadores Nacional", "3003", "ENV_MIN_EMBAJADORES"),
@@ -182,7 +204,7 @@ class Command(BaseCommand):
             ("egreso", "Envío a Misiones Nacional", "3009", "ENV_MIN_MISIONES"),
             ("egreso", "Envío a Otros Ministerios Nacional", "3010", "ENV_MIN_OTROS"),
 
-            # ---------------- APORTES ESPECIALES ----------------
+            # APORTES ESPECIALES
             ("egreso", "Aporte a Ministerio de Evangelismo", "4001", "A_EVANGELISMO"),
             ("egreso", "Aporte a DESEAD", "4002", "A_DESEAD"),
             ("egreso", "Aporte a Plantación de Iglesias", "4003", "A_PLANTACION"),
@@ -194,47 +216,66 @@ class Command(BaseCommand):
             ("egreso", "Aporte a Desarrollo del Concilio", "4009", "A_DESARROLLO"),
         ]
 
-        creadas = 0
-        for tipo, nombre, codigo_cat, casilla_codigo in categorias:
-            defaults = {
-                "activo": True,
-                "es_editable": False,  # oficiales
-            }
-            if has_codigo:
-                defaults["codigo"] = codigo_cat
-            if has_casilla:
-                defaults["casilla_f001"] = casilla_by_codigo[casilla_codigo]
-
-            # Único por (nombre,tipo) según tu constraint
-            obj, created = CategoriaMovimiento.objects.update_or_create(
-                nombre=nombre,
-                tipo=tipo,
-                defaults=defaults,
-            )
-            if created:
-                creadas += 1
-
-        self.stdout.write(self.style.SUCCESS(f"✔ Categorías oficiales listas ({len(categorias)}). Nuevas: {creadas}"))
-
-        # ------------------------------------------------------------
-        # 3) CUENTAS BASE
-        # ------------------------------------------------------------
         cuentas = [
             ("Caja General", "caja", moneda, "Cuenta base del sistema (efectivo)."),
             ("Banco Principal", "banco", moneda, "Cuenta base del sistema (banco)."),
         ]
 
-        for nombre, tipo, moneda_cuenta, descripcion in cuentas:
-            CuentaFinanciera.objects.update_or_create(
-                nombre=nombre,
-                defaults={
-                    "tipo": tipo,
-                    "moneda": moneda_cuenta,
-                    "descripcion": descripcion,
-                    "saldo_inicial": Decimal("0.00"),
-                    "esta_activa": True,
-                },
-            )
+        for tenant in tenants:
+            self.stdout.write(self.style.HTTP_INFO(f"\n{'='*50}"))
+            self.stdout.write(self.style.HTTP_INFO(f"🏛️  Tenant: {tenant}"))
+            self.stdout.write(self.style.HTTP_INFO(f"{'='*50}"))
 
-        self.stdout.write(self.style.SUCCESS("✔ Cuentas base listas."))
-        self.stdout.write(self.style.SUCCESS("✅ SEED FINANZAS COMPLETADO."))
+            if reset:
+                if AdjuntoMovimiento is not None:
+                    AdjuntoMovimiento.objects.filter(tenant=tenant).delete()
+                MovimientoFinanciero.objects.filter(tenant=tenant).delete()
+                CategoriaMovimiento.objects.filter(tenant=tenant).delete()
+                CuentaFinanciera.objects.filter(tenant=tenant).delete()
+                self.stdout.write(self.style.WARNING("  ⚠️ Datos del tenant limpiados"))
+
+            # Categorías
+            creadas = 0
+            for tipo, nombre, codigo_cat, casilla_codigo in categorias:
+                defaults = {
+                    "activo": True,
+                    "es_editable": False,
+                }
+                if has_codigo:
+                    defaults["codigo"] = codigo_cat
+                if has_casilla:
+                    defaults["casilla_f001"] = casilla_by_codigo[casilla_codigo]
+
+                lookup = {"nombre": nombre, "tipo": tipo}
+                if categoria_has_tenant:
+                    lookup["tenant"] = tenant
+
+                obj, created = CategoriaMovimiento.objects.update_or_create(
+                    **lookup,
+                    defaults=defaults,
+                )
+                if created:
+                    creadas += 1
+
+            self.stdout.write(self.style.SUCCESS(f"  ✔ Categorías: {len(categorias)} (nuevas: {creadas})"))
+
+            # Cuentas
+            for nombre, tipo, moneda_cuenta, descripcion in cuentas:
+                lookup = {"nombre": nombre}
+                if cuenta_has_tenant:
+                    lookup["tenant"] = tenant
+
+                CuentaFinanciera.objects.update_or_create(
+                    **lookup,
+                    defaults={
+                        "tipo": tipo,
+                        "moneda": moneda_cuenta,
+                        "descripcion": descripcion,
+                        "saldo_inicial": Decimal("0.00"),
+                        "esta_activa": True,
+                    },
+                )
+
+            self.stdout.write(self.style.SUCCESS(f"  ✔ Cuentas base: {len(cuentas)}"))
+
+        self.stdout.write(self.style.SUCCESS("\n✅ SEED FINANZAS COMPLETADO."))

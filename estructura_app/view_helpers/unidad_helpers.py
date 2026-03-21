@@ -155,6 +155,20 @@ def _reglas_mvp_from_post(post, base_reglas=None):
     permite_catecumenos = False if solo_activos else post.get("regla_perm_catecumenos") in ("on", "1", "true", "True")
     permite_nuevos = False if solo_activos else post.get("regla_perm_nuevos") in ("on", "1", "true", "True")
     permite_menores = False if solo_activos else post.get("regla_perm_menores") in ("on", "1", "true", "True")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # REGLA: permite_visitas
+    # ═══════════════════════════════════════════════════════════════
+    permite_visitas = post.get("regla_perm_visitas") in ("on", "1", "true", "True")
+
+    # ═══════════════════════════════════════════════════════════════
+    # PESTAÑAS VISIBLES
+    # ═══════════════════════════════════════════════════════════════
+    pestana_liderazgo = post.get("pestana_liderazgo") in ("on", "1", "true", "True")
+    pestana_equipo_trabajo = post.get("pestana_equipo_trabajo") in ("on", "1", "true", "True")
+    pestana_actividades = post.get("pestana_actividades") in ("on", "1", "true", "True")
+    pestana_finanzas = post.get("pestana_finanzas") in ("on", "1", "true", "True")
+    pestana_reportes = post.get("pestana_reportes") in ("on", "1", "true", "True")
 
     return {
         "asignacion_automatica": asignacion_automatica,
@@ -168,6 +182,7 @@ def _reglas_mvp_from_post(post, base_reglas=None):
         "permite_catecumenos": permite_catecumenos,
         "permite_nuevos": permite_nuevos,
         "permite_menores": permite_menores,
+        "permite_visitas": permite_visitas,
         "lider_edad_min": to_int("regla_lider_edad_min"),
         "lider_edad_max": to_int("regla_lider_edad_max"),
         "permite_liderazgo": permite_liderazgo,
@@ -176,4 +191,12 @@ def _reglas_mvp_from_post(post, base_reglas=None):
         "permite_subunidades": permite_subunidades,
         "requiere_aprobacion_lider": requiere_aprobacion,
         "unidad_privada": unidad_privada,
+        # ═══════════════════════════════════════════════════════════════
+        # PESTAÑAS VISIBLES
+        # ═══════════════════════════════════════════════════════════════
+        "pestana_liderazgo": pestana_liderazgo,
+        "pestana_equipo_trabajo": pestana_equipo_trabajo,
+        "pestana_actividades": pestana_actividades,
+        "pestana_finanzas": pestana_finanzas,
+        "pestana_reportes": pestana_reportes,
     }

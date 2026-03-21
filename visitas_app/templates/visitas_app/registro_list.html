@@ -94,6 +94,32 @@
     height: 16px;
 }
 
+.btn-reporte {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--teal-primary);
+    background: #fff;
+    border: 2px solid var(--teal-primary);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.btn-reporte:hover {
+    background: var(--teal-bg);
+    transform: translateY(-1px);
+}
+
+.btn-reporte svg {
+    width: 16px;
+    height: 16px;
+}
+
 /* ══════════════════════════════════════════
    CARD PRINCIPAL
    ══════════════════════════════════════════ */
@@ -257,6 +283,48 @@
     font-weight: 700;
 }
 
+/* Estados del registro */
+.registro-estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.registro-estado.abierto {
+    background: #D1FAE5;
+    color: #065F46;
+    border: 1px solid #6EE7B7;
+}
+
+.registro-estado.abierto::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10B981;
+    animation: pulse 2s infinite;
+}
+
+.registro-estado.cerrado {
+    background: var(--gray-200);
+    color: var(--gray-600);
+    border: 1px solid var(--gray-300);
+}
+
+.registro-estado.cerrado::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gray-400);
+}
+
 .btn-abrir {
     display: inline-flex;
     align-items: center;
@@ -412,6 +480,16 @@
             </svg>
             Nuevo registro
         </a>
+        <a href="{% url 'visitas_app:reporte_visitas' %}" class="btn-reporte">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            Reporte
+        </a>
     </div>
 
     <!-- Card principal -->
@@ -435,7 +513,7 @@
                                 <th>Fecha</th>
                                 <th>Tipo</th>
                                 <th>Unidad responsable</th>
-                                <th>Observaciones</th>
+                                <th>Estado</th>
                                 <th>Visitas</th>
                                 <th>Acción</th>
                             </tr>
@@ -450,13 +528,17 @@
                                         <span class="registro-tipo-badge">{{ registro.tipo }}</span>
                                     </td>
                                     <td>{{ registro.unidad_responsable|default:"—" }}</td>
-                                    <td class="registro-obs">{{ registro.observaciones|default:"—"|truncatechars:40 }}</td>
+                                    <td>
+                                        <span class="registro-estado {{ registro.estado }}">
+                                            {{ registro.get_estado_display }}
+                                        </span>
+                                    </td>
                                     <td>
                                         <span class="registro-visitas-count">{{ registro.visitas.count }}</span>
                                     </td>
                                     <td>
                                         <a href="{% url 'visitas_app:registro_detail' registro.pk %}" class="btn-abrir">
-                                            Abrir
+                                            Ver
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M5 12h14M12 5l7 7-7 7"/>
                                             </svg>
@@ -474,9 +556,15 @@
                         <div class="registro-card-mobile">
                             <div class="registro-card-mobile-header">
                                 <span class="registro-card-mobile-fecha">{{ registro.fecha|date:"d/m/Y" }}</span>
-                                <span class="registro-tipo-badge">{{ registro.tipo }}</span>
+                                <span class="registro-estado {{ registro.estado }}">
+                                    {{ registro.get_estado_display }}
+                                </span>
                             </div>
                             <div class="registro-card-mobile-body">
+                                <div class="registro-card-mobile-row">
+                                    <span class="registro-card-mobile-label">Tipo</span>
+                                    <span class="registro-tipo-badge">{{ registro.tipo }}</span>
+                                </div>
                                 <div class="registro-card-mobile-row">
                                     <span class="registro-card-mobile-label">Unidad</span>
                                     <span class="registro-card-mobile-value">{{ registro.unidad_responsable|default:"—" }}</span>
@@ -488,7 +576,7 @@
                             </div>
                             <div class="registro-card-mobile-footer">
                                 <a href="{% url 'visitas_app:registro_detail' registro.pk %}" class="btn-abrir">
-                                    Abrir registro
+                                    Ver registro
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M5 12h14M12 5l7 7-7 7"/>
                                     </svg>
