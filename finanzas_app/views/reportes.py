@@ -16,7 +16,7 @@ from collections import defaultdict
 import json
 import datetime
 # finanzas_app/views/reportes.py
-
+from types import SimpleNamespace
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_GET, require_http_methods
@@ -1873,7 +1873,7 @@ def reporte_f001_concilio(request):
 
     def v(codigo):
         return totales_casillas.get(codigo, Decimal("0.00"))
-
+    
     # ============================================
     # SECCIÓN B: INGRESOS Y EGRESOS
     # ============================================
@@ -1987,7 +1987,7 @@ def reporte_f001_concilio(request):
         "subtotal_envios_ministerios": subtotal_envios_ministerios,
         "subtotal_aportes": subtotal_aportes,
     }
-    CFG = ConfiguracionSistema.load()
+    CFG = get_config(request.tenant)
 
     config = SimpleNamespace(
         nombre_iglesia=CFG.nombre_iglesia,
