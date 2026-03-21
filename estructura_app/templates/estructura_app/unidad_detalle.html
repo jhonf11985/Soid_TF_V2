@@ -324,42 +324,37 @@
                         <tr>
                             <th>Rol</th>
                             <th>Miembro</th>
-                             <th>Fecha Inicio</th>
-                             <th>Hasta Final</th>
+                            <th>Fecha Inicio</th>
+                            <th>Hasta Final</th>
                         </tr>
                     </thead>
                     <tbody>
-{% for c in lideres_asignados %}
-<tr>
-    <td>
-        <span class="odoo-badge odoo-badge-info">{{ c.rol.nombre }}</span>
-
-{% if c.es_heredado %}
-  <span class="odoo-badge odoo-badge-warning">
-    <span class="material-icons" style="font-size:12px;">call_split</span>
-    Heredado
-  </span>
-{% endif %}
-
-    </td>
-    <td>{{ c.miembo_fk }}</td>
-
-
-                              <td>
-                                {% if c.fecha_inicio %}
-                                {{ c.fecha_inicio|date:"d/m/Y" }}
-                                {% else %}
-                                —
+                        {% for c in lideres_asignados %}
+                        <tr>
+                            <td data-label="Rol">
+                                <span class="odoo-badge odoo-badge-info">{{ c.rol.nombre }}</span>
+                                {% if c.es_heredado %}
+                                <span class="odoo-badge odoo-badge-warning" style="margin-left:4px;">
+                                    <span class="material-icons" style="font-size:12px;">call_split</span>
+                                    Heredado
+                                </span>
                                 {% endif %}
                             </td>
-                            
-                                <td>
+                            <td data-label="Miembro">{{ c.miembo_fk }}</td>
+                            <td data-label="Fecha Inicio">
+                                {% if c.fecha_inicio %}
+                                    {{ c.fecha_inicio|date:"d/m/Y" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td data-label="Hasta Final">
                                 {% if c.fecha_fin %}
                                     {{ c.fecha_fin|date:"d/m/Y" }}
                                 {% else %}
                                     —
                                 {% endif %}
-                                </td>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -393,21 +388,21 @@
                         {% for m in equipo_trabajo_asignados %}
                         {% with mb=m.miembo_fk %}
                         <tr>
-                            <td>
+                            <td data-label="Rol">
                                 {% if m.rol %}
                                     <span class="odoo-badge odoo-badge-info">{{ m.rol.nombre }}</span>
                                 {% else %}
-                                    <span class="odoo-badge odoo-badge-neutral">—</span>
+                                    <span class="odoo-badge odoo-badge-neutral">Miembro</span>
                                 {% endif %}
                             </td>
 
-                            <td>
+                            <td data-label="Miembro">
                                 <div class="member-cell">
                                     <div class="member-avatar">
                                         {% if mb.foto %}
                                             <img src="{{ mb.foto.url }}" alt="{{ mb }}">
                                         {% else %}
-                                            <span class="material-icons" style="font-size:18px;color:#6c757d;">person</span>
+                                            <span class="material-icons" style="font-size:22px;color:#0097A7;">person</span>
                                         {% endif %}
                                     </div>
                                     <div class="member-meta">
@@ -419,62 +414,55 @@
                                         <div class="member-sub">
                                             {% if mb.genero %}{{ mb.get_genero_display }}{% endif %}
                                         </div>
-
                                     </div>
                                 </div>
                             </td>
-<td>
-  <a href="{% url 'miembros_app:detalle' mb.pk %}"
-     class="odoo-badge odoo-badge-neutral">
-      {{ mb.codigo_miembro|default:"—" }}
-  </a>
-</td>
 
+                            <td data-label="Código">
+                                <span class="code-badge">{{ mb.codigo_miembro|default:"—" }}</span>
+                            </td>
 
-
-                            <td>
+                            <td data-label="Estado">
                                 {% if mb.estado_miembro == "activo" %}
-                                    <span class="odoo-badge odoo-badge-success">Activo</span>
+                                    <span class="status-chip status-active">Activo</span>
                                 {% elif mb.estado_miembro == "pasivo" %}
-                                    <span class="odoo-badge odoo-badge-warning">Pasivo</span>
+                                    <span class="status-chip status-warning">Pasivo</span>
                                 {% elif mb.estado_miembro == "observacion" %}
-                                    <span class="odoo-badge odoo-badge-info">Observación</span>
+                                    <span class="status-chip status-info">Observación</span>
                                 {% elif mb.estado_miembro == "disciplina" %}
-                                    <span class="odoo-badge odoo-badge-danger">Disciplina</span>
+                                    <span class="status-chip status-danger">Disciplina</span>
                                 {% elif mb.estado_miembro == "catecumeno" %}
-                                    <span class="odoo-badge odoo-badge-info">Catecúmeno</span>
+                                    <span class="status-chip status-info">Catecúmeno</span>
                                 {% else %}
-                                    <span class="odoo-badge odoo-badge-neutral">Menor</span>
+                                    <span class="status-chip status-neutral">Menor</span>
                                 {% endif %}
                             </td>
 
-                            <td>
-                                {% if mb.edad is not None %}
-                                    {{ mb.edad }} años
+                            <td data-label="Edad">
+                                <span class="info-chip">
+                                    {% if mb.edad is not None %}{{ mb.edad }}{% else %}—{% endif %}
+                                </span>
+                            </td>
+
+                            <td data-label="Categoría">
+                                <span class="info-chip">{{ mb.get_categoria_edad_display|default:"—" }}</span>
+                            </td>
+
+                            <td data-label="Desde">
+                                {% if m.fecha_ingreso %}
+                                    {{ m.fecha_ingreso|date:"d/m/Y" }}
                                 {% else %}
                                     —
                                 {% endif %}
                             </td>
 
-                            <td>
-                                {{ mb.get_categoria_edad_display|default:"—" }}
+                            <td data-label="Hasta">
+                                {% if m.fecha_salida %}
+                                    {{ m.fecha_salida|date:"d/m/Y" }}
+                                {% else %}
+                                    —
+                                {% endif %}
                             </td>
-                            <td>
-                            {% if m.fecha_ingreso %}
-                                {{ m.fecha_ingreso|date:"d/m/Y" }}
-                            {% else %}
-                                —
-                            {% endif %}
-                            </td>
-
-                            <td>
-                            {% if m.fecha_salida %}
-                                {{ m.fecha_salida|date:"d/m/Y" }}
-                            {% else %}
-                                —
-                            {% endif %}
-                            </td>
-
                         </tr>
                         {% endwith %}
                         {% endfor %}
@@ -534,7 +522,75 @@
     </div>
   </div>
 
-  <!-- Filtros de miembros -->
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MOBILE: Barra de filtros compacta + Bottom Sheet
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="mobile-filter-bar">
+    <input type="text" class="search-input" id="mobile-filtro-buscar" placeholder="Buscar miembro..." oninput="filtrarMiembros()">
+    <button type="button" class="filter-toggle-btn" onclick="toggleFilterSheet()">
+      <span class="material-icons">tune</span>
+      <span class="filter-badge" id="filter-badge" style="display:none;">0</span>
+    </button>
+  </div>
+
+  <!-- Contador móvil -->
+  <div class="mobile-member-count">
+    <span class="material-icons">people</span>
+    <span id="mobile-contador-miembros">{{ miembros_asignados|length }} miembro(s)</span>
+  </div>
+
+  <!-- Bottom Sheet de filtros -->
+  <div class="filter-bottom-sheet-overlay" id="filter-overlay" onclick="closeFilterSheet()"></div>
+  <div class="filter-bottom-sheet" id="filter-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h3><span class="material-icons">filter_list</span> Filtros</h3>
+      <button type="button" class="sheet-close" onclick="closeFilterSheet()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="filter-group">
+        <label>Rol</label>
+        <select id="mobile-filtro-rol" onchange="filtrarMiembros()">
+          <option value="">Todos los roles</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Estado</label>
+        <select id="mobile-filtro-estado" onchange="filtrarMiembros()">
+          <option value="">Todos los estados</option>
+          <option value="Activo">Activo</option>
+          <option value="Pasivo">Pasivo</option>
+          <option value="Observación">Observación</option>
+          <option value="Disciplina">Disciplina</option>
+          <option value="Catecúmeno">Catecúmeno</option>
+          <option value="Nuevo creyente">Nuevo creyente</option>
+          <option value="Menor">Menor</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Categoría</label>
+        <select id="mobile-filtro-categoria" onchange="filtrarMiembros()">
+          <option value="">Todas las categorías</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Género</label>
+        <select id="mobile-filtro-genero" onchange="filtrarMiembros()">
+          <option value="">Todos</option>
+          <option value="Masculino">Masculino</option>
+          <option value="Femenino">Femenino</option>
+        </select>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="btn-clear" onclick="limpiarFiltrosMobile()">Limpiar</button>
+      <button type="button" class="btn-apply" onclick="closeFilterSheet()">Aplicar</button>
+    </div>
+  </div>
+
+  <!-- Filtros de miembros (DESKTOP) -->
   <div class="miembros-filtros" style="margin-bottom: 16px;">
     <div class="filtros-row">
       <div class="filtro-group">
@@ -588,7 +644,7 @@
 
   {% if miembros_asignados %}
   <div class="odoo-table-container">
-    <table class="odoo-table">
+    <table class="odoo-table" id="tabla-miembros">
       <thead>
         <tr>
           <th>Rol</th>
@@ -598,29 +654,28 @@
           <th>Edad</th>
           <th>Categoría</th>
           <th>Desde</th>
-            <th>Hasta</th>
-
+          <th>Hasta</th>
         </tr>
       </thead>
       <tbody>
         {% for m in miembros_asignados %}
         {% with mb=m.miembo_fk %}
-        <tr>
-          <td>
+        <tr class="member-card">
+          <td data-label="Rol">
             {% if m.rol %}
               <span class="odoo-badge odoo-badge-info">{{ m.rol.nombre }}</span>
             {% else %}
-              <span class="odoo-badge odoo-badge-neutral">—</span>
+              <span class="odoo-badge odoo-badge-neutral">Miembro</span>
             {% endif %}
           </td>
 
-          <td>
+          <td data-label="Miembro">
             <div class="member-cell">
               <div class="member-avatar">
                 {% if mb.foto %}
                   <img src="{{ mb.foto.url }}" alt="{{ mb }}">
                 {% else %}
-                  <span class="material-icons" style="font-size:18px;color:#6c757d;">person</span>
+                  <span class="material-icons" style="font-size:22px;color:#0097A7;">person</span>
                 {% endif %}
               </div>
               <div class="member-meta">
@@ -636,57 +691,53 @@
             </div>
           </td>
 
-          <td>
-            <a href="{% url 'miembros_app:detalle' mb.pk %}" class="odoo-badge odoo-badge-neutral">
-              {{ mb.codigo_miembro|default:"—" }}
-            </a>
+          <td data-label="Código">
+            <span class="code-badge">{{ mb.codigo_miembro|default:"—" }}</span>
           </td>
 
-      <td>
-        {% if mb.estado_miembro == "activo" %}
-          <span class="odoo-badge odoo-badge-success">Activo</span>
-        {% elif mb.estado_miembro == "pasivo" %}
-          <span class="odoo-badge odoo-badge-warning">Pasivo</span>
-        {% elif mb.estado_miembro == "observacion" %}
-          <span class="odoo-badge odoo-badge-info">Observación</span>
-        {% elif mb.estado_miembro == "disciplina" %}
-          <span class="odoo-badge odoo-badge-danger">Disciplina</span>
-        {% elif mb.estado_miembro == "catecumeno" %}
-          <span class="odoo-badge odoo-badge-info">Catecúmeno</span>
-        {% elif mb.nuevo_creyente %}
-          <span class="odoo-badge odoo-badge-info">Nuevo creyente</span>
-        {% else %}
-          <span class="odoo-badge odoo-badge-neutral">Menor</span>
-        {% endif %}
-      </td>
+          <td data-label="Estado">
+            {% if mb.estado_miembro == "activo" %}
+              <span class="status-chip status-active">Activo</span>
+            {% elif mb.estado_miembro == "pasivo" %}
+              <span class="status-chip status-warning">Pasivo</span>
+            {% elif mb.estado_miembro == "observacion" %}
+              <span class="status-chip status-info">Observación</span>
+            {% elif mb.estado_miembro == "disciplina" %}
+              <span class="status-chip status-danger">Disciplina</span>
+            {% elif mb.estado_miembro == "catecumeno" %}
+              <span class="status-chip status-info">Catecúmeno</span>
+            {% elif mb.nuevo_creyente %}
+              <span class="status-chip status-purple">Nuevo creyente</span>
+            {% else %}
+              <span class="status-chip status-neutral">Menor</span>
+            {% endif %}
+          </td>
 
-          <td>
-            {% if mb.edad is not None %}
-              {{ mb.edad }} años
+          <td data-label="Edad">
+            <span class="info-chip">
+              {% if mb.edad is not None %}{{ mb.edad }}{% else %}—{% endif %}
+            </span>
+          </td>
+
+          <td data-label="Categoría">
+            <span class="info-chip">{{ mb.get_categoria_edad_display|default:"—" }}</span>
+          </td>
+
+          <td data-label="Desde">
+            {% if m.fecha_ingreso %}
+              {{ m.fecha_ingreso|date:"d/m/Y" }}
             {% else %}
               —
             {% endif %}
           </td>
 
-          <td>
-            {{ mb.get_categoria_edad_display|default:"—" }}
-          </td>
-          <td>
-            {% if m.fecha_ingreso %}
-                {{ m.fecha_ingreso|date:"d/m/Y" }}
-            {% else %}
-                —
-            {% endif %}
-            </td>
-
-            <td>
+          <td data-label="Hasta">
             {% if m.fecha_salida %}
-                {{ m.fecha_salida|date:"d/m/Y" }}
+              {{ m.fecha_salida|date:"d/m/Y" }}
             {% else %}
-                —
+              —
             {% endif %}
-            </td>
-
+          </td>
         </tr>
         {% endwith %}
         {% endfor %}
@@ -732,13 +783,13 @@
         {% for m in nuevos_creyentes_asignados %}
         {% with mb=m.miembo_fk %}
         <tr>
-          <td>
+          <td data-label="Miembro">
             <div class="member-cell">
               <div class="member-avatar">
                 {% if mb.foto %}
                   <img src="{{ mb.foto.url }}" alt="{{ mb }}">
                 {% else %}
-                  <span class="material-icons" style="font-size:18px;color:#6c757d;">person</span>
+                  <span class="material-icons" style="font-size:22px;color:#0097A7;">person</span>
                 {% endif %}
               </div>
               <div class="member-meta">
@@ -754,29 +805,25 @@
             </div>
           </td>
 
-          <td>
-            <a href="{% url 'miembros_app:detalle' mb.pk %}" class="odoo-badge odoo-badge-neutral">
-              {{ mb.codigo_miembro|default:"—" }}
-            </a>
+          <td data-label="Código">
+            <span class="code-badge">{{ mb.codigo_miembro|default:"—" }}</span>
           </td>
 
-          <td>
-            <span class="odoo-badge odoo-badge-info">Nuevo creyente</span>
+          <td data-label="Estado">
+            <span class="status-chip status-purple">Nuevo creyente</span>
           </td>
 
-          <td>
-            {% if mb.edad is not None %}
-              {{ mb.edad }} años
-            {% else %}
-              —
-            {% endif %}
+          <td data-label="Edad">
+            <span class="info-chip">
+              {% if mb.edad is not None %}{{ mb.edad }}{% else %}—{% endif %}
+            </span>
           </td>
 
-          <td>
-            {{ mb.get_categoria_edad_display|default:"—" }}
+          <td data-label="Categoría">
+            <span class="info-chip">{{ mb.get_categoria_edad_display|default:"—" }}</span>
           </td>
 
-          <td>
+          <td data-label="Desde">
             {% if m.fecha_ingreso %}
               {{ m.fecha_ingreso|date:"d/m/Y" }}
             {% else %}
@@ -784,7 +831,7 @@
             {% endif %}
           </td>
 
-          <td>
+          <td data-label="Hasta">
             {% if m.fecha_salida %}
               {{ m.fecha_salida|date:"d/m/Y" }}
             {% else %}
@@ -903,31 +950,26 @@
 
     <!-- Resumen de visitas -->
     {% if visitas_resumen.total %}
-    <div style="
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        gap: 12px;
-        margin-bottom: 20px;
-    ">
-        <div style="background: #E0F7FA; padding: 16px; border-radius: 10px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 700; color: #00838F;">{{ visitas_resumen.total }}</div>
-            <div style="font-size: 11px; color: #00695C; text-transform: uppercase;">Total</div>
+    <div class="visitas-resumen-grid">
+        <div class="visitas-stat visitas-stat-total">
+            <div class="visitas-stat-num">{{ visitas_resumen.total }}</div>
+            <div class="visitas-stat-label">Total</div>
         </div>
-        <div style="background: #E8F5E9; padding: 16px; border-radius: 10px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 700; color: #2E7D32;">{{ visitas_resumen.primera_vez }}</div>
-            <div style="font-size: 11px; color: #1B5E20; text-transform: uppercase;">Primera vez</div>
+        <div class="visitas-stat visitas-stat-primera">
+            <div class="visitas-stat-num">{{ visitas_resumen.primera_vez }}</div>
+            <div class="visitas-stat-label">1ª vez</div>
         </div>
-        <div style="background: #FFF3E0; padding: 16px; border-radius: 10px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 700; color: #E65100;">{{ visitas_resumen.recurrentes }}</div>
-            <div style="font-size: 11px; color: #BF360C; text-transform: uppercase;">Recurrentes</div>
+        <div class="visitas-stat visitas-stat-recurrente">
+            <div class="visitas-stat-num">{{ visitas_resumen.recurrentes }}</div>
+            <div class="visitas-stat-label">Recurrentes</div>
         </div>
-        <div style="background: #E3F2FD; padding: 16px; border-radius: 10px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 700; color: #1565C0;">{{ visitas_resumen.masculinos }}</div>
-            <div style="font-size: 11px; color: #0D47A1; text-transform: uppercase;">Hombres</div>
+        <div class="visitas-stat visitas-stat-hombres">
+            <div class="visitas-stat-num">{{ visitas_resumen.masculinos }}</div>
+            <div class="visitas-stat-label">Hombres</div>
         </div>
-        <div style="background: #FCE4EC; padding: 16px; border-radius: 10px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 700; color: #C2185B;">{{ visitas_resumen.femeninos }}</div>
-            <div style="font-size: 11px; color: #880E4F; text-transform: uppercase;">Mujeres</div>
+        <div class="visitas-stat visitas-stat-mujeres">
+            <div class="visitas-stat-num">{{ visitas_resumen.femeninos }}</div>
+            <div class="visitas-stat-label">Mujeres</div>
         </div>
     </div>
     {% endif %}
@@ -951,90 +993,72 @@
             <tbody>
                 {% for visita in visitas_unidad %}
                 <tr>
-                    <td>
+                    <td data-label="Nombre">
                         <div style="font-weight: 500; color: #333;">{{ visita.nombre|default:"—" }}</div>
                         {% if visita.primera_vez %}
-                        <span class="odoo-badge odoo-badge-success" style="font-size: 10px;">1ª VEZ</span>
+                        <span class="status-chip status-active" style="font-size: 10px;">1ª VEZ</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-label="Teléfono">
                         {% if visita.telefono %}
-                        <a href="tel:{{ visita.telefono }}" style="color: #0097A7; text-decoration: none;">
+                        <a href="tel:{{ visita.telefono }}" style="color: #0097A7; text-decoration: none; font-weight: 500;">
                             {{ visita.telefono }}
                         </a>
                         {% else %}
                         <span style="color: #999;">—</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-label="Género">
                         {% if visita.genero == "M" %}
-                        <span style="color: #1565C0;">
-                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">male</span>
+                        <span class="info-chip" style="background: #dbeafe; color: #1e40af;">
+                            <span class="material-icons" style="font-size: 14px; vertical-align: middle;">male</span>
                             Hombre
                         </span>
                         {% elif visita.genero == "F" %}
-                        <span style="color: #C2185B;">
-                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">female</span>
+                        <span class="info-chip" style="background: #fce7f3; color: #be185d;">
+                            <span class="material-icons" style="font-size: 14px; vertical-align: middle;">female</span>
                             Mujer
                         </span>
                         {% else %}
                         <span style="color: #999;">—</span>
                         {% endif %}
                     </td>
-                    <td style="text-align: center;">
+                    <td data-label="Edad">
                         {% if visita.edad %}
-                        <span style="
-                            display: inline-block;
-                            min-width: 32px;
-                            padding: 4px 8px;
-                            background: #F5F5F5;
-                            border-radius: 6px;
-                            font-weight: 600;
-                            color: #555;
-                        ">{{ visita.edad }}</span>
+                        <span class="info-chip">{{ visita.edad }}</span>
                         {% else %}
                         <span style="color: #999;">—</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-label="Clasificación">
                         {% if visita.clasificacion %}
-                        <span class="odoo-badge odoo-badge-neutral">{{ visita.clasificacion.nombre }}</span>
+                        <span class="info-chip">{{ visita.clasificacion.nombre }}</span>
                         {% else %}
                         <span style="color: #999;">—</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-label="Última visita">
                         {% if visita.fecha_ultima_visita %}
                         <span style="white-space: nowrap;">{{ visita.fecha_ultima_visita|date:"d/m/Y" }}</span>
                         {% else %}
                         <span style="color: #999;">—</span>
                         {% endif %}
                     </td>
-                    <td style="text-align: center;">
-                        <span style="
-                            display: inline-flex;
-                            align-items: center;
-                            justify-content: center;
-                            min-width: 28px;
-                            height: 24px;
-                            padding: 0 8px;
-                            background: {% if visita.cantidad_visitas > 1 %}#FFF3E0{% else %}#E8F5E9{% endif %};
-                            color: {% if visita.cantidad_visitas > 1 %}#E65100{% else %}#2E7D32{% endif %};
-                            border-radius: 12px;
-                            font-size: 12px;
+                    <td data-label="Visitas">
+                        <span class="info-chip" style="
+                            background: {% if visita.cantidad_visitas > 1 %}#fef3c7{% else %}#dcfce7{% endif %};
+                            color: {% if visita.cantidad_visitas > 1 %}#92400e{% else %}#166534{% endif %};
                             font-weight: 700;
                         ">{{ visita.cantidad_visitas|default:1 }}</span>
                     </td>
-                    <td>
+                    <td data-label="Contactar">
                         {% if visita.desea_contacto %}
-                        <span class="odoo-badge odoo-badge-success">
+                        <span class="status-chip status-active">
                             <span class="material-icons" style="font-size: 14px;">check</span>
                             Sí
                         </span>
                         {% else %}
-                        <span class="odoo-badge odoo-badge-neutral">
-                            No
-                        </span>
+                        <span class="status-chip status-neutral">No</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -1480,6 +1504,885 @@ function actualizarLinkActividades(){
      ESTILOS
      ══════════════════════════════════════════════════════════════════════════ -->
 <style>
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VISITAS - Resumen Grid (Desktop)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.visitas-resumen-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.visitas-stat {
+    padding: 16px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.visitas-stat-num {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.visitas-stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.visitas-stat-total { background: #E0F7FA; }
+.visitas-stat-total .visitas-stat-num { color: #00838F; }
+.visitas-stat-total .visitas-stat-label { color: #00695C; }
+
+.visitas-stat-primera { background: #E8F5E9; }
+.visitas-stat-primera .visitas-stat-num { color: #2E7D32; }
+.visitas-stat-primera .visitas-stat-label { color: #1B5E20; }
+
+.visitas-stat-recurrente { background: #FFF3E0; }
+.visitas-stat-recurrente .visitas-stat-num { color: #E65100; }
+.visitas-stat-recurrente .visitas-stat-label { color: #BF360C; }
+
+.visitas-stat-hombres { background: #E3F2FD; }
+.visitas-stat-hombres .visitas-stat-num { color: #1565C0; }
+.visitas-stat-hombres .visitas-stat-label { color: #0D47A1; }
+
+.visitas-stat-mujeres { background: #FCE4EC; }
+.visitas-stat-mujeres .visitas-stat-num { color: #C2185B; }
+.visitas-stat-mujeres .visitas-stat-label { color: #880E4F; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE FIRST - RESPONSIVE STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media screen and (max-width: 768px) {
+    
+    /* CONTROL BAR */
+    .odoo-control-bar {
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 10px !important;
+    }
+    
+    .odoo-control-left,
+    .odoo-control-right {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+    }
+    
+    .odoo-control-right {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+    
+    .odoo-control-right .odoo-btn {
+        justify-content: center !important;
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+    }
+    
+    /* HEADER */
+    .odoo-detail-header {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        padding: 16px !important;
+        gap: 12px !important;
+        position: relative !important;
+    }
+    
+    .odoo-detail-avatar {
+        width: 70px !important;
+        height: 70px !important;
+    }
+    
+    .odoo-detail-name {
+        font-size: 18px !important;
+    }
+    
+    .odoo-detail-quick {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+    
+    .odoo-detail-code {
+        position: absolute !important;
+        top: 12px !important;
+        right: 12px !important;
+        text-align: right !important;
+    }
+    
+    /* TABS */
+    .odoo-detail-tabs {
+        padding: 0 8px !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+    }
+    
+    .odoo-detail-tabs::-webkit-scrollbar {
+        display: none !important;
+    }
+    
+    .odoo-tab {
+        padding: 10px 8px !important;
+        font-size: 11px !important;
+        flex-shrink: 0 !important;
+        flex-direction: column !important;
+        gap: 2px !important;
+    }
+    
+    .odoo-tab .material-icons {
+        font-size: 18px !important;
+    }
+    
+    /* TAB CONTENTS */
+    .odoo-tab-contents {
+        padding: 12px !important;
+    }
+    
+    /* CARD HEADER - Ocultar en móvil, usar FAB */
+    .odoo-card-header {
+        flex-direction: column !important;
+        gap: 12px !important;
+        align-items: stretch !important;
+    }
+    
+    .odoo-card-header h3 {
+        font-size: 15px !important;
+        text-align: center !important;
+        margin: 0 !important;
+    }
+    
+    .odoo-card-header .odoo-actions {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 6px !important;
+    }
+    
+    .odoo-card-header .odoo-actions .odoo-btn {
+        justify-content: center !important;
+        padding: 8px 4px !important;
+        font-size: 11px !important;
+    }
+    
+    .odoo-card-header .odoo-actions .odoo-btn .material-icons {
+        font-size: 16px !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════
+       FILTROS - BOTTOM SHEET
+       ═══════════════════════════════════════════════════════════════════════ */
+    .miembros-filtros {
+        display: none !important;
+    }
+    
+    /* Barra superior de filtros compacta */
+    .mobile-filter-bar {
+        display: flex !important;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .mobile-filter-bar .search-input {
+        flex: 1;
+        border: none;
+        background: #f8fafc;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 14px;
+        outline: none;
+    }
+    
+    .mobile-filter-bar .search-input:focus {
+        background: #f1f5f9;
+    }
+    
+    .mobile-filter-bar .filter-toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        background: #0097A7;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .mobile-filter-bar .filter-toggle-btn .material-icons {
+        font-size: 22px;
+    }
+    
+    .mobile-filter-bar .filter-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 18px;
+        height: 18px;
+        background: #ef4444;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Bottom Sheet Overlay */
+    .filter-bottom-sheet-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .filter-bottom-sheet-overlay.active {
+        display: block;
+        opacity: 1;
+    }
+    
+    /* Bottom Sheet */
+    .filter-bottom-sheet {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #fff;
+        border-radius: 20px 20px 0 0;
+        z-index: 9999;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        max-height: 70vh;
+        overflow-y: auto;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .filter-bottom-sheet.active {
+        transform: translateY(0);
+    }
+    
+    .filter-bottom-sheet .sheet-handle {
+        width: 40px;
+        height: 4px;
+        background: #d1d5db;
+        border-radius: 2px;
+        margin: 12px auto;
+    }
+    
+    .filter-bottom-sheet .sheet-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px 16px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .filter-bottom-sheet .sheet-header h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .filter-bottom-sheet .sheet-header h3 .material-icons {
+        color: #0097A7;
+    }
+    
+    .filter-bottom-sheet .sheet-close {
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: #f3f4f6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #6b7280;
+    }
+    
+    .filter-bottom-sheet .sheet-body {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .filter-bottom-sheet .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .filter-bottom-sheet .filter-group label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .filter-bottom-sheet .filter-group select {
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 15px;
+        background: #fff;
+        color: #1f2937;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 18px;
+    }
+    
+    .filter-bottom-sheet .filter-group select:focus {
+        outline: none;
+        border-color: #0097A7;
+        box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.1);
+    }
+    
+    .filter-bottom-sheet .sheet-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding: 16px 20px 24px;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+    
+    .filter-bottom-sheet .btn-clear {
+        padding: 14px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #6b7280;
+        cursor: pointer;
+    }
+    
+    .filter-bottom-sheet .btn-apply {
+        padding: 14px;
+        border: none;
+        background: #0097A7;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════
+       TARJETAS DE PERSONAS - DISEÑO COMPACTO Y LIMPIO
+       Aplica a: Miembros, Liderazgo, Equipo, Nuevos creyentes
+       ═══════════════════════════════════════════════════════════════════════ */
+    #tab-miembros .odoo-table-container,
+    #tab-liderazgo .odoo-table-container,
+    #tab-equipo .odoo-table-container,
+    #tab-nuevos-creyentes .odoo-table-container,
+    #tab-visitas .odoo-table-container {
+        overflow-x: visible !important;
+    }
+    
+    #tab-miembros .odoo-table,
+    #tab-liderazgo .odoo-table,
+    #tab-equipo .odoo-table,
+    #tab-nuevos-creyentes .odoo-table,
+    #tab-visitas .odoo-table {
+        display: block !important;
+    }
+    
+    #tab-miembros .odoo-table thead,
+    #tab-liderazgo .odoo-table thead,
+    #tab-equipo .odoo-table thead,
+    #tab-nuevos-creyentes .odoo-table thead,
+    #tab-visitas .odoo-table thead {
+        display: none !important;
+    }
+    
+    #tab-miembros .odoo-table tbody,
+    #tab-liderazgo .odoo-table tbody,
+    #tab-equipo .odoo-table tbody,
+    #tab-nuevos-creyentes .odoo-table tbody,
+    #tab-visitas .odoo-table tbody {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+    
+    #tab-miembros .odoo-table tbody tr,
+    #tab-liderazgo .odoo-table tbody tr,
+    #tab-equipo .odoo-table tbody tr,
+    #tab-nuevos-creyentes .odoo-table tbody tr,
+    #tab-visitas .odoo-table tbody tr {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        background: #fff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 14px !important;
+        padding: 12px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+        position: relative !important;
+    }
+    
+    #tab-miembros .odoo-table tbody tr:hover,
+    #tab-miembros .odoo-table tbody tr:active,
+    #tab-liderazgo .odoo-table tbody tr:hover,
+    #tab-equipo .odoo-table tbody tr:hover,
+    #tab-nuevos-creyentes .odoo-table tbody tr:hover,
+    #tab-visitas .odoo-table tbody tr:hover {
+        border-color: #0097A7 !important;
+        background: #f0fdfa !important;
+    }
+    
+    #tab-miembros .odoo-table td,
+    #tab-liderazgo .odoo-table td,
+    #tab-equipo .odoo-table td,
+    #tab-nuevos-creyentes .odoo-table td,
+    #tab-visitas .odoo-table td {
+        border: none !important;
+        padding: 0 !important;
+    }
+    
+    #tab-miembros .odoo-table td::before,
+    #tab-liderazgo .odoo-table td::before,
+    #tab-equipo .odoo-table td::before,
+    #tab-nuevos-creyentes .odoo-table td::before,
+    #tab-visitas .odoo-table td::before {
+        display: none !important;
+    }
+    
+    /* Ocultar columnas secundarias en móvil */
+    .odoo-table td[data-label="Código"],
+    .odoo-table td[data-label="Desde"],
+    .odoo-table td[data-label="Hasta"],
+    .odoo-table td[data-label="Fecha Inicio"],
+    .odoo-table td[data-label="Hasta Final"] {
+        display: none !important;
+    }
+    
+    /* ROL - Badge en esquina superior derecha */
+    #tab-miembros .odoo-table td:first-child,
+    #tab-liderazgo .odoo-table td:first-child,
+    #tab-equipo .odoo-table td:first-child,
+    #tab-nuevos-creyentes .odoo-table td:first-child {
+        position: absolute !important;
+        top: 10px !important;
+        right: 10px !important;
+    }
+    
+    #tab-miembros .odoo-table td:first-child .odoo-badge,
+    #tab-liderazgo .odoo-table td:first-child .odoo-badge,
+    #tab-equipo .odoo-table td:first-child .odoo-badge {
+        font-size: 10px !important;
+        padding: 3px 8px !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+    }
+    
+    /* MIEMBRO/PERSONA - Avatar + Nombre (segunda columna) */
+    #tab-miembros .odoo-table td:nth-child(2),
+    #tab-liderazgo .odoo-table td:nth-child(2),
+    #tab-equipo .odoo-table td:nth-child(2),
+    #tab-nuevos-creyentes .odoo-table td:first-child {
+        flex: 0 0 100% !important;
+        margin-bottom: 10px !important;
+        padding-right: 80px !important;
+    }
+    
+    .member-cell {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+    
+    .member-avatar {
+        width: 48px !important;
+        height: 48px !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, #e0f7fa, #b2ebf2) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .member-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        border-radius: 12px !important;
+    }
+    
+    .member-meta {
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+    
+    .member-name {
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        line-height: 1.3 !important;
+    }
+    
+    .member-name a {
+        color: #1f2937 !important;
+        text-decoration: none !important;
+    }
+    
+    .member-sub {
+        font-size: 12px !important;
+        color: #6b7280 !important;
+        margin-top: 2px !important;
+    }
+    
+    /* CHIPS DE INFO - Fila inferior */
+    #tab-miembros .odoo-table td[data-label="Estado"],
+    #tab-miembros .odoo-table td[data-label="Edad"],
+    #tab-miembros .odoo-table td[data-label="Categoría"],
+    #tab-equipo .odoo-table td[data-label="Estado"],
+    #tab-equipo .odoo-table td[data-label="Edad"],
+    #tab-equipo .odoo-table td[data-label="Categoría"],
+    #tab-nuevos-creyentes .odoo-table td[data-label="Estado"],
+    #tab-nuevos-creyentes .odoo-table td[data-label="Edad"],
+    #tab-nuevos-creyentes .odoo-table td[data-label="Categoría"] {
+        flex: 0 0 auto !important;
+        margin-right: 8px !important;
+    }
+    
+    /* Status chips */
+    .status-chip {
+        display: inline-flex !important;
+        align-items: center !important;
+        padding: 4px 10px !important;
+        border-radius: 20px !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+    }
+    
+    .status-active {
+        background: #dcfce7 !important;
+        color: #166534 !important;
+    }
+    
+    .status-warning {
+        background: #fef3c7 !important;
+        color: #92400e !important;
+    }
+    
+    .status-info {
+        background: #dbeafe !important;
+        color: #1e40af !important;
+    }
+    
+    .status-danger {
+        background: #fee2e2 !important;
+        color: #991b1b !important;
+    }
+    
+    .status-purple {
+        background: #ede9fe !important;
+        color: #5b21b6 !important;
+    }
+    
+    .status-neutral {
+        background: #f3f4f6 !important;
+        color: #4b5563 !important;
+    }
+    
+    /* Info chips (edad, categoría) */
+    .info-chip {
+        display: inline-flex !important;
+        align-items: center !important;
+        padding: 4px 10px !important;
+        background: #f1f5f9 !important;
+        border-radius: 20px !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
+        color: #475569 !important;
+    }
+    
+    .code-badge {
+        font-family: 'Roboto Mono', monospace !important;
+        font-size: 12px !important;
+        color: #6b7280 !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════
+       LIDERAZGO - Estilo especial (sin avatar, más compacto)
+       ═══════════════════════════════════════════════════════════════════════ */
+    #tab-liderazgo .odoo-table tbody tr {
+        padding: 14px !important;
+        padding-right: 90px !important;
+    }
+    
+    #tab-liderazgo .odoo-table td:nth-child(2) {
+        padding-right: 0 !important;
+        margin-bottom: 0 !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: #1f2937 !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════
+       VISITAS - Diseño de cards COMPACTAS para visitantes
+       ═══════════════════════════════════════════════════════════════════════ */
+    #tab-visitas .odoo-table tbody tr {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        grid-template-rows: auto auto !important;
+        gap: 4px 8px !important;
+        padding: 10px 12px !important;
+        border-radius: 10px !important;
+    }
+    
+    #tab-visitas .odoo-table td {
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 !important;
+        width: auto !important;
+    }
+    
+    #tab-visitas .odoo-table td::before {
+        display: none !important;
+    }
+    
+    /* Nombre - ocupa toda la primera fila */
+    #tab-visitas .odoo-table td[data-label="Nombre"] {
+        grid-column: 1 / -1 !important;
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: #1f2937 !important;
+        padding-bottom: 6px !important;
+        margin-bottom: 2px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    
+    /* Segunda fila: info compacta en línea */
+    #tab-visitas .odoo-table td[data-label="Teléfono"] {
+        order: 2 !important;
+        flex: 1 !important;
+    }
+    
+    #tab-visitas .odoo-table td[data-label="Teléfono"] a {
+        font-size: 13px !important;
+    }
+    
+    #tab-visitas .odoo-table td[data-label="Género"] {
+        order: 3 !important;
+    }
+    
+    #tab-visitas .odoo-table td[data-label="Género"] .info-chip {
+        padding: 2px 6px !important;
+        font-size: 10px !important;
+    }
+    
+    #tab-visitas .odoo-table td[data-label="Género"] .info-chip .material-icons {
+        font-size: 12px !important;
+    }
+    
+    #tab-visitas .odoo-table td[data-label="Edad"] {
+        order: 4 !important;
+    }
+    
+    #tab-visitas .odoo-table td[data-label="Edad"] .info-chip {
+        padding: 2px 6px !important;
+        font-size: 11px !important;
+        min-width: auto !important;
+    }
+    
+    /* Ocultar campos secundarios en móvil */
+    #tab-visitas .odoo-table td[data-label="Clasificación"],
+    #tab-visitas .odoo-table td[data-label="Última visita"] {
+        display: none !important;
+    }
+    
+    /* Visitas y Contactar en la esquina superior derecha como badges */
+    #tab-visitas .odoo-table td[data-label="Visitas"] {
+        position: absolute !important;
+        top: 8px !important;
+        right: 8px !important;
+        order: 1 !important;
+    }
+    
+    #tab-visitas .odoo-table td[data-label="Visitas"] .info-chip {
+        padding: 2px 6px !important;
+        font-size: 10px !important;
+        border-radius: 4px !important;
+    }
+    
+    #tab-visitas .odoo-table td[data-label="Contactar"] {
+        order: 5 !important;
+        margin-left: auto !important;
+    }
+    
+    #tab-visitas .odoo-table td[data-label="Contactar"] .status-chip {
+        padding: 2px 6px !important;
+        font-size: 10px !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════
+       VISITAS - Resumen compacto móvil
+       ═══════════════════════════════════════════════════════════════════════ */
+    .visitas-resumen-grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        margin-bottom: 12px !important;
+    }
+    
+    .visitas-stat {
+        flex: 1 1 auto !important;
+        min-width: 55px !important;
+        padding: 8px 10px !important;
+        border-radius: 8px !important;
+        text-align: center !important;
+    }
+    
+    .visitas-stat-num {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+    }
+    
+    .visitas-stat-label {
+        font-size: 9px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.3px !important;
+    }
+    
+    .visitas-stat-total { background: #E0F7FA; }
+    .visitas-stat-total .visitas-stat-num { color: #00838F; }
+    .visitas-stat-total .visitas-stat-label { color: #00695C; }
+    
+    .visitas-stat-primera { background: #E8F5E9; }
+    .visitas-stat-primera .visitas-stat-num { color: #2E7D32; }
+    .visitas-stat-primera .visitas-stat-label { color: #1B5E20; }
+    
+    .visitas-stat-recurrente { background: #FFF3E0; }
+    .visitas-stat-recurrente .visitas-stat-num { color: #E65100; }
+    .visitas-stat-recurrente .visitas-stat-label { color: #BF360C; }
+    
+    .visitas-stat-hombres { background: #E3F2FD; }
+    .visitas-stat-hombres .visitas-stat-num { color: #1565C0; }
+    .visitas-stat-hombres .visitas-stat-label { color: #0D47A1; }
+    
+    .visitas-stat-mujeres { background: #FCE4EC; }
+    .visitas-stat-mujeres .visitas-stat-num { color: #C2185B; }
+    .visitas-stat-mujeres .visitas-stat-label { color: #880E4F; }
+    
+    /* Criterios de visitas - más compacto */
+    #tab-visitas .odoo-card {
+        margin-bottom: 10px !important;
+    }
+    
+    #tab-visitas .odoo-card-header {
+        padding: 10px 12px !important;
+    }
+    
+    #tab-visitas .odoo-card-header h3 {
+        font-size: 13px !important;
+    }
+    
+    /* FIELDS GRID */
+    .odoo-fields-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+    
+    /* EMPTY STATE */
+    .odoo-empty {
+        padding: 24px 16px !important;
+        font-size: 13px !important;
+    }
+    
+    /* Contador de miembros */
+    .mobile-member-count {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: #f0fdfa;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #0097A7;
+        margin-bottom: 12px;
+    }
+    
+    .mobile-member-count .material-icons {
+        font-size: 16px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    
+    .odoo-control-right {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .odoo-detail-avatar {
+        width: 60px !important;
+        height: 60px !important;
+    }
+    
+    .odoo-detail-name {
+        font-size: 16px !important;
+    }
+    
+    .odoo-tab {
+        padding: 8px 6px !important;
+        font-size: 10px !important;
+    }
+    
+    .odoo-card-header .odoo-actions {
+        grid-template-columns: 1fr !important;
+    }
+    
+    #tab-miembros .odoo-table td[data-label="Miembro"] .member-avatar {
+        width: 44px !important;
+        height: 44px !important;
+    }
+    
+    #tab-miembros .odoo-table td[data-label="Miembro"] .member-name {
+        font-size: 14px !important;
+    }
+}
+
+/* Ocultar en desktop */
+@media screen and (min-width: 769px) {
+    .mobile-filter-bar,
+    .filter-bottom-sheet-overlay,
+    .filter-bottom-sheet,
+    .mobile-member-count {
+        display: none !important;
+    }
+}
 
 /* ─────────────────────────────────────────────
    REPORTES: Estilo Finanzas (Cards con iconos)
@@ -3441,6 +4344,199 @@ function mostrarToast(mensaje, tipo = 'info') {
         toast.classList.remove('active');
     }, 3000);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOTTOM SHEET FILTROS - MOBILE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function toggleFilterSheet() {
+    const sheet = document.getElementById('filter-sheet');
+    const overlay = document.getElementById('filter-overlay');
+    sheet.classList.add('active');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeFilterSheet() {
+    const sheet = document.getElementById('filter-sheet');
+    const overlay = document.getElementById('filter-overlay');
+    sheet.classList.remove('active');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+    updateFilterBadge();
+}
+
+function updateFilterBadge() {
+    const mobileRol = document.getElementById('mobile-filtro-rol')?.value || '';
+    const mobileEstado = document.getElementById('mobile-filtro-estado')?.value || '';
+    const mobileCategoria = document.getElementById('mobile-filtro-categoria')?.value || '';
+    const mobileGenero = document.getElementById('mobile-filtro-genero')?.value || '';
+    
+    let count = 0;
+    if (mobileRol) count++;
+    if (mobileEstado) count++;
+    if (mobileCategoria) count++;
+    if (mobileGenero) count++;
+    
+    const badge = document.getElementById('filter-badge');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+function limpiarFiltrosMobile() {
+    document.getElementById('mobile-filtro-buscar').value = '';
+    document.getElementById('mobile-filtro-rol').value = '';
+    document.getElementById('mobile-filtro-estado').value = '';
+    document.getElementById('mobile-filtro-categoria').value = '';
+    document.getElementById('mobile-filtro-genero').value = '';
+    
+    // Sincronizar con filtros desktop
+    if (document.getElementById('filtro-buscar')) document.getElementById('filtro-buscar').value = '';
+    if (document.getElementById('filtro-rol')) document.getElementById('filtro-rol').value = '';
+    if (document.getElementById('filtro-estado')) document.getElementById('filtro-estado').value = '';
+    if (document.getElementById('filtro-categoria')) document.getElementById('filtro-categoria').value = '';
+    if (document.getElementById('filtro-genero')) document.getElementById('filtro-genero').value = '';
+    
+    filtrarMiembros();
+    updateFilterBadge();
+}
+
+// Sincronizar filtros mobile <-> desktop
+function syncFilters(source) {
+    const isMobile = source.startsWith('mobile-');
+    
+    const fields = ['filtro-buscar', 'filtro-rol', 'filtro-estado', 'filtro-categoria', 'filtro-genero'];
+    
+    fields.forEach(field => {
+        const mobileEl = document.getElementById('mobile-' + field);
+        const desktopEl = document.getElementById(field);
+        
+        if (mobileEl && desktopEl) {
+            if (isMobile) {
+                desktopEl.value = mobileEl.value;
+            } else {
+                mobileEl.value = desktopEl.value;
+            }
+        }
+    });
+}
+
+// Modificar filtrarMiembros para soportar ambos
+const originalFiltrarMiembros = typeof filtrarMiembros === 'function' ? filtrarMiembros : null;
+
+function filtrarMiembrosUnificado() {
+    // Obtener valores de ambas fuentes
+    const buscarDesktop = document.getElementById('filtro-buscar')?.value || '';
+    const buscarMobile = document.getElementById('mobile-filtro-buscar')?.value || '';
+    const buscar = buscarDesktop || buscarMobile;
+    
+    const rolDesktop = document.getElementById('filtro-rol')?.value || '';
+    const rolMobile = document.getElementById('mobile-filtro-rol')?.value || '';
+    const rol = rolDesktop || rolMobile;
+    
+    const estadoDesktop = document.getElementById('filtro-estado')?.value || '';
+    const estadoMobile = document.getElementById('mobile-filtro-estado')?.value || '';
+    const estado = estadoDesktop || estadoMobile;
+    
+    const categoriaDesktop = document.getElementById('filtro-categoria')?.value || '';
+    const categoriaMobile = document.getElementById('mobile-filtro-categoria')?.value || '';
+    const categoria = categoriaDesktop || categoriaMobile;
+    
+    const generoDesktop = document.getElementById('filtro-genero')?.value || '';
+    const generoMobile = document.getElementById('mobile-filtro-genero')?.value || '';
+    const genero = generoDesktop || generoMobile;
+    
+    const tabla = document.querySelector('#tab-miembros .odoo-table tbody');
+    if (!tabla) return;
+    
+    const filas = tabla.querySelectorAll('tr');
+    let visibles = 0;
+    
+    filas.forEach(fila => {
+        const texto = fila.textContent.toLowerCase();
+        const rolFila = fila.querySelector('td[data-label="Rol"]')?.textContent.trim() || '';
+        const estadoFila = fila.querySelector('td[data-label="Estado"]')?.textContent.trim() || '';
+        const categoriaFila = fila.querySelector('td[data-label="Categoría"]')?.textContent.trim() || '';
+        const generoFila = fila.querySelector('td[data-label="Miembro"] .member-sub')?.textContent.trim() || '';
+        
+        let mostrar = true;
+        
+        if (buscar && !texto.includes(buscar.toLowerCase())) {
+            mostrar = false;
+        }
+        
+        if (rol && !rolFila.includes(rol)) {
+            mostrar = false;
+        }
+        
+        if (estado && !estadoFila.includes(estado)) {
+            mostrar = false;
+        }
+        
+        if (categoria && !categoriaFila.includes(categoria)) {
+            mostrar = false;
+        }
+        
+        if (genero && !generoFila.includes(genero)) {
+            mostrar = false;
+        }
+        
+        fila.classList.toggle('filtro-oculto', !mostrar);
+        if (mostrar) visibles++;
+    });
+    
+    // Actualizar contadores
+    const contador = document.getElementById('contador-miembros');
+    const contadorMobile = document.getElementById('mobile-contador-miembros');
+    const texto = visibles + ' miembro(s)';
+    
+    if (contador) contador.textContent = texto;
+    if (contadorMobile) contadorMobile.textContent = texto;
+    
+    updateFilterBadge();
+}
+
+// Reemplazar la función global
+if (typeof window !== 'undefined') {
+    window.filtrarMiembros = filtrarMiembrosUnificado;
+}
+
+// Inicializar opciones de roles y categorías en mobile
+document.addEventListener('DOMContentLoaded', function() {
+    // Copiar opciones de rol
+    const rolDesktop = document.getElementById('filtro-rol');
+    const rolMobile = document.getElementById('mobile-filtro-rol');
+    if (rolDesktop && rolMobile) {
+        Array.from(rolDesktop.options).forEach((opt, i) => {
+            if (i > 0) { // Saltar "Todos"
+                const newOpt = document.createElement('option');
+                newOpt.value = opt.value;
+                newOpt.textContent = opt.textContent;
+                rolMobile.appendChild(newOpt);
+            }
+        });
+    }
+    
+    // Copiar opciones de categoría
+    const catDesktop = document.getElementById('filtro-categoria');
+    const catMobile = document.getElementById('mobile-filtro-categoria');
+    if (catDesktop && catMobile) {
+        Array.from(catDesktop.options).forEach((opt, i) => {
+            if (i > 0) { // Saltar "Todas"
+                const newOpt = document.createElement('option');
+                newOpt.value = opt.value;
+                newOpt.textContent = opt.textContent;
+                catMobile.appendChild(newOpt);
+            }
+        });
+    }
+});
 </script>
 
 <!-- Librerías jsPDF para generación de PDF -->
