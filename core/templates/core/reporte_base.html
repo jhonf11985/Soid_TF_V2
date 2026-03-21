@@ -3,7 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Reporte · Soid_Tf_2{% endblock %}</title>
+    <title>{% block title %}Reporte · SOID{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Tipografía y estilos globales del sistema -->
@@ -11,7 +11,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'core/css/main.css' %}">
 
+    <!-- jsPDF para generación de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
     <style>
+        :root {
+            --primary-color: #0097A7;
+            --primary-dark: #00838F;
+            --primary-light: #B2EBF2;
+            --secondary-color: #FFAB91;
+            --text-dark: #111827;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --bg-light: #f9fafb;
+            --success-color: #25D366;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -21,16 +37,101 @@
         html, body {
             font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #f3f4f6;
-            color: #111827;
+            color: var(--text-dark);
             line-height: 1.5;
+        }
+
+        /* ========================================
+           BARRA DE ACCIONES (NUEVO)
+           ======================================== */
+        .report-actions-bar {
+            max-width: 980px;
+            margin: 16px auto 0 auto;
+            padding: 12px 16px;
+            background: #ffffff;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 -2px 10px rgba(15,23,42,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .report-actions-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .report-actions-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .report-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .report-btn .material-icons {
+            font-size: 18px;
+        }
+
+        .report-btn-back {
+            background: #f3f4f6;
+            color: var(--text-dark);
+        }
+
+        .report-btn-back:hover {
+            background: #e5e7eb;
+        }
+
+        .report-btn-secondary {
+            background: #f3f4f6;
+            color: var(--text-dark);
+        }
+
+        .report-btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .report-btn-primary {
+            background: var(--primary-color);
+            color: #ffffff;
+        }
+
+        .report-btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .report-btn-success {
+            background: var(--success-color);
+            color: #ffffff;
+        }
+
+        .report-btn-success:hover {
+            background: #1ebe5d;
         }
 
         .report-wrapper {
             max-width: 980px;
-            margin: 16px auto 32px auto;
+            margin: 0 auto 32px auto;
             background: #ffffff;
             padding: 24px 28px;
-            border-radius: 12px;
+            border-radius: 0 0 12px 12px;
             box-shadow: 0 10px 30px rgba(15,23,42,0.12);
             position: relative;
         }
@@ -46,7 +147,7 @@
             text-align: center;
             margin-bottom: 16px;
             padding-bottom: 12px;
-            border-bottom: 2px solid #e5e7eb;
+            border-bottom: 2px solid var(--border-color);
             position: relative;
             z-index: 2;
         }
@@ -64,7 +165,7 @@
             font-size: 20px;
             font-weight: 700;
             letter-spacing: 0.5px;
-            color: #111827;
+            color: var(--primary-color);
         }
 
         .report-header-denom {
@@ -76,7 +177,7 @@
 
         .report-header-lema {
             font-size: 12px;
-            color: #6b7280;
+            color: var(--text-muted);
             margin-top: 6px;
             font-style: italic;
         }
@@ -86,9 +187,9 @@
            ======================================== */
         .report-contact {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 3px;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
             font-size: 11px;
             color: #374151;
             margin: 12px 0;
@@ -97,8 +198,9 @@
         }
 
         .report-contact span {
-            display: block;
-            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
             white-space: nowrap;
         }
 
@@ -108,7 +210,7 @@
         .report-address {
             text-align: center;
             font-size: 11px;
-            color: #6b7280;
+            color: var(--text-muted);
             margin: 8px 0 16px 0;
             position: relative;
             z-index: 2;
@@ -123,24 +225,24 @@
             font-size: 18px;
             font-weight: 600;
             text-align: left;
-            color: #111827;
+            color: var(--text-dark);
         }
 
         .report-subtitle {
             margin: 0 0 16px 0;
             font-size: 13px;
-            color: #6b7280;
+            color: var(--text-muted);
             font-weight: 400;
         }
 
         .report-meta {
             font-size: 12px;
-            color: #6b7280;
+            color: var(--text-muted);
             margin-bottom: 20px;
             padding: 12px;
-            background: #f9fafb;
+            background: var(--bg-light);
             border-radius: 6px;
-            border-left: 3px solid #714B67;
+            border-left: 3px solid var(--primary-color);
         }
 
         .report-meta span {
@@ -184,7 +286,7 @@
         }
 
         .report-table thead {
-            background: linear-gradient(135deg, #714B67 0%, #5a3b52 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
             color: #ffffff;
         }
 
@@ -199,12 +301,12 @@
         }
 
         .report-table tbody tr {
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border-color);
             transition: background-color 0.15s ease;
         }
 
         .report-table tbody tr:hover {
-            background-color: #f9fafb;
+            background-color: var(--bg-light);
         }
 
         .report-table tbody tr:last-child {
@@ -219,6 +321,37 @@
 
         .report-table tbody tr:nth-child(even) {
             background-color: #fafafa;
+        }
+
+        /* ========================================
+           PIE DE PÁGINA (NUEVO)
+           ======================================== */
+        .report-footer {
+            margin-top: 30px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            position: relative;
+            z-index: 2;
+        }
+
+        .report-footer-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .report-footer-right {
+            text-align: right;
+        }
+
+        .report-footer-system {
+            font-weight: 600;
+            color: var(--primary-color);
         }
 
         /* ========================================
@@ -239,6 +372,123 @@
         }
 
         /* ========================================
+           MODAL WHATSAPP
+           ======================================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: #fff;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: scale(0.9);
+            transition: transform 0.2s;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--text-dark);
+        }
+
+        .modal-body {
+            padding: 20px 24px;
+        }
+
+        .modal-body p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--text-dark);
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* ========================================
+           TOAST NOTIFICATIONS
+           ======================================== */
+        .toast-notification {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 10000;
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+
+        .toast-notification.active {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .toast-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .toast-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .toast-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* ========================================
            ESTILOS DE IMPRESIÓN
            ======================================== */
         @media print {
@@ -246,6 +496,10 @@
                 background: #ffffff !important;
                 margin: 0;
                 padding: 0;
+            }
+
+            .report-actions-bar {
+                display: none !important;
             }
 
             .report-wrapper {
@@ -266,8 +520,17 @@
             }
 
             .report-header {
+                display: flex !important;
                 margin-bottom: 12px;
                 padding-bottom: 10px;
+            }
+
+            .report-contact {
+                display: flex !important;
+            }
+
+            .report-address {
+                display: block !important;
             }
 
             .report-header-logo {
@@ -276,6 +539,9 @@
 
             .report-header-title {
                 font-size: 18px;
+                color: var(--primary-color) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             .report-title {
@@ -290,6 +556,9 @@
             .report-meta {
                 font-size: 11px;
                 padding: 8px 10px;
+                border-left-color: var(--primary-color) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             .report-table {
@@ -299,7 +568,7 @@
 
             .report-table th {
                 padding: 8px 6px;
-                background: #714B67 !important;
+                background: var(--primary-color) !important;
                 color: #ffffff !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
@@ -328,16 +597,36 @@
             .report-table tbody {
                 display: table-row-group;
             }
+
+            /* Footer en impresión */
+            .report-footer {
+                position: fixed;
+                bottom: 10mm;
+                left: 12mm;
+                right: 12mm;
+            }
         }
 
         /* ========================================
            RESPONSIVE
            ======================================== */
         @media (max-width: 768px) {
-            .report-wrapper {
+            .report-actions-bar {
                 margin: 8px;
+                border-radius: 8px 8px 0 0;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .report-actions-left,
+            .report-actions-right {
+                justify-content: center;
+            }
+
+            .report-wrapper {
+                margin: 0 8px 8px 8px;
                 padding: 16px;
-                border-radius: 8px;
+                border-radius: 0 0 8px 8px;
             }
 
             .report-header-title {
@@ -365,6 +654,25 @@
             .report-table td {
                 padding: 8px 6px;
             }
+
+            .report-footer {
+                flex-direction: column;
+                text-align: center;
+                gap: 8px;
+            }
+
+            .report-footer-right {
+                text-align: center;
+            }
+
+            .report-btn {
+                padding: 10px 14px;
+                font-size: 12px;
+            }
+
+            .report-btn span.btn-text {
+                display: none;
+            }
         }
     </style>
 
@@ -372,17 +680,48 @@
 </head>
 <body>
 
+<!-- ════════════════════════════════════════════════════════════════════════════
+     BARRA DE ACCIONES (Solo en pantalla)
+     ════════════════════════════════════════════════════════════════════════════ -->
+<div class="report-actions-bar no-print">
+    <div class="report-actions-left">
+        <a href="javascript:history.back()" class="report-btn report-btn-back">
+            <span class="material-icons">arrow_back</span>
+            <span class="btn-text">Volver</span>
+        </a>
+        <span style="color: #9ca3af; font-size: 13px;" class="btn-text">
+            {% block breadcrumb %}Reporte{% endblock %}
+        </span>
+    </div>
+    <div class="report-actions-right">
+        <button type="button" class="report-btn report-btn-secondary" onclick="imprimirReporte()">
+            <span class="material-icons">print</span>
+            <span class="btn-text">Imprimir</span>
+        </button>
+        <button type="button" class="report-btn report-btn-primary" onclick="descargarPDF()">
+            <span class="material-icons">picture_as_pdf</span>
+            <span class="btn-text">PDF</span>
+        </button>
+        <button type="button" class="report-btn report-btn-success" onclick="compartirWhatsAppPDF()">
+            <span class="material-icons">share</span>
+            <span class="btn-text">WhatsApp</span>
+        </button>
+    </div>
+</div>
+
 <div class="report-wrapper">
 
-    <!-- ENCABEZADO INSTITUCIONAL: solo visible al imprimir -->
-    <header class="report-header only-print">
+    <!-- ENCABEZADO INSTITUCIONAL: visible en pantalla y al imprimir -->
+    <header class="report-header only-print" id="report-header">
         {% if CFG.logo %}
             <img src="{{ CFG.logo.url }}"
                  alt="{{ CFG.nombre_iglesia|default:'Logo iglesia' }}"
-                 class="report-header-logo">
+                 class="report-header-logo"
+                 id="logo-img"
+                 crossorigin="anonymous">
         {% endif %}
 
-        <h1 class="report-header-title">
+        <h1 class="report-header-title" id="institucion-nombre">
             {% if CFG.nombre_iglesia %}
                 {{ CFG.nombre_iglesia|upper }}
             {% else %}
@@ -391,13 +730,13 @@
         </h1>
 
         {% if CFG.denominacion %}
-            <div class="report-header-denom">
+            <div class="report-header-denom" id="institucion-denom">
                 {{ CFG.denominacion }}
             </div>
         {% endif %}
 
         {% if CFG.lema %}
-            <div class="report-header-lema">
+            <div class="report-header-lema" id="institucion-lema">
                 "{{ CFG.lema }}"
             </div>
         {% endif %}
@@ -405,7 +744,7 @@
 
     <!-- CONTACTO: solo visible al imprimir -->
     {% if CFG.telefono_oficial or CFG.whatsapp_oficial or CFG.email_oficial or CFG.sitio_web %}
-        <div class="report-contact only-print">
+        <div class="report-contact only-print" id="report-contact">
             {% if CFG.telefono_oficial %}
                 <span>📞 {{ CFG.telefono_oficial }}</span>
             {% endif %}
@@ -415,7 +754,7 @@
             {% endif %}
 
             {% if CFG.email_oficial %}
-                <span>✉ {{ CFG.email_oficial }}</span>
+                <span>✉️ {{ CFG.email_oficial }}</span>
             {% endif %}
 
             {% if CFG.sitio_web %}
@@ -426,16 +765,514 @@
 
     <!-- DIRECCIÓN: controlada por bandera -->
     {% if CFG.mostrar_direccion_en_reportes and CFG.direccion %}
-        <div class="report-address only-print">
+        <div class="report-address only-print" id="report-address">
             📍 {{ CFG.direccion }}
         </div>
     {% endif %}
 
-    <div class="report-body">
+    <!-- CUERPO DEL REPORTE -->
+    <div class="report-body" id="report-body">
         {% block content %}{% endblock %}
     </div>
 
+    <!-- PIE DE PÁGINA -->
+    <footer class="report-footer">
+        <div class="report-footer-left">
+            <span>Generado el <strong id="fecha-generacion"></strong></span>
+            <span class="report-footer-system">SOID - Sistema de Organización Integral</span>
+        </div>
+        <div class="report-footer-right">
+            {% if CFG.nombre_iglesia %}
+                {{ CFG.nombre_iglesia }}
+            {% else %}
+                Iglesia Torre Fuerte
+            {% endif %}
+        </div>
+    </footer>
+
 </div>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ════════════════════════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Establecer fecha de generación
+    const fechaEl = document.getElementById('fecha-generacion');
+    if (fechaEl) {
+        const ahora = new Date();
+        const opciones = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        };
+        fechaEl.textContent = ahora.toLocaleDateString('es-DO', opciones);
+    }
+    
+    // Pre-cargar el logo para el PDF
+    precargarLogo();
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN DEL REPORTE (para uso en PDF)
+// ══════════════════════════════════════════════════════════════════════════
+const REPORTE_CONFIG = {
+    institucion: '{{ CFG.nombre_iglesia|default:"Iglesia Torre Fuerte"|escapejs }}',
+    denominacion: '{{ CFG.denominacion|default:""|escapejs }}',
+    lema: '{{ CFG.lema|default:""|escapejs }}',
+    telefono: '{{ CFG.telefono_oficial|default:""|escapejs }}',
+    whatsapp: '{{ CFG.whatsapp_oficial|default:""|escapejs }}',
+    email: '{{ CFG.email_oficial|default:""|escapejs }}',
+    sitioWeb: '{{ CFG.sitio_web|default:""|escapejs }}',
+    direccion: '{{ CFG.direccion|default:""|escapejs }}',
+    logoUrl: '{% if CFG.logo %}{{ CFG.logo.url }}{% endif %}',
+    logoBase64: null, // Se cargará automáticamente
+    colorPrimario: [0, 151, 167], // Teal RGB
+    colorPrimarioHex: '#0097A7'
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// PRE-CARGAR LOGO COMO BASE64
+// ══════════════════════════════════════════════════════════════════════════
+function precargarLogo() {
+    if (!REPORTE_CONFIG.logoUrl) return;
+    
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = function() {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            REPORTE_CONFIG.logoBase64 = canvas.toDataURL('image/png');
+            REPORTE_CONFIG.logoWidth = img.naturalWidth;
+            REPORTE_CONFIG.logoHeight = img.naturalHeight;
+            console.log('Logo precargado exitosamente');
+        } catch (e) {
+            console.warn('No se pudo precargar el logo:', e);
+        }
+    };
+    img.onerror = function() {
+        console.warn('Error cargando el logo desde:', REPORTE_CONFIG.logoUrl);
+    };
+    img.src = REPORTE_CONFIG.logoUrl;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FUNCIÓN DE IMPRESIÓN
+// ══════════════════════════════════════════════════════════════════════════
+function imprimirReporte() {
+    window.print();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FUNCIONES DE GENERACIÓN DE PDF
+// ══════════════════════════════════════════════════════════════════════════
+
+function generarPDF(descargar = true) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    let yPos = 12;
+    const margenIzq = 14;
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    const centroX = pageWidth / 2;
+    
+    // ══════════════════════════════════════════
+    // LOGO (si existe)
+    // ══════════════════════════════════════════
+    if (REPORTE_CONFIG.logoBase64) {
+        try {
+            // Calcular dimensiones proporcionales del logo
+            const maxLogoHeight = 18; // mm
+            const maxLogoWidth = 40;  // mm
+            
+            let logoW = REPORTE_CONFIG.logoWidth;
+            let logoH = REPORTE_CONFIG.logoHeight;
+            
+            // Escalar proporcionalmente
+            const ratioW = maxLogoWidth / logoW;
+            const ratioH = maxLogoHeight / logoH;
+            const ratio = Math.min(ratioW, ratioH);
+            
+            logoW = logoW * ratio;
+            logoH = logoH * ratio;
+            
+            // Centrar el logo
+            const logoX = centroX - (logoW / 2);
+            
+            doc.addImage(REPORTE_CONFIG.logoBase64, 'PNG', logoX, yPos, logoW, logoH);
+            yPos += logoH + 4;
+        } catch (e) {
+            console.warn('Error agregando logo al PDF:', e);
+        }
+    }
+    
+    // ══════════════════════════════════════════
+    // NOMBRE DE LA INSTITUCIÓN
+    // ══════════════════════════════════════════
+    doc.setFontSize(16);
+    doc.setTextColor(...REPORTE_CONFIG.colorPrimario);
+    doc.setFont(undefined, 'bold');
+    doc.text(REPORTE_CONFIG.institucion.toUpperCase(), centroX, yPos, { align: 'center' });
+    yPos += 6;
+    
+    // ══════════════════════════════════════════
+    // DENOMINACIÓN
+    // ══════════════════════════════════════════
+    if (REPORTE_CONFIG.denominacion) {
+        doc.setFontSize(10);
+        doc.setTextColor(75, 85, 99);
+        doc.setFont(undefined, 'normal');
+        doc.text(REPORTE_CONFIG.denominacion, centroX, yPos, { align: 'center' });
+        yPos += 5;
+    }
+    
+    // ══════════════════════════════════════════
+    // LEMA
+    // ══════════════════════════════════════════
+    if (REPORTE_CONFIG.lema) {
+        doc.setFontSize(9);
+        doc.setTextColor(107, 114, 128);
+        doc.setFont(undefined, 'italic');
+        doc.text('"' + REPORTE_CONFIG.lema + '"', centroX, yPos, { align: 'center' });
+        yPos += 5;
+    }
+    
+    // ══════════════════════════════════════════
+    // CONTACTO (en una línea)
+    // ══════════════════════════════════════════
+    const contactoParts = [];
+    if (REPORTE_CONFIG.telefono) contactoParts.push('Tel: ' + REPORTE_CONFIG.telefono);
+    if (REPORTE_CONFIG.whatsapp) contactoParts.push('WhatsApp: ' + REPORTE_CONFIG.whatsapp);
+    if (REPORTE_CONFIG.email) contactoParts.push(REPORTE_CONFIG.email);
+    if (REPORTE_CONFIG.sitioWeb) contactoParts.push(REPORTE_CONFIG.sitioWeb);
+    
+    if (contactoParts.length > 0) {
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.setFont(undefined, 'normal');
+        
+        // Si hay muchos datos, dividir en dos líneas
+        if (contactoParts.length > 2) {
+            const linea1 = contactoParts.slice(0, 2).join('  •  ');
+            const linea2 = contactoParts.slice(2).join('  •  ');
+            doc.text(linea1, centroX, yPos, { align: 'center' });
+            yPos += 4;
+            doc.text(linea2, centroX, yPos, { align: 'center' });
+            yPos += 4;
+        } else {
+            doc.text(contactoParts.join('  •  '), centroX, yPos, { align: 'center' });
+            yPos += 4;
+        }
+    }
+    
+    // ══════════════════════════════════════════
+    // DIRECCIÓN
+    // ══════════════════════════════════════════
+    if (REPORTE_CONFIG.direccion) {
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.text(REPORTE_CONFIG.direccion, centroX, yPos, { align: 'center' });
+        yPos += 4;
+    }
+    
+    // ══════════════════════════════════════════
+    // LÍNEA SEPARADORA
+    // ══════════════════════════════════════════
+    yPos += 2;
+    doc.setDrawColor(...REPORTE_CONFIG.colorPrimario);
+    doc.setLineWidth(0.5);
+    doc.line(margenIzq, yPos, pageWidth - margenIzq, yPos);
+    yPos += 8;
+    
+    // ══════════════════════════════════════════
+    // TÍTULO DEL REPORTE
+    // ══════════════════════════════════════════
+    const tituloReporte = document.querySelector('.report-title')?.textContent.trim() || 'Reporte';
+    const subtituloReporte = document.querySelector('.report-subtitle')?.textContent.trim() || '';
+    
+    doc.setFontSize(14);
+    doc.setTextColor(17, 24, 39);
+    doc.setFont(undefined, 'bold');
+    doc.text(tituloReporte, margenIzq, yPos);
+    yPos += 5;
+    
+    if (subtituloReporte) {
+        doc.setFontSize(10);
+        doc.setTextColor(107, 114, 128);
+        doc.setFont(undefined, 'normal');
+        doc.text(subtituloReporte, margenIzq, yPos);
+        yPos += 5;
+    }
+    
+    // ══════════════════════════════════════════
+    // FECHA DE GENERACIÓN
+    // ══════════════════════════════════════════
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128);
+    const fechaGen = new Date().toLocaleDateString('es-DO', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    doc.text('Generado: ' + fechaGen, margenIzq, yPos);
+    yPos += 8;
+    
+    // ══════════════════════════════════════════
+    // METADATOS (si existen)
+    // ══════════════════════════════════════════
+    const metaEl = document.querySelector('.report-meta');
+    if (metaEl) {
+        const metaText = metaEl.textContent.trim().replace(/\s+/g, ' ');
+        if (metaText) {
+            doc.setFillColor(249, 250, 251);
+            doc.setDrawColor(...REPORTE_CONFIG.colorPrimario);
+            doc.roundedRect(margenIzq, yPos - 4, pageWidth - (margenIzq * 2), 10, 2, 2, 'FD');
+            
+            doc.setFontSize(8);
+            doc.setTextColor(75, 85, 99);
+            doc.text(metaText.substring(0, 120), margenIzq + 3, yPos + 2);
+            yPos += 12;
+        }
+    }
+    
+    // ══════════════════════════════════════════
+    // TABLA DEL REPORTE
+    // ══════════════════════════════════════════
+    const tabla = document.querySelector('.report-table');
+    if (tabla) {
+        const headers = [];
+        const data = [];
+        
+        // Extraer encabezados
+        tabla.querySelectorAll('thead th').forEach(th => {
+            headers.push(th.textContent.trim());
+        });
+        
+        // Extraer datos
+        tabla.querySelectorAll('tbody tr').forEach(tr => {
+            const fila = [];
+            tr.querySelectorAll('td').forEach(td => {
+                fila.push(td.textContent.trim().replace(/\s+/g, ' '));
+            });
+            if (fila.length > 0) {
+                data.push(fila);
+            }
+        });
+        
+        if (headers.length > 0 && data.length > 0) {
+            doc.autoTable({
+                startY: yPos,
+                head: [headers],
+                body: data,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: REPORTE_CONFIG.colorPrimario,
+                    fontSize: 9,
+                    fontStyle: 'bold',
+                    halign: 'left'
+                },
+                bodyStyles: {
+                    fontSize: 8,
+                    cellPadding: 3
+                },
+                alternateRowStyles: {
+                    fillColor: [249, 250, 251]
+                },
+                margin: { left: margenIzq, right: margenIzq },
+                didDrawPage: function(data) {
+                    agregarPiePagina(doc);
+                }
+            });
+        }
+    } else {
+        agregarPiePagina(doc);
+    }
+    
+    // ══════════════════════════════════════════
+    // RETORNAR O DESCARGAR
+    // ══════════════════════════════════════════
+    const nombreArchivo = generarNombreArchivo();
+    
+    if (descargar) {
+        doc.save(nombreArchivo);
+        return nombreArchivo;
+    }
+    
+    return { doc, nombreArchivo };
+}
+
+function agregarPiePagina(doc) {
+    const totalPaginas = doc.internal.getNumberOfPages();
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    
+    for (let i = 1; i <= totalPaginas; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        
+        // Línea separadora del footer
+        doc.setDrawColor(200);
+        doc.setLineWidth(0.2);
+        doc.line(14, pageHeight - 15, pageWidth - 14, pageHeight - 15);
+        
+        // Texto izquierdo
+        doc.text('SOID - Sistema de Organización Integral', 14, pageHeight - 10);
+        
+        // Texto derecho (paginación)
+        doc.text(
+            `Página ${i} de ${totalPaginas}`,
+            pageWidth - 14,
+            pageHeight - 10,
+            { align: 'right' }
+        );
+    }
+}
+
+function generarNombreArchivo() {
+    const titulo = document.querySelector('.report-title')?.textContent.trim() || 'reporte';
+    const fecha = new Date().toISOString().slice(0, 10);
+    const nombreLimpio = titulo
+        .toLowerCase()
+        .replace(/[áàäâ]/g, 'a')
+        .replace(/[éèëê]/g, 'e')
+        .replace(/[íìïî]/g, 'i')
+        .replace(/[óòöô]/g, 'o')
+        .replace(/[úùüû]/g, 'u')
+        .replace(/ñ/g, 'n')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, '')
+        .substring(0, 30);
+    
+    return `${nombreLimpio}_${fecha}.pdf`;
+}
+
+function descargarPDF() {
+    try {
+        const nombreArchivo = generarPDF(true);
+        mostrarToast(`PDF "${nombreArchivo}" descargado`, 'success');
+    } catch (error) {
+        console.error('Error generando PDF:', error);
+        mostrarToast('Error al generar el PDF', 'error');
+    }
+}
+
+function compartirWhatsAppPDF() {
+    try {
+        // Generar y descargar el PDF
+        const nombreArchivo = generarPDF(true);
+        
+        // Obtener info del reporte
+        const titulo = document.querySelector('.report-title')?.textContent.trim() || 'Reporte';
+        const fecha = new Date().toLocaleDateString('es-DO');
+        
+        // Contar filas si hay tabla
+        const tabla = document.querySelector('.report-table');
+        const numFilas = tabla ? tabla.querySelectorAll('tbody tr').length : 0;
+        
+        // Mensaje para WhatsApp
+        let mensaje = `📋 *${titulo}*\n`;
+        mensaje += `🏛️ ${REPORTE_CONFIG.institucion}\n`;
+        mensaje += `📅 ${fecha}\n`;
+        if (numFilas > 0) {
+            mensaje += `📊 ${numFilas} registro(s)\n`;
+        }
+        mensaje += `\n📎 _Archivo: ${nombreArchivo}_`;
+        
+        // Mostrar modal
+        mostrarModalWhatsApp(mensaje, nombreArchivo);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarToast('Error al generar el PDF', 'error');
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MODAL Y TOAST
+// ══════════════════════════════════════════════════════════════════════════
+
+function mostrarModalWhatsApp(mensaje, nombreArchivo) {
+    let modal = document.getElementById('modal-whatsapp');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-whatsapp';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="material-icons" style="color: #25D366; font-size: 32px;">check_circle</span>
+                    <h3>PDF Generado</h3>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Archivo:</strong> <span id="modal-nombre-archivo"></span></p>
+                    <p style="margin-top: 12px; color: #666;">Para compartir por WhatsApp:</p>
+                    <ol style="margin: 12px 0; padding-left: 20px; color: #444; font-size: 13px;">
+                        <li>El PDF ya se descargó a tu dispositivo</li>
+                        <li>Haz clic en <strong>"Abrir WhatsApp"</strong></li>
+                        <li>Selecciona el contacto o grupo</li>
+                        <li>Adjunta el PDF con el ícono 📎</li>
+                    </ol>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="report-btn report-btn-secondary" onclick="cerrarModal()">
+                        Cerrar
+                    </button>
+                    <button type="button" class="report-btn report-btn-success" onclick="abrirWhatsApp()">
+                        <span class="material-icons">open_in_new</span>
+                        Abrir WhatsApp
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    modal.dataset.mensaje = mensaje;
+    document.getElementById('modal-nombre-archivo').textContent = nombreArchivo;
+    modal.classList.add('active');
+}
+
+function cerrarModal() {
+    const modal = document.getElementById('modal-whatsapp');
+    if (modal) modal.classList.remove('active');
+}
+
+function abrirWhatsApp() {
+    const modal = document.getElementById('modal-whatsapp');
+    const mensaje = modal?.dataset.mensaje || '';
+    window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, '_blank');
+    cerrarModal();
+}
+
+function mostrarToast(mensaje, tipo = 'info') {
+    let toast = document.getElementById('toast-notification');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        toast.className = 'toast-notification';
+        document.body.appendChild(toast);
+    }
+    
+    toast.textContent = mensaje;
+    toast.className = `toast-notification toast-${tipo} active`;
+    
+    setTimeout(() => {
+        toast.classList.remove('active');
+    }, 3000);
+}
+</script>
+
+{% block extra_js %}{% endblock %}
 
 </body>
 </html>

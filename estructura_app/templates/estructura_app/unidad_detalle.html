@@ -508,7 +508,11 @@
           <span class="material-icons">print</span>
           Imprimir
         </button>
-        <button type="button" class="odoo-btn odoo-btn-success" onclick="compartirWhatsApp()">
+        <button type="button" class="odoo-btn odoo-btn-secondary" onclick="descargarPDF()">
+          <span class="material-icons">picture_as_pdf</span>
+          PDF
+        </button>
+        <button type="button" class="odoo-btn odoo-btn-success" onclick="compartirWhatsAppPDF()">
           <span class="material-icons">share</span>
           WhatsApp
         </button>
@@ -2422,6 +2426,123 @@ tr.filtro-oculto {
     display: none;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   MODAL WHATSAPP
+   ══════════════════════════════════════════════════════════════════════════ */
+.modal-whatsapp-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.modal-whatsapp-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-whatsapp-content {
+    background: #fff;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    transition: transform 0.2s;
+}
+
+.modal-whatsapp-overlay.active .modal-whatsapp-content {
+    transform: scale(1);
+}
+
+.modal-whatsapp-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.modal-whatsapp-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #212529;
+}
+
+.modal-whatsapp-body {
+    padding: 20px 24px;
+}
+
+.modal-whatsapp-body p {
+    margin: 0;
+    font-size: 14px;
+    color: #212529;
+}
+
+.modal-whatsapp-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TOAST NOTIFICATIONS
+   ══════════════════════════════════════════════════════════════════════════ */
+.toast-notification {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    opacity: 0;
+    transition: transform 0.3s, opacity 0.3s;
+}
+
+.toast-notification.active {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.toast-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.toast-warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.toast-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.toast-info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
 
 </style>
 
@@ -2460,7 +2581,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Inicializar filtros de miembros
     inicializarFiltrosMiembros();
+    
+    // Pre-cargar el logo para el PDF
+    precargarLogo();
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN INSTITUCIONAL (para uso en PDF)
+// ══════════════════════════════════════════════════════════════════════════
+const CFG_PDF = {
+    institucion: '{{ CFG.nombre_iglesia|default:"Iglesia Torre Fuerte"|escapejs }}',
+    denominacion: '{{ CFG.denominacion|default:""|escapejs }}',
+    lema: '{{ CFG.lema|default:""|escapejs }}',
+    telefono: '{{ CFG.telefono_oficial|default:""|escapejs }}',
+    whatsapp: '{{ CFG.whatsapp_oficial|default:""|escapejs }}',
+    email: '{{ CFG.email_oficial|default:""|escapejs }}',
+    sitioWeb: '{{ CFG.sitio_web|default:""|escapejs }}',
+    direccion: '{{ CFG.direccion|default:""|escapejs }}',
+    logoUrl: '{% if CFG.logo %}{{ CFG.logo.url }}{% endif %}',
+    logoBase64: null,
+    logoWidth: 0,
+    logoHeight: 0,
+    colorPrimario: [0, 151, 167], // Teal RGB
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// PRE-CARGAR LOGO COMO BASE64
+// ══════════════════════════════════════════════════════════════════════════
+function precargarLogo() {
+    if (!CFG_PDF.logoUrl) return;
+    
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = function() {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            CFG_PDF.logoBase64 = canvas.toDataURL('image/png');
+            CFG_PDF.logoWidth = img.naturalWidth;
+            CFG_PDF.logoHeight = img.naturalHeight;
+            console.log('Logo precargado exitosamente');
+        } catch (e) {
+            console.warn('No se pudo precargar el logo:', e);
+        }
+    };
+    img.onerror = function() {
+        console.warn('Error cargando el logo desde:', CFG_PDF.logoUrl);
+    };
+    img.src = CFG_PDF.logoUrl;
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 // FUNCIONES DE FILTROS DE MIEMBROS
@@ -2604,11 +2776,10 @@ function limpiarFiltros() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// FUNCIONES DE IMPRESIÓN Y COMPARTIR
+// FUNCIONES DE IMPRESIÓN
 // ══════════════════════════════════════════════════════════════════════════
 
 function imprimirMiembros() {
-    // Crear header de impresión si no existe
     let printHeader = document.querySelector('#tab-miembros .print-header');
     if (!printHeader) {
         printHeader = document.createElement('div');
@@ -2621,57 +2792,390 @@ function imprimirMiembros() {
         tabMiembros.insertBefore(printHeader, tabMiembros.firstChild);
     }
 
-    // Asegurar que la pestaña de miembros esté activa
     const tabMiembros = document.querySelector('.odoo-tab[data-tab="miembros"]');
     if (tabMiembros && !tabMiembros.classList.contains('active')) {
         tabMiembros.click();
     }
 
-    // Imprimir
     setTimeout(() => {
         window.print();
     }, 100);
 }
 
-function compartirWhatsApp() {
-    const unidadNombre = '{{ unidad.nombre }}';
+// ══════════════════════════════════════════════════════════════════════════
+// FUNCIONES DE PDF CON jsPDF (CON ENCABEZADO INSTITUCIONAL)
+// ══════════════════════════════════════════════════════════════════════════
+
+function extraerDatosMiembros() {
     const tabla = document.querySelector('#tab-miembros .odoo-table');
+    if (!tabla) return [];
     
+    const filas = tabla.querySelectorAll('tbody tr:not(.filtro-oculto)');
+    const datos = [];
+    
+    filas.forEach(fila => {
+        const celdas = fila.querySelectorAll('td');
+        datos.push([
+            celdas[0]?.textContent.trim().replace(/\s+/g, ' ') || '—',
+            celdas[1]?.querySelector('.member-name')?.textContent.trim() || '',
+            celdas[2]?.textContent.trim() || '—',
+            celdas[3]?.textContent.trim().replace(/\s+/g, ' ') || '—',
+            celdas[4]?.textContent.trim() || '—',
+            celdas[5]?.textContent.trim() || '—',
+        ]);
+    });
+    
+    return datos;
+}
+
+function generarPDF(descargar = true) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const unidadNombre = '{{ unidad.nombre }}';
+    const unidadCodigo = '{{ unidad.codigo|default:unidad.pk }}';
+    
+    let yPos = 12;
+    const margenIzq = 14;
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    const centroX = pageWidth / 2;
+    
+    // ══════════════════════════════════════════
+    // LOGO (si existe)
+    // ══════════════════════════════════════════
+    if (CFG_PDF.logoBase64) {
+        try {
+            const maxLogoHeight = 18;
+            const maxLogoWidth = 40;
+            
+            let logoW = CFG_PDF.logoWidth;
+            let logoH = CFG_PDF.logoHeight;
+            
+            const ratioW = maxLogoWidth / logoW;
+            const ratioH = maxLogoHeight / logoH;
+            const ratio = Math.min(ratioW, ratioH);
+            
+            logoW = logoW * ratio;
+            logoH = logoH * ratio;
+            
+            const logoX = centroX - (logoW / 2);
+            
+            doc.addImage(CFG_PDF.logoBase64, 'PNG', logoX, yPos, logoW, logoH);
+            yPos += logoH + 4;
+        } catch (e) {
+            console.warn('Error agregando logo al PDF:', e);
+        }
+    }
+    
+    // ══════════════════════════════════════════
+    // NOMBRE DE LA INSTITUCIÓN
+    // ══════════════════════════════════════════
+    doc.setFontSize(16);
+    doc.setTextColor(...CFG_PDF.colorPrimario);
+    doc.setFont(undefined, 'bold');
+    doc.text(CFG_PDF.institucion.toUpperCase(), centroX, yPos, { align: 'center' });
+    yPos += 6;
+    
+    // ══════════════════════════════════════════
+    // DENOMINACIÓN
+    // ══════════════════════════════════════════
+    if (CFG_PDF.denominacion) {
+        doc.setFontSize(10);
+        doc.setTextColor(75, 85, 99);
+        doc.setFont(undefined, 'normal');
+        doc.text(CFG_PDF.denominacion, centroX, yPos, { align: 'center' });
+        yPos += 5;
+    }
+    
+    // ══════════════════════════════════════════
+    // LEMA
+    // ══════════════════════════════════════════
+    if (CFG_PDF.lema) {
+        doc.setFontSize(9);
+        doc.setTextColor(107, 114, 128);
+        doc.setFont(undefined, 'italic');
+        doc.text('"' + CFG_PDF.lema + '"', centroX, yPos, { align: 'center' });
+        yPos += 5;
+    }
+    
+    // ══════════════════════════════════════════
+    // CONTACTO
+    // ══════════════════════════════════════════
+    const contactoParts = [];
+    if (CFG_PDF.telefono) contactoParts.push('Tel: ' + CFG_PDF.telefono);
+    if (CFG_PDF.whatsapp) contactoParts.push('WhatsApp: ' + CFG_PDF.whatsapp);
+    if (CFG_PDF.email) contactoParts.push(CFG_PDF.email);
+    if (CFG_PDF.sitioWeb) contactoParts.push(CFG_PDF.sitioWeb);
+    
+    if (contactoParts.length > 0) {
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.setFont(undefined, 'normal');
+        
+        if (contactoParts.length > 2) {
+            const linea1 = contactoParts.slice(0, 2).join('  •  ');
+            const linea2 = contactoParts.slice(2).join('  •  ');
+            doc.text(linea1, centroX, yPos, { align: 'center' });
+            yPos += 4;
+            doc.text(linea2, centroX, yPos, { align: 'center' });
+            yPos += 4;
+        } else {
+            doc.text(contactoParts.join('  •  '), centroX, yPos, { align: 'center' });
+            yPos += 4;
+        }
+    }
+    
+    // ══════════════════════════════════════════
+    // DIRECCIÓN
+    // ══════════════════════════════════════════
+    if (CFG_PDF.direccion) {
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.text(CFG_PDF.direccion, centroX, yPos, { align: 'center' });
+        yPos += 4;
+    }
+    
+    // ══════════════════════════════════════════
+    // LÍNEA SEPARADORA
+    // ══════════════════════════════════════════
+    yPos += 2;
+    doc.setDrawColor(...CFG_PDF.colorPrimario);
+    doc.setLineWidth(0.5);
+    doc.line(margenIzq, yPos, pageWidth - margenIzq, yPos);
+    yPos += 8;
+    
+    // ══════════════════════════════════════════
+    // TÍTULO DEL REPORTE (UNIDAD)
+    // ══════════════════════════════════════════
+    doc.setFontSize(14);
+    doc.setTextColor(17, 24, 39);
+    doc.setFont(undefined, 'bold');
+    doc.text(unidadNombre + ' - Listado de Miembros', margenIzq, yPos);
+    yPos += 6;
+    
+    // Fecha de generación
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128);
+    doc.setFont(undefined, 'normal');
+    const fechaGen = new Date().toLocaleDateString('es-DO', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    doc.text('Generado: ' + fechaGen, margenIzq, yPos);
+    yPos += 8;
+    
+    // ══════════════════════════════════════════
+    // EXTRAER Y GENERAR TABLA
+    // ══════════════════════════════════════════
+    const datos = extraerDatosMiembros();
+    
+    if (datos.length === 0) {
+        doc.setFontSize(12);
+        doc.setTextColor(150);
+        doc.text('No hay miembros asignados a esta unidad.', margenIzq, yPos + 10);
+    } else {
+        doc.autoTable({
+            startY: yPos,
+            head: [['Rol', 'Nombre', 'Código', 'Estado', 'Edad', 'Categoría']],
+            body: datos,
+            theme: 'grid',
+            headStyles: { 
+                fillColor: CFG_PDF.colorPrimario,
+                fontSize: 9,
+                fontStyle: 'bold'
+            },
+            bodyStyles: { 
+                fontSize: 8,
+                cellPadding: 3
+            },
+            columnStyles: {
+                0: { cellWidth: 28 },
+                1: { cellWidth: 50 },
+                2: { cellWidth: 22 },
+                3: { cellWidth: 24 },
+                4: { cellWidth: 18 },
+                5: { cellWidth: 28 },
+            },
+            alternateRowStyles: {
+                fillColor: [249, 250, 251]
+            },
+            margin: { left: margenIzq, right: margenIzq },
+            didDrawPage: function(data) {
+                agregarPiePaginaPDF(doc, datos.length);
+            }
+        });
+    }
+    
+    // Si no hay tabla, agregar pie igual
+    if (datos.length === 0) {
+        agregarPiePaginaPDF(doc, 0);
+    }
+    
+    // ══════════════════════════════════════════
+    // DESCARGAR O RETORNAR
+    // ══════════════════════════════════════════
+    const nombreArchivo = `miembros_${unidadCodigo}.pdf`;
+    
+    if (descargar) {
+        doc.save(nombreArchivo);
+        return nombreArchivo;
+    }
+    
+    return { doc, nombreArchivo };
+}
+
+function agregarPiePaginaPDF(doc, totalMiembros) {
+    const totalPaginas = doc.internal.getNumberOfPages();
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    
+    for (let i = 1; i <= totalPaginas; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        
+        // Línea separadora
+        doc.setDrawColor(200);
+        doc.setLineWidth(0.2);
+        doc.line(14, pageHeight - 15, pageWidth - 14, pageHeight - 15);
+        
+        // Texto izquierdo
+        doc.text(`Página ${i} de ${totalPaginas} | Total: ${totalMiembros} miembro(s)`, 14, pageHeight - 10);
+        
+        // Texto derecho
+        doc.text(
+            'SOID - Sistema de Organización Integral',
+            pageWidth - 14,
+            pageHeight - 10,
+            { align: 'right' }
+        );
+    }
+}
+
+function descargarPDF() {
+    const tabla = document.querySelector('#tab-miembros .odoo-table');
     if (!tabla) {
-        alert('No hay miembros para compartir.');
+        mostrarToast('No hay miembros para exportar', 'warning');
         return;
     }
+    
+    try {
+        const nombreArchivo = generarPDF(true);
+        mostrarToast(`PDF "${nombreArchivo}" descargado`, 'success');
+    } catch (error) {
+        console.error('Error generando PDF:', error);
+        mostrarToast('Error al generar el PDF', 'error');
+    }
+}
 
-    const filas = tabla.querySelectorAll('tbody tr:not(.filtro-oculto)');
-    let mensaje = `📋 *${unidadNombre}*\n`;
-    mensaje += `📅 ${new Date().toLocaleDateString('es-DO')}\n\n`;
-    mensaje += `👥 *Miembros (${filas.length}):*\n`;
-    mensaje += `────────────────\n`;
-
-    filas.forEach((fila, index) => {
-        const rolCell = fila.querySelector('td:nth-child(1)');
-        const nombreCell = fila.querySelector('td:nth-child(2) .member-name a');
-        const estadoCell = fila.querySelector('td:nth-child(4) .odoo-badge');
+function compartirWhatsAppPDF() {
+    const tabla = document.querySelector('#tab-miembros .odoo-table');
+    const unidadNombre = '{{ unidad.nombre }}';
+    
+    if (!tabla) {
+        mostrarToast('No hay miembros para compartir', 'warning');
+        return;
+    }
+    
+    try {
+        const nombreArchivo = generarPDF(true);
+        const datos = extraerDatosMiembros();
         
-        const rol = rolCell?.querySelector('.odoo-badge')?.textContent.trim() || '';
-        const nombre = nombreCell?.textContent.trim() || '';
-        const estado = estadoCell?.textContent.trim() || '';
+        let mensaje = `📋 *${unidadNombre}*\n`;
+        mensaje += `🏛️ ${CFG_PDF.institucion}\n`;
+        mensaje += `📅 ${new Date().toLocaleDateString('es-DO')}\n`;
+        mensaje += `👥 ${datos.length} miembro(s)\n`;
+        mensaje += `\n📎 _Archivo: ${nombreArchivo}_`;
+        
+        mostrarModalWhatsApp(mensaje, nombreArchivo);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarToast('Error al generar el PDF', 'error');
+    }
+}
 
-        if (nombre) {
-            mensaje += `${index + 1}. ${nombre}`;
-            if (rol && rol !== '—') mensaje += ` (${rol})`;
-            if (estado) mensaje += ` - ${estado}`;
-            mensaje += `\n`;
-        }
-    });
+// ══════════════════════════════════════════════════════════════════════════
+// MODAL Y TOAST
+// ══════════════════════════════════════════════════════════════════════════
 
-    mensaje += `\n✅ Total: ${filas.length} miembro(s)`;
+function mostrarModalWhatsApp(mensaje, nombreArchivo) {
+    let modal = document.getElementById('modal-whatsapp');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-whatsapp';
+        modal.className = 'modal-whatsapp-overlay';
+        modal.innerHTML = `
+            <div class="modal-whatsapp-content">
+                <div class="modal-whatsapp-header">
+                    <span class="material-icons" style="color: #25D366; font-size: 32px;">check_circle</span>
+                    <h3>PDF Generado</h3>
+                </div>
+                <div class="modal-whatsapp-body">
+                    <p><strong>Archivo:</strong> <span id="modal-nombre-archivo"></span></p>
+                    <p style="margin-top: 12px; color: #666;">Para compartir por WhatsApp:</p>
+                    <ol style="margin: 12px 0; padding-left: 20px; color: #444;">
+                        <li>El PDF se descargó a tu dispositivo</li>
+                        <li>Haz clic en <strong>"Abrir WhatsApp"</strong></li>
+                        <li>Selecciona el contacto o grupo</li>
+                        <li>Adjunta el PDF con el ícono 📎</li>
+                    </ol>
+                </div>
+                <div class="modal-whatsapp-footer">
+                    <button type="button" class="odoo-btn odoo-btn-secondary" onclick="cerrarModalWhatsApp()">
+                        Cerrar
+                    </button>
+                    <button type="button" class="odoo-btn odoo-btn-success" onclick="abrirWhatsApp()">
+                        <span class="material-icons">open_in_new</span>
+                        Abrir WhatsApp
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    modal.dataset.mensaje = mensaje;
+    document.getElementById('modal-nombre-archivo').textContent = nombreArchivo;
+    modal.classList.add('active');
+}
 
-    // Codificar y abrir WhatsApp
-    const urlWhatsApp = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
-    window.open(urlWhatsApp, '_blank');
+function cerrarModalWhatsApp() {
+    const modal = document.getElementById('modal-whatsapp');
+    if (modal) modal.classList.remove('active');
+}
+
+function abrirWhatsApp() {
+    const modal = document.getElementById('modal-whatsapp');
+    const mensaje = modal?.dataset.mensaje || '';
+    window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, '_blank');
+    cerrarModalWhatsApp();
+}
+
+function mostrarToast(mensaje, tipo = 'info') {
+    let toast = document.getElementById('toast-notification');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        toast.className = 'toast-notification';
+        document.body.appendChild(toast);
+    }
+    
+    toast.textContent = mensaje;
+    toast.className = `toast-notification toast-${tipo} active`;
+    
+    setTimeout(() => {
+        toast.classList.remove('active');
+    }, 3000);
 }
 </script>
+
+<!-- Librerías jsPDF para generación de PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
 
 
