@@ -531,20 +531,51 @@
 }
 </style>
 
+<style>
+/* Estilo para inputs con error */
+.input-error {
+    border-color: #d9534f !important;
+    background-color: rgba(217, 83, 79, 0.05) !important;
+}
+ 
+.input-error:focus {
+    border-color: #d9534f !important;
+    box-shadow: 0 0 0 2px rgba(217, 83, 79, 0.2) !important;
+}
+ 
+/* Mejorar el box de error */
+#visitas-rango-error {
+    background-color: rgba(217, 83, 79, 0.08);
+    border-left: 3px solid #d9534f;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: #c0392b;
+    line-height: 1.5;
+}
+ 
+#visitas-rango-error div {
+    margin-bottom: 4px;
+}
+ 
+#visitas-rango-error div:last-child {
+    margin-bottom: 0;
+}
+</style>
 <form method="post" class="odoo-form" enctype="multipart/form-data" id="unidad-form">
-
     {% csrf_token %}
-{% if form.errors %}
-<div class="odoo-alert odoo-alert-danger" style="margin:12px 0;">
-    <strong>No se pudo guardar.</strong>
-    <div style="margin-top:6px;">
-        <pre style="white-space:pre-wrap; margin:0;">{{ form.errors }}</pre>
-        {% if form.non_field_errors %}
-            <div style="margin-top:8px;">{{ form.non_field_errors }}</div>
-        {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="odoo-alert odoo-alert-danger" style="margin:12px 0;">
+        <strong>No se pudo guardar.</strong>
+        <div style="margin-top:8px;">
+            {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+            {% endfor %}
+        </div>
     </div>
-</div>
-{% endif %}
+    {% endif %}
 
     
     {% if unidad and unidad.esta_bloqueada %}
@@ -1093,8 +1124,13 @@
     </label>
     <p style="margin: 6px 0 0; font-size: 11px; color: #666; line-height: 1.4;">
         <span class="material-icons" style="font-size: 13px; vertical-align: middle; color: #FFA726;">info</span>
-        Para que las visitas se reflejen, establece un rango de edad y género en esta unidad.
+    
     </p>
+</div>
+
+<div id="visitas-rango-error"
+     style="display:none; color:#d9534f; font-size:13px; margin-top:6px;">
+    Debes introducir un rango de edad para permitir visitas.
 </div>
 
                                 <!-- SECCIÓN: INGRESO -->
@@ -1513,4 +1549,205 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+══════════════════ -->
+ 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("unidad-form");
+    const chkVisitas = document.getElementById("id_regla_perm_visitas");
+    const edadMin = document.getElementById("id_edad_min");
+    const edadMax = document.getElementById("id_edad_max");
+    const errorBox = document.getElementById("visitas-rango-error");
+ 
+    if (!form || !chkVisitas || !edadMin || !edadMax || !errorBox) return;
+ 
+    /**
+     * Valida el rango de edad y la configuración de visitas.
+     * Retorna un objeto con { valido: bool, errores: string[] }
+     */
+    function validarEdadYVisitas() {
+        const errores = [];
+        const visitasActivas = chkVisitas.checked;
+        const minRaw = edadMin.value.trim();
+        const maxRaw = edadMax.value.trim();
+ 
+        const minVacio = minRaw === "";
+        const maxVacio = maxRaw === "";
+ 
+        let minVal = null;
+        let maxVal = null;
+ 
+        // ─────────────────────────────────────────────────────────────────
+        // 1. PARSEAR VALORES
+        // ─────────────────────────────────────────────────────────────────
+        if (!minVacio) {
+            minVal = parseInt(minRaw, 10);
+            if (isNaN(minVal)) {
+                errores.push("La edad mínima debe ser un número válido.");
+                minVal = null;
+            }
+        }
+ 
+        if (!maxVacio) {
+            maxVal = parseInt(maxRaw, 10);
+            if (isNaN(maxVal)) {
+                errores.push("La edad máxima debe ser un número válido.");
+                maxVal = null;
+            }
+        }
+ 
+        // ─────────────────────────────────────────────────────────────────
+        // 2. VALIDAR: NO NEGATIVOS
+        // ─────────────────────────────────────────────────────────────────
+        if (minVal !== null && minVal < 0) {
+            errores.push("La edad mínima no puede ser negativa.");
+        }
+ 
+        if (maxVal !== null && maxVal < 0) {
+            errores.push("La edad máxima no puede ser negativa.");
+        }
+ 
+        // ─────────────────────────────────────────────────────────────────
+        // 3. VALIDAR: RANGO COHERENTE (max >= min)
+        // ─────────────────────────────────────────────────────────────────
+        if (minVal !== null && maxVal !== null && minVal >= 0 && maxVal >= 0) {
+            if (maxVal < minVal) {
+                errores.push(
+                    `La edad máxima (${maxVal} años) no puede ser menor que la edad mínima (${minVal} años).`
+                );
+            }
+        }
+ 
+        // ─────────────────────────────────────────────────────────────────
+        // 4. VALIDAR: SI PERMITE VISITAS, REQUIERE RANGO COMPLETO
+        // ─────────────────────────────────────────────────────────────────
+        if (visitasActivas) {
+            if (minVacio && maxVacio) {
+                errores.push(
+                    "Para permitir visitas debes especificar el rango de edad (edad mínima y máxima)."
+                );
+            } else if (minVacio) {
+                errores.push("Para permitir visitas debes especificar la edad mínima.");
+            } else if (maxVacio) {
+                errores.push("Para permitir visitas debes especificar la edad máxima.");
+            }
+        }
+ 
+        return {
+            valido: errores.length === 0,
+            errores: errores
+        };
+    }
+ 
+    /**
+     * Muestra u oculta los errores en el DOM y aplica estilos a los inputs.
+     */
+    function mostrarErrores(resultado) {
+        if (resultado.valido) {
+            errorBox.style.display = "none";
+            errorBox.innerHTML = "";
+            edadMin.classList.remove("input-error");
+            edadMax.classList.remove("input-error");
+            edadMin.required = false;
+            edadMax.required = false;
+        } else {
+            // Construir HTML de errores
+            const html = resultado.errores
+                .map(err => `<div style="margin-bottom: 4px;">• ${err}</div>`)
+                .join("");
+            
+            errorBox.innerHTML = html;
+            errorBox.style.display = "block";
+            
+            // Marcar inputs con error visual
+            if (chkVisitas.checked) {
+                if (edadMin.value.trim() === "") {
+                    edadMin.classList.add("input-error");
+                } else {
+                    edadMin.classList.remove("input-error");
+                }
+                
+                if (edadMax.value.trim() === "") {
+                    edadMax.classList.add("input-error");
+                } else {
+                    edadMax.classList.remove("input-error");
+                }
+            }
+        }
+    }
+ 
+    /**
+     * Validación completa con opción de mostrar alerta.
+     */
+    function validar(mostrarAlerta = false) {
+        const resultado = validarEdadYVisitas();
+        mostrarErrores(resultado);
+ 
+        if (!resultado.valido && mostrarAlerta) {
+            // Mostrar el primer error como alerta
+            alert(resultado.errores[0]);
+        }
+ 
+        return resultado.valido;
+    }
+ 
+    // ═══════════════════════════════════════════════════════════════════════
+    // EVENT LISTENERS
+    // ═══════════════════════════════════════════════════════════════════════
+ 
+    // Al cambiar el checkbox de visitas
+    chkVisitas.addEventListener("change", function () {
+        if (chkVisitas.checked) {
+            validar(true); // Mostrar alerta si hay error
+        } else {
+            validar(false);
+        }
+    });
+ 
+    // Al cambiar edad mínima
+    edadMin.addEventListener("input", function () {
+        validar(false);
+    });
+ 
+    // Al cambiar edad máxima
+    edadMax.addEventListener("input", function () {
+        validar(false);
+    });
+ 
+    // Al perder foco (blur) - validar sin alerta
+    edadMin.addEventListener("blur", function () {
+        validar(false);
+    });
+ 
+    edadMax.addEventListener("blur", function () {
+        validar(false);
+    });
+ 
+    // Al enviar el formulario
+    form.addEventListener("submit", function (e) {
+        const resultado = validarEdadYVisitas();
+        
+        if (!resultado.valido) {
+            e.preventDefault();
+            mostrarErrores(resultado);
+            
+            // Hacer scroll al área de error
+            errorBox.scrollIntoView({ behavior: "smooth", block: "center" });
+            
+            // Focus en el primer campo con problema
+            if (edadMin.value.trim() === "" && chkVisitas.checked) {
+                edadMin.focus();
+            } else if (edadMax.value.trim() === "" && chkVisitas.checked) {
+                edadMax.focus();
+            } else {
+                edadMin.focus();
+            }
+        }
+    });
+ 
+    // Validación inicial al cargar
+    validar(false);
+});
+</script>
+ 
 {% endblock %}

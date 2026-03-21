@@ -51,7 +51,6 @@ class UnidadForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.tenant = tenant
 
-        # ✅ Filtrar por tenant
         if tenant:
             self.fields["tipo"].queryset = TipoUnidad.objects.filter(tenant=tenant, activo=True)
             self.fields["categoria"].queryset = CategoriaUnidad.objects.filter(tenant=tenant, activo=True)
@@ -63,7 +62,6 @@ class UnidadForm(forms.ModelForm):
         self.fields["tipo"].empty_label = None
         self.fields["categoria"].empty_label = None
 
-        # ✅ Defaults al crear (si existe al menos 1)
         if not self.instance.pk and not self.data.get("tipo"):
             first_tipo = self.fields["tipo"].queryset.order_by("orden", "nombre").first()
             if first_tipo:
@@ -74,8 +72,101 @@ class UnidadForm(forms.ModelForm):
             if first_cat:
                 self.fields["categoria"].initial = first_cat.pk
 
-        # Padre opcional
         self.fields["padre"].required = False
+
+    def _parse_edad(self, field_name):
+        """
+        Parsea un campo de edad desde self.data.
+        Retorna (valor_int, error_msg) donde error_msg es None si es válido.
+        """
+        raw = (self.data.get(field_name) or "").strip()
+        
+        if raw == "":
+            return None, None
+        
+        try:
+            valor = int(raw)
+            return valor, None
+        except ValueError:
+            return None, f"El campo '{field_name}' debe ser un número válido."
+
+    def clean(self):
+        cleaned_data = super().clean()
+        errors = []
+
+        # ═══════════════════════════════════════════════════════════════════
+        # PARSEAR VALORES DE EDAD
+        # ═══════════════════════════════════════════════════════════════════
+        edad_min, err_min = self._parse_edad("edad_min")
+        edad_max, err_max = self._parse_edad("edad_max")
+
+        if err_min:
+            errors.append(err_min)
+        if err_max:
+            errors.append(err_max)
+
+        # Si hay errores de parseo, no continuar con validaciones
+        if errors:
+            raise forms.ValidationError(errors)
+
+        # ═══════════════════════════════════════════════════════════════════
+        # VALIDAR: EDADES NO NEGATIVAS
+        # ═══════════════════════════════════════════════════════════════════
+        if edad_min is not None and edad_min < 0:
+            errors.append("La edad mínima no puede ser negativa.")
+
+        if edad_max is not None and edad_max < 0:
+            errors.append("La edad máxima no puede ser negativa.")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # VALIDAR: RANGO COHERENTE (max >= min)
+        # ═══════════════════════════════════════════════════════════════════
+        if edad_min is not None and edad_max is not None:
+            if edad_max < edad_min:
+                errors.append(
+                    f"La edad máxima ({edad_max} años) no puede ser menor "
+                    f"que la edad mínima ({edad_min} años)."
+                )
+
+        # ═══════════════════════════════════════════════════════════════════
+        # VALIDAR: SI PERMITE VISITAS, REQUIERE RANGO COMPLETO
+        # ═══════════════════════════════════════════════════════════════════
+        permite_visitas = self.data.get("regla_perm_visitas") in ["on", "true", "1", "True"]
+
+        if permite_visitas:
+            if edad_min is None and edad_max is None:
+                errors.append(
+                    "Para permitir visitas debes especificar el rango de edad "
+                    "(edad mínima y edad máxima)."
+                )
+            elif edad_min is None:
+                errors.append(
+                    "Para permitir visitas debes especificar la edad mínima."
+                )
+            elif edad_max is None:
+                errors.append(
+                    "Para permitir visitas debes especificar la edad máxima."
+                )
+
+        # ═══════════════════════════════════════════════════════════════════
+        # VALIDAR: SI SOLO UNA EDAD ESTÁ PRESENTE (sin visitas), ADVERTIR
+        # ═══════════════════════════════════════════════════════════════════
+        # Opcional: Si quieres que siempre se requieran ambas cuando hay una
+        # Descomenta las siguientes líneas:
+        #
+        # if (edad_min is not None) != (edad_max is not None):
+        #     errors.append(
+        #         "Si defines un rango de edad, debes especificar tanto "
+        #         "la edad mínima como la edad máxima."
+        #     )
+
+        # ═══════════════════════════════════════════════════════════════════
+        # LANZAR TODOS LOS ERRORES JUNTOS
+        # ═══════════════════════════════════════════════════════════════════
+        if errors:
+            raise forms.ValidationError(errors)
+
+        return cleaned_data
 
     def save(self, commit=True):
         obj = super().save(commit=False)
