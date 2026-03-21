@@ -44,6 +44,7 @@ class ClasificacionVisita(TenantAwareModel):
     def __str__(self):
         return self.nombre
 
+
 class RegistroVisitas(TenantAwareModel):
     ESTADO_CHOICES = [
         ("abierto", "Abierto"),
@@ -73,7 +74,40 @@ class RegistroVisitas(TenantAwareModel):
     )
 
     observaciones = models.TextField(blank=True, null=True)
-    cerrado_at = models.DateTimeField(blank=True, null=True)
+
+    # ═══════════════════════════════════════════════════════════════
+    # Auditoría de cierre
+    # ═══════════════════════════════════════════════════════════════
+    cerrado_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Fecha de cierre",
+    )
+    cerrado_por = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="registros_visitas_cerrados",
+        verbose_name="Cerrado por",
+    )
+
+    # ═══════════════════════════════════════════════════════════════
+    # Auditoría de reapertura (opcional, para historial)
+    # ═══════════════════════════════════════════════════════════════
+    reabierto_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Fecha de reapertura",
+    )
+    reabierto_por = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="registros_visitas_reabiertos",
+        verbose_name="Reabierto por",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -96,6 +130,31 @@ class RegistroVisitas(TenantAwareModel):
     @property
     def esta_cerrado(self):
         return self.estado == "cerrado"
+
+    @property
+    def esta_abierto(self):
+        return self.estado == "abierto"
+
+    def cerrar(self, usuario):
+        """Cierra el registro con auditoría."""
+        self.estado = "cerrado"
+        self.cerrado_at = timezone.now()
+        self.cerrado_por = usuario
+        self.save(update_fields=["estado", "cerrado_at", "cerrado_por", "updated_at"])
+
+    def reabrir(self, usuario):
+        """Reabre el registro con auditoría."""
+        self.estado = "abierto"
+        self.reabierto_at = timezone.now()
+        self.reabierto_por = usuario
+        # Limpiar datos de cierre anterior
+        self.cerrado_at = None
+        self.cerrado_por = None
+        self.save(update_fields=[
+            "estado", "reabierto_at", "reabierto_por",
+            "cerrado_at", "cerrado_por", "updated_at"
+        ])
+
 
 class Visita(TenantAwareModel):
     ESTADO_CHOICES = [
