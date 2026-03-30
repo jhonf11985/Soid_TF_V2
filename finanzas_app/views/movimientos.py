@@ -9,7 +9,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import json
 
 from miembros_app.models import Miembro
@@ -34,10 +34,10 @@ def movimientos_listado(request):
     """
     Listado de movimientos financieros con filtros, totales y paginación.
     """
-    tenant = request.tenant  # 👈 TENANT
+    tenant = request.tenant
     
     movimientos = MovimientoFinanciero.objects.filter(
-        tenant=tenant  # 👈 FILTRAR POR TENANT
+        tenant=tenant
     ).select_related(
         "cuenta", "categoria", "creado_por", "persona_asociada", "unidad"
     ).exclude(estado="anulado").order_by("-fecha", "-creado_en")
@@ -98,8 +98,8 @@ def movimientos_listado(request):
     except EmptyPage:
         movimientos_page = paginator.page(paginator.num_pages)
 
-    cuentas = CuentaFinanciera.objects.filter(tenant=tenant, esta_activa=True).order_by("nombre")  # 👈 FILTRAR POR TENANT
-    categorias = CategoriaMovimiento.objects.filter(tenant=tenant, activo=True).order_by("tipo", "nombre")  # 👈 FILTRAR POR TENANT
+    cuentas = CuentaFinanciera.objects.filter(tenant=tenant, esta_activa=True).order_by("nombre")
+    categorias = CategoriaMovimiento.objects.filter(tenant=tenant, activo=True).order_by("tipo", "nombre")
 
     context = {
         "movimientos": movimientos_page,
@@ -128,19 +128,19 @@ def movimiento_crear(request):
     """
     Formulario para registrar un nuevo movimiento (ingreso o egreso).
     """
-    tenant = request.tenant  # 👈 TENANT
+    tenant = request.tenant
     
     if request.method == "POST":
-        form = MovimientoFinancieroForm(request.POST, tenant=tenant)  # 👈 PASAR TENANT
+        form = MovimientoFinancieroForm(request.POST, tenant=tenant)
         if form.is_valid():
             mov = form.save(commit=False)
-            mov.tenant = tenant  # 👈 ASIGNAR TENANT
+            mov.tenant = tenant
             mov.creado_por = request.user
             mov.save()
             messages.success(request, "Movimiento registrado correctamente.")
             return redirect("finanzas_app:movimientos_listado")
     else:
-        form = MovimientoFinancieroForm(tenant=tenant)  # 👈 PASAR TENANT
+        form = MovimientoFinancieroForm(tenant=tenant)
 
     context = {
         "form": form,
@@ -154,32 +154,154 @@ def movimiento_crear(request):
 def ingreso_crear(request):
     """
     Formulario específico para registrar INGRESOS.
+    Soporta múltiples personas: divide el monto en partes iguales.
     """
-    tenant = request.tenant  # 👈 TENANT
+    tenant = request.tenant
     
     if request.method == "POST":
-        form = MovimientoIngresoForm(request.POST, tenant=tenant)  # 👈 PASAR TENANT
+        form = MovimientoIngresoForm(request.POST, tenant=tenant)
+        
         if form.is_valid():
-            mov = form.save(commit=False)
-            mov.tenant = tenant  # 👈 ASIGNAR TENANT
-            mov.tipo = "ingreso"
-            mov.estado = "confirmado"
-            mov.creado_por = request.user
-            mov.save()
+            # =============================================
+            # LÓGICA DE MÚLTIPLES PERSONAS
+            # =============================================
+            personas_ids_str = request.POST.get("personas_asociadas", "").strip()
+            persona_ids = []
+            
+            if personas_ids_str:
+                # Parsear IDs separados por coma
+                for pid in personas_ids_str.split(","):
+                    pid = pid.strip()
+                    if pid.isdigit():
+                        persona_ids.append(int(pid))
+            
+            # Obtener datos base del formulario
+            monto_total = form.cleaned_data.get("monto", Decimal("0"))
+            fecha = form.cleaned_data.get("fecha")
+            cuenta = form.cleaned_data.get("cuenta")
+            categoria = form.cleaned_data.get("categoria")
+            forma_pago = form.cleaned_data.get("forma_pago")
+            referencia = form.cleaned_data.get("referencia", "")
+            descripcion = form.cleaned_data.get("descripcion", "")
+            unidad = form.cleaned_data.get("unidad")
+            
+            movimientos_creados = []
+            
+            if len(persona_ids) > 1:
+                # =============================================
+                # CASO: MÚLTIPLES PERSONAS - DIVIDIR MONTO
+                # =============================================
+                cantidad_personas = len(persona_ids)
+                
+                # Dividir monto en partes iguales (redondeo a 2 decimales)
+                monto_por_persona = (monto_total / cantidad_personas).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+                
+                # Calcular diferencia por redondeo para el último
+                monto_acumulado = monto_por_persona * (cantidad_personas - 1)
+                monto_ultimo = monto_total - monto_acumulado
+                
+                # Obtener miembros
+                miembros = Miembro.objects.filter(
+                    tenant=tenant, 
+                    id__in=persona_ids,
+                    activo=True
+                )
+                miembros_dict = {m.id: m for m in miembros}
+                
+                for idx, pid in enumerate(persona_ids):
+                    miembro = miembros_dict.get(pid)
+                    if not miembro:
+                        continue
+                    
+                    # El último recibe el monto ajustado por redondeo
+                    monto_asignado = monto_ultimo if idx == len(persona_ids) - 1 else monto_por_persona
+                    
+                    # Crear descripción indicando división
+                    desc_dividida = descripcion
+                    if descripcion:
+                        desc_dividida = f"{descripcion} (Parte {idx + 1}/{cantidad_personas})"
+                    else:
+                        desc_dividida = f"Ingreso dividido - Parte {idx + 1}/{cantidad_personas}"
+                    
+                    mov = MovimientoFinanciero(
+                        tenant=tenant,
+                        tipo="ingreso",
+                        estado="confirmado",
+                        fecha=fecha,
+                        monto=monto_asignado,
+                        cuenta=cuenta,
+                        categoria=categoria,
+                        forma_pago=forma_pago,
+                        referencia=referencia,
+                        descripcion=desc_dividida,
+                        unidad=unidad,
+                        persona_asociada=miembro,
+                        creado_por=request.user,
+                    )
+                    mov.save()
+                    movimientos_creados.append(mov)
+                
+                messages.success(
+                    request,
+                    f"Se crearon {len(movimientos_creados)} ingresos de RD$ {monto_por_persona:,.2f} cada uno "
+                    f"(total: RD$ {monto_total:,.2f})."
+                )
+            
+            elif len(persona_ids) == 1:
+                # =============================================
+                # CASO: UNA SOLA PERSONA
+                # =============================================
+                miembro = Miembro.objects.filter(
+                    tenant=tenant, 
+                    id=persona_ids[0],
+                    activo=True
+                ).first()
+                
+                mov = form.save(commit=False)
+                mov.tenant = tenant
+                mov.tipo = "ingreso"
+                mov.estado = "confirmado"
+                mov.creado_por = request.user
+                mov.persona_asociada = miembro
+                mov.save()
+                movimientos_creados.append(mov)
+                
+                messages.success(request, "Ingreso registrado y confirmado correctamente.")
+            
+            else:
+                # =============================================
+                # CASO: SIN PERSONA (solo unidad o sin origen)
+                # =============================================
+                mov = form.save(commit=False)
+                mov.tenant = tenant
+                mov.tipo = "ingreso"
+                mov.estado = "confirmado"
+                mov.creado_por = request.user
+                mov.persona_asociada = None
+                mov.save()
+                movimientos_creados.append(mov)
+                
+                messages.success(request, "Ingreso registrado y confirmado correctamente.")
 
-            messages.success(request, "Ingreso registrado y confirmado correctamente.")
-
+            # Redirección según acción
             accion = request.POST.get("accion")
             if accion == "guardar_nuevo":
                 return redirect("finanzas_app:ingreso_crear")
-
+            
+            # Si se creó un solo movimiento, ir al detalle
+            if len(movimientos_creados) == 1:
+                return redirect("finanzas_app:ingreso_detalle", pk=movimientos_creados[0].pk)
+            
+            # Si se crearon múltiples, ir al listado filtrado por ingresos
             return redirect("/finanzas/movimientos/?tipo=ingreso")
     else:
-
         form = MovimientoIngresoForm(
             initial={"fecha": timezone.localdate()},
             tenant=tenant
         )
+    
     context = {
         "form": form,
         "modo": "crear",
@@ -195,15 +317,15 @@ def egreso_crear(request):
     Formulario específico para registrar EGRESOS.
     Incluye validación de fondos suficientes y muestra saldo por cuenta.
     """
-    tenant = request.tenant  # 👈 TENANT
+    tenant = request.tenant
     
     # CALCULAR SALDOS DE TODAS LAS CUENTAS ACTIVAS
     cuentas_con_saldo = {}
     umbral_saldo_bajo = Decimal("5000")
 
-    for cuenta in CuentaFinanciera.objects.filter(tenant=tenant, esta_activa=True):  # 👈 FILTRAR POR TENANT
+    for cuenta in CuentaFinanciera.objects.filter(tenant=tenant, esta_activa=True):
         movs = MovimientoFinanciero.objects.filter(
-            tenant=tenant,  # 👈 FILTRAR POR TENANT
+            tenant=tenant,
             cuenta=cuenta
         ).exclude(estado="anulado").aggregate(
             ingresos=Sum("monto", filter=Q(tipo="ingreso")),
@@ -219,7 +341,7 @@ def egreso_crear(request):
         }
 
     if request.method == "POST":
-        form = MovimientoEgresoForm(request.POST, tenant=tenant)  # 👈 PASAR TENANT
+        form = MovimientoEgresoForm(request.POST, tenant=tenant)
 
         if form.is_valid():
             cuenta = form.cleaned_data.get("cuenta")
@@ -227,7 +349,7 @@ def egreso_crear(request):
 
             if cuenta and monto:
                 saldo_actual = Decimal(str(cuentas_con_saldo.get(cuenta.id, {}).get("saldo", 0)))
-
+                
                 if monto > saldo_actual:
                     form.add_error(
                         "monto",
@@ -235,29 +357,20 @@ def egreso_crear(request):
                     )
                 else:
                     mov = form.save(commit=False)
-                    mov.tenant = tenant  # 👈 ASIGNAR TENANT
+                    mov.tenant = tenant
                     mov.tipo = "egreso"
+                    mov.estado = "confirmado"
                     mov.creado_por = request.user
                     mov.save()
 
-                    saldo_resultante = saldo_actual - monto
-
-                    if saldo_resultante < umbral_saldo_bajo:
-                        messages.warning(
-                            request,
-                            f"Egreso registrado. ⚠️ Saldo restante en {cuenta.nombre}: "
-                            f"RD$ {saldo_resultante:,.2f} (por debajo de RD$ {umbral_saldo_bajo:,.2f})"
-                        )
-                    else:
-                        messages.success(request, "Egreso registrado correctamente.")
+                    messages.success(request, "Egreso registrado y confirmado correctamente.")
 
                     accion = request.POST.get("accion")
                     if accion == "guardar_nuevo":
                         return redirect("finanzas_app:egreso_crear")
 
-                    return redirect("/finanzas/movimientos/?tipo=egreso")
+                    return redirect("finanzas_app:egreso_detalle", pk=mov.pk)
     else:
-
         form = MovimientoEgresoForm(
             initial={"fecha": timezone.localdate()},
             tenant=tenant
@@ -266,10 +379,10 @@ def egreso_crear(request):
     context = {
         "form": form,
         "modo": "crear",
-        "cuentas_saldos_json": json.dumps(cuentas_con_saldo),
+        "cuentas_con_saldo_json": json.dumps(cuentas_con_saldo),
         "umbral_saldo_bajo": float(umbral_saldo_bajo),
     }
-    return render(request, "finanzas_app/egreso.html", context)
+    return render(request, "finanzas_app/egreso_form.html", context)
 
 
 @login_required
@@ -277,102 +390,85 @@ def egreso_crear(request):
 @permission_required("finanzas_app.change_movimientofinanciero", raise_exception=True)
 def movimiento_editar(request, pk):
     """
-    Editar un movimiento financiero existente.
+    Editar un movimiento existente.
     """
-    tenant = request.tenant  # 👈 TENANT
-    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk, tenant=tenant)  # 👈 FILTRAR POR TENANT
+    tenant = request.tenant
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk, tenant=tenant)
 
     if movimiento.estado == "anulado":
-        messages.error(request, "Este movimiento está anulado y no se puede editar.")
-        if movimiento.tipo == "ingreso":
-            return redirect("finanzas_app:ingreso_detalle", pk=movimiento.pk)
+        messages.warning(request, "No se puede editar un movimiento anulado.")
         return redirect("finanzas_app:movimientos_listado")
 
+    # Determinar el form según tipo
     if movimiento.tipo == "ingreso":
         FormClass = MovimientoIngresoForm
-        template_name = "finanzas_app/ingreso_form.html"
-        redirect_url = "/finanzas/movimientos/?tipo=ingreso"
+        template = "finanzas_app/ingreso_form.html"
     else:
         FormClass = MovimientoEgresoForm
-        template_name = "finanzas_app/egreso.html"
-        redirect_url = "/finanzas/movimientos/?tipo=egreso"
-
-    # CALCULAR SALDOS (solo para egresos)
-    cuentas_con_saldo = {}
-    umbral_saldo_bajo = Decimal("5000")
-
-    if movimiento.tipo == "egreso":
-        for cuenta in CuentaFinanciera.objects.filter(tenant=tenant, esta_activa=True):  # 👈 FILTRAR POR TENANT
-            movs = MovimientoFinanciero.objects.filter(
-                tenant=tenant,  # 👈 FILTRAR POR TENANT
-                cuenta=cuenta
-            ).exclude(estado="anulado").aggregate(
-                ingresos=Sum("monto", filter=Q(tipo="ingreso")),
-                egresos=Sum("monto", filter=Q(tipo="egreso")),
-            )
-            ing = movs.get("ingresos") or Decimal("0")
-            egr = movs.get("egresos") or Decimal("0")
-            saldo = cuenta.saldo_inicial + ing - egr
-
-            if cuenta.id == movimiento.cuenta_id:
-                saldo += movimiento.monto
-
-            cuentas_con_saldo[cuenta.id] = {
-                "saldo": float(saldo),
-                "nombre": cuenta.nombre,
-                "moneda": cuenta.moneda,
-            }
+        template = "finanzas_app/egreso_form.html"
 
     if request.method == "POST":
-        form = FormClass(request.POST, instance=movimiento, tenant=tenant)  # 👈 PASAR TENANT
-
+        form = FormClass(request.POST, instance=movimiento, tenant=tenant)
+        
         if form.is_valid():
-            if movimiento.tipo == "egreso":
-                cuenta = form.cleaned_data.get("cuenta")
-                monto = form.cleaned_data.get("monto")
-
-                if cuenta and monto:
-                    saldo_disponible = Decimal(str(cuentas_con_saldo.get(cuenta.id, {}).get("saldo", 0)))
-
-                    if monto > saldo_disponible:
-                        form.add_error(
-                            "monto",
-                            f"Fondos insuficientes. Saldo disponible: RD$ {saldo_disponible:,.2f}"
-                        )
-                    else:
-                        form.save()
-                        messages.success(request, "Movimiento actualizado correctamente.")
-                        return redirect(redirect_url)
+            # Para edición, usar persona_asociada simple (no múltiple)
+            mov = form.save(commit=False)
+            
+            # Manejar persona_asociada desde el campo múltiple
+            personas_ids_str = request.POST.get("personas_asociadas", "").strip()
+            if personas_ids_str:
+                primer_id = personas_ids_str.split(",")[0].strip()
+                if primer_id.isdigit():
+                    miembro = Miembro.objects.filter(
+                        tenant=tenant, 
+                        id=int(primer_id),
+                        activo=True
+                    ).first()
+                    mov.persona_asociada = miembro
+                else:
+                    mov.persona_asociada = None
             else:
-                form.save()
-                messages.success(request, "Movimiento actualizado correctamente.")
-                return redirect(redirect_url)
+                mov.persona_asociada = None
+            
+            mov.save()
+            messages.success(request, "Movimiento actualizado correctamente.")
+            
+            if movimiento.tipo == "ingreso":
+                return redirect("finanzas_app:ingreso_detalle", pk=mov.pk)
+            else:
+                return redirect("finanzas_app:egreso_detalle", pk=mov.pk)
     else:
-        form = FormClass(instance=movimiento, tenant=tenant)  # 👈 PASAR TENANT
+        form = FormClass(instance=movimiento, tenant=tenant)
+
+    # Preparar datos iniciales para el autocomplete multi
+    personas_initial = []
+    if movimiento.persona_asociada:
+        m = movimiento.persona_asociada
+        personas_initial.append({
+            "id": m.id,
+            "nombre": f"{m.nombres} {m.apellidos}".strip(),
+            "codigo": getattr(m, "codigo_miembro", "") or "",
+        })
 
     context = {
         "form": form,
         "movimiento": movimiento,
         "modo": "editar",
+        "personas_initial_json": json.dumps(personas_initial),
     }
-
-    if movimiento.tipo == "egreso":
-        context["cuentas_saldos_json"] = json.dumps(cuentas_con_saldo)
-        context["umbral_saldo_bajo"] = float(umbral_saldo_bajo)
-
-    return render(request, template_name, context)
+    return render(request, template, context)
 
 
 @login_required
-@require_POST
-@permission_required("finanzas_app.change_movimientofinanciero", raise_exception=True)
+@require_http_methods(["GET", "POST"])
+@permission_required("finanzas_app.delete_movimientofinanciero", raise_exception=True)
 def movimiento_anular(request, pk):
     """
-    Anular un movimiento financiero.
+    Anular un movimiento (no lo elimina, cambia el estado).
     Si es un egreso vinculado a una CxP, revierte el pago automáticamente.
     """
-    tenant = request.tenant  # 👈 TENANT
-    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk, tenant=tenant)  # 👈 FILTRAR POR TENANT
+    tenant = request.tenant
+    movimiento = get_object_or_404(MovimientoFinanciero, pk=pk, tenant=tenant)
 
     if movimiento.estado == "anulado":
         messages.warning(request, "Este movimiento ya está anulado.")
@@ -434,8 +530,8 @@ def ingreso_detalle(request, pk):
     """
     Vista de detalle para un INGRESO.
     """
-    tenant = request.tenant  # 👈 TENANT
-    ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso", tenant=tenant)  # 👈 FILTRAR POR TENANT
+    tenant = request.tenant
+    ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso", tenant=tenant)
 
     context = {
         "ingreso": ingreso,
@@ -450,8 +546,8 @@ def egreso_detalle(request, pk):
     """
     Vista de detalle para un EGRESO.
     """
-    tenant = request.tenant  # 👈 TENANT
-    egreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="egreso", tenant=tenant)  # 👈 FILTRAR POR TENANT
+    tenant = request.tenant
+    egreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="egreso", tenant=tenant)
 
     context = {
         "egreso": egreso,
@@ -466,10 +562,10 @@ def buscar_miembros_finanzas(request):
     """
     Devuelve un JSON con miembros activos para el modal de búsqueda.
     """
-    tenant = request.tenant  # 👈 TENANT
+    tenant = request.tenant
     q = request.GET.get("q", "").strip()
 
-    miembros = Miembro.objects.filter(tenant=tenant, activo=True)  # 👈 FILTRAR POR TENANT
+    miembros = Miembro.objects.filter(tenant=tenant, activo=True)
 
     if q:
         miembros = miembros.filter(
@@ -488,7 +584,7 @@ def buscar_miembros_finanzas(request):
             "codigo": getattr(m, "codigo_miembro", "") or "",
         })
 
-    return JsonResponse({"resultados": data})
+    return JsonResponse({"success": True, "resultados": data})
 
 
 @login_required
@@ -498,11 +594,11 @@ def movimientos_listado_print(request):
     """
     Vista para imprimir listado de movimientos.
     """
-    tenant = request.tenant  # 👈 TENANT
+    tenant = request.tenant
     
     # Reutilizar la lógica de filtros
     movimientos = MovimientoFinanciero.objects.filter(
-        tenant=tenant  # 👈 FILTRAR POR TENANT
+        tenant=tenant
     ).select_related(
         "cuenta", "categoria", "creado_por", "persona_asociada"
     ).exclude(estado="anulado").order_by("-fecha", "-creado_en")
@@ -568,8 +664,8 @@ def ingreso_recibo(request, pk):
     """
     Vista para imprimir recibo de ingreso.
     """
-    tenant = request.tenant  # 👈 TENANT
-    ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso", tenant=tenant)  # 👈 FILTRAR POR TENANT
+    tenant = request.tenant
+    ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso", tenant=tenant)
     CFG = get_config()
 
     context = {
@@ -587,8 +683,8 @@ def ingreso_general_pdf(request, pk):
     """
     Vista para generar PDF de ingreso.
     """
-    tenant = request.tenant  # 👈 TENANT
-    ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso", tenant=tenant)  # 👈 FILTRAR POR TENANT
+    tenant = request.tenant
+    ingreso = get_object_or_404(MovimientoFinanciero, pk=pk, tipo="ingreso", tenant=tenant)
     CFG = get_config()
 
     context = {

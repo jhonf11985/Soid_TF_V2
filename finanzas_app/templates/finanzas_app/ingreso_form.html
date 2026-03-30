@@ -17,11 +17,11 @@
             <div class="odoo-breadcrumb">
                 <span class="odoo-breadcrumb-parent">Ingresos</span>
                 <span class="odoo-breadcrumb-separator">/</span>
-                <span class="odoo-breadcrumb-current">Nuevo</span>
+                <span class="odoo-breadcrumb-current">{% if modo == 'editar' %}Editar{% else %}Nuevo{% endif %}</span>
             </div>
         </div>
         <div class="odoo-topbar-right">
-            <span class="odoo-record-count">Nuevo</span>
+            <span class="odoo-record-count">{% if modo == 'editar' %}#{{ movimiento.id }}{% else %}Nuevo{% endif %}</span>
         </div>
     </div>
 
@@ -163,52 +163,58 @@
                     </div>
                     {% endif %}
 
-                    <!-- Persona (autocomplete) -->
+                    <!-- =====================================================
+                         AUTOCOMPLETE MULTI-SELECT PARA PERSONAS
+                         ===================================================== -->
                     <div class="odoo-field-row">
-                        <label>Persona</label>
-                        <div class="odoo-field-value autocomplete-wrapper" id="autocomplete-persona">
-                            
-                            <!-- Campo hidden para guardar el ID -->
-                            <input type="hidden" id="id_persona_asociada" name="persona_asociada" value="">
-                            
-                            <!-- Contenedor del input y chip -->
-                            <div class="autocomplete-field">
+                        <label>Personas</label>
+                        <div class="odoo-field-value">
+                            <div class="autocomplete-multi-wrapper" 
+                                 id="autocomplete-personas"
+                                 data-autocomplete-multi
+                                 data-endpoint="{% url 'finanzas_app:buscar_miembros_finanzas' %}"
+                                 data-filtro="activos"
+                                 data-limit="15"
+                                 data-min-chars="2"
+                                 {% if personas_initial_json %}data-initial='{{ personas_initial_json|escapejs }}'{% endif %}>
                                 
-                                <!-- Chip de selección (oculto por defecto) -->
-                                <div class="autocomplete-chip" id="chip-persona" style="display: none;">
-                                    <span class="chip-avatar" id="chip-avatar">J</span>
-                                    <span class="chip-text">
-                                        <span class="chip-name" id="chip-name">Juan García</span>
-                                        <span class="chip-code" id="chip-code">TF-0001</span>
-                                    </span>
-                                    <button type="button" class="chip-remove" id="chip-remove" title="Quitar">
-                                        <span class="material-icons">close</span>
-                                    </button>
-                                </div>
+                                <!-- Campo hidden para guardar IDs separados por coma -->
+                                <input type="hidden" 
+                                       name="personas_asociadas" 
+                                       id="id_personas_asociadas" 
+                                       class="autocomplete-hidden"
+                                       value="">
+                                
+                                <!-- Contenedor de badges seleccionados -->
+                                <div class="autocomplete-badges" id="badges-personas"></div>
                                 
                                 <!-- Input de búsqueda -->
                                 <input 
                                     type="text" 
-                                    id="search-persona" 
-                                    class="autocomplete-search" 
-                                    placeholder="Escriba para buscar..."
+                                    class="autocomplete-search"
+                                    placeholder="Buscar personas..."
                                     autocomplete="off"
                                 >
+                                
+                                <!-- Dropdown de resultados -->
+                                <div class="autocomplete-dropdown">
+                                    <ul class="autocomplete-list"></ul>
+                                    <div class="autocomplete-empty">
+                                        <span class="material-icons">person_search</span>
+                                        <p>No se encontraron miembros</p>
+                                    </div>
+                                    <div class="autocomplete-loading">
+                                        <span class="material-icons spinner">sync</span>
+                                        <p>Buscando...</p>
+                                    </div>
+                                </div>
                             </div>
                             
-                            <!-- Dropdown de resultados -->
-                            <div class="autocomplete-dropdown" id="dropdown-persona">
-                                <ul class="autocomplete-list" id="list-persona"></ul>
-                                <div class="autocomplete-empty" id="empty-persona">
-                                    <span class="material-icons">person_search</span>
-                                    <p>No se encontraron miembros</p>
-                                </div>
-                                <div class="autocomplete-loading" id="loading-persona">
-                                    <span class="material-icons spinner">sync</span>
-                                    <p>Buscando...</p>
-                                </div>
+                            <!-- Nota informativa sobre división -->
+                            <div class="odoo-field-hint" id="hint-division" style="display: none;">
+                                <span class="material-icons" style="font-size: 14px; vertical-align: middle;">info</span>
+                                El monto se dividirá en partes iguales entre las personas seleccionadas.
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -230,7 +236,6 @@
         </form>
     </div>
 
-    <!-- ZONA DE ADJUNTOS - ESTILO ODOO ELEGANTE -->
     <!-- ZONA DE ADJUNTOS - SOLO EN EDICIÓN -->
     {% if movimiento %}
     <div class="odoo-attachments">
@@ -258,11 +263,58 @@
 
 </div>
 
+<!-- =====================================================
+     MODAL DE CONFIRMACIÓN PARA INGRESOS DIVIDIDOS
+     ===================================================== -->
+<div class="modal-overlay" id="modal-division" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div class="modal-icon">
+                <span class="material-icons">call_split</span>
+            </div>
+            <h3 class="modal-title">Confirmar división de ingreso</h3>
+        </div>
+        
+        <div class="modal-body">
+            <p class="modal-description">
+                El monto se dividirá en partes iguales entre las personas seleccionadas:
+            </p>
+            
+            <div class="division-summary">
+                <div class="division-total">
+                    <span class="division-label">Monto total</span>
+                    <span class="division-value" id="modal-monto-total">RD$ 0.00</span>
+                </div>
+                <div class="division-arrow">
+                    <span class="material-icons">south</span>
+                </div>
+                <div class="division-breakdown" id="modal-breakdown">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+            
+            <div class="modal-note">
+                <span class="material-icons">info</span>
+                <span>Se crearán <strong id="modal-count">0</strong> ingresos independientes, uno por cada persona.</span>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="odoo-btn odoo-btn-secondary" id="modal-cancel">
+                Cancelar
+            </button>
+            <button type="button" class="odoo-btn odoo-btn-primary" id="modal-confirm">
+                <span class="material-icons">check</span>
+                Confirmar y guardar
+            </button>
+        </div>
+    </div>
+</div>
+
 
 
 <!-- =============================================
      ESTILOS CSS
-     Agregar en la sección <style>
      ============================================= -->
 <style>
 /* =====================================
@@ -348,7 +400,7 @@
 @keyframes dropdownIn {
     from {
         opacity: 0;
-        transform: translateY(-8px);
+        transform: translateY(-4px);
     }
     to {
         opacity: 1;
@@ -356,14 +408,13 @@
     }
 }
 
-/* Buscador dentro del dropdown */
 .categoria-search-box {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--odoo-border);
-    background: var(--odoo-bg-gray);
+    background: #f8f9fa;
 }
 
 .categoria-search-box .material-icons {
@@ -377,27 +428,21 @@
     background: transparent;
     font-size: 13px;
     color: var(--odoo-text);
-    font-family: inherit;
+    padding: 4px 0;
 }
 
 .categoria-search-box input:focus {
     outline: none;
 }
 
-.categoria-search-box input::placeholder {
-    color: #adb5bd;
-}
-
-/* Lista de categorías */
 .categoria-list {
+    flex: 1;
     overflow-y: auto;
-    max-height: 280px;
-    padding: 6px 0;
+    padding: 8px 0;
 }
 
-/* Grupo */
 .categoria-group {
-    margin-bottom: 4px;
+    margin-bottom: 8px;
 }
 
 .categoria-group:last-child {
@@ -405,23 +450,20 @@
 }
 
 .categoria-group-header {
-    padding: 8px 12px 4px;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--odoo-text-muted);
-    background: var(--odoo-bg-gray);
-    position: sticky;
-    top: 0;
+    padding: 4px 16px;
+    background: #f8f9fa;
 }
 
-/* Items */
 .categoria-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 12px;
+    padding: 8px 16px;
     cursor: pointer;
     transition: background 0.1s;
 }
@@ -441,24 +483,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
 }
 
 .categoria-item-icon.ingreso {
-    background: #d1fae5;
+    background: #ecfdf5;
     color: #059669;
 }
 
 .categoria-item-icon.egreso {
-    background: #fee2e2;
+    background: #fef2f2;
     color: #dc2626;
+}
+
+.categoria-item-icon .material-icons {
+    font-size: 16px;
 }
 
 .categoria-item-text {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
 }
 
 .categoria-item-name {
@@ -467,36 +512,34 @@
     color: var(--odoo-text);
 }
 
+.categoria-item-name mark {
+    background: #fef08a;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
 .categoria-item-code {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--odoo-text-muted);
 }
 
 .categoria-item-check {
-    color: var(--odoo-purple);
     font-size: 18px;
+    color: var(--odoo-purple);
     opacity: 0;
+    transition: opacity 0.1s;
 }
 
 .categoria-item.selected .categoria-item-check {
     opacity: 1;
 }
 
-/* Match de búsqueda */
-.categoria-item-name mark {
-    background: #fef08a;
-    color: inherit;
-    padding: 0 2px;
-    border-radius: 2px;
-}
-
-/* Empty state */
 .categoria-empty {
     display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px 16px;
+    padding: 24px;
     color: var(--odoo-text-muted);
     gap: 8px;
 }
@@ -506,734 +549,248 @@
     opacity: 0.5;
 }
 
-.categoria-empty span:last-child {
+/* =====================================
+   AUTOCOMPLETE MULTI-SELECT
+   ===================================== */
+
+.autocomplete-multi-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Contenedor de badges */
+.autocomplete-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+    min-height: 0;
+}
+
+.autocomplete-badges:empty {
+    display: none;
+}
+
+/* Badge individual */
+.autocomplete-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 4px;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border: 1px solid #d1d5db;
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--odoo-text);
+    animation: badgeIn 0.2s ease;
+}
+
+@keyframes badgeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.badge-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--odoo-purple);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.badge-name {
+    font-weight: 500;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.badge-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.badge-remove:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.badge-remove svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* Input de búsqueda multi */
+.autocomplete-multi-wrapper .autocomplete-search {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid transparent;
+    background: transparent;
+    padding: 4px 0;
+    font-size: 13px;
+    color: var(--odoo-text);
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+
+.autocomplete-multi-wrapper .autocomplete-search:hover {
+    border-bottom-color: var(--odoo-border);
+}
+
+.autocomplete-multi-wrapper .autocomplete-search:focus {
+    outline: none;
+    border-bottom-color: var(--odoo-purple);
+    border-bottom-width: 2px;
+    padding-bottom: 3px;
+}
+
+.autocomplete-multi-wrapper .autocomplete-search::placeholder {
+    color: #adb5bd;
+}
+
+/* Dropdown multi */
+.autocomplete-multi-wrapper .autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--odoo-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    z-index: 1000;
+    max-height: 280px;
+    overflow: hidden;
+    display: none;
+}
+
+.autocomplete-multi-wrapper .autocomplete-dropdown.open {
+    display: block;
+    animation: dropdownIn 0.15s ease;
+}
+
+.autocomplete-multi-wrapper .autocomplete-list {
+    list-style: none;
+    margin: 0;
+    padding: 8px 0;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.autocomplete-multi-wrapper .autocomplete-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.autocomplete-multi-wrapper .autocomplete-item:hover:not(.disabled) {
+    background: #f3f4f6;
+}
+
+.autocomplete-multi-wrapper .autocomplete-item.disabled {
+    opacity: 0.5;
+    cursor: default;
+    background: #f9fafb;
+}
+
+.autocomplete-multi-wrapper .autocomplete-item-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--odoo-purple) 0%, #8e6b82 100%);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.autocomplete-multi-wrapper .autocomplete-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.autocomplete-multi-wrapper .autocomplete-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--odoo-text);
+}
+
+.autocomplete-multi-wrapper .autocomplete-item-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--odoo-text-muted);
+}
+
+.autocomplete-multi-wrapper .autocomplete-item-code {
+    background: #f3f4f6;
+    padding: 1px 6px;
+    border-radius: 3px;
+}
+
+.autocomplete-multi-wrapper .autocomplete-item-check {
+    font-size: 16px;
+    color: var(--odoo-purple);
+}
+
+.autocomplete-multi-wrapper .autocomplete-empty,
+.autocomplete-multi-wrapper .autocomplete-loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: var(--odoo-text-muted);
+    gap: 8px;
+    text-align: center;
+}
+
+.autocomplete-multi-wrapper .autocomplete-empty .material-icons,
+.autocomplete-multi-wrapper .autocomplete-loading .material-icons {
+    font-size: 32px;
+    opacity: 0.5;
+}
+
+.autocomplete-multi-wrapper .autocomplete-empty p,
+.autocomplete-multi-wrapper .autocomplete-loading p {
+    margin: 0;
     font-size: 13px;
 }
 
-.categoria-list:empty + .categoria-empty {
-    display: flex;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .categoria-dropdown {
-        position: fixed;
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        border-radius: 16px 16px 0 0;
-        max-height: 70vh;
-    }
-    
-    .categoria-search-box {
-        padding: 14px 16px;
-    }
-    
-    .categoria-item {
-        padding: 12px 16px;
-    }
-    
-    .categoria-group-header {
-        padding: 10px 16px 6px;
-    }
-}
-</style>
-
-
-<style>
-    /* =====================================
-       ODOO FORM - ESTILO BASE
-       ===================================== */
-
-    :root {
-    --odoo-purple: var(--color-primary);
-    --odoo-purple-dark: var(--color-primary);
-        --odoo-text: #212529;
-        --odoo-text-muted: #6c757d;
-        --odoo-border: #dee2e6;
-        --odoo-bg: #ffffff;
-        --odoo-bg-gray: #f8f9fa;
-        --odoo-success: #28a745;
-        --odoo-error: #dc3545;
-    }
-
-    .odoo-page {
-        background: var(--odoo-bg-gray);
-        min-height: 100vh;
-    }
-
-    /* BARRA SUPERIOR - NAVEGACIÓN */
-    .odoo-topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 16px;
-        background: var(--odoo-bg);
-        border-bottom: 1px solid var(--odoo-border);
-    }
-
-    .odoo-topbar-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .odoo-back-link {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        color: var(--odoo-text-muted);
-        border-radius: 4px;
-        transition: all 0.15s;
-        text-decoration: none;
-    }
-
-    .odoo-back-link:hover {
-        background: var(--odoo-bg-gray);
-        color: var(--odoo-text);
-    }
-
-    .odoo-breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-    }
-
-    .odoo-breadcrumb-parent {
-        color: var(--odoo-purple);
-        font-weight: 500;
-    }
-
-    .odoo-breadcrumb-separator {
-        color: var(--odoo-text-muted);
-    }
-
-    .odoo-breadcrumb-current {
-        color: var(--odoo-text);
-        font-weight: 600;
-    }
-
-    .odoo-record-count {
-        font-size: 13px;
-        color: var(--odoo-text-muted);
-    }
-
-    /* BARRA DE ACCIONES */
-    .odoo-actionbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 16px;
-        background: var(--odoo-bg);
-        border-bottom: 1px solid var(--odoo-border);
-    }
-
-    .odoo-actionbar-left {
-        display: flex;
-        gap: 8px;
-    }
-
-    /* BOTONES */
-    .odoo-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 16px;
-        font-size: 13px;
-        font-weight: 500;
-        border: 1px solid var(--odoo-border);
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.15s;
-        text-decoration: none;
-        font-family: inherit;
-    }
-
-    .odoo-btn-primary {
-        background: var(--odoo-purple);
-        color: white;
-        border-color: var(--odoo-purple);
-    }
-
-    .odoo-btn-primary:hover {
-        background: var(--odoo-purple-dark);
-        border-color: var(--odoo-purple-dark);
-    }
-
-    .odoo-btn-secondary {
-        background: var(--odoo-bg);
-        color: var(--odoo-text);
-    }
-
-    .odoo-btn-secondary:hover {
-        background: var(--odoo-bg-gray);
-    }
-
-    /* FORMULARIO */
-    .odoo-form-sheet {
-        max-width: 1200px;
-        margin: 16px auto;
-        background: var(--odoo-bg);
-        border: 1px solid var(--odoo-border);
-        border-radius: 4px;
-        padding: 0;
-    }
-
-    .odoo-form-content {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 24px;
-        padding: 24px;
-        border-bottom: 1px solid var(--odoo-border);
-    }
-
-    .odoo-form-col {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .odoo-field-row {
-        display: grid;
-        grid-template-columns: 140px 1fr;
-        gap: 12px;
-        align-items: center;
-    }
-
-    .odoo-field-row label {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--odoo-text);
-        text-align: right;
-    }
-
-    .odoo-field-value {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .odoo-form-sheet input,
-    .odoo-form-sheet select,
-    .odoo-form-sheet textarea {
-        width: 100%;
-        border: none;
-        border-bottom: 1px solid transparent;
-        background: transparent;
-        padding: 4px 0;
-        font-size: 13px;
-        color: var(--odoo-text);
-        font-family: inherit;
-        transition: border-color 0.15s;
-    }
-
-    .odoo-form-sheet input:hover,
-    .odoo-form-sheet select:hover,
-    .odoo-form-sheet textarea:hover {
-        border-bottom-color: var(--odoo-border);
-    }
-
-    .odoo-form-sheet input:focus,
-    .odoo-form-sheet select:focus,
-    .odoo-form-sheet textarea:focus {
-        outline: none;
-        border-bottom-color: var(--odoo-purple);
-        border-bottom-width: 2px;
-        padding-bottom: 3px;
-    }
-
-    .odoo-form-sheet select {
-        appearance: none;
-        cursor: pointer;
-        padding-right: 20px;
-        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right 0 center;
-        background-size: 16px;
-    }
-
-    .odoo-form-sheet textarea {
-        min-height: 60px;
-        resize: vertical;
-        line-height: 1.5;
-    }
-
-    /* CAMPO DE MONTO */
-    .odoo-field-amount .odoo-field-value {
-        flex-direction: row;
-        align-items: center;
-    }
-
-    .odoo-amount-value {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .odoo-currency {
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--odoo-text-muted);
-    }
-
-    .odoo-amount-value input {
-        font-weight: 600;
-        font-size: 15px;
-    }
-
-    /* CAMPOS DE ANCHO COMPLETO */
-    .odoo-form-full {
-        padding: 0 24px 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .odoo-form-full .odoo-field-row {
-        grid-template-columns: 140px 1fr;
-    }
-
-    /* ERRORES */
-    .odoo-error {
-        font-size: 11px;
-        color: var(--odoo-error);
-        margin-top: 2px;
-    }
-
-    /* HINT */
-    .odoo-field-hint {
-        font-size: 11px;
-        color: var(--odoo-text-muted);
-        font-style: italic;
-        margin-top: 4px;
-    }
-
-    /* =====================================
-       AUTOCOMPLETE - ESTILO CHIP/TAG
-       ===================================== */
-
-    .autocomplete-wrapper {
-        position: relative;
-    }
-
-    .autocomplete-field {
-        display: flex;
-        align-items: center;
-        min-height: 32px;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    /* Input de búsqueda */
-    .autocomplete-search {
-        flex: 1;
-        min-width: 120px;
-        border: none;
-        border-bottom: 1px solid transparent;
-        background: transparent;
-        padding: 4px 0;
-        font-size: 13px;
-        color: var(--odoo-text);
-        font-family: inherit;
-        transition: border-color 0.15s;
-    }
-
-    .autocomplete-search:hover {
-        border-bottom-color: var(--odoo-border);
-    }
-
-    .autocomplete-search:focus {
-        outline: none;
-        border-bottom-color: var(--odoo-purple);
-        border-bottom-width: 2px;
-        padding-bottom: 3px;
-    }
-
-    .autocomplete-search::placeholder {
-        color: #adb5bd;
-    }
-
-    /* Ocultar input cuando hay chip */
-    .autocomplete-field.has-selection .autocomplete-search {
-        display: none;
-    }
-
-    /* =====================================
-       CHIP / TAG - ESTILO SUTIL Y COMPACTO
-       ===================================== */
-
-    .autocomplete-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 2px 6px 2px 2px;
-        background: #f3f4f6;
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
-        font-size: 13px;
-        color: var(--odoo-text);
-        animation: chipIn 0.15s ease;
-    }
-
-    @keyframes chipIn {
-        from {
-            opacity: 0;
-            transform: scale(0.95);
-        }
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-
-    .chip-avatar {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: var(--odoo-purple);
-        color: white;
-        font-size: 9px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-transform: uppercase;
-    }
-
-    .chip-text {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        line-height: 1;
-    }
-
-    .chip-name {
-        font-weight: 500;
-        color: var(--odoo-text);
-        font-size: 13px;
-    }
-
-    .chip-code {
-        font-size: 11px;
-        color: var(--odoo-text-muted);
-        font-weight: 400;
-    }
-
-    .chip-remove {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        border: none;
-        background: transparent;
-        color: #9ca3af;
-        cursor: pointer;
-        transition: all 0.15s;
-        padding: 0;
-        margin-left: 2px;
-    }
-
-    .chip-remove:hover {
-        background: #e5e7eb;
-        color: var(--odoo-text);
-    }
-
-    .chip-remove .material-icons {
-        font-size: 14px;
-    }
-
-    /* =====================================
-       DROPDOWN
-       ===================================== */
-
-    .autocomplete-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        margin-top: 4px;
-        background: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        z-index: 1000;
-        max-height: 280px;
-        overflow-y: auto;
-        display: none;
-    }
-
-    .autocomplete-dropdown.open {
-        display: block;
-    }
-
-    .autocomplete-list {
-        list-style: none;
-        margin: 0;
-        padding: 4px 0;
-    }
-
-    .autocomplete-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 14px;
-        cursor: pointer;
-        transition: background 0.15s;
-    }
-
-    .autocomplete-item:hover {
-        background: #f5f0f4;
-    }
-
-    .autocomplete-item-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--odoo-purple) 0%, #8e6b82 100%);
-        color: white;
-        font-size: 14px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-transform: uppercase;
-        flex-shrink: 0;
-    }
-
-    .autocomplete-item-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .autocomplete-item-name {
-        font-weight: 500;
-        color: #111827;
-        font-size: 13px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .autocomplete-item-meta {
-        font-size: 11px;
-        color: #6b7280;
-        display: flex;
-        gap: 8px;
-        margin-top: 2px;
-    }
-
-    .autocomplete-item-code {
-        background: #f3f4f6;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 10px;
-        color: #6b7280;
-        font-weight: 500;
-    }
-
-    .autocomplete-empty,
-    .autocomplete-loading {
-        padding: 24px 14px;
-        text-align: center;
-        color: #9ca3af;
-        display: none;
-    }
-
-    .autocomplete-empty .material-icons,
-    .autocomplete-loading .material-icons {
-        font-size: 32px;
-        opacity: 0.4;
-        display: block;
-        margin: 0 auto 8px;
-    }
-
-    .autocomplete-empty p,
-    .autocomplete-loading p {
-        margin: 0;
-        font-size: 12px;
-    }
-
-    /* Spinner animation */
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    .spinner {
-        animation: spin 1s linear infinite;
-    }
-
-    /* =====================================
-       RESPONSIVE
-       ===================================== */
-
-    @media (max-width: 900px) {
-        .odoo-form-content {
-            grid-template-columns: 1fr;
-            gap: 16px;
-        }
-
-        .odoo-field-row {
-            grid-template-columns: 120px 1fr;
-        }
-
-        .odoo-form-full .odoo-field-row {
-            grid-template-columns: 120px 1fr;
-        }
-    }
-
-    @media (max-width: 600px) {
-        .odoo-field-row {
-            grid-template-columns: 1fr;
-            gap: 4px;
-        }
-
-        .odoo-field-row label {
-            text-align: left;
-            font-size: 11px;
-            color: var(--odoo-text-muted);
-        }
-
-        .odoo-form-full .odoo-field-row {
-            grid-template-columns: 1fr;
-        }
-
-        .autocomplete-chip {
-            max-width: 100%;
-        }
-
-        .chip-name {
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-    }
-
-    /* INPUT DATE */
-    .odoo-form-sheet input[type="date"] {
-        font-variant-numeric: tabular-nums;
-    }
-
-    /* INPUT NUMBER */
-    .odoo-form-sheet input[type="number"] {
-        font-variant-numeric: tabular-nums;
-        -moz-appearance: textfield;
-    }
-
-    .odoo-form-sheet input[type="number"]::-webkit-outer-spin-button,
-    .odoo-form-sheet input[type="number"]::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
-
-    /* =====================================
-       ZONA DE ADJUNTOS - ESTILO ODOO
-       ===================================== */
-
-    .odoo-attachments {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 8px 16px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .odoo-attach-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        color: var(--odoo-text-muted);
-        background: transparent;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.15s;
-    }
-
-    .odoo-attach-icon:hover {
-        color: var(--odoo-purple);
-        background: rgba(113, 75, 103, 0.08);
-    }
-
-    .odoo-attach-icon .material-icons {
-        font-size: 22px;
-    }
-
-    .odoo-attach-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        flex: 1;
-    }
-
-    .odoo-attach-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 8px 4px 10px;
-        background: #f8f9fa;
-        border: 1px solid var(--odoo-border);
-        border-radius: 4px;
-        font-size: 12px;
-        color: var(--odoo-text);
-        animation: chipIn 0.15s ease;
-    }
-
-    .odoo-attach-item .material-icons {
-        font-size: 16px;
-        color: var(--odoo-text-muted);
-    }
-
-    .odoo-attach-item-name {
-        max-width: 150px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .odoo-attach-item-size {
-        font-size: 11px;
-        color: var(--odoo-text-muted);
-    }
-
-    .odoo-attach-remove {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        border: none;
-        background: transparent;
-        color: #9ca3af;
-        cursor: pointer;
-        transition: all 0.15s;
-        padding: 0;
-    }
-
-    .odoo-attach-remove:hover {
-        background: #fee2e2;
-        color: #dc2626;
-    }
-
-    .odoo-attach-remove .material-icons {
-        font-size: 14px;
-    }
-    /* =====================================
-   ESTILOS ADICIONALES PARA ADJUNTOS
-   ===================================== */
-
-/* Spinner animation para loading */
+/* Spinner */
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
@@ -1242,87 +799,272 @@
     animation: spin 1s linear infinite;
 }
 
-/* Item de adjunto con loading */
-.odoo-attach-loading {
-    opacity: 0.6;
+/* =====================================
+   ESTILOS GENERALES DEL FORM
+   ===================================== */
+
+:root {
+    --odoo-purple: var(--color-primary, #714B67);
+    --odoo-purple-light: rgba(113, 75, 103, 0.1);
+    --odoo-purple-dark: var(--color-primary, #5a3d53);
+    --odoo-text: #212529;
+    --odoo-text-muted: #6c757d;
+    --odoo-border: #dee2e6;
+    --odoo-bg: #ffffff;
+    --odoo-bg-gray: #f8f9fa;
+    --odoo-success: #28a745;
+    --odoo-error: #dc3545;
 }
 
-.odoo-attach-loading .spinner {
-    color: var(--odoo-purple);
+.odoo-page {
+    background: var(--odoo-bg-gray);
+    min-height: 100vh;
 }
 
-/* Preview de imagen */
-.attach-image-preview {
-    display: block;
-    width: 60px;
-    height: 60px;
-    overflow: hidden;
-    border-radius: 6px;
-    border: 2px solid #e5e7eb;
+/* BARRA SUPERIOR */
+.odoo-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background: var(--odoo-bg);
+    border-bottom: 1px solid var(--odoo-border);
 }
 
-.attach-image-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.odoo-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.attach-image-preview:hover {
+.odoo-back-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    color: var(--odoo-text-muted);
+    text-decoration: none;
+    transition: all 0.15s;
+}
+
+.odoo-back-link:hover {
+    background: var(--odoo-bg-gray);
+    color: var(--odoo-text);
+}
+
+.odoo-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.odoo-breadcrumb-parent {
+    color: var(--odoo-text-muted);
+}
+
+.odoo-breadcrumb-separator {
+    color: var(--odoo-text-muted);
+}
+
+.odoo-breadcrumb-current {
+    font-weight: 600;
+    color: var(--odoo-text);
+}
+
+.odoo-record-count {
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+}
+
+/* BARRA DE ACCIONES */
+.odoo-actionbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--odoo-bg);
+    border-bottom: 1px solid var(--odoo-border);
+}
+
+.odoo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.odoo-btn-primary {
+    background: var(--odoo-purple);
+    color: white;
     border-color: var(--odoo-purple);
 }
 
-/* Temporal (antes de subir al servidor) */
-.odoo-attach-temporal {
-    background: #fffbeb;
-    border-color: #fde68a;
+.odoo-btn-primary:hover {
+    background: var(--odoo-purple-dark);
+    border-color: var(--odoo-purple-dark);
 }
 
-/* =====================================
-   CAMPOS BLOQUEADOS (BLOQUEO MUTUO)
-   ===================================== */
-.field-disabled {
-    opacity: 0.5;
-    pointer-events: none;
-    position: relative;
+.odoo-btn-secondary {
+    background: white;
+    color: var(--odoo-text);
+    border-color: var(--odoo-border);
 }
 
-.field-disabled::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(248, 249, 250, 0.5);
-    cursor: not-allowed;
+.odoo-btn-secondary:hover {
+    background: var(--odoo-bg-gray);
 }
 
-.field-disabled select,
-.field-disabled input {
-    background-color: #f1f3f4 !important;
-    cursor: not-allowed;
+/* HOJA DE FORMULARIO */
+.odoo-form-sheet {
+    max-width: 1200px;
+    margin: 16px auto;
+    background: var(--odoo-bg);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
-/* Estilo especial para autocomplete bloqueado */
-.autocomplete-wrapper.field-disabled .autocomplete-search {
-    background-color: #f1f3f4 !important;
-    color: #9ca3af;
+.odoo-form-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
 }
 
-.autocomplete-wrapper.field-disabled .autocomplete-search::placeholder {
-    color: #9ca3af;
+.odoo-form-col {
+    padding: 20px 24px;
+}
+
+.odoo-form-col:first-child {
+    border-right: 1px solid var(--odoo-border);
+}
+
+.odoo-field-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.odoo-field-row label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--odoo-text);
+    text-align: right;
+}
+
+.odoo-field-value {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.odoo-form-sheet input,
+.odoo-form-sheet select,
+.odoo-form-sheet textarea {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid transparent;
+    background: transparent;
+    padding: 4px 0;
+    font-size: 13px;
+    color: var(--odoo-text);
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+
+.odoo-form-sheet input:hover,
+.odoo-form-sheet select:hover,
+.odoo-form-sheet textarea:hover {
+    border-bottom-color: var(--odoo-border);
+}
+
+.odoo-form-sheet input:focus,
+.odoo-form-sheet select:focus,
+.odoo-form-sheet textarea:focus {
+    outline: none;
+    border-bottom-color: var(--odoo-purple);
+    border-bottom-width: 2px;
+    padding-bottom: 3px;
+}
+
+.odoo-form-sheet select {
+    appearance: none;
+    cursor: pointer;
+    padding-right: 20px;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    background-size: 16px;
+}
+
+.odoo-form-sheet textarea {
+    min-height: 60px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+/* CAMPO DE MONTO */
+.odoo-field-amount .odoo-field-value {
+    flex-direction: row;
+    align-items: center;
+}
+
+.odoo-amount-value {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.odoo-currency {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--odoo-text-muted);
+}
+
+.odoo-amount-value input {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+/* CAMPOS DE ANCHO COMPLETO */
+.odoo-form-full {
+    padding: 0 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odoo-form-full .odoo-field-row {
+    grid-template-columns: 140px 1fr;
+}
+
+/* ERRORES */
+.odoo-error {
+    font-size: 11px;
+    color: var(--odoo-error);
+    margin-top: 2px;
+}
+
+/* HINT */
+.odoo-field-hint {
+    font-size: 11px;
+    color: var(--odoo-text-muted);
     font-style: italic;
+    margin-top: 4px;
 }
 
-/* Icono de bloqueo visual */
-.odoo-field-row.field-disabled label::after {
-    content: ' 🔒';
-    font-size: 12px;
-}
-
-/* =====================================
-   SEPARADOR DE SECCIÓN EN FORMULARIO
-   ===================================== */
+/* SEPARADOR */
 .odoo-field-separator {
     display: flex;
     align-items: center;
@@ -1346,6 +1088,320 @@
     font-weight: 400;
     font-style: italic;
 }
+
+/* CAMPOS BLOQUEADOS */
+.field-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    position: relative;
+}
+
+.field-disabled select,
+.field-disabled input {
+    background-color: #f1f3f4 !important;
+    cursor: not-allowed;
+}
+
+/* INFO PANEL */
+.odoo-info-panel {
+    padding: 12px 16px;
+}
+
+.odoo-info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #e0f2fe;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #0369a1;
+}
+
+.odoo-info-item .material-icons {
+    font-size: 18px;
+}
+
+/* ADJUNTOS */
+.odoo-attachments {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.odoo-attach-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--odoo-text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.odoo-attach-icon:hover {
+    color: var(--odoo-purple);
+    background: rgba(113, 75, 103, 0.08);
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+    .odoo-form-content {
+        grid-template-columns: 1fr;
+    }
+
+    .odoo-form-col:first-child {
+        border-right: none;
+        border-bottom: 1px solid var(--odoo-border);
+    }
+}
+
+@media (max-width: 600px) {
+    .odoo-field-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .odoo-field-row label {
+        text-align: left;
+    }
+
+    .odoo-form-full .odoo-field-row {
+        grid-template-columns: 1fr;
+    }
+
+    .badge-name {
+        max-width: 100px;
+    }
+}
+
+/* =====================================
+   MODAL DE CONFIRMACIÓN
+   ===================================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-dialog {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 480px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--odoo-border);
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.modal-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--odoo-purple) 0%, #8e6b82 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-icon .material-icons {
+    font-size: 24px;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--odoo-text);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-description {
+    margin: 0 0 20px 0;
+    font-size: 14px;
+    color: var(--odoo-text-muted);
+    line-height: 1.5;
+}
+
+.division-summary {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.division-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 2px dashed #dee2e6;
+}
+
+.division-label {
+    font-size: 13px;
+    color: var(--odoo-text-muted);
+    font-weight: 500;
+}
+
+.division-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--odoo-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.division-arrow {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0;
+    color: var(--odoo-purple);
+}
+
+.division-arrow .material-icons {
+    font-size: 20px;
+    animation: bounceDown 1s infinite;
+}
+
+@keyframes bounceDown {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(4px); }
+}
+
+.division-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.division-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.division-item-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--odoo-purple) 0%, #8e6b82 100%);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.division-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.division-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--odoo-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.division-item-amount {
+    font-size: 14px;
+    font-weight: 600;
+    color: #059669;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+.modal-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 14px;
+    background: #eff6ff;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1e40af;
+}
+
+.modal-note .material-icons {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    background: #f8f9fa;
+    border-top: 1px solid var(--odoo-border);
+}
+
+.modal-footer .odoo-btn {
+    min-width: 120px;
+    justify-content: center;
+}
+
+.modal-footer .odoo-btn-primary .material-icons {
+    font-size: 18px;
+}
 </style>
 
 {% endblock finanzas_content %}
@@ -1353,6 +1409,8 @@
 {% block extra_js %}
 <!-- JavaScript de adjuntos -->
 <script src="{% static 'finanzas_app/js/adjuntos.js' %}"></script>
+<!-- JavaScript del autocomplete multi -->
+<script src="{% static 'core/js/autocomplete-miembro-multi.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1378,63 +1436,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ====================================
-    // BLOQUEO MUTUO: UNIDAD <-> PERSONA
-    // Si se selecciona unidad, se bloquea persona y viceversa
+    // BLOQUEO MUTUO: UNIDAD <-> PERSONAS
     // ====================================
     const unidadSelect = document.getElementById('id_unidad');
-    const personaWrapper = document.getElementById('autocomplete-persona');
-    const personaHiddenInput = document.getElementById('id_persona_asociada');
-    const personaSearchInput = document.getElementById('search-persona');
-    const personaChip = document.getElementById('chip-persona');
+    const personasWrapper = document.getElementById('autocomplete-personas');
+    const personasHiddenInput = document.getElementById('id_personas_asociadas');
+    const personasSearchInput = personasWrapper?.querySelector('.autocomplete-search');
+    const personasBadges = personasWrapper?.querySelector('.autocomplete-badges');
     const unidadFieldRow = unidadSelect?.closest('.odoo-field-row');
-    const personaFieldRow = personaWrapper?.closest('.odoo-field-row');
+    const personasFieldRow = personasWrapper?.closest('.odoo-field-row');
+    const hintDivision = document.getElementById('hint-division');
 
-    // Estado de bloqueo
     let unidadBloqueada = false;
-    let personaBloqueada = false;
+    let personasBloqueadas = false;
 
-    // Función para bloquear el campo Unidad
     function bloquearUnidad(bloquear) {
         if (!unidadSelect) return;
-        
         unidadBloqueada = bloquear;
         unidadSelect.disabled = bloquear;
         
         if (bloquear) {
             unidadSelect.value = '';
             unidadFieldRow?.classList.add('field-disabled');
-            unidadSelect.title = 'Debes quitar la persona para seleccionar una unidad';
         } else {
             unidadFieldRow?.classList.remove('field-disabled');
-            unidadSelect.title = '';
         }
     }
 
-    // Función para bloquear el campo Persona
-    function bloquearPersona(bloquear) {
-        if (!personaWrapper) return;
-        
-        personaBloqueada = bloquear;
+    function bloquearPersonas(bloquear) {
+        if (!personasWrapper) return;
+        personasBloqueadas = bloquear;
         
         if (bloquear) {
-            // Limpiar selección de persona
-            if (personaHiddenInput) personaHiddenInput.value = '';
-            if (personaChip) personaChip.style.display = 'none';
-            if (personaSearchInput) {
-                personaSearchInput.style.display = '';
-                personaSearchInput.value = '';
-                personaSearchInput.disabled = true;
-                personaSearchInput.placeholder = 'Quita la unidad para seleccionar persona';
+            // Limpiar selección
+            if (personasHiddenInput) personasHiddenInput.value = '';
+            if (personasBadges) personasBadges.innerHTML = '';
+            if (personasSearchInput) {
+                personasSearchInput.disabled = true;
+                personasSearchInput.placeholder = 'Quita la unidad para seleccionar personas';
             }
-            personaWrapper.classList.add('field-disabled');
-            personaFieldRow?.classList.add('field-disabled');
+            personasWrapper.classList.add('field-disabled');
+            personasFieldRow?.classList.add('field-disabled');
+            if (hintDivision) hintDivision.style.display = 'none';
         } else {
-            if (personaSearchInput) {
-                personaSearchInput.disabled = false;
-                personaSearchInput.placeholder = 'Escriba para buscar...';
+            if (personasSearchInput) {
+                personasSearchInput.disabled = false;
+                personasSearchInput.placeholder = 'Buscar personas...';
             }
-            personaWrapper.classList.remove('field-disabled');
-            personaFieldRow?.classList.remove('field-disabled');
+            personasWrapper.classList.remove('field-disabled');
+            personasFieldRow?.classList.remove('field-disabled');
         }
     }
 
@@ -1442,458 +1492,248 @@ document.addEventListener('DOMContentLoaded', function() {
     if (unidadSelect) {
         unidadSelect.addEventListener('change', function() {
             const tieneUnidad = this.value && this.value !== '';
-            bloquearPersona(tieneUnidad);
+            bloquearPersonas(tieneUnidad);
         });
         
-        // Verificar estado inicial
+        // Estado inicial
         if (unidadSelect.value && unidadSelect.value !== '') {
-            bloquearPersona(true);
+            bloquearPersonas(true);
         }
     }
 
-    // Función global para verificar si persona está bloqueada (usada por selectMiembro)
-    window.isPersonaBloqueada = function() {
-        return personaBloqueada;
-    };
+    // ====================================
+    // ESCUCHAR EVENTOS DEL AUTOCOMPLETE MULTI
+    // ====================================
+    if (personasWrapper) {
+        // Cuando se agrega un miembro
+        personasWrapper.addEventListener('miembroAgregado', function(e) {
+            updateDivisionHint();
+            // Bloquear unidad si hay personas
+            const instance = personasWrapper._autocompleteMulti;
+            if (instance && instance.getSelected().length > 0) {
+                bloquearUnidad(true);
+            }
+        });
 
-    // Función global para bloquear unidad cuando se selecciona persona
-    window.onPersonaSeleccionada = function(tienePersona) {
-        bloquearUnidad(tienePersona);
-    };
+        // Cuando se remueve un miembro
+        personasWrapper.addEventListener('miembroRemovido', function(e) {
+            updateDivisionHint();
+            // Desbloquear unidad si no hay personas
+            const instance = personasWrapper._autocompleteMulti;
+            if (instance && instance.getSelected().length === 0) {
+                bloquearUnidad(false);
+            }
+        });
+    }
+
+    function updateDivisionHint() {
+        if (!hintDivision || !personasWrapper) return;
+        
+        const instance = personasWrapper._autocompleteMulti;
+        if (!instance) return;
+        
+        const count = instance.getSelected().length;
+        
+        if (count > 1) {
+            hintDivision.style.display = 'block';
+            hintDivision.innerHTML = `
+                <span class="material-icons" style="font-size: 14px; vertical-align: middle;">info</span>
+                El monto se dividirá en <strong>${count} partes iguales</strong> entre las personas seleccionadas.
+            `;
+        } else {
+            hintDivision.style.display = 'none';
+        }
+    }
+
+    // Verificar estado inicial del autocomplete
+    setTimeout(function() {
+        const instance = personasWrapper?._autocompleteMulti;
+        if (instance && instance.getSelected().length > 0) {
+            bloquearUnidad(true);
+            updateDivisionHint();
+        }
+    }, 100);
 
     // ====================================
-    // AUTOCOMPLETE DE MIEMBROS - ESTILO CHIP
+    // MODAL DE CONFIRMACIÓN PARA DIVISIÓN
     // ====================================
-    const searchInput = document.getElementById('search-persona');
-    const dropdown = document.getElementById('dropdown-persona');
-    const listEl = document.getElementById('list-persona');
-    const emptyEl = document.getElementById('empty-persona');
-    const loadingEl = document.getElementById('loading-persona');
-    const hiddenInput = document.getElementById('id_persona_asociada');
-    const fieldContainer = searchInput?.closest('.autocomplete-field');
+    const form = document.getElementById('ingreso-form');
+    const modalOverlay = document.getElementById('modal-division');
+    const modalMontoTotal = document.getElementById('modal-monto-total');
+    const modalBreakdown = document.getElementById('modal-breakdown');
+    const modalCount = document.getElementById('modal-count');
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
+    const montoInput = document.querySelector('[name="monto"]');
     
-    // Elementos del chip
-    const chip = document.getElementById('chip-persona');
-    const chipAvatar = document.getElementById('chip-avatar');
-    const chipName = document.getElementById('chip-name');
-    const chipCode = document.getElementById('chip-code');
-    const chipRemove = document.getElementById('chip-remove');
+    let pendingAction = null; // Guardar la acción pendiente (guardar o guardar_nuevo)
 
-    let debounceTimer = null;
-    const DEBOUNCE_DELAY = 300;
-    const MIN_CHARS = 2;
-
-    // Obtener iniciales del nombre
     function getInitials(nombre) {
         if (!nombre) return '?';
-        const parts = nombre.trim().split(' ');
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
-        }
+        const parts = nombre.trim().split(/\s+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
         return nombre.substring(0, 2).toUpperCase();
     }
 
-    // Función para escapar HTML
-    function escapeHtml(text) {
-        if (!text) return '';
-        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-        return text.replace(/[&<>"']/g, m => map[m]);
-    }
-
-    // Mostrar loading
-    function showLoading() {
-        listEl.innerHTML = '';
-        listEl.style.display = 'none';
-        emptyEl.style.display = 'none';
-        loadingEl.style.display = 'block';
-        dropdown.classList.add('open');
-    }
-
-    // Mostrar vacío
-    function showEmpty() {
-        listEl.innerHTML = '';
-        listEl.style.display = 'none';
-        loadingEl.style.display = 'none';
-        emptyEl.style.display = 'block';
-    }
-
-    // Cerrar dropdown
-    function closeDropdown() {
-        dropdown.classList.remove('open');
-        loadingEl.style.display = 'none';
-        emptyEl.style.display = 'none';
-    }
-
-    // Renderizar resultados
-    function renderResults(resultados) {
-        listEl.innerHTML = '';
-
-        resultados.forEach(miembro => {
-            const li = document.createElement('li');
-            li.className = 'autocomplete-item';
-            li.dataset.id = miembro.id;
-            li.dataset.nombre = miembro.nombre;
-            li.dataset.codigo = miembro.codigo || '';
-
-            const initials = getInitials(miembro.nombre);
-
-            li.innerHTML = `
-                <div class="autocomplete-item-avatar">${initials}</div>
-                <div class="autocomplete-item-info">
-                    <div class="autocomplete-item-name">${escapeHtml(miembro.nombre)}</div>
-                    <div class="autocomplete-item-meta">
-                        ${miembro.codigo ? `<span class="autocomplete-item-code">${escapeHtml(miembro.codigo)}</span>` : ''}
-                        ${miembro.telefono && miembro.telefono !== '—' ? `<span>${escapeHtml(miembro.telefono)}</span>` : ''}
-                    </div>
-                </div>
-            `;
-
-            li.addEventListener('click', function() {
-                selectMiembro(miembro.id, miembro.nombre, miembro.codigo);
-            });
-
-            listEl.appendChild(li);
-        });
-
-        loadingEl.style.display = 'none';
-        emptyEl.style.display = 'none';
-        listEl.style.display = 'block';
-    }
-
-    // Seleccionar miembro - mostrar chip
-    function selectMiembro(id, nombre, codigo) {
-        // Verificar si persona está bloqueada
-        if (window.isPersonaBloqueada && window.isPersonaBloqueada()) {
-            return; // No permitir selección si está bloqueada
-        }
-        
-        // Guardar valor
-        hiddenInput.value = id;
-        
-        // Actualizar chip
-        chipAvatar.textContent = getInitials(nombre);
-        chipName.textContent = nombre;
-        chipCode.textContent = codigo || 'Sin código';
-        
-        // Mostrar chip, ocultar input
-        chip.style.display = 'inline-flex';
-        searchInput.value = '';
-        searchInput.style.display = 'none';
-        fieldContainer.classList.add('has-selection');
-        
-        // Cerrar dropdown
-        closeDropdown();
-        
-        // 🔒 Bloquear unidad cuando se selecciona persona
-        if (window.onPersonaSeleccionada) {
-            window.onPersonaSeleccionada(true);
-        }
-    }
-
-    // Limpiar selección
-    function clearSelection() {
-        hiddenInput.value = '';
-        chip.style.display = 'none';
-        searchInput.style.display = '';
-        searchInput.value = '';
-        fieldContainer.classList.remove('has-selection');
-        listEl.innerHTML = '';
-        closeDropdown();
-        
-        // 🔓 Desbloquear unidad cuando se quita persona
-        if (window.onPersonaSeleccionada) {
-            window.onPersonaSeleccionada(false);
-        }
-        searchInput.focus();
-    }
-
-    // Buscar miembros
-    async function searchMiembros(query) {
-        query = query.trim();
-
-        if (query.length < MIN_CHARS) {
-            closeDropdown();
-            return;
-        }
-
-        showLoading();
-
-        try {
-            const response = await fetch(
-                `/api/buscar-miembros/?q=${encodeURIComponent(query)}&filtro=activos&limit=15`,
-                {
-                    credentials: 'same-origin',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (data.success && data.resultados && data.resultados.length > 0) {
-                renderResults(data.resultados);
-            } else {
-                showEmpty();
-            }
-        } catch (error) {
-            console.error('Error en búsqueda:', error);
-            showEmpty();
-        }
-    }
-
-    // Event listeners
-    if (searchInput) {
-        // Búsqueda con debounce
-        searchInput.addEventListener('input', function(e) {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                searchMiembros(e.target.value);
-            }, DEBOUNCE_DELAY);
-        });
-
-        // Focus abre dropdown si hay texto suficiente
-        searchInput.addEventListener('focus', function() {
-            if (this.value.length >= MIN_CHARS) {
-                dropdown.classList.add('open');
-            }
-        });
-
-        // Teclado
-        searchInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeDropdown();
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                const firstItem = listEl.querySelector('.autocomplete-item');
-                if (firstItem) {
-                    selectMiembro(
-                        firstItem.dataset.id,
-                        firstItem.dataset.nombre,
-                        firstItem.dataset.codigo
-                    );
-                }
-            }
+    function formatMoney(amount) {
+        return 'RD$ ' + parseFloat(amount).toLocaleString('es-DO', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
         });
     }
 
-    // Botón quitar chip
-    if (chipRemove) {
-        chipRemove.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            clearSelection();
-        });
-    }
-
-    // Click fuera cierra dropdown
-    document.addEventListener('click', function(e) {
-        const wrapper = document.getElementById('autocomplete-persona');
-        if (wrapper && !wrapper.contains(e.target)) {
-            closeDropdown();
-        }
-    });
-
-// ====================================
-    // MANEJO DE ARCHIVOS ADJUNTOS
-    // ====================================
-    const attachBtn = document.getElementById('attach-btn');
-    const attachInput = document.getElementById('attachment-input');
-    const attachList = document.getElementById('attach-list');
-    
-    // Modo creación: manejar archivos manualmente (temporales)
-    {% if not movimiento %}
-    let archivosTemporales = [];
-    
-    if (attachBtn && attachInput && attachList) {
-        attachBtn.addEventListener('click', () => attachInput.click());
+    function showDivisionModal(personas, monto, action) {
+        const count = personas.length;
+        const montoPorPersona = monto / count;
         
-        attachInput.addEventListener('change', function(e) {
-            const files = Array.from(e.target.files);
+        // Actualizar monto total
+        modalMontoTotal.textContent = formatMoney(monto);
+        modalCount.textContent = count;
+        
+        // Limpiar y llenar breakdown
+        modalBreakdown.innerHTML = '';
+        
+        personas.forEach((persona, idx) => {
+            // El último recibe el ajuste por redondeo
+            const montoAsignado = idx === count - 1 
+                ? (monto - (Math.floor(montoPorPersona * 100) / 100) * (count - 1))
+                : Math.floor(montoPorPersona * 100) / 100;
             
-            files.forEach(file => {
-                // Validación básica
-                if (file.size > 10 * 1024 * 1024) {
-                    alert(`El archivo "${file.name}" es demasiado grande (máx 10MB)`);
+            const itemEl = document.createElement('div');
+            itemEl.className = 'division-item';
+            itemEl.innerHTML = `
+                <div class="division-item-avatar">${getInitials(persona.nombre)}</div>
+                <div class="division-item-info">
+                    <div class="division-item-name">${persona.nombre}</div>
+                </div>
+                <div class="division-item-amount">${formatMoney(montoAsignado)}</div>
+            `;
+            modalBreakdown.appendChild(itemEl);
+        });
+        
+        pendingAction = action;
+        modalOverlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function hideModal() {
+        modalOverlay.style.display = 'none';
+        document.body.style.overflow = '';
+        pendingAction = null;
+    }
+
+    // Interceptar submit del formulario
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const instance = personasWrapper?._autocompleteMulti;
+            const personas = instance ? instance.getSelected() : [];
+            
+            // Solo mostrar modal si hay más de 1 persona
+            if (personas.length > 1) {
+                e.preventDefault();
+                
+                const monto = parseFloat(montoInput?.value || 0);
+                if (monto <= 0) {
+                    // Si no hay monto válido, dejar que el form valide normalmente
+                    form.submit();
                     return;
                 }
                 
-                // Agregar a lista temporal
-                archivosTemporales.push(file);
-                
-                // Renderizar en UI
-                renderArchivoTemporal(file);
-            });
+                // Determinar qué botón se presionó
+                const action = e.submitter?.value || 'guardar';
+                showDivisionModal(personas, monto, action);
+            }
+            // Si es 1 o 0 personas, el form se envía normalmente
+        });
+    }
+
+    // Botón cancelar
+    if (modalCancel) {
+        modalCancel.addEventListener('click', hideModal);
+    }
+
+    // Click fuera del modal
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', function(e) {
+            if (e.target === modalOverlay) {
+                hideModal();
+            }
+        });
+    }
+
+    // Tecla Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modalOverlay.style.display === 'flex') {
+            hideModal();
+        }
+    });
+
+    // Botón confirmar
+    if (modalConfirm) {
+        modalConfirm.addEventListener('click', function() {
+            hideModal();
             
-            // Limpiar input
-            e.target.value = '';
+            // Crear un input hidden para la acción y enviar el form
+            if (pendingAction) {
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'accion';
+                actionInput.value = pendingAction;
+                form.appendChild(actionInput);
+            }
+            
+            // Enviar el formulario
+            form.submit();
         });
     }
-    
-    function renderArchivoTemporal(file) {
-        const item = document.createElement('div');
-        item.className = 'odoo-attach-item';
-        item.dataset.fileName = file.name;
-        
-        const icono = getFileIcon(file.name);
-        const tamaño = formatFileSize(file.size);
-        
-        item.innerHTML = `
-            <span class="material-icons">${icono}</span>
-            <span class="odoo-attach-item-name" title="${escapeHtml(file.name)}">
-                ${truncate(file.name, 25)}
-            </span>
-            <span class="odoo-attach-item-size">${tamaño}</span>
-            <button type="button" class="odoo-attach-remove" title="Quitar">
-                <span class="material-icons">close</span>
-            </button>
-        `;
-        
-        const btnRemove = item.querySelector('.odoo-attach-remove');
-        btnRemove.addEventListener('click', function() {
-            archivosTemporales = archivosTemporales.filter(f => f.name !== file.name);
-            item.remove();
-        });
-        
-        attachList.appendChild(item);
-    }
-    
-    function getFileIcon(filename) {
-        const ext = filename.split('.').pop().toLowerCase();
-        const iconos = {
-            'pdf': 'picture_as_pdf',
-            'doc': 'description',
-            'docx': 'description',
-            'xls': 'table_chart',
-            'xlsx': 'table_chart',
-            'jpg': 'image',
-            'jpeg': 'image',
-            'png': 'image',
-            'gif': 'image',
+
+});
+</script>
+
+<!-- ====================================
+     SCRIPT PARA CATEGORÍAS
+     ==================================== -->
+<script>
+// Datos de categorías desde el servidor
+const CATEGORIAS_DATA = [
+    {% for cat in form.categoria.field.queryset %}
+    {
+        id: {{ cat.id }},
+        nombre: "{{ cat.nombre|escapejs }}",
+        codigo: "{{ cat.codigo|default:''|escapejs }}",
+        tipo: "{{ cat.tipo }}",
+        grupo: "{{ cat.grupo|default:'otros'|escapejs }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+// Agrupar categorías
+const GRUPOS_CAT = {};
+const GRUPOS_NOMBRES = {
+    'ingresos_iglesia': 'Ingresos de Iglesia',
+    'ingresos_ministerios': 'Ingresos de Ministerios',
+    'egresos': 'Egresos',
+    'envios_ministerios': 'Envíos a Ministerios',
+    'aportes_especiales': 'Aportes Especiales',
+    'otros': 'Otros'
+};
+
+CATEGORIAS_DATA.forEach(cat => {
+    const grupo = cat.grupo || 'otros';
+    if (!GRUPOS_CAT[grupo]) {
+        GRUPOS_CAT[grupo] = {
+            nombre: GRUPOS_NOMBRES[grupo] || grupo,
+            items: []
         };
-        return iconos[ext] || 'insert_drive_file';
     }
-    
-    function formatFileSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    }
-    
-    function truncate(str, maxLen) {
-        if (str.length <= maxLen) return str;
-        return str.substring(0, maxLen - 3) + '...';
-    }
-    
-    {% else %}
-    // Modo edición: usar AdjuntosManager para subir inmediatamente
-    const movimientoId = {{ movimiento.id }};
-    const adjuntosManager = new AdjuntosManager(movimientoId);
-    
-    if (attachBtn && attachInput) {
-        attachBtn.addEventListener('click', () => attachInput.click());
-    }
-    {% endif %}
-
-});
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const monedaInputs = document.querySelectorAll('.moneda-input');
-    
-    monedaInputs.forEach(function(input) {
-        if (input.value) {
-            input.value = formatearMoneda(input.value);
-        }
-        
-        input.addEventListener('blur', function() {
-            if (this.value) {
-                this.value = formatearMoneda(this.value);
-            }
-        });
-        
-        input.addEventListener('focus', function() {
-            if (this.value) {
-                this.value = this.value.replace(/,/g, '');
-            }
-            this.select();
-        });
-        
-        input.addEventListener('keypress', function(e) {
-            const char = String.fromCharCode(e.which);
-            if (!/[\d.,]/.test(char) && e.which !== 8 && e.which !== 46 && e.which !== 9 && e.which !== 27 && e.which !== 13) {
-                e.preventDefault();
-            }
-            if (char === '.' && this.value.includes('.')) {
-                e.preventDefault();
-            }
-        });
-    });
+    GRUPOS_CAT[grupo].items.push(cat);
 });
 
-function formatearMoneda(valor) {
-    let limpio = String(valor).replace(/[^0-9.]/g, '');
-    const partes = limpio.split('.');
-    if (partes.length > 2) {
-        limpio = partes[0] + '.' + partes.slice(1).join('');
-    }
-    let numero = parseFloat(limpio);
-    if (isNaN(numero)) return '';
-    return numero.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-}
-</script>
-
-
-<!-- =============================================
-     SELECTOR DE CATEGORÍAS CON BÚSQUEDA
-     ============================================= -->
-<script>
+// Inicializar selector de categorías
 (function() {
-    // IIFE para evitar conflictos de variables
-    
-    // ====================================
-    // DATOS DE CATEGORÍAS (desde Django)
-    // ====================================
-    const CATEGORIAS_DATA = [
-        {% for cat in form.categoria.field.queryset %}
-        {
-            id: "{{ cat.id }}",
-            nombre: "{{ cat.nombre|escapejs }}",
-            codigo: "{{ cat.codigo|default:''|escapejs }}",
-            tipo: "{{ cat.tipo }}",
-            seccion: "{{ cat.casilla_f001.seccion|default:'otros'|escapejs }}",
-            seccionNombre: "{{ cat.casilla_f001.get_seccion_display|default:'Otros'|escapejs }}"
-        },
-        {% endfor %}
-    ];
-    
-    // Agrupar por sección
-    const GRUPOS_CAT = {};
-    CATEGORIAS_DATA.forEach(cat => {
-        const key = cat.seccion || 'otros';
-        if (!GRUPOS_CAT[key]) {
-            GRUPOS_CAT[key] = {
-                nombre: cat.seccionNombre || 'Otros',
-                items: []
-            };
-        }
-        GRUPOS_CAT[key].items.push(cat);
-    });
-    
-    // ====================================
-    // ELEMENTOS DOM (con prefijo cat_)
-    // ====================================
     const cat_selector = document.getElementById('categoria-selector');
-    const cat_hiddenInput = document.getElementById('id_categoria');
     const cat_searchInput = document.getElementById('categoria-search');
+    const cat_hiddenInput = document.getElementById('id_categoria');
     const cat_dropdown = document.getElementById('categoria-dropdown');
     const cat_filterInput = document.getElementById('categoria-filter');
     const cat_listEl = document.getElementById('categoria-list');
@@ -1904,17 +1744,12 @@ function formatearMoneda(valor) {
     let cat_selectedId = cat_hiddenInput ? cat_hiddenInput.value : null;
     let cat_isOpen = false;
     
-    // ====================================
-    // FUNCIONES
-    // ====================================
-    
     function cat_renderList(filter) {
         filter = filter || '';
         cat_listEl.innerHTML = '';
         const filterLower = filter.toLowerCase().trim();
         let hasResults = false;
         
-        // Ordenar grupos
         const ordenGrupos = ['ingresos_iglesia', 'ingresos_ministerios', 'egresos', 'envios_ministerios', 'aportes_especiales', 'otros'];
         const gruposOrdenados = Object.entries(GRUPOS_CAT).sort((a, b) => {
             const idxA = ordenGrupos.indexOf(a[0]);
@@ -2009,11 +1844,6 @@ function formatearMoneda(valor) {
         return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
     
-    // ====================================
-    // EVENTOS
-    // ====================================
-    
-    // Click en input principal - toggle dropdown
     cat_searchInput.addEventListener('mousedown', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -2024,7 +1854,6 @@ function formatearMoneda(valor) {
         }
     });
     
-    // Typing en input principal (búsqueda directa)
     cat_searchInput.addEventListener('input', function() {
         if (!cat_isOpen) {
             cat_openDropdown();
@@ -2032,7 +1861,6 @@ function formatearMoneda(valor) {
         cat_renderList(this.value);
     });
     
-    // Teclas en input principal
     cat_searchInput.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             cat_closeDropdown();
@@ -2042,12 +1870,10 @@ function formatearMoneda(valor) {
         }
     });
     
-    // Filtro dentro del dropdown
     cat_filterInput.addEventListener('input', function() {
         cat_renderList(this.value);
     });
     
-    // Teclas en filtro
     cat_filterInput.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             cat_closeDropdown();
@@ -2061,21 +1887,17 @@ function formatearMoneda(valor) {
         }
     });
     
-    // Prevenir que clicks dentro del dropdown lo cierren
     cat_dropdown.addEventListener('mousedown', function(e) {
         e.stopPropagation();
     });
     
-    // Click fuera cierra
     document.addEventListener('mousedown', function(e) {
         if (cat_isOpen && !cat_selector.contains(e.target)) {
             cat_closeDropdown();
         }
     });
     
-    // ====================================
-    // INICIALIZACIÓN
-    // ====================================
+    // Inicialización
     if (cat_selectedId) {
         const cat = CATEGORIAS_DATA.find(c => c.id == cat_selectedId);
         if (cat) {
