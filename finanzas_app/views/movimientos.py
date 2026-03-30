@@ -175,11 +175,11 @@ def ingreso_crear(request):
 
             return redirect("/finanzas/movimientos/?tipo=ingreso")
     else:
-        form = MovimientoIngresoForm(
-            initial={"fecha": timezone.now().date()},
-            tenant=tenant  # 👈 PASAR TENANT
-        )
 
+        form = MovimientoIngresoForm(
+            initial={"fecha": timezone.localdate()},
+            tenant=tenant
+        )
     context = {
         "form": form,
         "modo": "crear",
@@ -257,9 +257,10 @@ def egreso_crear(request):
 
                     return redirect("/finanzas/movimientos/?tipo=egreso")
     else:
+
         form = MovimientoEgresoForm(
-            initial={"fecha": timezone.now().date()},
-            tenant=tenant  # 👈 PASAR TENANT
+            initial={"fecha": timezone.localdate()},
+            tenant=tenant
         )
 
     context = {

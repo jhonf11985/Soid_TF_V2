@@ -83,8 +83,7 @@ def transferencia_crear(request):
             except ValidationError as e:
                 messages.error(request, str(e))
     else:
-        form = TransferenciaForm(initial={"fecha": timezone.now().date()}, tenant=tenant)  # 👈 PASAR TENANT
-
+         form = TransferenciaForm(initial={"fecha": timezone.localdate()}, tenant=tenant)
     context = {
         "form": form,
         "cuentas_saldos_json": json.dumps(cuentas_con_saldo),
