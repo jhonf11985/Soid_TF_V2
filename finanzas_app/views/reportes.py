@@ -127,7 +127,8 @@ def reporte_resumen_mensual(request):
     ]
     mes_label = f"{NOMBRES_MESES[month]} {year}"
 
-    CFG = get_config()
+    tenant = request.tenant
+    CFG = get_config(tenant)
 
     context = {
         "CFG": CFG,
@@ -236,7 +237,8 @@ def reporte_resumen_por_cuenta(request):
     ]
     mes_label = f"{NOMBRES_MESES[month]} {year}"
 
-    CFG = get_config()
+    tenant = request.tenant
+    CFG = get_config(tenant)
 
     context = {
         "CFG": CFG,
@@ -338,8 +340,8 @@ def reporte_resumen_por_categoria(request):
     mes_label = f"{NOMBRES_MESES[month]} {year}"
 
     cuentas = CuentaFinanciera.objects.filter(tenant=tenant, esta_activa=True).order_by("nombre")
-    CFG = get_config()
-
+    tenant = request.tenant
+    CFG = get_config(tenant)
     context = {
         "CFG": CFG,
         "fecha_hoy": hoy,
@@ -416,8 +418,8 @@ def reporte_movimientos_anulados(request):
 
     # combos
     cuentas = CuentaFinanciera.objects.filter(tenant=tenant, esta_activa=True).order_by("nombre")
-    CFG = get_config()
-
+    tenant = request.tenant
+    CFG = get_config(tenant)
     NOMBRES_MESES = [
         "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
@@ -517,8 +519,8 @@ def reporte_transferencias(request):
         })
 
     cuentas = CuentaFinanciera.objects.filter(tenant=tenant, esta_activa=True).order_by("nombre")
-    CFG = get_config()
-
+    tenant = request.tenant
+    CFG = get_config(tenant)
     NOMBRES_MESES = [
         "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
@@ -994,8 +996,8 @@ def reporte_cxp(request):
     proveedores = ProveedorFinanciero.objects.filter(tenant=tenant, activo=True).order_by("nombre")
     categorias = CategoriaMovimiento.objects.filter(tenant=tenant, tipo="egreso", activo=True).order_by("nombre")
     
-    CFG = get_config()
-    
+    tenant = request.tenant
+    CFG = get_config(tenant)
     context = {
         "CFG": CFG,
         "fecha_hoy": hoy,
@@ -1092,8 +1094,9 @@ def reporte_cxp_por_proveedor(request):
     
     total_pendiente = total_monto - total_pagado
     
-    CFG = get_config()
-    
+    tenant = request.tenant
+    CFG = get_config(tenant)
+        
     context = {
         "CFG": CFG,
         "fecha_hoy": hoy,
@@ -1200,8 +1203,8 @@ def reporte_cxp_vencidas(request):
             })
     
     proveedores = ProveedorFinanciero.objects.filter(tenant=tenant, activo=True).order_by("nombre")
-    CFG = get_config()
-    
+    tenant = request.tenant
+    CFG = get_config(tenant)
     context = {
         "CFG": CFG,
         "fecha_hoy": hoy,
@@ -1347,8 +1350,8 @@ def reporte_antiguedad_cxp(request):
     )
     
     proveedores = ProveedorFinanciero.objects.filter(tenant=tenant, activo=True).order_by("nombre")
-    CFG = get_config()
-    
+    tenant = request.tenant
+    CFG = get_config(tenant)
     context = {
         "CFG": CFG,
         "fecha_hoy": hoy,
@@ -1380,16 +1383,14 @@ def reporte_pagos_cxp(request):
       - proveedor
       - print=1
     """
-    tenant = request.tenant  # 👈 TENANT
-    from .models import MovimientoFinanciero
-    
+    tenant = request.tenant
     hoy = timezone.now().date()
-    
+
     year = request.GET.get("year")
     month = request.GET.get("month")
     proveedor_id = (request.GET.get("proveedor") or "").strip()
     auto_print = request.GET.get("print") in ("1", "true", "True")
-    
+
     try:
         year = int(year) if year else hoy.year
         month = int(month) if month else hoy.month
@@ -1398,9 +1399,9 @@ def reporte_pagos_cxp(request):
     except:
         year = hoy.year
         month = hoy.month
-    
-    # Pagos vinculados a CxP (movimientos con cuenta_por_pagar)
+
     qs = MovimientoFinanciero.objects.filter(
+        tenant=tenant,
         cuenta_por_pagar__isnull=False,
         fecha__year=year,
         fecha__month=month,
@@ -1408,22 +1409,20 @@ def reporte_pagos_cxp(request):
     ).exclude(estado="anulado").select_related(
         "cuenta", "cuenta_por_pagar", "cuenta_por_pagar__proveedor", "creado_por"
     )
-    
+
     if proveedor_id:
         qs = qs.filter(cuenta_por_pagar__proveedor_id=proveedor_id)
-    
+
     qs = qs.order_by("-fecha", "-creado_en")
-    
-    # Totales
+
     totales = qs.aggregate(
         total_pagado=Sum("monto"),
         cantidad=Count("id"),
     )
-    
+
     total_pagado = totales.get("total_pagado") or Decimal("0")
     cantidad = totales.get("cantidad") or 0
-    
-    # Resumen por proveedor
+
     por_proveedor = (
         qs.values("cuenta_por_pagar__proveedor__nombre")
         .annotate(
@@ -1432,35 +1431,29 @@ def reporte_pagos_cxp(request):
         )
         .order_by("-monto")
     )
-    
+
     NOMBRES_MESES = [
         "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     ]
     mes_label = f"{NOMBRES_MESES[month]} {year}"
-    
+
     proveedores = ProveedorFinanciero.objects.filter(tenant=tenant, activo=True).order_by("nombre")
-    CFG = get_config()
-    
+    CFG = get_config(tenant)
+
     context = {
         "CFG": CFG,
         "fecha_hoy": hoy,
         "auto_print": auto_print,
-        
-        # Filtros
         "year": year,
         "month": month,
         "mes_label": mes_label,
         "proveedor_id": proveedor_id,
         "meses": [(i, NOMBRES_MESES[i]) for i in range(1, 13)],
-        
-        # Datos
         "items": qs,
         "total_pagado": total_pagado,
         "cantidad": cantidad,
         "por_proveedor": por_proveedor,
-        
-        # Selects
         "proveedores": proveedores,
     }
     return render(request, "finanzas_app/reportes/reporte_pagos_cxp.html", context)
@@ -1558,8 +1551,8 @@ def reporte_estado_resultados(request):
     ]
     periodo_label = f"{NOMBRES_MESES[month]} {year}"
 
-    CFG = get_config()
-
+    tenant = request.tenant
+    CFG = get_config(tenant)
     context = {
         "CFG": CFG,
         "fecha_hoy": hoy,
@@ -1693,8 +1686,8 @@ def reporte_ingresos_por_unidad(request):
 
     # ---- Combos ----
     unidades = Unidad.objects.filter(activa=True, visible=True).order_by("nombre")
-    CFG = get_config()
-
+    tenant = request.tenant
+    CFG = get_config(tenant)
     context = {
         "CFG": CFG,
         "fecha_hoy": hoy,
@@ -1808,8 +1801,8 @@ def reporte_movimientos_unidad(request):
 
     # ---- Combos ----
     unidades = Unidad.objects.filter(activa=True, visible=True).order_by("nombre")
-    CFG = get_config()
-
+    tenant = request.tenant
+    CFG = get_config(tenant)
     context = {
         "CFG": CFG,
         "fecha_hoy": hoy,
@@ -2310,8 +2303,8 @@ def reporte_comparativo_anual(request):
     anio_inicio = primer_movimiento.fecha.year if primer_movimiento else hoy.year - 5
     anios_disponibles = list(range(hoy.year, anio_inicio - 1, -1))
     
-    CFG = get_config()
-    
+    tenant = request.tenant
+    CFG = get_config(tenant)
     context = {
         "CFG": CFG,
         "auto_print": auto_print,
