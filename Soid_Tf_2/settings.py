@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-cambiar-en-produccion")
 
 # DEBUG automático: False en Render, True en local
-DEBUG = os.environ.get("DEBUG", "1") == "1"
+DEBUG = not os.environ.get("RENDER")
 
 ALLOWED_HOSTS = [
     "soidtf.com",
