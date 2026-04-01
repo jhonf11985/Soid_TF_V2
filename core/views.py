@@ -1142,3 +1142,4 @@ def activar_acceso(request):
         return redirect("portal_miembros:dashboard")
 
     return render(request, "core/activar_acceso.html", {"CFG": cfg})
+

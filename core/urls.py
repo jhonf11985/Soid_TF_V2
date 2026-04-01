@@ -1,7 +1,7 @@
 # core/urls.py
 from django.urls import path
 from . import views, ajax_views
-
+from . import views_errors
 app_name = "core"
 
 urlpatterns = [
@@ -39,5 +39,6 @@ path("usuarios/<int:user_id>/editar/", views.editar_usuario, name="editar_usuari
     # ✅ VALIDAR EMAIL EN TIEMPO REAL
     path("api/email-disponible/", ajax_views.email_disponible, name="api_email_disponible"),
     path("activar/", views.activar_acceso, name="activar_acceso"),
+    path("probar-500/", views_errors.probar_500, name="probar_500"),
 
 ]
