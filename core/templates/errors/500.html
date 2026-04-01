@@ -13,6 +13,7 @@
             --soid-primary: #0097A7;
             --soid-secondary: #F59E0B;
             --soid-danger: #dc2626;
+            --soid-success: #16a34a;
             --soid-text: #1f2937;
             --soid-muted: #6b7280;
             --soid-bg: #f8fafc;
@@ -188,10 +189,66 @@
             background: #f9fafb;
         }
 
-        .error-help {
-            margin-top: 22px;
-            font-size: 0.92rem;
+        .error-btn--whatsapp {
+            background: #25D366;
+            color: #fff;
+        }
+
+        .error-btn--whatsapp:hover {
+            background: #20bd5a;
+        }
+
+        .error-btn--copy {
+            background: #6366f1;
+            color: #fff;
+        }
+
+        .error-btn--copy:hover {
+            background: #5558e3;
+        }
+
+        .error-report-section {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .error-report-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--soid-text);
+            margin: 0 0 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .error-report-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .error-info-box {
+            margin-top: 16px;
+            background: #fff;
+            border: 1px solid var(--soid-border);
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 0.82rem;
             color: var(--soid-muted);
+            text-align: left;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            display: none;
+            white-space: pre-wrap;
+        }
+
+        .error-info-box.show {
+            display: block;
         }
 
         .error-footer {
@@ -201,6 +258,31 @@
             color: var(--soid-muted);
             font-size: 0.88rem;
             background: #fcfcfd;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--soid-success);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 999px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
         }
 
         @media (max-width: 640px) {
@@ -226,6 +308,10 @@
 
             .error-btn {
                 width: 100%;
+            }
+
+            .error-report-actions {
+                flex-direction: column;
             }
         }
     </style>
@@ -255,11 +341,11 @@
                     <span class="material-icons error-icon">build_circle</span>
                 </div>
 
-                <h1 class="error-title">Algo salió mal</h1>
+                <h1 class="error-title">Ups... algo Salio mal</h1>
 
                 <p class="error-text">
-                    Ocurrió un error inesperado mientras procesábamos tu solicitud.
-                    Por favor, intenta nuevamente en unos minutos.
+                       Ocurrió un error inesperado mientras procesábamos tu solicitud.
+                        Nada grave, pero por ahora esta página necesita un pequeño milagro técnico
                 </p>
 
                 <div class="error-actions">
@@ -274,8 +360,23 @@
                     </button>
                 </div>
 
-                <div class="error-help">
-                    Si el problema continúa, conviene revisarlo desde el panel administrativo o los registros del servidor.
+                <!-- Sección de reporte -->
+                <div class="error-report-section">
+                    <h3 class="error-report-title">
+                        <span class="material-icons" style="font-size:18px;">support_agent</span>
+                        ¿El problema persiste?
+                    </h3>
+                    <div class="error-report-actions">
+                        <button type="button" class="error-btn error-btn--whatsapp" onclick="reportarWhatsApp()">
+                            <span class="material-icons">chat</span>
+                            Reportar por WhatsApp
+                        </button>
+                        <button type="button" class="error-btn error-btn--copy" onclick="copiarInfo()">
+                            <span class="material-icons">content_copy</span>
+                            Copiar información
+                        </button>
+                    </div>
+                    <div id="errorInfoBox" class="error-info-box"></div>
                 </div>
             </div>
 
@@ -284,5 +385,77 @@
             </div>
         </section>
     </main>
+
+    <div id="toast" class="toast">
+        <span class="material-icons" style="font-size:18px;">check_circle</span>
+        <span id="toastMsg">Información copiada</span>
+    </div>
+
+    <script>
+        function getErrorInfo() {
+            const fecha = new Date().toLocaleString('es-DO', { 
+                timeZone: 'America/Santo_Domingo',
+                dateStyle: 'short',
+                timeStyle: 'medium'
+            });
+            return {
+                tipo: 'Error 500',
+                url: window.location.href,
+                fecha: fecha,
+                navegador: navigator.userAgent.substring(0, 100)
+            };
+        }
+
+        function formatErrorText(info) {
+            return `🚨 *Reporte de Error SOID*
+
+📍 *Tipo:* ${info.tipo}
+🔗 *URL:* ${info.url}
+📅 *Fecha:* ${info.fecha}
+🌐 *Navegador:* ${info.navegador}
+
+_Por favor revisa este error._`;
+        }
+
+        function reportarWhatsApp() {
+            const info = getErrorInfo();
+            const texto = formatErrorText(info);
+            // ⚠️ CAMBIA ESTE NÚMERO POR EL TUYO (código país + número)
+            const telefono = '18097753957';
+            const url = `https://wa.me/${telefono}?text=${encodeURIComponent(texto)}`;
+            window.open(url, '_blank');
+        }
+
+        function copiarInfo() {
+            const info = getErrorInfo();
+            const texto = `Reporte de Error SOID
+Tipo: ${info.tipo}
+URL: ${info.url}
+Fecha: ${info.fecha}
+Navegador: ${info.navegador}`;
+
+            // Mostrar info en pantalla
+            const infoBox = document.getElementById('errorInfoBox');
+            infoBox.textContent = texto;
+            infoBox.classList.add('show');
+
+            // Copiar al portapapeles
+            navigator.clipboard.writeText(texto).then(() => {
+                showToast('Información copiada al portapapeles');
+            }).catch(() => {
+                showToast('Selecciona y copia el texto manualmente');
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
 </body>
 </html>
