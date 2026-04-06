@@ -24,12 +24,18 @@ class Command(BaseCommand):
             type=int,
             help="ID del tenant específico. Si no se indica, se siembra para TODOS los tenants.",
         )
+        parser.add_argument(
+            "--solo-casillas",
+            action="store_true",
+            help="Carga únicamente las casillas F001 globales y no procesa categorías ni cuentas.",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
         reset = options["reset"]
         moneda = options["moneda"]
         tenant_id = options.get("tenant")
+        solo_casillas = options["solo_casillas"]
 
         # Importamos modelos
         from tenants.models import Tenant
@@ -59,12 +65,20 @@ class Command(BaseCommand):
         cuenta_fields = {f.name for f in CuentaFinanciera._meta.get_fields()}
         cuenta_has_tenant = "tenant" in cuenta_fields
 
+        movimiento_fields = {f.name for f in MovimientoFinanciero._meta.get_fields()}
+        movimiento_has_tenant = "tenant" in movimiento_fields
+
+        adjunto_has_tenant = False
+        if AdjuntoMovimiento is not None:
+            adjunto_fields = {f.name for f in AdjuntoMovimiento._meta.get_fields()}
+            adjunto_has_tenant = "tenant" in adjunto_fields
+
         # ----------------------------------------------------------------
         # RESET GLOBAL (casillas son globales)
         # ----------------------------------------------------------------
         if reset:
             self.stdout.write(self.style.WARNING("⚠️  RESET ACTIVADO..."))
-            
+
             # Casillas son globales, se borran sin filtro de tenant
             if not casilla_has_tenant:
                 CasillaF001.objects.all().delete()
@@ -143,6 +157,10 @@ class Command(BaseCommand):
             casilla_by_codigo[codigo] = obj
 
         self.stdout.write(self.style.SUCCESS(f"✔ Casillas F.001 (globales): {len(casilla_by_codigo)}"))
+
+        if solo_casillas:
+            self.stdout.write(self.style.SUCCESS("\n✅ CARGA DE SOLO CASILLAS COMPLETADA."))
+            return
 
         # ----------------------------------------------------------------
         # 2) CATEGORÍAS Y CUENTAS (POR TENANT)
@@ -227,11 +245,24 @@ class Command(BaseCommand):
             self.stdout.write(self.style.HTTP_INFO(f"{'='*50}"))
 
             if reset:
-                if AdjuntoMovimiento is not None:
+                if AdjuntoMovimiento is not None and adjunto_has_tenant:
                     AdjuntoMovimiento.objects.filter(tenant=tenant).delete()
-                MovimientoFinanciero.objects.filter(tenant=tenant).delete()
-                CategoriaMovimiento.objects.filter(tenant=tenant).delete()
-                CuentaFinanciera.objects.filter(tenant=tenant).delete()
+
+                if movimiento_has_tenant:
+                    MovimientoFinanciero.objects.filter(tenant=tenant).delete()
+                else:
+                    MovimientoFinanciero.objects.all().delete()
+
+                if categoria_has_tenant:
+                    CategoriaMovimiento.objects.filter(tenant=tenant).delete()
+                else:
+                    CategoriaMovimiento.objects.all().delete()
+
+                if cuenta_has_tenant:
+                    CuentaFinanciera.objects.filter(tenant=tenant).delete()
+                else:
+                    CuentaFinanciera.objects.all().delete()
+
                 self.stdout.write(self.style.WARNING("  ⚠️ Datos del tenant limpiados"))
 
             # Categorías
