@@ -1,0 +1,226 @@
+{% extends 'miembros_app/base_miembros.html' %}
+
+{% block title %}Reingresos{% endblock %}
+
+{% block content %}
+<h2 class="report-title">Miembros Reincorporados</h2>
+<p class="report-subtitle">Miembros que han regresado a la congregación</p>
+
+<!-- Filtros (no se imprimen) -->
+<div class="report-filters no-print">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="anio">Año:</label>
+            <select name="anio" id="anio" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for a in anios_disponibles %}
+                    <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="origen">Origen:</label>
+            <select name="origen" id="origen" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for val, label in ORIGEN_CHOICES %}
+                    <option value="{{ val }}" {% if val == origen_filtro %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="solo_activos" value="1" {% if solo_activos %}checked{% endif %} onchange="this.form.submit()">
+                Solo activos
+            </label>
+        </div>
+    </form>
+</div>
+
+<!-- Estadísticas por origen -->
+{% if stats_origen %}
+<div class="stats-cards no-print">
+    {% for stat in stats_origen %}
+    <div class="origin-card origin-{{ stat.origen_reingreso }}">
+        <span class="origin-icon material-icons">
+            {% if stat.origen_reingreso == 'descarriado' %}undo
+            {% elif stat.origen_reingreso == 'traslado' %}swap_horiz
+            {% elif stat.origen_reingreso == 'pausa' %}pause_circle
+            {% else %}refresh{% endif %}
+        </span>
+        <div class="origin-info">
+            <span class="origin-label">
+                {% if stat.origen_reingreso == 'descarriado' %}Descarriados
+                {% elif stat.origen_reingreso == 'traslado' %}Traslados
+                {% elif stat.origen_reingreso == 'pausa' %}Pausa voluntaria
+                {% else %}{{ stat.origen_reingreso }}{% endif %}
+            </span>
+            <span class="origin-count">{{ stat.total }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Metadatos del reporte -->
+<div class="report-meta">
+    <span><strong>Total:</strong> {{ total }} reingreso{{ total|pluralize:"s" }}</span>
+    {% if anio %}<span><strong>Año:</strong> {{ anio }}</span>{% endif %}
+    {% if origen_filtro %}<span><strong>Origen:</strong> {{ origen_filtro }}</span>{% endif %}
+    {% if solo_activos %}<span>✓ Solo activos</span>{% endif %}
+</div>
+
+{% if miembros %}
+<table class="report-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 28%;">Nombre</th>
+            <th style="width: 15%;">Fecha Reingreso</th>
+            <th style="width: 15%;">Origen</th>
+            <th style="width: 15%;">Estado Pastoral</th>
+            <th style="width: 22%;">Nota</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in miembros %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ m.apellidos }}, {{ m.nombres }}</td>
+            <td>{{ m.fecha_reingreso|date:"d/m/Y"|default:"—" }}</td>
+            <td>
+                <span class="origin-badge origin-{{ m.origen_reingreso }}">
+                    {% if m.origen_reingreso == 'descarriado' %}Descarriado
+                    {% elif m.origen_reingreso == 'traslado' %}Traslado
+                    {% elif m.origen_reingreso == 'pausa' %}Pausa
+                    {% else %}{{ m.origen_reingreso|default:"—" }}{% endif %}
+                </span>
+            </td>
+            <td>
+                {% if m.estado_pastoral_reingreso == 'reconciliado' %}
+                    <span class="pastoral-badge pastoral-reconciliado">Reconciliado</span>
+                {% elif m.estado_pastoral_reingreso == 'integrado' %}
+                    <span class="pastoral-badge pastoral-integrado">Integrado</span>
+                {% elif m.estado_pastoral_reingreso == 'observacion' %}
+                    <span class="pastoral-badge pastoral-observacion">En observación</span>
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td class="text-truncate">{{ m.nota_pastoral_reingreso|default:"—"|truncatechars:40 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="report-empty">
+    <span class="material-icons">group_add</span>
+    <p>No hay miembros reincorporados para el período seleccionado.</p>
+</div>
+{% endif %}
+
+<style>
+.stats-cards {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.origin-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    min-width: 160px;
+}
+
+.origin-card.origin-descarriado {
+    border-left: 3px solid #f59e0b;
+}
+
+.origin-card.origin-traslado {
+    border-left: 3px solid #3b82f6;
+}
+
+.origin-card.origin-pausa {
+    border-left: 3px solid #8b5cf6;
+}
+
+.origin-icon {
+    font-size: 24px;
+    color: #64748b;
+}
+
+.origin-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.origin-label {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.origin-count {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.origin-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.origin-badge.origin-descarriado {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.origin-badge.origin-traslado {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.origin-badge.origin-pausa {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+.pastoral-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.pastoral-reconciliado {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.pastoral-integrado {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.pastoral-observacion {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.text-truncate {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+{% endblock %}

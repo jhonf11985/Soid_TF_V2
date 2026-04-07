@@ -18,6 +18,17 @@ from .miembros import (
     filtrar_miembros,
 )
 
+# Reportes Nuevos
+from .reportes_nuevos import (
+    reporte_aniversarios_membresia,
+    reporte_por_sector,
+    reporte_bautismos,
+    reporte_reingresos,
+    reporte_ministeriales,
+    reporte_atencion_pastoral,
+    reporte_familias,
+)
+
 # Familiares (ACTUALIZADO)
 from .familiares import (
     familiares_lista,

@@ -1,0 +1,271 @@
+{% extends 'miembros_app/base_miembros.html' %}
+
+{% block title %}Obreros y Ministeriales{% endblock %}
+
+{% block content %}
+<h2 class="report-title">Obreros y Ministeriales</h2>
+<p class="report-subtitle">Pastores, evangelistas, misioneros y obreros de la iglesia</p>
+
+<!-- Filtros (no se imprimen) -->
+<div class="report-filters no-print">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="rol">Rol:</label>
+            <select name="rol" id="rol" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for val, label in ROL_CHOICES %}
+                    <option value="{{ val }}" {% if val == rol_filtro %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="estado_ministerial">Estado:</label>
+            <select name="estado_ministerial" id="estado_ministerial" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for val, label in ESTADO_MINISTERIAL_CHOICES %}
+                    <option value="{{ val }}" {% if val == estado_filtro %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="solo_activos" value="1" {% if solo_activos %}checked{% endif %} onchange="this.form.submit()">
+                Solo activos
+            </label>
+        </div>
+    </form>
+</div>
+
+<!-- Estadísticas por rol -->
+{% if stats_rol %}
+<div class="ministry-stats no-print">
+    {% for stat in stats_rol %}
+    <div class="ministry-card ministry-{{ stat.rol_ministerial }}">
+        <span class="ministry-icon material-icons">
+            {% if stat.rol_ministerial == 'pastor' %}church
+            {% elif stat.rol_ministerial == 'evangelista' %}campaign
+            {% elif stat.rol_ministerial == 'misionero' %}public
+            {% elif stat.rol_ministerial == 'obrero' %}construction
+            {% elif stat.rol_ministerial == 'diacono' %}volunteer_activism
+            {% elif stat.rol_ministerial == 'lider' %}groups
+            {% else %}person{% endif %}
+        </span>
+        <div class="ministry-info">
+            <span class="ministry-role">
+                {% if stat.rol_ministerial == 'pastor' %}Pastores
+                {% elif stat.rol_ministerial == 'evangelista' %}Evangelistas
+                {% elif stat.rol_ministerial == 'misionero' %}Misioneros
+                {% elif stat.rol_ministerial == 'obrero' %}Obreros
+                {% elif stat.rol_ministerial == 'diacono' %}Diáconos
+                {% elif stat.rol_ministerial == 'lider' %}Líderes
+                {% else %}{{ stat.rol_ministerial }}{% endif %}
+            </span>
+            <span class="ministry-count">{{ stat.total }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Metadatos del reporte -->
+<div class="report-meta">
+    <span><strong>Total:</strong> {{ total }} ministerial{{ total|pluralize:"es" }}</span>
+    {% if rol_filtro %}<span><strong>Rol:</strong> {{ rol_filtro }}</span>{% endif %}
+    {% if estado_filtro %}<span><strong>Estado:</strong> {{ estado_filtro }}</span>{% endif %}
+    {% if solo_activos %}<span>✓ Solo activos</span>{% endif %}
+</div>
+
+{% if miembros %}
+<table class="report-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 25%;">Nombre</th>
+            <th style="width: 12%;">Rol</th>
+            <th style="width: 12%;">Estado</th>
+            <th style="width: 13%;">Credencial</th>
+            <th style="width: 18%;">Formación</th>
+            <th style="width: 15%;">Teléfono</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in miembros %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>
+                <strong>{{ m.apellidos }}, {{ m.nombres }}</strong>
+                {% if m.obrero_ordenado %}
+                    <span class="ordained-badge" title="Ordenado">✓</span>
+                {% endif %}
+            </td>
+            <td>
+                <span class="role-badge role-{{ m.rol_ministerial }}">
+                    {% if m.rol_ministerial == 'pastor' %}Pastor
+                    {% elif m.rol_ministerial == 'evangelista' %}Evangelista
+                    {% elif m.rol_ministerial == 'misionero' %}Misionero
+                    {% elif m.rol_ministerial == 'obrero' %}Obrero
+                    {% elif m.rol_ministerial == 'diacono' %}Diácono
+                    {% elif m.rol_ministerial == 'lider' %}Líder
+                    {% else %}{{ m.rol_ministerial }}{% endif %}
+                </span>
+            </td>
+            <td>
+                {% if m.estado_ministerial == 'activo' %}
+                    <span class="status-badge status-activo">Activo</span>
+                {% elif m.estado_ministerial == 'pausa' %}
+                    <span class="status-badge status-pausa">En pausa</span>
+                {% elif m.estado_ministerial == 'retirado' %}
+                    <span class="status-badge status-retirado">Retirado</span>
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>
+                {% if m.tiene_credenciales %}
+                    <span class="credential-badge">
+                        <span class="material-icons" style="font-size: 14px;">badge</span>
+                        {{ m.numero_credencial|default:"Sí" }}
+                    </span>
+                {% else %}
+                    <span class="no-credential">—</span>
+                {% endif %}
+            </td>
+            <td class="text-truncate">{{ m.preparacion_teologica|default:m.donde_estudio_teologia|default:"—"|truncatechars:25 }}</td>
+            <td>{{ m.telefono|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="report-empty">
+    <span class="material-icons">church</span>
+    <p>No hay miembros con rol ministerial registrado.</p>
+</div>
+{% endif %}
+
+<style>
+.ministry-stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.ministry-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    min-width: 140px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.ministry-card.ministry-pastor {
+    border-top: 3px solid #7c3aed;
+}
+
+.ministry-card.ministry-evangelista {
+    border-top: 3px solid #f59e0b;
+}
+
+.ministry-card.ministry-misionero {
+    border-top: 3px solid #10b981;
+}
+
+.ministry-card.ministry-obrero {
+    border-top: 3px solid #3b82f6;
+}
+
+.ministry-card.ministry-diacono {
+    border-top: 3px solid #ec4899;
+}
+
+.ministry-card.ministry-lider {
+    border-top: 3px solid #0097A7;
+}
+
+.ministry-icon {
+    font-size: 28px;
+    color: #64748b;
+}
+
+.ministry-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.ministry-role {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.ministry-count {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.role-pastor { background: #ede9fe; color: #5b21b6; }
+.role-evangelista { background: #fef3c7; color: #92400e; }
+.role-misionero { background: #d1fae5; color: #065f46; }
+.role-obrero { background: #dbeafe; color: #1e40af; }
+.role-diacono { background: #fce7f3; color: #9d174d; }
+.role-lider { background: #e0f7fa; color: #00695c; }
+
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.status-activo { background: #dcfce7; color: #166534; }
+.status-pausa { background: #fef9c3; color: #854d0e; }
+.status-retirado { background: #f1f5f9; color: #475569; }
+
+.credential-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.ordained-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: #7c3aed;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 10px;
+    margin-left: 4px;
+}
+
+.text-truncate {
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+{% endblock %}

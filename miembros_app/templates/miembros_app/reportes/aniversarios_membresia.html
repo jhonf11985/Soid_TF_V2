@@ -1,0 +1,94 @@
+{% extends 'miembros_app/base_miembros.html' %}
+
+{% block title %}Aniversarios de Membresía · {{ nombre_mes }} {{ anio }}{% endblock %}
+
+{% block content %}
+<h2 class="report-title">Aniversarios de Membresía</h2>
+<p class="report-subtitle">Miembros que celebran años en la iglesia en {{ nombre_mes }} {{ anio }}</p>
+
+<!-- Filtros (no se imprimen) -->
+<div class="report-filters no-print">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="mes">Mes:</label>
+            <select name="mes" id="mes" onchange="this.form.submit()">
+                {% for num, nombre in MESES_ES.items %}
+                    <option value="{{ num }}" {% if num == mes %}selected{% endif %}>{{ nombre }}</option>
+                {% empty %}
+                    <option value="1" {% if mes == 1 %}selected{% endif %}>Enero</option>
+                    <option value="2" {% if mes == 2 %}selected{% endif %}>Febrero</option>
+                    <option value="3" {% if mes == 3 %}selected{% endif %}>Marzo</option>
+                    <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if mes == 5 %}selected{% endif %}>Mayo</option>
+                    <option value="6" {% if mes == 6 %}selected{% endif %}>Junio</option>
+                    <option value="7" {% if mes == 7 %}selected{% endif %}>Julio</option>
+                    <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if mes == 9 %}selected{% endif %}>Septiembre</option>
+                    <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre</option>
+                    <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre</option>
+                    <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="solo_activos" value="1" {% if solo_activos %}checked{% endif %} onchange="this.form.submit()">
+                Solo activos
+            </label>
+        </div>
+    </form>
+</div>
+
+<!-- Metadatos del reporte -->
+<div class="report-meta">
+    <span><strong>Mes:</strong> {{ nombre_mes }} {{ anio }}</span>
+    <span><strong>Total:</strong> {{ total }} miembro{{ total|pluralize:"s" }}</span>
+    {% if solo_activos %}<span>✓ Solo activos</span>{% endif %}
+</div>
+
+{% if miembros %}
+<table class="report-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 8%;">Día</th>
+            <th style="width: 35%;">Nombre</th>
+            <th style="width: 15%;">Años</th>
+            <th style="width: 17%;">Fecha Ingreso</th>
+            <th style="width: 20%;">Teléfono</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in miembros %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td><strong>{{ m.fecha_ingreso_iglesia.day }}</strong></td>
+            <td>{{ m.apellidos }}, {{ m.nombres }}</td>
+            <td>
+                <span class="badge-years">{{ m.anios_membresia }} año{{ m.anios_membresia|pluralize:"s" }}</span>
+            </td>
+            <td>{{ m.fecha_ingreso_iglesia|date:"d/m/Y" }}</td>
+            <td>{{ m.telefono|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="report-empty">
+    <span class="material-icons">event_busy</span>
+    <p>No hay aniversarios de membresía en {{ nombre_mes }}.</p>
+</div>
+{% endif %}
+
+<style>
+.badge-years {
+    display: inline-block;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #0097A7 0%, #00838F 100%);
+    color: #fff;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

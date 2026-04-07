@@ -17,7 +17,15 @@ from miembros_app.views.familiares import (
     ajax_validar_relacion,familias_reporte, 
 )
 
-
+from miembros_app.views.reportes_nuevos import (
+    reporte_aniversarios_membresia,
+    reporte_por_sector,
+    reporte_bautismos,
+    reporte_reingresos,
+    reporte_ministeriales,
+    reporte_atencion_pastoral,
+    reporte_familias,
+)
 app_name = "miembros_app"
 
 urlpatterns = [
@@ -130,5 +138,43 @@ urlpatterns = [
     path("familias/<int:hogar_id>/", familia_detalle, name="familia_detalle"),
     path("familias/<int:hogar_id>/editar/", familia_editar, name="familia_editar"),
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # REPORTES NUEVOS
+    # ─────────────────────────────────────────────────────────────────────────
+    path(
+        'reportes/aniversarios-membresia/',
+        reporte_aniversarios_membresia,
+        name='reporte_aniversarios_membresia'
+    ),
+    path(
+        'reportes/por-sector/',
+        reporte_por_sector,
+        name='reporte_por_sector'
+    ),
+    path(
+        'reportes/bautismos/',
+        reporte_bautismos,
+        name='reporte_bautismos'
+    ),
+    path(
+        'reportes/reingresos/',
+        reporte_reingresos,
+        name='reporte_reingresos'
+    ),
+    path(
+        'reportes/ministeriales/',
+        reporte_ministeriales,
+        name='reporte_ministeriales'
+    ),
+    path(
+        'reportes/atencion-pastoral/',
+        reporte_atencion_pastoral,
+        name='reporte_atencion_pastoral'
+    ),
+    path(
+        'reportes/familias/',
+        reporte_familias,
+        name='reporte_familias'
+    ),
 
 ]

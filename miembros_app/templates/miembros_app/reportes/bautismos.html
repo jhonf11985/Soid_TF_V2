@@ -1,0 +1,209 @@
+{% extends 'miembros_app/base_miembros.html' %}
+{% load miembros_extras %}
+
+{% block title %}Bautismos · {{ anio }}{% endblock %}
+
+{% block content %}
+<h2 class="report-title">Reporte de Bautismos</h2>
+<p class="report-subtitle">
+    {% if nombre_mes %}
+        Bautismos en {{ nombre_mes }} {{ anio }}
+    {% else %}
+        Bautismos del año {{ anio }}
+    {% endif %}
+</p>
+
+<!-- Filtros (no se imprimen) -->
+<div class="report-filters no-print">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="anio">Año:</label>
+            <select name="anio" id="anio" onchange="this.form.submit()">
+                {% for a in anios_disponibles %}
+                    <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                {% empty %}
+                    <option value="{{ anio }}" selected>{{ anio }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="mes">Mes:</label>
+            <select name="mes" id="mes" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for num, nombre in MESES_ES.items %}
+                    <option value="{{ num }}" {% if num == mes %}selected{% endif %}>{{ nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="solo_activos" value="1" {% if solo_activos %}checked{% endif %} onchange="this.form.submit()">
+                Solo activos
+            </label>
+        </div>
+    </form>
+</div>
+
+<!-- Estadísticas por mes -->
+{% if stats_dict and not mes %}
+<div class="stats-bar no-print">
+    <h4>Bautismos por mes en {{ anio }}</h4>
+    <div class="stats-months">
+        {% for num, nombre in MESES_ES.items %}
+        <div class="month-stat {% if stats_dict|get_item:num %}has-data{% endif %}">
+            <span class="month-name">{{ nombre|slice:":3" }}</span>
+            <span class="month-count">{{ stats_dict|get_item:num|default:"0" }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Metadatos del reporte -->
+<div class="report-meta">
+    <span><strong>Año:</strong> {{ anio }}</span>
+    {% if nombre_mes %}<span><strong>Mes:</strong> {{ nombre_mes }}</span>{% endif %}
+    <span><strong>Total:</strong> {{ total }} bautismo{{ total|pluralize:"s" }}</span>
+    {% if solo_activos %}<span>✓ Solo activos</span>{% endif %}
+</div>
+
+{% if miembros %}
+<table class="report-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 30%;">Nombre</th>
+            <th style="width: 15%;">Fecha Bautismo</th>
+            <th style="width: 15%;">Edad</th>
+            <th style="width: 15%;">Teléfono</th>
+            <th style="width: 20%;">Estado</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in miembros %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ m.apellidos }}, {{ m.nombres }}</td>
+            <td>
+                <span class="badge-baptism">
+                    <span class="material-icons" style="font-size: 14px;">water_drop</span>
+                    {{ m.fecha_bautismo|date:"d/m/Y" }}
+                </span>
+            </td>
+            <td>{{ m.calcular_edad|default:"—" }} años</td>
+            <td>{{ m.telefono|default:"—" }}</td>
+            <td>
+                {% if m.activo %}
+                    <span class="status-badge status-active">Activo</span>
+                {% else %}
+                    <span class="status-badge status-inactive">Inactivo</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="report-empty">
+    <span class="material-icons">water_drop</span>
+    <p>No hay bautismos registrados para el período seleccionado.</p>
+</div>
+{% endif %}
+
+<style>
+.stats-bar {
+    background: #f0fdfa;
+    border: 1px solid #99f6e4;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.stats-bar h4 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: #0f766e;
+    font-weight: 600;
+}
+
+.stats-months {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 4px;
+}
+
+.month-stat {
+    text-align: center;
+    padding: 8px 4px;
+    background: #fff;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.month-stat.has-data {
+    background: #0097A7;
+    border-color: #0097A7;
+}
+
+.month-stat.has-data .month-name,
+.month-stat.has-data .month-count {
+    color: #fff;
+}
+
+.month-name {
+    display: block;
+    font-size: 10px;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.month-count {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.badge-baptism {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+@media (max-width: 768px) {
+    .stats-months {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+@media print {
+    .stats-bar {
+        display: none;
+    }
+}
+</style>
+{% endblock %}

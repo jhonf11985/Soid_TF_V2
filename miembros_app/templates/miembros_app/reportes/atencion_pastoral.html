@@ -1,0 +1,238 @@
+{% extends 'miembros_app/base_miembros.html' %}
+
+{% block title %}Atención Pastoral{% endblock %}
+
+{% block content %}
+<h2 class="report-title">Atención Pastoral</h2>
+<p class="report-subtitle">Miembros que requieren seguimiento especial</p>
+
+<!-- Filtros (no se imprimen) -->
+<div class="report-filters no-print">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="tipo">Tipo:</label>
+            <select name="tipo" id="tipo" onchange="this.form.submit()">
+                {% for val, label in TIPO_CHOICES %}
+                    <option value="{{ val }}" {% if val == tipo_filtro %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+<!-- Tarjetas de contadores -->
+<div class="attention-cards no-print">
+    <a href="?tipo=vulnerable" class="attention-card card-vulnerable {% if tipo_filtro == 'vulnerable' %}active{% endif %}">
+        <span class="material-icons">volunteer_activism</span>
+        <div class="card-info">
+            <span class="card-label">Vulnerables</span>
+            <span class="card-count">{{ contadores.vulnerable }}</span>
+        </div>
+    </a>
+    <a href="?tipo=disciplina" class="attention-card card-disciplina {% if tipo_filtro == 'disciplina' %}active{% endif %}">
+        <span class="material-icons">gavel</span>
+        <div class="card-info">
+            <span class="card-label">En Disciplina</span>
+            <span class="card-count">{{ contadores.disciplina }}</span>
+        </div>
+    </a>
+    <a href="?tipo=observacion" class="attention-card card-observacion {% if tipo_filtro == 'observacion' %}active{% endif %}">
+        <span class="material-icons">visibility</span>
+        <div class="card-info">
+            <span class="card-label">En Observación</span>
+            <span class="card-count">{{ contadores.observacion }}</span>
+        </div>
+    </a>
+    <a href="?tipo=descarriado" class="attention-card card-descarriado {% if tipo_filtro == 'descarriado' %}active{% endif %}">
+        <span class="material-icons">directions_walk</span>
+        <div class="card-info">
+            <span class="card-label">Descarriados</span>
+            <span class="card-count">{{ contadores.descarriado }}</span>
+        </div>
+    </a>
+    <a href="?tipo=pasivo" class="attention-card card-pasivo {% if tipo_filtro == 'pasivo' %}active{% endif %}">
+        <span class="material-icons">hourglass_empty</span>
+        <div class="card-info">
+            <span class="card-label">Pasivos</span>
+            <span class="card-count">{{ contadores.pasivo }}</span>
+        </div>
+    </a>
+</div>
+
+<!-- Metadatos del reporte -->
+<div class="report-meta">
+    <span><strong>Categoría:</strong> {{ titulo_seccion }}</span>
+    <span><strong>Total:</strong> {{ total }} miembro{{ total|pluralize:"s" }}</span>
+</div>
+
+{% if miembros %}
+<table class="report-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 28%;">Nombre</th>
+            <th style="width: 15%;">Estado</th>
+            <th style="width: 15%;">Situación Econ.</th>
+            <th style="width: 15%;">Teléfono</th>
+            <th style="width: 22%;">Sector</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in miembros %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>
+                <strong>{{ m.apellidos }}, {{ m.nombres }}</strong>
+                {% if m.apodo %}<span class="nickname">({{ m.apodo }})</span>{% endif %}
+            </td>
+            <td>
+                {% if m.estado_miembro == 'disciplina' %}
+                    <span class="estado-badge estado-disciplina">En Disciplina</span>
+                {% elif m.estado_miembro == 'observacion' %}
+                    <span class="estado-badge estado-observacion">En Observación</span>
+                {% elif m.estado_miembro == 'descarriado' %}
+                    <span class="estado-badge estado-descarriado">Descarriado</span>
+                {% elif m.estado_miembro == 'pasivo' %}
+                    <span class="estado-badge estado-pasivo">Pasivo</span>
+                {% else %}
+                    <span class="estado-badge estado-activo">{{ m.get_estado_miembro_display|default:"Activo" }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if m.situacion_economica == 'critica' %}
+                    <span class="econ-badge econ-critica">
+                        <span class="material-icons" style="font-size: 12px;">warning</span>
+                        Crítica
+                    </span>
+                {% elif m.situacion_economica == 'vulnerable' %}
+                    <span class="econ-badge econ-vulnerable">Vulnerable</span>
+                {% elif m.situacion_economica == 'estable' %}
+                    <span class="econ-badge econ-estable">Estable</span>
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>{{ m.telefono|default:"—" }}</td>
+            <td>{{ m.sector|default:"—" }}{% if m.ciudad %}, {{ m.ciudad }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="report-empty">
+    <span class="material-icons">check_circle</span>
+    <p>No hay miembros en esta categoría de atención pastoral.</p>
+</div>
+{% endif %}
+
+<style>
+.attention-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.attention-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+}
+
+.attention-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.attention-card.active {
+    border-color: currentColor;
+    background: #f8fafc;
+}
+
+.attention-card .material-icons {
+    font-size: 28px;
+}
+
+.card-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-count {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+/* Colores por tipo */
+.card-vulnerable { color: #f59e0b; }
+.card-vulnerable.active { border-color: #f59e0b; background: #fffbeb; }
+
+.card-disciplina { color: #ef4444; }
+.card-disciplina.active { border-color: #ef4444; background: #fef2f2; }
+
+.card-observacion { color: #8b5cf6; }
+.card-observacion.active { border-color: #8b5cf6; background: #faf5ff; }
+
+.card-descarriado { color: #6b7280; }
+.card-descarriado.active { border-color: #6b7280; background: #f9fafb; }
+
+.card-pasivo { color: #0ea5e9; }
+.card-pasivo.active { border-color: #0ea5e9; background: #f0f9ff; }
+
+/* Badges de estado */
+.estado-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.estado-disciplina { background: #fee2e2; color: #991b1b; }
+.estado-observacion { background: #ede9fe; color: #5b21b6; }
+.estado-descarriado { background: #f1f5f9; color: #475569; }
+.estado-pasivo { background: #e0f2fe; color: #0369a1; }
+.estado-activo { background: #dcfce7; color: #166534; }
+
+/* Badges económicos */
+.econ-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.econ-critica { background: #fee2e2; color: #991b1b; }
+.econ-vulnerable { background: #fef3c7; color: #92400e; }
+.econ-estable { background: #dcfce7; color: #166534; }
+
+.nickname {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: normal;
+}
+
+@media (max-width: 600px) {
+    .attention-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+{% endblock %}

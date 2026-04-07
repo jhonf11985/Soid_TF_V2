@@ -1,0 +1,141 @@
+{% extends 'miembros_app/base_miembros.html' %}
+
+{% block title %}Miembros por Sector{% endblock %}
+
+{% block content %}
+<h2 class="report-title">Miembros por Sector</h2>
+<p class="report-subtitle">Distribución geográfica de la membresía</p>
+
+<!-- Filtros (no se imprimen) -->
+<div class="report-filters no-print">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="ciudad">Ciudad:</label>
+            <select name="ciudad" id="ciudad" onchange="this.form.submit()">
+                <option value="">Todas</option>
+                {% for c in ciudades %}
+                    <option value="{{ c }}" {% if c == ciudad_filtro %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="sector">Sector:</label>
+            <select name="sector" id="sector" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for s in sectores %}
+                    <option value="{{ s }}" {% if s == sector_filtro %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="solo_activos" value="1" {% if solo_activos %}checked{% endif %} onchange="this.form.submit()">
+                Solo activos
+            </label>
+        </div>
+    </form>
+</div>
+
+<!-- Resumen por sectores -->
+{% if stats_sector %}
+<div class="stats-grid no-print">
+    {% for stat in stats_sector %}
+    <div class="stat-card">
+        <div class="stat-location">
+            <span class="stat-sector">{{ stat.sector|default:"Sin sector" }}</span>
+            <span class="stat-city">{{ stat.ciudad|default:"—" }}</span>
+        </div>
+        <div class="stat-count">{{ stat.total }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Metadatos del reporte -->
+<div class="report-meta">
+    <span><strong>Total:</strong> {{ total }} miembro{{ total|pluralize:"s" }}</span>
+    {% if ciudad_filtro %}<span><strong>Ciudad:</strong> {{ ciudad_filtro }}</span>{% endif %}
+    {% if sector_filtro %}<span><strong>Sector:</strong> {{ sector_filtro }}</span>{% endif %}
+    {% if solo_activos %}<span>✓ Solo activos</span>{% endif %}
+</div>
+
+{% if miembros %}
+<table class="report-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 30%;">Nombre</th>
+            <th style="width: 20%;">Sector</th>
+            <th style="width: 15%;">Ciudad</th>
+            <th style="width: 15%;">Teléfono</th>
+            <th style="width: 15%;">Dirección</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in miembros %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ m.apellidos }}, {{ m.nombres }}</td>
+            <td>{{ m.sector|default:"—" }}</td>
+            <td>{{ m.ciudad|default:"—" }}</td>
+            <td>{{ m.telefono|default:"—" }}</td>
+            <td class="text-truncate">{{ m.direccion|default:"—"|truncatechars:30 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="report-empty">
+    <span class="material-icons">location_off</span>
+    <p>No hay miembros que coincidan con los filtros seleccionados.</p>
+</div>
+{% endif %}
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-location {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-sector {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 13px;
+}
+
+.stat-city {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.stat-count {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0097A7;
+}
+
+.text-truncate {
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+{% endblock %}
